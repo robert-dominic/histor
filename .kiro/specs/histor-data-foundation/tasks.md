@@ -14,7 +14,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Implement validation for closeThreshold (0 ≤ threshold ≤ evidence.length)
     - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.10, 7.11, 7.12, 7.13_
   
-  - [ ] 1.2 Write unit tests for basic validation constraints
+  - [x] 1.2 Write unit tests for basic validation constraints
     - Test non-empty string validation
     - Test year validation (positive integer)
     - Test array length validation

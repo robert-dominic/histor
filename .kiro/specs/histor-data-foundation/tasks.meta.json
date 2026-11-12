@@ -24,6 +24,18 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794477168170
       }
+    ],
+    "1.2 Write unit tests for basic validation constraints": [
+      {
+        "executionId": "35c51f5f-5b85-4dd1-acb5-75c9c4b48ea7",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794479016830
+      },
+      {
+        "executionId": "35c51f5f-5b85-4dd1-acb5-75c9c4b48ea7",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794479144216
+      }
     ]
   }
 }
