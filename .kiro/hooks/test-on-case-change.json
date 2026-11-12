@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Test on case change",
+      "trigger": "PostFileSave",
+      "matcher": "src/cases/",
+      "action": {
+        "type": "command",
+        "command": "cd /home/webnova/projects/hackathons/histor && npm test 2>&1 | tee hook-check.log"
+      }
+    }
+  ]
+}
