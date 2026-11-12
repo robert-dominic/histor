@@ -264,7 +264,7 @@ The case model has several referential constraints:
 - `Reference.sources[i]` → `Case.sources[j].id`
 - Story markup `{{ref:id|label}}` → `Case.references[j].id`
 
-The validator verifies all these references exist before a case can be rendered.
+The validator verifies all these references exist. Case data is validated by the test suite (every open case must pass with zero errors) and logged in development.
 
 ### ID Uniqueness Constraints
 

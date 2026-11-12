@@ -174,7 +174,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Render placeholder content showing case title
     - _Requirements: 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8_
   
-  - [ ] 7.3 Update `src/App.tsx` to render router
+  - [x] 7.3 Update `src/App.tsx` to render router
     - Set up React Router with routes for `/` and `/case/:id`
     - Route `/` renders Home page
     - Route `/case/:id` renders Case page

@@ -7,7 +7,7 @@ inclusion: always
 ## Stack
 
 - **React 19 + TypeScript (strict) + Vite.** No server, no backend. The whole app is static.
-- **React Router** for pages: `/` (home) and `/case/:caseId`.
+- **React Router** for pages: `/` (home) and `/case/:id`.
 - **GSAP** with `@gsap/react` (`useGSAP` for setup and cleanup). Plugins: ScrollTrigger (scroll story), SplitText (line and character reveals), ScrambleText (spinning numbers and glitching text), TextPlugin (typed text). All GSAP plugins are free.
 - **Tailwind CSS v4** via `@tailwindcss/vite` for layout, spacing and responsiveness.
 - **Plain CSS** in `src/styles/` for signature effects (ghost ink, stamps, paper, flicker) and for design tokens.
