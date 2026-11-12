@@ -82,7 +82,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Include at least one theory, one evidence item, one source, one story section
     - _Requirements: 3.1-3.12, 4.1_
   
-  - [ ] 4.2 Create `src/cases/index.ts` with registry array and getCaseById function
+  - [x] 4.2 Create `src/cases/index.ts` with registry array and getCaseById function
     - Import mary-celeste case and register as open case (sealed: false)
     - Add one sealed placeholder case entry (id: "jack-the-ripper", sealed: true)
     - Implement getCaseById(id: string): RegistryEntry | undefined

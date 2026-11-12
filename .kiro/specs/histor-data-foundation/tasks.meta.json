@@ -127,6 +127,18 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794482422029
       }
+    ],
+    "4.2 Create `src/cases/index.ts` with registry array and getCaseById function": [
+      {
+        "executionId": "b193918c-1fa9-4f15-ab88-3f40eb86c32e",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482763335
+      },
+      {
+        "executionId": "b193918c-1fa9-4f15-ab88-3f40eb86c32e",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794483956144
+      }
     ]
   }
 }
