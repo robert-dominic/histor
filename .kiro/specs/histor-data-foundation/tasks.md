@@ -126,7 +126,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Validates: Requirements 6.6, 6.7, 6.8, 10.7, 10.8**
 
 - [ ] 6. Create investigation state management with React context
-  - [ ] 6.1 Create `src/app/InvestigationProvider.tsx` with context and reducer
+  - [x] 6.1 Create `src/app/InvestigationProvider.tsx` with context and reducer
     - Define InvestigationContext with state, dispatch, and caseData
     - Implement reducer handling OPEN_EVIDENCE, PIN_EVIDENCE, CLOSE_CASE, REOPEN_CASE
     - Use useReducer with lazy initializer calling loadInvestigationState
