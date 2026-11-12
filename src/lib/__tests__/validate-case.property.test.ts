@@ -1,5 +1,5 @@
 // src/lib/__tests__/validate-case.property.test.ts
-import { describe, test, expect } from 'vitest';
+import { describe, test } from 'vitest';
 import * as fc from 'fast-check';
 import { validateCase } from '../validate-case';
 import type {
@@ -8,11 +8,9 @@ import type {
   Evidence,
   Source,
   StorySection,
-  Reference,
   LegendIntro,
   CaseTheme,
   SourceKind,
-  EvidenceStatus
 } from '../../types/case';
 
 // ===== Custom Arbitraries =====
