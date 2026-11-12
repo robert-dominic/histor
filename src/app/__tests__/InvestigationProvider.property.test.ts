@@ -225,10 +225,9 @@ describe('Investigation actions - Property Tests', () => {
     );
   });
 
-  test('Property 7 (evidence side): a pin on evidence that is not in the case is rejected', () => {
-    // Feature: histor-data-foundation, Property 7: Invalid Pin Rejection
-    // Added with the rule that PIN_EVIDENCE rejects an evidence id that is not in the case,
-    // whatever the target is.
+  test('Property 28: Pinning Unknown Evidence Is Rejected', () => {
+    // Feature: histor-data-foundation, Property 28: Pinning Unknown Evidence Is Rejected
+    // Pinning evidence that is not in the case is rejected, whatever the target is: the pins stay unchanged.
     fc.assert(
       fc.property(
         withCase(caseData =>
@@ -251,9 +250,9 @@ describe('Investigation actions - Property Tests', () => {
     );
   });
 
-  test('Evidence that is not in the case cannot be opened', () => {
-    // Feature: histor-data-foundation, Property 4: Evidence Opening Preserves Order
-    // Added with the rule that OPEN_EVIDENCE rejects an evidence id that is not in the case.
+  test('Property 27: Opening Unknown Evidence Is Rejected', () => {
+    // Feature: histor-data-foundation, Property 27: Opening Unknown Evidence Is Rejected
+    // Opening evidence that is not in the case is rejected: the state stays unchanged.
     fc.assert(
       fc.property(
         withCase(caseData =>

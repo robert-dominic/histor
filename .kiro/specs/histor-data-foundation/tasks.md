@@ -157,7 +157,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Validates: Requirements 5.5, 5.6, 5.7, 5.8, 10.5, 10.6**
 
 - [ ] 7. Wire up App routing and UI structure
-  - [ ] 7.1 Create `src/pages/Home.tsx`
+  - [x] 7.1 Create `src/pages/Home.tsx`
     - Import registry from `src/cases/index.ts`
     - Map over registry entries
     - Render sealed cases as plain text (title, year, teaser) without links

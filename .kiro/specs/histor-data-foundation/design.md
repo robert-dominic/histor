@@ -198,7 +198,7 @@ export function useInvestigation(): InvestigationContextValue;
 
 **Business rule enforcement:**
 
-- Pin target validation: theory ID must exist in `caseData.theories` or be "none"
+- Pin validation: evidence ID must exist in `caseData.evidence`, and the target must be a theory ID that exists in `caseData.theories` or be "none"
 - Close validation: theory ID must exist in `caseData.theories` AND `opened.length >= caseData.closeThreshold`
 - Invalid actions are ignored (state unchanged)
 - Maximum array size: 100 entries for `opened`
@@ -438,6 +438,18 @@ This ensures unambiguous referencing throughout the system.
 
 **Validates: Requirements 7.28**
 
+### Property 27: Opening Unknown Evidence Is Rejected
+
+*For any* investigation state and any evidence ID that does not exist in the case's evidence array, dispatching OPEN_EVIDENCE with that ID SHALL be rejected and the state SHALL remain unchanged.
+
+**Validates: Reducer logic rule for OPEN_EVIDENCE (extends Requirements 5.5)**
+
+### Property 28: Pinning Unknown Evidence Is Rejected
+
+*For any* investigation state, any evidence ID that does not exist in the case's evidence array, and any pin target (valid or not), dispatching PIN_EVIDENCE with that evidence ID SHALL be rejected and the pins object SHALL remain unchanged.
+
+**Validates: Reducer logic rule for PIN_EVIDENCE (extends Requirements 5.7, 5.8)**
+
 ## Error Handling
 
 ### Validation Errors
@@ -596,7 +608,7 @@ Integration tests verify:
 ### Test Coverage Goals
 
 - **Unit tests**: 100% coverage of pure functions (validator, storage utilities, reducer)
-- **Property tests**: All 26 correctness properties implemented
+- **Property tests**: All 28 correctness properties implemented
 - **Integration tests**: Happy path and error scenarios for routing and state management
 
 ### Continuous Integration
