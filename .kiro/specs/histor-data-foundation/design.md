@@ -442,13 +442,13 @@ This ensures unambiguous referencing throughout the system.
 
 *For any* investigation state and any evidence ID that does not exist in the case's evidence array, dispatching OPEN_EVIDENCE with that ID SHALL be rejected and the state SHALL remain unchanged.
 
-**Validates: Reducer logic rule for OPEN_EVIDENCE (extends Requirements 5.5)**
+**Validates: Requirements 5.12**
 
 ### Property 28: Pinning Unknown Evidence Is Rejected
 
 *For any* investigation state, any evidence ID that does not exist in the case's evidence array, and any pin target (valid or not), dispatching PIN_EVIDENCE with that evidence ID SHALL be rejected and the pins object SHALL remain unchanged.
 
-**Validates: Reducer logic rule for PIN_EVIDENCE (extends Requirements 5.7, 5.8)**
+**Validates: Requirements 5.13**
 
 ## Error Handling
 

@@ -164,7 +164,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Render open cases as clickable links to `/case/{id}`
     - _Requirements: 1.1, 1.2, 1.3_
   
-  - [ ] 7.2 Create `src/pages/Case.tsx`
+  - [x] 7.2 Create `src/pages/Case.tsx`
     - Accept case ID from route params
     - Call getCaseById with ID
     - Show "Case not found" with home link for undefined result

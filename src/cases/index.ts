@@ -20,7 +20,7 @@ export const registry: RegistryEntry[] = [
     id: 'jack-the-ripper',
     title: 'Jack the Ripper',
     year: 1888,
-    teaser: 'A sealed case about Jack the Ripper mysteries',
+    teaser: 'Whitechapel, 1888. The killer was never named.',
     sealed: true,
   },
 ];

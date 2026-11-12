@@ -98,6 +98,8 @@ The Histor Data Foundation provides the core data model, type system, validation
 9. WHEN a user closes the case with a valid theory id, THE Investigation_State SHALL record the theory id as verdict
 10. IF a user attempts to close the case with an invalid theory id, THEN THE Investigation_State SHALL reject the operation and leave verdict as null
 11. WHEN a user reopens the case, THE Investigation_State SHALL reset opened to empty array, pins to empty object, and verdict to null
+12. IF a user attempts to open evidence with an evidence id that does not exist in the case, THEN THE Investigation_State SHALL reject the operation and not modify the opened array
+13. IF a user attempts to pin evidence with an evidence id that does not exist in the case, THEN THE Investigation_State SHALL reject the operation and not modify the pins object, whatever the target is
 
 ### Requirement 6: LocalStorage Persistence
 
