@@ -194,6 +194,20 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794487289621
       }
+    ],
+    "4.3 Write unit tests for getCaseById": [
+      {
+        "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794495431831
+      }
+    ],
+    "4.4 Write property tests for registry correctness": [
+      {
+        "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794495431980
+      }
     ]
   }
 }
