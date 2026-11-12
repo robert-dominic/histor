@@ -1,10 +1,12 @@
 // src/app/InvestigationProvider.tsx
 // Investigation state for one case: React context + useReducer, saved to localStorage.
 
+/* eslint-disable react-refresh/only-export-components -- design.md keeps the context, reducer, provider and hook together in this file */
+
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import type { Dispatch, ReactElement, ReactNode } from 'react';
-import { loadInvestigationState, saveInvestigationState } from '../lib/storage';
-import type { Case, InvestigationAction, InvestigationState } from '../types/case';
+import { loadInvestigationState, saveInvestigationState } from '@/lib/storage';
+import type { Case, InvestigationAction, InvestigationState } from '@/types/case';
 
 /** Most evidence ids kept in `opened`. */
 export const MAX_OPENED = 100;
@@ -22,7 +24,7 @@ export function createEmptyInvestigationState(): InvestigationState {
  *
  * @param state - The current investigation state
  * @param action - The action to apply
- * @param caseData - The case being investigated, used to check theory ids and the close threshold
+ * @param caseData - The case being investigated, used to check evidence ids, theory ids and the close threshold
  */
 export function investigationReducer(
   state: InvestigationState,
@@ -33,6 +35,10 @@ export function investigationReducer(
     case 'OPEN_EVIDENCE': {
       // Opening the same file twice changes nothing.
       if (state.opened.includes(action.evidenceId)) {
+        return state;
+      }
+      // Only evidence that belongs to this case can be opened.
+      if (!caseData.evidence.some(evidence => evidence.id === action.evidenceId)) {
         return state;
       }
       if (state.opened.length >= MAX_OPENED) {

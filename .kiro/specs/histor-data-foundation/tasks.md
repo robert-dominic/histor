@@ -135,7 +135,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Enforce business rules: pin validation, close threshold, max array sizes
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 12.1-12.6_
   
-  - [ ] 6.2 Write unit tests for InvestigationProvider and reducer
+  - [x] 6.2 Write unit tests for InvestigationProvider and reducer
     - Test OPEN_EVIDENCE adds ID to opened array
     - Test OPEN_EVIDENCE is idempotent for duplicate IDs
     - Test PIN_EVIDENCE with valid theory ID

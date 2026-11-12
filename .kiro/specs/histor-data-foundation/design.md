@@ -191,7 +191,7 @@ export function useInvestigation(): InvestigationContextValue;
 
 **Reducer logic:**
 
-- `OPEN_EVIDENCE`: Add evidence ID to `opened` array if not already present, respecting max 100 entries
+- `OPEN_EVIDENCE`: Validate evidence ID exists in case evidence, then add it to `opened` array if not already present, respecting max 100 entries
 - `PIN_EVIDENCE`: Validate theory ID exists in case theories, then set `pins[evidenceId] = target`, respecting max 100 entries
 - `CLOSE_CASE`: Validate theory ID exists and opened.length ≥ closeThreshold, then set `verdict = theoryId`
 - `REOPEN_CASE`: Reset state to `{opened: [], pins: {}, verdict: null}`

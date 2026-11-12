@@ -16,6 +16,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* "@/..." means "src/...". Keep in step with the alias in vite.config.ts. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
