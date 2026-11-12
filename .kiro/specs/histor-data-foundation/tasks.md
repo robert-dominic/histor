@@ -102,7 +102,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Validates: Requirements 4.2, 4.5, 4.6**
 
 - [ ] 5. Implement localStorage persistence
-  - [ ] 5.1 Create `src/lib/storage.ts` with load and save functions
+  - [x] 5.1 Create `src/lib/storage.ts` with load and save functions
     - Implement loadInvestigationState(caseId: string, caseData: Case): InvestigationState
     - Implement saveInvestigationState(caseId: string, state: InvestigationState): void
     - Use storage key format: "histor:case:{caseId}"
