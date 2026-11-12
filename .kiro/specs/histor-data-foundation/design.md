@@ -47,7 +47,7 @@ The data foundation follows a layered architecture:
 The router handles three routes:
 
 1. **Home (`/`)**: Displays all registry entries (sealed and open cases)
-2. **Case page (`/case/:id`)**: Loads case from registry, validates, displays content
+2. **Case page (`/case/:id`)**: Loads case from registry and displays content. Case data is validated by the test suite (every open case must pass with zero errors) and logged in development
 3. **Not found**: Any invalid case ID shows "Case not found" with a return link
 
 ### State Management Architecture
@@ -603,7 +603,7 @@ Integration tests verify:
 - Router correctly loads cases from registry
 - InvestigationProvider initializes from localStorage
 - State changes trigger localStorage saves
-- Validation runs before case rendering
+- Case data is validated by the test suite (every open case must pass with zero errors) and logged in development
 
 ### Test Coverage Goals
 

@@ -76,6 +76,26 @@ describe('App routing', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(registry.length);
   });
 
+  test.each(['/about', '/case', '/case/mary-celeste/extra', '/cases/mary-celeste'])(
+    'any other address shows "Page not found" with a link home: %s',
+    path => {
+      renderAppAt(path);
+
+      expect(screen.getByText('Page not found')).toBeDefined();
+      expect(screen.getByRole('link', { name: 'Return to home' }).getAttribute('href')).toBe('/');
+    }
+  );
+
+  test('"Return to home" on the "Page not found" page navigates to the home page', () => {
+    renderAppAt('/about');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Return to home' }));
+
+    expect(window.location.pathname).toBe('/');
+    expect(screen.queryByText('Page not found')).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(registry.length);
+  });
+
   test('none of the Vite starter content is left', () => {
     renderAppAt('/');
 

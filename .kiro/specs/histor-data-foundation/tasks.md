@@ -156,7 +156,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Property 22: All Pin Targets Are Valid**
     - **Validates: Requirements 5.5, 5.6, 5.7, 5.8, 10.5, 10.6**
 
-- [ ] 7. Wire up App routing and UI structure
+- [x] 7. Wire up App routing and UI structure
   - [x] 7.1 Create `src/pages/Home.tsx`
     - Import registry from `src/cases/index.ts`
     - Map over registry entries
@@ -181,7 +181,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Remove all Vite starter code (counter demo)
     - _Requirements: 1.1, 2.1_
   
-  - [ ] 7.4 Clean up Vite starter files and update HTML
+  - [x] 7.4 Clean up Vite starter files and update HTML
     - Delete `src/App.css`
     - Delete `src/assets/react.svg`
     - Delete `src/assets/vite.svg`
