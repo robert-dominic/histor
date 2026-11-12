@@ -139,6 +139,18 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794483956144
       }
+    ],
+    "3.1 Add Source validation to validateCase": [
+      {
+        "executionId": "95876b88-548c-45e2-b56a-60201db20942",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794484019286
+      },
+      {
+        "executionId": "95876b88-548c-45e2-b56a-60201db20942",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794484185953
+      }
     ]
   }
 }

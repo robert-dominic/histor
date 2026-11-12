@@ -93,14 +93,45 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
-  // Validate source ID uniqueness
+  // Validate source ID uniqueness and source-level constraints
   if (Array.isArray(caseData.sources)) {
     const sourceIds = new Set<string>();
-    for (const source of caseData.sources) {
+    const validSourceKinds: string[] = ['testimony', 'official', 'secondary', 'fiction'];
+
+    for (let i = 0; i < caseData.sources.length; i++) {
+      const source = caseData.sources[i];
+
+      // Check for duplicate IDs
       if (sourceIds.has(source.id)) {
         errors.push(`Field sources: duplicate ID '${source.id}' found`);
       }
       sourceIds.add(source.id);
+
+      // Validate source id is non-empty string (Task 3.1, Requirement 8.3)
+      if (!source.id || source.id.trim() === '') {
+        errors.push(`Field sources[${i}].id: Must be a non-empty string`);
+      }
+
+      // Validate source title is non-empty string (Task 3.1, Requirement 8.4)
+      if (!source.title || source.title.trim() === '') {
+        errors.push(`Field sources[${i}].title: Must be a non-empty string`);
+      }
+
+      // Validate SourceKind is one of the valid kinds (Task 3.1, Requirement 8.2)
+      if (!validSourceKinds.includes(source.kind)) {
+        errors.push(
+          `Field sources[${i}].kind: Must be one of: testimony, official, secondary, fiction`
+        );
+      }
+
+      // Validate source has url, citation, or both (Task 3.1, Requirement 8.1)
+      const hasUrl = source.url && source.url.trim() !== '';
+      const hasCitation = source.citation && source.citation.trim() !== '';
+      if (!hasUrl && !hasCitation) {
+        errors.push(
+          `Field sources[${i}]: Must have either url or citation (or both)`
+        );
+      }
     }
   }
 

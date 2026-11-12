@@ -438,6 +438,258 @@ describe('validateCase - Task 2.1 (ID Uniqueness)', () => {
   });
 });
 
+describe('validateCase - Task 3.1 (Source Validation)', () => {
+  test('detects empty source id', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: '',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain('Field sources[0].id: Must be a non-empty string');
+  });
+
+  test('detects whitespace-only source id', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: '   ',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain('Field sources[0].id: Must be a non-empty string');
+  });
+
+  test('detects empty source title', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: '',
+          kind: 'testimony',
+          url: 'http://example.com'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain('Field sources[0].title: Must be a non-empty string');
+  });
+
+  test('detects whitespace-only source title', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: '   ',
+          kind: 'testimony',
+          url: 'http://example.com'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain('Field sources[0].title: Must be a non-empty string');
+  });
+
+  test('detects invalid source kind', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'invalid-kind' as any,
+          url: 'http://example.com'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain(
+      'Field sources[0].kind: Must be one of: testimony, official, secondary, fiction'
+    );
+  });
+
+  test('accepts valid source kinds', () => {
+    const validSourceKinds = ['testimony', 'official', 'secondary', 'fiction'] as const;
+    for (const kind of validSourceKinds) {
+      const validCase = createValidCase({
+        sources: [
+          {
+            id: 'src1',
+            title: 'Source 1',
+            kind: kind,
+            url: 'http://example.com'
+          }
+        ]
+      });
+      const errors = validateCase(validCase);
+      expect(errors).toEqual([]);
+    }
+  });
+
+  test('detects source with neither url nor citation', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony'
+        } as any
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain(
+      'Field sources[0]: Must have either url or citation (or both)'
+    );
+  });
+
+  test('detects source with empty url and no citation', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: ''
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain(
+      'Field sources[0]: Must have either url or citation (or both)'
+    );
+  });
+
+  test('detects source with whitespace-only url and no citation', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: '   '
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain(
+      'Field sources[0]: Must have either url or citation (or both)'
+    );
+  });
+
+  test('accepts source with url only', () => {
+    const validCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com'
+        }
+      ]
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('accepts source with citation only', () => {
+    const validCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          citation: 'Some citation text'
+        }
+      ]
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('accepts source with both url and citation', () => {
+    const validCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com',
+          citation: 'Some citation text'
+        }
+      ]
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('collects multiple source validation errors', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: '',
+          title: '',
+          kind: 'invalid-kind' as any,
+          url: ''
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain('Field sources[0].id: Must be a non-empty string');
+    expect(errors).toContain('Field sources[0].title: Must be a non-empty string');
+    expect(errors).toContain(
+      'Field sources[0].kind: Must be one of: testimony, official, secondary, fiction'
+    );
+    expect(errors).toContain(
+      'Field sources[0]: Must have either url or citation (or both)'
+    );
+  });
+
+  test('validates multiple sources independently', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com'
+        },
+        {
+          id: '',
+          title: '',
+          kind: 'invalid' as any,
+          url: ''
+        },
+        {
+          id: 'src3',
+          title: 'Source 3',
+          kind: 'secondary',
+          citation: 'Citation'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain('Field sources[1].id: Must be a non-empty string');
+    expect(errors).toContain('Field sources[1].title: Must be a non-empty string');
+    expect(errors).toContain(
+      'Field sources[1].kind: Must be one of: testimony, official, secondary, fiction'
+    );
+    expect(errors).toContain(
+      'Field sources[1]: Must have either url or citation (or both)'
+    );
+    // First and third sources should be valid, so no errors for them
+    expect(errors).not.toContain('Field sources[0]');
+    expect(errors).not.toContain('Field sources[2]');
+  });
+});
+
 describe('validateCase - Task 2.2 (Referential Integrity)', () => {
   test('detects invalid source reference in evidence.sources', () => {
     const invalidCase = createValidCase({
