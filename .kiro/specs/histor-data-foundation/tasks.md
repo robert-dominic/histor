@@ -25,7 +25,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Property 8: Validator Accepts Valid Cases**
     - **Validates: Requirements 7.26, 10.1**
 
-- [ ] 2. Implement ID uniqueness and referential integrity validation
+- [x] 2. Implement ID uniqueness and referential integrity validation
   - [x] 2.1 Add ID uniqueness checks to validateCase
     - Check theory IDs are unique within theories array
     - Check evidence IDs are unique within evidence array
@@ -41,14 +41,14 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Extract and verify {{ref:id|label}} markup in story body paragraphs
     - _Requirements: 7.18, 7.19, 7.20, 7.21, 7.22, 7.23_
   
-  - [ ] 2.3 Write property tests for duplicate ID detection
+  - [x] 2.3 Write property tests for duplicate ID detection
     - **Property 9: Validator Detects Duplicate Theory IDs**
     - **Property 10: Validator Detects Duplicate Evidence IDs**
     - **Property 11: Validator Detects Duplicate Source IDs**
     - **Property 12: Validator Detects Duplicate Reference IDs**
     - **Validates: Requirements 7.14, 7.15, 7.16, 7.17, 10.2**
   
-  - [ ] 2.4 Write property tests for referential integrity
+  - [x] 2.4 Write property tests for referential integrity
     - **Property 13: Validator Detects Invalid Source References in Evidence**
     - **Property 14: Validator Detects Invalid Theory References in Evidence Reading**
     - **Property 15: Validator Detects Invalid Reference IDs in Story Markup**

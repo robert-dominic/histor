@@ -96,6 +96,37 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794482065422
       }
+    ],
+    "2.3 Write property tests for duplicate ID detection": [
+      {
+        "executionId": "6c21259b-24ae-4e63-aa8d-f63224477d33",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482117683
+      },
+      {
+        "executionId": "6c21259b-24ae-4e63-aa8d-f63224477d33",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482202398
+      }
+    ],
+    "2.4 Write property tests for referential integrity": [
+      {
+        "executionId": "4f94e687-4603-4b09-891d-b07fd0cee4fe",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482250235
+      },
+      {
+        "executionId": "4f94e687-4603-4b09-891d-b07fd0cee4fe",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482421917
+      }
+    ],
+    "2. Implement ID uniqueness and referential integrity validation": [
+      {
+        "executionId": "4f94e687-4603-4b09-891d-b07fd0cee4fe",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482422029
+      }
     ]
   }
 }
