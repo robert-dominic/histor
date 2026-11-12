@@ -437,4 +437,119 @@ describe('validateCase - Property Tests', () => {
       { numRuns: 100 }
     );
   });
+
+  test('Property 13: Validator Detects Invalid Source References in Evidence', () => {
+    // Feature: histor-data-foundation, Property 13: Validator Detects Invalid Source References in Evidence
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have evidence
+          if (validCase.evidence.length < 1) {
+            return true;
+          }
+
+          // Create a case where evidence references a non-existent source
+          const invalidCase = {
+            ...validCase,
+            evidence: [
+              {
+                ...validCase.evidence[0],
+                sources: ['non-existent-source-12345'] as any
+              },
+              ...validCase.evidence.slice(1)
+            ]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return errors.some(
+            (err) =>
+              err.includes('evidence') &&
+              err.includes('sources') &&
+              err.includes('non-existent-source-12345')
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 14: Validator Detects Invalid Theory References in Evidence Reading', () => {
+    // Feature: histor-data-foundation, Property 14: Validator Detects Invalid Theory References in Evidence Reading
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have evidence
+          if (validCase.evidence.length < 1) {
+            return true;
+          }
+
+          // Create a case where evidence reading weakens a non-existent theory
+          const invalidCase = {
+            ...validCase,
+            evidence: [
+              {
+                ...validCase.evidence[0],
+                reading: {
+                  ...validCase.evidence[0].reading,
+                  weakens: ['non-existent-theory-xyz']
+                }
+              },
+              ...validCase.evidence.slice(1)
+            ]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return errors.some(
+            (err) =>
+              err.includes('evidence') &&
+              err.includes('reading.weakens') &&
+              err.includes('non-existent-theory-xyz')
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 15: Validator Detects Invalid Reference IDs in Story Markup', () => {
+    // Feature: histor-data-foundation, Property 15: Validator Detects Invalid Reference IDs in Story Markup
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have story
+          if (validCase.story.length < 1) {
+            return true;
+          }
+
+          // Create a case where story markup references a non-existent reference
+          const invalidCase = {
+            ...validCase,
+            story: [
+              {
+                ...validCase.story[0],
+                body: [
+                  ...validCase.story[0].body.slice(0, -1),
+                  (validCase.story[0].body[validCase.story[0].body.length - 1] || '') +
+                    ' {{ref:non-existent-ref-abc|Invalid Reference}}'
+                ]
+              },
+              ...validCase.story.slice(1)
+            ]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return errors.some(
+            (err) =>
+              err.includes('story') &&
+              err.includes('references') &&
+              err.includes('non-existent-ref-abc')
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
 });

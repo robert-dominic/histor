@@ -115,5 +115,114 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
+  // ===== Referential Integrity Checks =====
+
+  // Build sets of valid IDs for reference validation
+  const validSourceIds = new Set<string>();
+  if (Array.isArray(caseData.sources)) {
+    for (const source of caseData.sources) {
+      validSourceIds.add(source.id);
+    }
+  }
+
+  const validTheoryIds = new Set<string>();
+  if (Array.isArray(caseData.theories)) {
+    for (const theory of caseData.theories) {
+      validTheoryIds.add(theory.id);
+    }
+  }
+
+  const validReferenceIds = new Set<string>();
+  if (Array.isArray(caseData.references)) {
+    for (const reference of caseData.references) {
+      validReferenceIds.add(reference.id);
+    }
+  }
+
+  // Validate Evidence.sources references (7.18)
+  if (Array.isArray(caseData.evidence)) {
+    for (let i = 0; i < caseData.evidence.length; i++) {
+      const evidence = caseData.evidence[i];
+      if (Array.isArray(evidence.sources)) {
+        for (const sourceId of evidence.sources) {
+          if (!validSourceIds.has(sourceId)) {
+            errors.push(`Field evidence[${i}].sources: reference ID '${sourceId}' not found in sources`);
+          }
+        }
+      }
+    }
+  }
+
+  // Validate Evidence.reading.supports and reading.weakens references (7.20, 7.21)
+  if (Array.isArray(caseData.evidence)) {
+    for (let i = 0; i < caseData.evidence.length; i++) {
+      const evidence = caseData.evidence[i];
+      const reading = evidence.reading;
+
+      if (Array.isArray(reading.supports)) {
+        for (const theoryId of reading.supports) {
+          if (!validTheoryIds.has(theoryId)) {
+            errors.push(`Field evidence[${i}].reading.supports: reference ID '${theoryId}' not found in theories`);
+          }
+        }
+      }
+
+      if (Array.isArray(reading.weakens)) {
+        for (const theoryId of reading.weakens) {
+          if (!validTheoryIds.has(theoryId)) {
+            errors.push(`Field evidence[${i}].reading.weakens: reference ID '${theoryId}' not found in theories`);
+          }
+        }
+      }
+    }
+  }
+
+  // Validate Reference.sources references (7.19)
+  if (Array.isArray(caseData.references)) {
+    for (let i = 0; i < caseData.references.length; i++) {
+      const reference = caseData.references[i];
+      if (Array.isArray(reference.sources)) {
+        for (const sourceId of reference.sources) {
+          if (!validSourceIds.has(sourceId)) {
+            errors.push(`Field references[${i}].sources: reference ID '${sourceId}' not found in sources`);
+          }
+        }
+      }
+    }
+  }
+
+  // Validate story reference markup {{ref:id|label}} (7.22, 7.23)
+  const referenceMarkupRegex = /\{\{ref:(\S+)\|([^}]*)\}\}/g;
+  if (Array.isArray(caseData.story)) {
+    for (let sectionIndex = 0; sectionIndex < caseData.story.length; sectionIndex++) {
+      const section = caseData.story[sectionIndex];
+      if (Array.isArray(section.body)) {
+        for (let paragraphIndex = 0; paragraphIndex < section.body.length; paragraphIndex++) {
+          const paragraph = section.body[paragraphIndex];
+          let match;
+          while ((match = referenceMarkupRegex.exec(paragraph)) !== null) {
+            const refId = match[1];
+            const label = match[2];
+
+            // Verify format: id should not contain whitespace (already verified by \S+)
+            // Verify label is non-empty (could be whitespace)
+            if (!label || label.trim() === '') {
+              errors.push(
+                `Field story[${sectionIndex}].body[${paragraphIndex}]: Invalid reference markup - label cannot be empty`
+              );
+            }
+
+            // Verify reference ID exists
+            if (!validReferenceIds.has(refId)) {
+              errors.push(
+                `Field story[${sectionIndex}].body[${paragraphIndex}]: reference ID '${refId}' not found in references`
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
   return errors;
 }

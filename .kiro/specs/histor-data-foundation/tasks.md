@@ -33,7 +33,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Check reference IDs are unique within references array
     - _Requirements: 7.14, 7.15, 7.16, 7.17_
   
-  - [ ] 2.2 Add referential integrity checks to validateCase
+  - [x] 2.2 Add referential integrity checks to validateCase
     - Verify Evidence.sources references exist in Case.sources
     - Verify Evidence.reading.supports references exist in Case.theories
     - Verify Evidence.reading.weakens references exist in Case.theories

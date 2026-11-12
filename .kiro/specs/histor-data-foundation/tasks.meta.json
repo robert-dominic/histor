@@ -84,6 +84,18 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794481283075
       }
+    ],
+    "2.2 Add referential integrity checks to validateCase": [
+      {
+        "executionId": "6e19bce5-46e2-4b6c-997a-6d505ff0d11a",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794481403557
+      },
+      {
+        "executionId": "6e19bce5-46e2-4b6c-997a-6d505ff0d11a",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794482065422
+      }
     ]
   }
 }
