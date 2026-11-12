@@ -184,10 +184,36 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
-  // Validate Evidence.reading.supports and reading.weakens references (7.20, 7.21)
+  // Validate Evidence-specific constraints (7.18, 10.4)
   if (Array.isArray(caseData.evidence)) {
     for (let i = 0; i < caseData.evidence.length; i++) {
       const evidence = caseData.evidence[i];
+
+      // Check that Evidence.sources is non-empty (NonEmptyArray constraint - 7.18)
+      if (!Array.isArray(evidence.sources) || evidence.sources.length === 0) {
+        errors.push(`Field evidence[${i}].sources: Must not be empty`);
+      }
+
+      // Check legend status specific fields (10.4)
+      if (evidence.status === 'legend') {
+        const legendEvidence = evidence as any;
+        if (!legendEvidence.origin || legendEvidence.origin.trim() === '') {
+          errors.push(`Field evidence[${i}].origin: Must be a non-empty string`);
+        }
+      }
+
+      // Check disputed status specific fields (10.4)
+      if (evidence.status === 'disputed') {
+        const disputedEvidence = evidence as any;
+        if (!disputedEvidence.dispute || !disputedEvidence.dispute.claim || disputedEvidence.dispute.claim.trim() === '') {
+          errors.push(`Field evidence[${i}].dispute.claim: Must be a non-empty string`);
+        }
+        if (!disputedEvidence.dispute || !disputedEvidence.dispute.challenge || disputedEvidence.dispute.challenge.trim() === '') {
+          errors.push(`Field evidence[${i}].dispute.challenge: Must be a non-empty string`);
+        }
+      }
+
+      // Validate reading references
       const reading = evidence.reading;
 
       if (Array.isArray(reading.supports)) {

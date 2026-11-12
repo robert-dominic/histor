@@ -62,7 +62,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Verify Source title is non-empty string
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
   
-  - [ ] 3.2 Add Evidence-specific validation to validateCase
+  - [x] 3.2 Add Evidence-specific validation to validateCase
     - Verify Evidence.sources is non-empty (NonEmptyArray constraint)
     - For status='legend', verify origin field is non-empty
     - For status='disputed', verify dispute.claim and dispute.challenge are non-empty

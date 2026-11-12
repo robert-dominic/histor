@@ -151,6 +151,18 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794484185953
       }
+    ],
+    "3.2 Add Evidence-specific validation to validateCase": [
+      {
+        "executionId": "b5a61ad2-03a8-4a27-b5c6-9654e6381f6d",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794484310356
+      },
+      {
+        "executionId": "b5a61ad2-03a8-4a27-b5c6-9654e6381f6d",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794484667234
+      }
     ]
   }
 }
