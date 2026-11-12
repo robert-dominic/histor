@@ -101,7 +101,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Property 3: Registry Lookup Returns Undefined for Non-Existent IDs**
     - **Validates: Requirements 4.2, 4.5, 4.6**
 
-- [ ] 5. Implement localStorage persistence
+- [x] 5. Implement localStorage persistence
   - [x] 5.1 Create `src/lib/storage.ts` with load and save functions
     - Implement loadInvestigationState(caseId: string, caseData: Case): InvestigationState
     - Implement saveInvestigationState(caseId: string, state: InvestigationState): void
@@ -118,7 +118,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Test state validation removes invalid IDs
     - _Requirements: 6.4, 6.5, 6.6, 6.7, 6.8_
   
-  - [ ] 5.3 Write property tests for storage serialization
+  - [x] 5.3 Write property tests for storage serialization
     - **Property 16: Investigation State Serialization Round Trip**
     - **Property 17: Storage Manager Handles Invalid JSON Gracefully**
     - **Property 23: Loaded State Validation Removes Invalid Evidence IDs**

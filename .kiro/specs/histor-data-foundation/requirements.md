@@ -107,7 +107,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 
 1. WHEN an investigation action completes, THE Storage_Manager SHALL serialize the InvestigationState to JSON and save it to localStorage within 100 milliseconds
 2. WHEN a case loads, THE Storage_Manager SHALL attempt to load investigation state from localStorage before rendering the investigation interface
-3. THE Storage_Manager SHALL use the storage key format "histor-case-{caseId}" where caseId is the Case.id value
+3. THE Storage_Manager SHALL use the storage key format "histor:case:{caseId}" where caseId is the Case.id value
 4. IF localStorage save operation fails, THEN THE Storage_Manager SHALL allow the investigation to continue with in-memory state only
 5. IF localStorage load operation fails due to localStorage being unavailable, THEN THE Storage_Manager SHALL initialize investigation state to {opened: [], pins: {}, verdict: null}
 6. IF loaded localStorage data fails JSON parsing, THEN THE Storage_Manager SHALL initialize investigation state to {opened: [], pins: {}, verdict: null}
