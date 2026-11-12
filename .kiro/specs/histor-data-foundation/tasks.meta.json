@@ -200,6 +200,11 @@
         "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794495431831
+      },
+      {
+        "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794498312234
       }
     ],
     "4.4 Write property tests for registry correctness": [
@@ -207,6 +212,18 @@
         "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794495431980
+      },
+      {
+        "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794498312550
+      }
+    ],
+    "4. Create case registry with sample content": [
+      {
+        "executionId": "5d1e830b-455f-4120-931b-1cc1d28a1397",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794498312603
       }
     ]
   }

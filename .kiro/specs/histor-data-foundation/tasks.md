@@ -75,7 +75,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Property 26: Validator Detects Empty Disputed Evidence Fields**
     - **Validates: Requirements 8.1, 10.4**
 
-- [ ] 4. Create case registry with sample content
+- [x] 4. Create case registry with sample content
   - [x] 4.1 Create `src/cases/mary-celeste/case.ts` with minimal valid Case object
     - Include all required fields with "TODO: real content" placeholders
     - Ensure data passes validateCase
@@ -89,13 +89,13 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Return undefined for null, undefined, empty string, or non-existent IDs
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
   
-  - [-] 4.3 Write unit tests for getCaseById
+  - [x] 4.3 Write unit tests for getCaseById
     - Test lookup with valid ID returns correct entry
     - Test lookup with invalid ID returns undefined
     - Test lookup with null/undefined/empty string returns undefined
     - _Requirements: 4.5, 4.6, 4.7_
   
-  - [-] 4.4 Write property tests for registry correctness
+  - [x] 4.4 Write property tests for registry correctness
     - **Property 1: Registry ID Uniqueness**
     - **Property 2: Registry Lookup Correctness**
     - **Property 3: Registry Lookup Returns Undefined for Non-Existent IDs**
