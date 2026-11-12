@@ -110,7 +110,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Validate loaded state against caseData (remove invalid evidence/theory IDs)
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8_
   
-  - [ ] 5.2 Write unit tests for storage functions with mocked localStorage
+  - [x] 5.2 Write unit tests for storage functions with mocked localStorage
     - Test save and load round trip
     - Test load with missing key returns default state
     - Test load with invalid JSON returns default state
