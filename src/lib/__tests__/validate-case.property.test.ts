@@ -45,8 +45,9 @@ function sourceKindArbitrary(): fc.Arbitrary<SourceKind> {
 
 /**
  * Generate a valid Source with at least url or citation
+ * Each source gets a unique ID
  */
-function sourceArbitrary(): fc.Arbitrary<Source> {
+function sourceArbitrary(index: number = 0): fc.Arbitrary<Source> {
   return fc.tuple(
     nonEmptyString(),
     nonEmptyString(),
@@ -55,7 +56,7 @@ function sourceArbitrary(): fc.Arbitrary<Source> {
     fc.option(positiveInteger(), { freq: 1, nil: undefined }),
     fc.boolean()
   ).map(([id, title, kind, author, year, hasUrl]) => {
-    const base: any = { id, title, kind, author, year };
+    const base: any = { id: `source-${index}-${id}`, title, kind, author, year };
     
     if (hasUrl) {
       base.url = 'https://example.com/' + id;
@@ -72,8 +73,9 @@ function sourceArbitrary(): fc.Arbitrary<Source> {
 
 /**
  * Generate a valid Theory
+ * Each theory gets a unique ID
  */
-function theoryArbitrary(): fc.Arbitrary<Theory> {
+function theoryArbitrary(index: number = 0): fc.Arbitrary<Theory> {
   return fc.tuple(
     nonEmptyString(),
     nonEmptyString(),
@@ -85,7 +87,7 @@ function theoryArbitrary(): fc.Arbitrary<Theory> {
     ),
     nonEmptyString()
   ).map(([id, title, claim, standing, standingReason]) => ({
-    id: 't-' + id,
+    id: `theory-${index}-${id}`,
     title,
     claim,
     standing: standing as 'leading' | 'considered' | 'rejected',
@@ -95,10 +97,12 @@ function theoryArbitrary(): fc.Arbitrary<Theory> {
 
 /**
  * Generate a valid Evidence item
+ * Each evidence gets a unique ID
  */
 function evidenceArbitrary(
   availableSourceIds: string[],
-  availableTheoryIds: string[]
+  availableTheoryIds: string[],
+  index: number = 0
 ): fc.Arbitrary<Evidence> {
   return fc
     .tuple(
@@ -118,7 +122,7 @@ function evidenceArbitrary(
     .map(
       ([id, title, detail, sources, supports, weakens, note, status]) => {
         const baseEvidence: any = {
-          id: 'e-' + id,
+          id: `evidence-${index}-${id}`,
           title,
           detail,
           sources: sources.length > 0 ? sources : [availableSourceIds[0]],
@@ -149,8 +153,9 @@ function evidenceArbitrary(
 
 /**
  * Generate a valid StorySection
+ * Each section gets a unique ID
  */
-function storySectionArbitrary(): fc.Arbitrary<StorySection> {
+function storySectionArbitrary(index: number = 0): fc.Arbitrary<StorySection> {
   return fc.tuple(
     nonEmptyString(),
     fc.option(nonEmptyString(), { freq: 1, nil: undefined }),
@@ -158,7 +163,7 @@ function storySectionArbitrary(): fc.Arbitrary<StorySection> {
     fc.array(nonEmptyString(), { minLength: 1 }),
     fc.option(nonEmptyString(), { freq: 1, nil: undefined })
   ).map(([id, kicker, heading, body, hook]) => ({
-    id,
+    id: `section-${index}-${id}`,
     kicker,
     heading,
     body,
@@ -201,9 +206,18 @@ function validCaseArbitrary(): fc.Arbitrary<Case> {
       positiveInteger(),
       nonEmptyString(),
       nonEmptyString(),
-      fc.array(theoryArbitrary(), { minLength: 1 }),
-      fc.array(sourceArbitrary(), { minLength: 1 }),
-      fc.array(storySectionArbitrary(), { minLength: 1 }),
+      fc.array(
+        fc.integer({ min: 0, max: 100 }).chain(i => theoryArbitrary(i)),
+        { minLength: 1, maxLength: 10 }
+      ),
+      fc.array(
+        fc.integer({ min: 0, max: 100 }).chain(i => sourceArbitrary(i)),
+        { minLength: 1, maxLength: 10 }
+      ),
+      fc.array(
+        fc.integer({ min: 0, max: 100 }).chain(i => storySectionArbitrary(i)),
+        { minLength: 1, maxLength: 10 }
+      ),
       legendIntroArbitrary(),
       caseThemeArbitrary()
     )
@@ -225,8 +239,11 @@ function validCaseArbitrary(): fc.Arbitrary<Case> {
 
         return fc
           .tuple(
-            fc.array(evidenceArbitrary(sourceIds, theoryIds), { minLength: 1 }),
-            fc.array(nonEmptyString(), { minLength: 1 })
+            fc.array(
+              fc.integer({ min: 0, max: 100 }).chain(i => evidenceArbitrary(sourceIds, theoryIds, i)),
+              { minLength: 1, maxLength: 10 }
+            ),
+            fc.array(nonEmptyString(), { minLength: 1, maxLength: 10 })
           )
           .map(([evidence, historiansSummary]) => {
             const validCloseThreshold = fc.sample(
@@ -270,6 +287,153 @@ describe('validateCase - Property Tests', () => {
         const errors = validateCase(validCase);
         return errors.length === 0;
       }),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 9: Validator Detects Duplicate Theory IDs', () => {
+    // Feature: histor-data-foundation, Property 9: Validator Detects Duplicate Theory IDs
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have at least 1 theory
+          if (validCase.theories.length < 1) {
+            return true;
+          }
+          
+          // Create case with duplicate theory ID
+          const duplicateId = validCase.theories[0].id;
+          const duplicateTheory = {
+            ...validCase.theories[validCase.theories.length - 1],
+            id: duplicateId
+          };
+          
+          const caseWithDuplicate = {
+            ...validCase,
+            theories: [...validCase.theories, duplicateTheory]
+          };
+          
+          const errors = validateCase(caseWithDuplicate);
+          return errors.some(
+            (err) =>
+              err.includes('theories') && err.includes('duplicate ID')
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 10: Validator Detects Duplicate Evidence IDs', () => {
+    // Feature: histor-data-foundation, Property 10: Validator Detects Duplicate Evidence IDs
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have at least 1 evidence item
+          if (validCase.evidence.length < 1) {
+            return true;
+          }
+          
+          // Create case with duplicate evidence ID
+          const duplicateId = validCase.evidence[0].id;
+          const duplicateEvidence = {
+            ...validCase.evidence[validCase.evidence.length - 1],
+            id: duplicateId
+          };
+          
+          const caseWithDuplicate = {
+            ...validCase,
+            evidence: [...validCase.evidence, duplicateEvidence]
+          };
+          
+          const errors = validateCase(caseWithDuplicate);
+          return errors.some(
+            (err) =>
+              err.includes('evidence') && err.includes('duplicate ID')
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 11: Validator Detects Duplicate Source IDs', () => {
+    // Feature: histor-data-foundation, Property 11: Validator Detects Duplicate Source IDs
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have at least 1 source
+          if (validCase.sources.length < 1) {
+            return true;
+          }
+          
+          // Create case with duplicate source ID
+          const duplicateId = validCase.sources[0].id;
+          const duplicateSource = {
+            ...validCase.sources[validCase.sources.length - 1],
+            id: duplicateId
+          };
+          
+          const caseWithDuplicate = {
+            ...validCase,
+            sources: [...validCase.sources, duplicateSource]
+          };
+          
+          const errors = validateCase(caseWithDuplicate);
+          return errors.some(
+            (err) =>
+              err.includes('sources') && err.includes('duplicate ID')
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 12: Validator Detects Duplicate Reference IDs', () => {
+    // Feature: histor-data-foundation, Property 12: Validator Detects Duplicate Reference IDs
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Start with at least 2 references for testing
+          const references = [
+            {
+              id: 'ref-1',
+              kind: 'person' as const,
+              label: 'Test Person',
+              profile: ['Profile']
+            },
+            {
+              id: 'ref-2',
+              kind: 'place' as const,
+              label: 'Test Place',
+              profile: ['Profile']
+            }
+          ];
+          
+          // Create case with duplicate reference ID
+          const duplicateId = references[0].id;
+          const duplicateReference = {
+            ...references[1],
+            id: duplicateId
+          };
+          
+          const caseWithDuplicate = {
+            ...validCase,
+            references: [...references, duplicateReference]
+          };
+          
+          const errors = validateCase(caseWithDuplicate);
+          return errors.some(
+            (err) =>
+              err.includes('references') && err.includes('duplicate ID')
+          );
+        }
+      ),
       { numRuns: 100 }
     );
   });

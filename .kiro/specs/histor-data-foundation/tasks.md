@@ -26,7 +26,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Validates: Requirements 7.26, 10.1**
 
 - [ ] 2. Implement ID uniqueness and referential integrity validation
-  - [ ] 2.1 Add ID uniqueness checks to validateCase
+  - [-] 2.1 Add ID uniqueness checks to validateCase
     - Check theory IDs are unique within theories array
     - Check evidence IDs are unique within evidence array
     - Check source IDs are unique within sources array
@@ -76,7 +76,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Validates: Requirements 8.1, 10.4**
 
 - [ ] 4. Create case registry with sample content
-  - [ ] 4.1 Create `src/cases/mary-celeste/case.ts` with minimal valid Case object
+  - [-] 4.1 Create `src/cases/mary-celeste/case.ts` with minimal valid Case object
     - Include all required fields with "TODO: real content" placeholders
     - Ensure data passes validateCase
     - Include at least one theory, one evidence item, one source, one story section

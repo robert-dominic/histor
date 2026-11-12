@@ -60,6 +60,20 @@
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794479909757
       }
+    ],
+    "2.1 Add ID uniqueness checks to validateCase": [
+      {
+        "executionId": "73fec51d-ccf8-4deb-8ab2-d81bdb42420a",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794480472362
+      }
+    ],
+    "4.1 Create `src/cases/mary-celeste/case.ts` with minimal valid Case object": [
+      {
+        "executionId": "73fec51d-ccf8-4deb-8ab2-d81bdb42420a",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794480773592
+      }
     ]
   }
 }

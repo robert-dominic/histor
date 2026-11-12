@@ -237,3 +237,203 @@ describe('validateCase - Task 1.1', () => {
     expect(errors.length).toBeGreaterThanOrEqual(11); // All violations should be reported
   });
 });
+
+describe('validateCase - Task 2.1 (ID Uniqueness)', () => {
+  test('detects duplicate theory IDs', () => {
+    const invalidCase = createValidCase({
+      theories: [
+        {
+          id: 't1',
+          title: 'Theory 1',
+          claim: 'A claim',
+          standing: 'leading',
+          standingReason: 'A reason'
+        },
+        {
+          id: 't1',
+          title: 'Theory 2',
+          claim: 'Another claim',
+          standing: 'considered',
+          standingReason: 'Another reason'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain("Field theories: duplicate ID 't1' found");
+  });
+
+  test('detects duplicate evidence IDs', () => {
+    const invalidCase = createValidCase({
+      evidence: [
+        {
+          id: 'e1',
+          title: 'Evidence 1',
+          detail: ['Detail 1'],
+          sources: ['src1'],
+          reading: { supports: [], weakens: [], note: 'Note 1' },
+          status: 'record'
+        },
+        {
+          id: 'e1',
+          title: 'Evidence 2',
+          detail: ['Detail 2'],
+          sources: ['src1'],
+          reading: { supports: [], weakens: [], note: 'Note 2' },
+          status: 'record'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain("Field evidence: duplicate ID 'e1' found");
+  });
+
+  test('detects duplicate source IDs', () => {
+    const invalidCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com'
+        },
+        {
+          id: 'src1',
+          title: 'Source 2',
+          kind: 'official',
+          url: 'http://example2.com'
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain("Field sources: duplicate ID 'src1' found");
+  });
+
+  test('detects duplicate reference IDs', () => {
+    const invalidCase = createValidCase({
+      references: [
+        {
+          id: 'ref1',
+          kind: 'person',
+          label: 'Reference 1',
+          profile: ['Profile text']
+        },
+        {
+          id: 'ref1',
+          kind: 'place',
+          label: 'Reference 2',
+          profile: ['Profile text 2']
+        }
+      ]
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain("Field references: duplicate ID 'ref1' found");
+  });
+
+  test('accepts unique theory IDs', () => {
+    const validCase = createValidCase({
+      theories: [
+        {
+          id: 't1',
+          title: 'Theory 1',
+          claim: 'A claim',
+          standing: 'leading',
+          standingReason: 'A reason'
+        },
+        {
+          id: 't2',
+          title: 'Theory 2',
+          claim: 'Another claim',
+          standing: 'considered',
+          standingReason: 'Another reason'
+        }
+      ]
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('accepts unique evidence IDs', () => {
+    const validCase = createValidCase({
+      evidence: [
+        {
+          id: 'e1',
+          title: 'Evidence 1',
+          detail: ['Detail 1'],
+          sources: ['src1'],
+          reading: { supports: [], weakens: [], note: 'Note 1' },
+          status: 'record'
+        },
+        {
+          id: 'e2',
+          title: 'Evidence 2',
+          detail: ['Detail 2'],
+          sources: ['src1'],
+          reading: { supports: [], weakens: [], note: 'Note 2' },
+          status: 'record'
+        }
+      ],
+      closeThreshold: 2
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('accepts unique source IDs', () => {
+    const validCase = createValidCase({
+      sources: [
+        {
+          id: 'src1',
+          title: 'Source 1',
+          kind: 'testimony',
+          url: 'http://example.com'
+        },
+        {
+          id: 'src2',
+          title: 'Source 2',
+          kind: 'official',
+          url: 'http://example2.com'
+        }
+      ]
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('accepts unique reference IDs', () => {
+    const validCase = createValidCase({
+      references: [
+        {
+          id: 'ref1',
+          kind: 'person',
+          label: 'Reference 1',
+          profile: ['Profile text']
+        },
+        {
+          id: 'ref2',
+          kind: 'place',
+          label: 'Reference 2',
+          profile: ['Profile text 2']
+        }
+      ]
+    });
+    const errors = validateCase(validCase);
+    expect(errors).toEqual([]);
+  });
+
+  test('detects multiple duplicate IDs in same case', () => {
+    const invalidCase = createValidCase({
+      theories: [
+        { id: 't1', title: 'T1', claim: 'C1', standing: 'leading', standingReason: 'R1' },
+        { id: 't1', title: 'T2', claim: 'C2', standing: 'considered', standingReason: 'R2' }
+      ],
+      evidence: [
+        { id: 'e1', title: 'E1', detail: ['D1'], sources: ['src1'], reading: { supports: [], weakens: [], note: 'N1' }, status: 'record' },
+        { id: 'e1', title: 'E2', detail: ['D2'], sources: ['src1'], reading: { supports: [], weakens: [], note: 'N2' }, status: 'record' }
+      ],
+      closeThreshold: 2
+    });
+    const errors = validateCase(invalidCase);
+    expect(errors).toContain("Field theories: duplicate ID 't1' found");
+    expect(errors).toContain("Field evidence: duplicate ID 'e1' found");
+  });
+});

@@ -71,5 +71,49 @@ export function validateCase(caseData: Case): string[] {
     );
   }
 
+  // Validate theory ID uniqueness
+  if (Array.isArray(caseData.theories)) {
+    const theoryIds = new Set<string>();
+    for (const theory of caseData.theories) {
+      if (theoryIds.has(theory.id)) {
+        errors.push(`Field theories: duplicate ID '${theory.id}' found`);
+      }
+      theoryIds.add(theory.id);
+    }
+  }
+
+  // Validate evidence ID uniqueness
+  if (Array.isArray(caseData.evidence)) {
+    const evidenceIds = new Set<string>();
+    for (const evidence of caseData.evidence) {
+      if (evidenceIds.has(evidence.id)) {
+        errors.push(`Field evidence: duplicate ID '${evidence.id}' found`);
+      }
+      evidenceIds.add(evidence.id);
+    }
+  }
+
+  // Validate source ID uniqueness
+  if (Array.isArray(caseData.sources)) {
+    const sourceIds = new Set<string>();
+    for (const source of caseData.sources) {
+      if (sourceIds.has(source.id)) {
+        errors.push(`Field sources: duplicate ID '${source.id}' found`);
+      }
+      sourceIds.add(source.id);
+    }
+  }
+
+  // Validate reference ID uniqueness
+  if (Array.isArray(caseData.references)) {
+    const referenceIds = new Set<string>();
+    for (const reference of caseData.references) {
+      if (referenceIds.has(reference.id)) {
+        errors.push(`Field references: duplicate ID '${reference.id}' found`);
+      }
+      referenceIds.add(reference.id);
+    }
+  }
+
   return errors;
 }
