@@ -1,7 +1,7 @@
 // src/lib/__tests__/validate-case.test.ts
 import { describe, test, expect } from 'vitest';
-import { validateCase } from '../validate-case';
-import type { Case } from '../../types/case';
+import { validateCase } from '@/lib/validate-case';
+import type { Case, Source, SourceKind } from '@/types/case';
 
 // Helper to create a minimal valid case
 function createValidCase(overrides?: Partial<Case>): Case {
@@ -505,7 +505,7 @@ describe('validateCase - Task 3.1 (Source Validation)', () => {
         {
           id: 'src1',
           title: 'Source 1',
-          kind: 'invalid-kind' as any,
+          kind: 'invalid-kind' as unknown as SourceKind,
           url: 'http://example.com'
         }
       ]
@@ -541,7 +541,7 @@ describe('validateCase - Task 3.1 (Source Validation)', () => {
           id: 'src1',
           title: 'Source 1',
           kind: 'testimony'
-        } as any
+        } as unknown as Source
       ]
     });
     const errors = validateCase(invalidCase);
@@ -636,7 +636,7 @@ describe('validateCase - Task 3.1 (Source Validation)', () => {
         {
           id: '',
           title: '',
-          kind: 'invalid-kind' as any,
+          kind: 'invalid-kind' as unknown as SourceKind,
           url: ''
         }
       ]
@@ -664,7 +664,7 @@ describe('validateCase - Task 3.1 (Source Validation)', () => {
         {
           id: '',
           title: '',
-          kind: 'invalid' as any,
+          kind: 'invalid' as unknown as SourceKind,
           url: ''
         },
         {

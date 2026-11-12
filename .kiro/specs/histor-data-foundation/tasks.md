@@ -190,7 +190,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Remove Vite favicon link from `index.html`
     - _Requirements: 1.1, 2.1_
 
-- [ ] 8. Final checkpoint and verification
+- [x] 8. Final checkpoint and verification
   - Ensure all tests pass (unit tests and property tests)
   - Verify App renders home page with registry entries
   - Verify clicking mary-celeste navigates to case page

@@ -2,8 +2,8 @@
 // Task 5.3: property tests for storage serialization and for validating loaded state.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as fc from 'fast-check';
-import { loadInvestigationState, saveInvestigationState } from '../storage';
-import type { Case, InvestigationState, PinTarget } from '../../types/case';
+import { loadInvestigationState, saveInvestigationState } from '@/lib/storage';
+import type { Case, InvestigationState, PinTarget } from '@/types/case';
 
 const CASE_ID = 'property-case';
 const STORAGE_KEY = `histor:case:${CASE_ID}`;

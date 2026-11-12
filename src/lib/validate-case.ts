@@ -1,5 +1,5 @@
 // src/lib/validate-case.ts
-import type { Case } from '../types/case';
+import type { Case } from '@/types/case';
 
 /**
  * Validates a Case object against all structural and referential integrity constraints.
@@ -196,7 +196,7 @@ export function validateCase(caseData: Case): string[] {
 
       // Check legend status specific fields (10.4)
       if (evidence.status === 'legend') {
-        const legendEvidence = evidence as any;
+        const legendEvidence = evidence as { origin?: string };
         if (!legendEvidence.origin || legendEvidence.origin.trim() === '') {
           errors.push(`Field evidence[${i}].origin: Must be a non-empty string`);
         }
@@ -204,7 +204,7 @@ export function validateCase(caseData: Case): string[] {
 
       // Check disputed status specific fields (10.4)
       if (evidence.status === 'disputed') {
-        const disputedEvidence = evidence as any;
+        const disputedEvidence = evidence as { dispute?: { claim?: string; challenge?: string } };
         if (!disputedEvidence.dispute || !disputedEvidence.dispute.claim || disputedEvidence.dispute.claim.trim() === '') {
           errors.push(`Field evidence[${i}].dispute.claim: Must be a non-empty string`);
         }

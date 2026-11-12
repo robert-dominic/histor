@@ -1,8 +1,8 @@
 // src/lib/__tests__/storage.test.ts
 // Task 5.2: unit tests for the storage functions, with localStorage mocked.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { loadInvestigationState, saveInvestigationState } from '../storage';
-import type { Case, InvestigationState } from '../../types/case';
+import { loadInvestigationState, saveInvestigationState } from '@/lib/storage';
+import type { Case, InvestigationState } from '@/types/case';
 
 const CASE_ID = 'test-case';
 const STORAGE_KEY = `histor:case:${CASE_ID}`;

@@ -1,6 +1,6 @@
 // src/cases/index.ts
-import type { RegistryEntry } from '../types/case';
-import maryCeleste from './mary-celeste/case';
+import type { RegistryEntry } from '@/types/case';
+import maryCeleste from '@/cases/mary-celeste/case';
 
 /**
  * Registry of all historical cases available in Histor.

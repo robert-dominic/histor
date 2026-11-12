@@ -1,7 +1,7 @@
 // src/lib/__tests__/validate-case.property.test.ts
 import { describe, test } from 'vitest';
 import * as fc from 'fast-check';
-import { validateCase } from '../validate-case';
+import { validateCase } from '@/lib/validate-case';
 import type {
   Case,
   Theory,
@@ -11,7 +11,7 @@ import type {
   LegendIntro,
   CaseTheme,
   SourceKind,
-} from '../../types/case';
+} from '@/types/case';
 
 // ===== Custom Arbitraries =====
 
@@ -56,7 +56,7 @@ function sourceArbitrary(index: number = 0): fc.Arbitrary<Source> {
     fc.option(positiveInteger(), { freq: 1, nil: undefined }),
     fc.boolean()
   ).map(([id, title, kind, author, year, hasUrl]) => {
-    const base: any = { id: `source-${index}-${id}`, title, kind, author, year };
+    const base: Record<string, unknown> = { id: `source-${index}-${id}`, title, kind, author, year };
     
     if (hasUrl) {
       base.url = 'https://example.com/' + id;
@@ -67,7 +67,7 @@ function sourceArbitrary(index: number = 0): fc.Arbitrary<Source> {
       base.citation = 'A citation';
     }
     
-    return base as Source;
+    return base as unknown as Source;
   });
 }
 
@@ -121,7 +121,7 @@ function evidenceArbitrary(
     )
     .map(
       ([id, title, detail, sources, supports, weakens, note, status]) => {
-        const baseEvidence: any = {
+        const baseEvidence: Record<string, unknown> = {
           id: `evidence-${index}-${id}`,
           title,
           detail,
@@ -146,7 +146,7 @@ function evidenceArbitrary(
           baseEvidence.status = 'record';
         }
 
-        return baseEvidence as Evidence;
+        return baseEvidence as unknown as Evidence;
       }
     );
 }
@@ -455,7 +455,7 @@ describe('validateCase - Property Tests', () => {
             evidence: [
               {
                 ...validCase.evidence[0],
-                sources: ['non-existent-source-12345'] as any
+                sources: ['non-existent-source-12345'] as [string]
               },
               ...validCase.evidence.slice(1)
             ]
@@ -565,7 +565,7 @@ describe('validateCase - Property Tests', () => {
           }
 
           // Create a source with neither url nor citation
-          const invalidSource: any = {
+          const invalidSource: Record<string, unknown> = {
             id: 'invalid-source-xyz',
             title: 'Invalid Source',
             kind: 'testimony'
@@ -609,7 +609,7 @@ describe('validateCase - Property Tests', () => {
             evidence: [
               {
                 ...validCase.evidence[0],
-                sources: [] as any
+                sources: [] as unknown as [string]
               },
               ...validCase.evidence.slice(1)
             ]
@@ -642,7 +642,7 @@ describe('validateCase - Property Tests', () => {
             id: 'evidence-legend-invalid',
             title: 'Invalid Legend',
             detail: ['Some detail'],
-            sources: [validCase.sources[0].id] as any,
+            sources: [validCase.sources[0].id] as [string],
             reading: { supports: [], weakens: [], note: 'A note' },
             status: 'legend',
             origin: '' // Empty origin violates requirement
@@ -683,7 +683,7 @@ describe('validateCase - Property Tests', () => {
             id: 'evidence-disputed-invalid',
             title: 'Invalid Disputed',
             detail: ['Some detail'],
-            sources: [validCase.sources[0].id] as any,
+            sources: [validCase.sources[0].id] as [string],
             reading: { supports: [], weakens: [], note: 'A note' },
             status: 'disputed',
             dispute: {

@@ -1,7 +1,7 @@
 // src/cases/__tests__/index.property.test.ts
 import { describe, test, expect } from 'vitest';
 import * as fc from 'fast-check';
-import { getCaseById, registry } from '../index';
+import { getCaseById, registry } from '@/cases/index';
 
 describe('Registry - Property Tests', () => {
   test('Property 1: Registry ID Uniqueness', () => {

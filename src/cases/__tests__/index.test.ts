@@ -1,7 +1,7 @@
 // src/cases/__tests__/index.test.ts
 import { describe, test, expect } from 'vitest';
-import { getCaseById, registry } from '../index';
-import type { RegistryEntry } from '../../types/case';
+import { getCaseById, registry } from '@/cases/index';
+import type { RegistryEntry } from '@/types/case';
 
 describe('getCaseById - Task 4.3', () => {
   test('returns correct open entry for valid ID "mary-celeste"', () => {
@@ -12,8 +12,8 @@ describe('getCaseById - Task 4.3', () => {
     expect(result?.title).toBe('The Mystery of the Mary Celeste');
     expect(result?.year).toBe(1872);
     expect(result?.sealed).toBe(false);
-    expect((result as any)?.data).toBeDefined();
-    expect((result as any)?.data?.id).toBe('mary-celeste');
+    expect((result as { data?: unknown } | undefined)?.data).toBeDefined();
+    expect((result as { data?: { id?: string } } | undefined)?.data?.id).toBe('mary-celeste');
   });
 
   test('returns correct sealed entry for valid ID "jack-the-ripper"', () => {
@@ -25,7 +25,7 @@ describe('getCaseById - Task 4.3', () => {
     expect(result?.year).toBe(1888);
     expect(result?.sealed).toBe(true);
     // Sealed entries should not have a data field
-    expect((result as any)?.data).toBeUndefined();
+    expect((result as { data?: unknown } | undefined)?.data).toBeUndefined();
   });
 
   test('returns undefined for invalid ID', () => {
@@ -95,7 +95,7 @@ describe('getCaseById - Task 4.3', () => {
     expect(result.sealed).toBe(true);
 
     // Check data field does not exist
-    expect((result as any).data).toBeUndefined();
+    expect((result as { data?: unknown }).data).toBeUndefined();
   });
 
   test('case IDs are exact matches (case-sensitive)', () => {

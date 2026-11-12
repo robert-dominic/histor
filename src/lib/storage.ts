@@ -1,7 +1,7 @@
 // src/lib/storage.ts
 // localStorage persistence for InvestigationState
 
-import type { Case, InvestigationState } from '../types/case';
+import type { Case, InvestigationState } from '@/types/case';
 
 /**
  * Generates the storage key for a case's investigation state.
@@ -59,14 +59,17 @@ export function loadInvestigationState(caseId: string, caseData: Case): Investig
     }
 
     // Validate structure
+    if (typeof state !== 'object' || state === null) {
+      // Invalid data structure
+      return defaultState;
+    }
+    const candidate = state as Record<string, unknown>;
     if (
-      typeof state !== 'object' ||
-      state === null ||
-      !Array.isArray((state as any).opened) ||
-      typeof (state as any).pins !== 'object' ||
-      (state as any).pins === null ||
-      Array.isArray((state as any).pins) ||
-      ((state as any).verdict !== null && typeof (state as any).verdict !== 'string')
+      !Array.isArray(candidate.opened) ||
+      typeof candidate.pins !== 'object' ||
+      candidate.pins === null ||
+      Array.isArray(candidate.pins) ||
+      (candidate.verdict !== null && typeof candidate.verdict !== 'string')
     ) {
       // Invalid data structure
       return defaultState;

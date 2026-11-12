@@ -1,5 +1,5 @@
 // src/cases/mary-celeste/case.ts
-import type { Case } from '../../types/case';
+import type { Case } from '@/types/case';
 
 /**
  * Minimal valid Case object for Mary Celeste.
