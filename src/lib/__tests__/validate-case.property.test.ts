@@ -552,4 +552,164 @@ describe('validateCase - Property Tests', () => {
       { numRuns: 100 }
     );
   });
+
+  test('Property 18: Source Has URL or Citation', () => {
+    // Feature: histor-data-foundation, Property 18: Source Has URL or Citation
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have sources
+          if (validCase.sources.length < 1) {
+            return true;
+          }
+
+          // Create a source with neither url nor citation
+          const invalidSource: any = {
+            id: 'invalid-source-xyz',
+            title: 'Invalid Source',
+            kind: 'testimony'
+            // Both url and citation are missing
+          };
+
+          const invalidCase = {
+            ...validCase,
+            sources: [...validCase.sources, invalidSource]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return (
+            errors.length > 0 &&
+            errors.some(
+              (err) =>
+                err.includes('sources') &&
+                (err.includes('url') || err.includes('citation'))
+            )
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 19: Validator Detects Empty Evidence Sources', () => {
+    // Feature: histor-data-foundation, Property 19: Validator Detects Empty Evidence Sources
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Only test if we have evidence
+          if (validCase.evidence.length < 1) {
+            return true;
+          }
+
+          // Create evidence with empty sources array (violates NonEmptyArray)
+          const invalidCase = {
+            ...validCase,
+            evidence: [
+              {
+                ...validCase.evidence[0],
+                sources: [] as any
+              },
+              ...validCase.evidence.slice(1)
+            ]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return (
+            errors.length > 0 &&
+            errors.some(
+              (err) =>
+                err.includes('evidence') &&
+                err.includes('sources') &&
+                (err.includes('empty') || err.includes('not be empty'))
+            )
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 25: Validator Detects Empty Legend Origin', () => {
+    // Feature: histor-data-foundation, Property 25: Validator Detects Empty Legend Origin
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        (validCase) => {
+          // Create evidence with legend status but empty origin
+          const invalidEvidence: Evidence = {
+            id: 'evidence-legend-invalid',
+            title: 'Invalid Legend',
+            detail: ['Some detail'],
+            sources: [validCase.sources[0].id] as any,
+            reading: { supports: [], weakens: [], note: 'A note' },
+            status: 'legend',
+            origin: '' // Empty origin violates requirement
+          };
+
+          const invalidCase = {
+            ...validCase,
+            evidence: [...validCase.evidence, invalidEvidence]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return (
+            errors.length > 0 &&
+            errors.some(
+              (err) =>
+                err.includes('origin') &&
+                (err.includes('empty') || err.includes('non-empty string'))
+            )
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  test('Property 26: Validator Detects Empty Disputed Evidence Fields', () => {
+    // Feature: histor-data-foundation, Property 26: Validator Detects Empty Disputed Evidence Fields
+    fc.assert(
+      fc.property(
+        validCaseArbitrary(),
+        fc.oneof(
+          fc.constant('claim'),
+          fc.constant('challenge')
+        ),
+        (validCase, fieldToEmpty) => {
+          // Create evidence with disputed status but empty claim or challenge
+          const invalidEvidence: Evidence = {
+            id: 'evidence-disputed-invalid',
+            title: 'Invalid Disputed',
+            detail: ['Some detail'],
+            sources: [validCase.sources[0].id] as any,
+            reading: { supports: [], weakens: [], note: 'A note' },
+            status: 'disputed',
+            dispute: {
+              claim: fieldToEmpty === 'claim' ? '' : 'A claim',
+              challenge: fieldToEmpty === 'challenge' ? '' : 'A challenge'
+            }
+          };
+
+          const invalidCase = {
+            ...validCase,
+            evidence: [...validCase.evidence, invalidEvidence]
+          } as Case;
+
+          const errors = validateCase(invalidCase);
+          return (
+            errors.length > 0 &&
+            errors.some(
+              (err) =>
+                err.includes('dispute') &&
+                err.includes(fieldToEmpty) &&
+                (err.includes('empty') || err.includes('non-empty string'))
+            )
+          );
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
 });

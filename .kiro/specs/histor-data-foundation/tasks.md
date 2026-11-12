@@ -54,7 +54,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Property 15: Validator Detects Invalid Reference IDs in Story Markup**
     - **Validates: Requirements 7.19, 7.20, 7.21, 7.22, 7.23, 10.3**
 
-- [ ] 3. Implement Source and Evidence validation
+- [x] 3. Implement Source and Evidence validation
   - [x] 3.1 Add Source validation to validateCase
     - Verify Source has url, citation, or both
     - Verify SourceKind is one of: testimony, official, secondary, fiction
@@ -68,7 +68,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - For status='disputed', verify dispute.claim and dispute.challenge are non-empty
     - _Requirements: 7.18, 10.4_
   
-  - [ ] 3.3 Write property tests for Source and Evidence validation
+  - [x] 3.3 Write property tests for Source and Evidence validation
     - **Property 18: Source Has URL or Citation**
     - **Property 19: Validator Detects Empty Evidence Sources**
     - **Property 25: Validator Detects Empty Legend Origin**
