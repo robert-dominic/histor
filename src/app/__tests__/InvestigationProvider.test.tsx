@@ -182,6 +182,29 @@ describe('investigationReducer: PIN_EVIDENCE', () => {
     expect(next.pins).toEqual({ 'e-1': 't-one' });
   });
 
+  test('rejects an evidence id that is not in the case, returning the same state', () => {
+    const state: InvestigationState = { opened: [], pins: { 'e-1': 't-one' }, verdict: null };
+
+    const next = investigationReducer(
+      state,
+      { type: 'PIN_EVIDENCE', evidenceId: 'e-not-in-case', target: 't-one' },
+      testCase
+    );
+
+    expect(next).toBe(state);
+    expect(next.pins).toEqual({ 'e-1': 't-one' });
+  });
+
+  test('rejects an evidence id that is not in the case even when the target is "none"', () => {
+    const next = investigationReducer(
+      EMPTY_STATE,
+      { type: 'PIN_EVIDENCE', evidenceId: 'e-not-in-case', target: 'none' },
+      testCase
+    );
+
+    expect(next).toBe(EMPTY_STATE);
+  });
+
   test(`holds at most ${MAX_PINS} entries`, () => {
     let state = EMPTY_STATE;
     for (const evidence of bigCase.evidence) {

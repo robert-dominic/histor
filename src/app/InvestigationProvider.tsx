@@ -48,6 +48,10 @@ export function investigationReducer(
     }
 
     case 'PIN_EVIDENCE': {
+      // Only evidence that belongs to this case can be pinned.
+      if (!caseData.evidence.some(evidence => evidence.id === action.evidenceId)) {
+        return state;
+      }
       const targetIsValid =
         action.target === 'none' || caseData.theories.some(theory => theory.id === action.target);
       if (!targetIsValid) {

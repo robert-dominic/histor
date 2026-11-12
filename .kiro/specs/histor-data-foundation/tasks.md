@@ -125,7 +125,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - **Property 24: Loaded State Validation Removes Invalid Theory IDs**
     - **Validates: Requirements 6.6, 6.7, 6.8, 10.7, 10.8**
 
-- [ ] 6. Create investigation state management with React context
+- [x] 6. Create investigation state management with React context
   - [x] 6.1 Create `src/app/InvestigationProvider.tsx` with context and reducer
     - Define InvestigationContext with state, dispatch, and caseData
     - Implement reducer handling OPEN_EVIDENCE, PIN_EVIDENCE, CLOSE_CASE, REOPEN_CASE
@@ -146,7 +146,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Test max array sizes (100 entries)
     - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11_
   
-  - [ ] 6.3 Write property tests for investigation actions
+  - [x] 6.3 Write property tests for investigation actions
     - **Property 4: Evidence Opening Preserves Order**
     - **Property 5: Evidence Reopening is Idempotent**
     - **Property 6: Valid Pin Storage and Retrieval**
