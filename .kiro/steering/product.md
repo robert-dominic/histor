@@ -4,7 +4,7 @@ inclusion: always
 
 # Product: Histor
 
-> Steering doc for Kiro. Read this before any task. Lines marked **DECIDE** are still open.
+> Steering doc for Kiro. Read this before any task
 
 ## Name
 
@@ -57,7 +57,7 @@ Two kinds of objects: theories and evidence.
 - The board updates: a thread connects the file to the theory it was pinned to, and that theory visibly strengthens or weakens.
 
 ### 6. The verdict
-When the user has opened enough files (**DECIDE:** threshold, suggested 6), "Close the case" unlocks. The user picks the theory they believe and gets a **case report**:
+When the user has opened enough files (6 files, set per case by closeThreshold), "Close the case" unlocks. The user picks the theory they believe and gets a **case report**:
 - their verdict
 - the evidence they relied on
 - important evidence they never opened

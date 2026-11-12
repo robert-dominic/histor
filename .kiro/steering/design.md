@@ -14,7 +14,7 @@ The app's own voice is modern. The record is from the 1870s. The contrast says "
 | The record | Old Standard TT | Google Fonts | Story text, testimony, evidence files |
 | The app's voice | Satoshi | Fontshare (load from Fontshare's CDN, never commit the font files) | Prompts, buttons, labels, the app talking |
 
-**DECIDE:** confirm this set. A handwriting face for notes on files is optional.
+Confirmed. No handwriting face in V1.
 
 ## Evidence status: the visual language
 
