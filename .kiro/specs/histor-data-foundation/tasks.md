@@ -6,7 +6,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
 
 ## Tasks
 
-- [ ] 1. Set up validation module and basic structure
+- [x] 1. Set up validation module and basic structure
   - [x] 1.1 Create `src/lib/validate-case.ts` with `validateCase(caseData: Case): string[]` function
     - Implement validation for required string fields (id, title, teaser, centralQuestion)
     - Implement validation for year (positive integer)
@@ -21,7 +21,7 @@ This plan implements the core data foundation for Histor: the type system (alrea
     - Test closeThreshold bounds
     - _Requirements: 7.2-7.13_
   
-  - [ ] 1.3 Write property test for validator accepting valid cases
+  - [x] 1.3 Write property test for validator accepting valid cases
     - **Property 8: Validator Accepts Valid Cases**
     - **Validates: Requirements 7.26, 10.1**
 
