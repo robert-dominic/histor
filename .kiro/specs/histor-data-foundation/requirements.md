@@ -221,6 +221,8 @@ The Histor Data Foundation provides the core data model, type system, validation
 2. THE CaseTheme SHALL support optional ambientAudio for looping background sound
 3. THE CaseTheme SHALL support optional sound effects for stamp, open, pin, portal, and close actions
 4. THE Case SHALL include a theme field of type CaseTheme
+5. THE CaseTheme SHALL support optional legendVideo with src field of type string, poster field of type string, and credit field of type string, for the illustration video shown behind the legend intro
+6. WHEN a CaseTheme includes legendVideo, THE Validator SHALL verify that its src, poster and credit are non-empty strings
 
 ### Requirement 14: Legend Intro Structure
 

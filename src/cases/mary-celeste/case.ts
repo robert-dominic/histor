@@ -22,9 +22,9 @@ export const maryCeleste: Case = {
       'Half-eaten. The tea is still warm.',
       'As if everyone simply vanished.',
     ],
-    stamp: 'Not in the record',
+    stamp: 'Well... that never happened.',
     debunk:
-      'Well... that never happened. The men who boarded her found nothing to eat or drink on the table. The warm breakfast grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
+      'The men who boarded her found nothing to eat or drink on the table. The warm breakfast grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
   },
   
   story: [
@@ -101,7 +101,11 @@ export const maryCeleste: Case = {
     id: 'mary-celeste-theme',
     ambientAudio: undefined,
     sounds: undefined,
-    legendVideo: { src: legendVideoSrc, poster: legendVideoPoster }
+    legendVideo: {
+      src: legendVideoSrc,
+      poster: legendVideoPoster,
+      credit: 'AI-generated illustration (Google Gemini)'
+    }
   }
 };
 

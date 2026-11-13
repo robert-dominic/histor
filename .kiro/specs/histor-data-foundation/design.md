@@ -112,6 +112,7 @@ export function validateCase(caseData: Case): string[];
 - NonEmptyArray enforcement: Evidence.sources is validated to contain at least one element
 - Legend evidence: status='legend' requires non-empty `origin` field
 - Disputed evidence: status='disputed' requires non-empty `dispute.claim` and `dispute.challenge` fields
+- Legend video: when `theme.legendVideo` is present, its `src`, `poster` and `credit` must be non-empty strings
 
 **Implementation notes:**
 - Pure function with no side effects

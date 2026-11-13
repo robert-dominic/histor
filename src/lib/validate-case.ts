@@ -260,6 +260,17 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional legend video (13.5): when present, src, poster and credit must be non-empty
+  const legendVideo: { src?: unknown; poster?: unknown; credit?: unknown } | undefined = caseData.theme?.legendVideo;
+  if (legendVideo !== undefined && legendVideo !== null) {
+    for (const field of ['src', 'poster', 'credit'] as const) {
+      const value = legendVideo[field];
+      if (typeof value !== 'string' || value.trim() === '') {
+        errors.push(`Field theme.legendVideo.${field}: Must be a non-empty string`);
+      }
+    }
+  }
+
   // Check B: Markup_Fields (4.1 to 4.7, 4.13)
   const fields = markupFields(caseData);
   for (const field of fields) {

@@ -10,11 +10,11 @@ import type { LegendIntro as LegendIntroData } from '@/types/case';
 /** Test data, not history. */
 const legendIntro: LegendIntroData = {
   lines: ['First line of the myth.', 'Second line.', 'Third and last line.'],
-  stamp: 'Test stamp',
-  debunk: 'Well... no. This is the second sentence. And a third.',
+  stamp: 'Test stamp... really.',
+  debunk: 'This is the debunk. It has a second sentence.',
 };
 
-const video = { src: '/test-video.mp4', poster: '/test-poster.webp' };
+const video = { src: '/test-video.mp4', poster: '/test-poster.webp', credit: 'Test credit (not real)' };
 
 function renderIntro(props: Partial<Parameters<typeof LegendIntro>[0]> = {}) {
   const onDone = vi.fn();
@@ -22,8 +22,15 @@ function renderIntro(props: Partial<Parameters<typeof LegendIntro>[0]> = {}) {
   return { ...view, onDone };
 }
 
-const opacityOf = (element: Element | null) => (element as HTMLElement).style.opacity;
-const lineElements = (container: HTMLElement) => [...container.querySelectorAll('[data-legend="line"]')];
+const one = (container: HTMLElement, name: string) =>
+  container.querySelector(`[data-legend="${name}"]`) as HTMLElement;
+const all = (container: HTMLElement, name: string) => [
+  ...container.querySelectorAll<HTMLElement>(`[data-legend="${name}"]`),
+];
+/** The single letters inside a block that has been split for writing or typing. */
+const lettersOf = (block: HTMLElement) =>
+  [...block.querySelectorAll<HTMLElement>('*')].filter(element => element.children.length === 0);
+const withoutSpaces = (text: string) => text.replace(/\s/g, '');
 
 beforeEach(() => {
   stubMatchMedia();
@@ -35,57 +42,100 @@ afterEach(() => {
 });
 
 describe('LegendIntro: content', () => {
-  test('renders every line of the myth as real text, in order', () => {
+  test('renders every line of the myth, in order', () => {
     const { container } = renderIntro();
 
-    expect(lineElements(container).map(line => line.textContent)).toEqual(legendIntro.lines);
+    expect(all(container, 'line').map(line => line.textContent)).toEqual(legendIntro.lines);
   });
 
   test('renders the stamp text as stored (CSS makes it uppercase)', () => {
     const { container } = renderIntro();
 
-    const stamp = container.querySelector('[data-legend="stamp"]') as HTMLElement;
-    expect(stamp.textContent).toBe('Test stamp');
+    const stamp = one(container, 'stamp');
+    expect(stamp.textContent).toBe(legendIntro.stamp);
     expect(stamp.className).toContain('uppercase');
   });
 
   test('renders the whole debunk', () => {
     const { container } = renderIntro();
 
-    const voice = container.querySelector('[data-legend="voice"]') as HTMLElement;
-    const paragraph = voice.parentElement as HTMLElement;
-    expect(paragraph.textContent).toBe(legendIntro.debunk);
+    expect(one(container, 'debunk').textContent).toBe(legendIntro.debunk);
   });
 
-  test('gives the first sentence of the debunk its own element, and an ellipsis does not end it', () => {
+  test('sets the debunk in the app voice (typewriter) and the myth in the legend face', () => {
     const { container } = renderIntro();
 
-    expect(container.querySelector('[data-legend="voice"]')?.textContent).toBe('Well... no.');
-    expect(container.querySelector('[data-legend="rest"]')?.textContent?.trim()).toBe(
-      'This is the second sentence. And a third.'
-    );
+    expect((one(container, 'debunk').parentElement as HTMLElement).className).toContain('font-voice');
+    expect((one(container, 'line').parentElement as HTMLElement).className).toContain('font-legend');
+  });
+});
+
+describe('LegendIntro: screen readers', () => {
+  test('every line and the debunk exist as whole, unsplit text for screen readers', () => {
+    const { container } = renderIntro();
+
+    const readable = [...container.querySelectorAll('.sr-only')].map(element => element.textContent);
+    expect(readable).toEqual([...legendIntro.lines, legendIntro.debunk]);
+    for (const element of container.querySelectorAll('.sr-only')) {
+      expect(element.children).toHaveLength(0);
+      expect(element.closest('[aria-hidden="true"]')).toBeNull();
+    }
   });
 
-  test('a debunk of one sentence is rendered whole, with nothing after it', () => {
-    const { container } = renderIntro({ legendIntro: { ...legendIntro, debunk: 'Only one sentence here.' } });
+  test('the copies that are written and typed letter by letter are hidden from screen readers', () => {
+    const { container } = renderIntro();
 
-    expect(container.querySelector('[data-legend="voice"]')?.textContent).toBe('Only one sentence here.');
-    expect(container.querySelector('[data-legend="rest"]')).toBeNull();
+    for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
+      expect(block.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
+  test('the quill and the caret are decoration, hidden from screen readers', () => {
+    const { container } = renderIntro();
+
+    expect(one(container, 'quill').getAttribute('aria-hidden')).toBe('true');
+    expect(one(container, 'caret').getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('the stamp is plain readable text', () => {
+    const { container } = renderIntro();
+
+    const stamp = one(container, 'stamp');
+    expect(stamp.closest('[aria-hidden="true"]')).toBeNull();
+    expect(stamp.querySelector('strong')?.children).toHaveLength(0);
   });
 });
 
 describe('LegendIntro: the sequence', () => {
-  test('starts with the myth, the stamp, the debunk and Continue all hidden', () => {
+  test('splits each line into letters for the quill, one element per letter', () => {
     const { container } = renderIntro();
 
-    for (const line of lineElements(container)) {
-      expect(opacityOf(line)).toBe('0');
+    all(container, 'line').forEach((line, index) => {
+      const letters = lettersOf(line);
+      expect(letters.map(letter => letter.textContent).join('')).toBe(withoutSpaces(legendIntro.lines[index]));
+      expect(letters.every(letter => letter.textContent?.length === 1)).toBe(true);
+    });
+  });
+
+  test('splits the debunk into letters for the typewriter', () => {
+    const { container } = renderIntro();
+
+    const letters = lettersOf(one(container, 'debunk'));
+    expect(letters.map(letter => letter.textContent).join('')).toBe(withoutSpaces(legendIntro.debunk));
+  });
+
+  test('starts with every letter, the stamp, the quill, the caret and Continue hidden', () => {
+    const { container } = renderIntro();
+
+    for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
+      for (const letter of lettersOf(block)) {
+        expect(letter.style.opacity).toBe('0');
+      }
     }
-    expect(opacityOf(container.querySelector('[data-legend="stamp"]'))).toBe('0');
-    expect(opacityOf(container.querySelector('[data-legend="voice"]'))).toBe('0');
-    expect(opacityOf(container.querySelector('[data-legend="rest"]'))).toBe('0');
-    const next = container.querySelector('[data-legend="continue"]') as HTMLElement;
-    expect(next.style.visibility).toBe('hidden');
+    expect(one(container, 'stamp').style.opacity).toBe('0');
+    expect(one(container, 'quill-body').style.opacity).toBe('0');
+    expect(one(container, 'caret').className).toContain('opacity-0');
+    expect(one(container, 'continue').style.visibility).toBe('hidden');
   });
 
   test('Skip is there from the first frame', () => {
@@ -94,29 +144,38 @@ describe('LegendIntro: the sequence', () => {
     expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
   });
 
-  test('Skip shows the end state: every line, the stamp, the debunk and Continue', () => {
+  test('Skip shows the end state: every letter of every line and of the debunk, the stamp and Continue', () => {
     const { container } = renderIntro();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
 
-    for (const line of lineElements(container)) {
-      expect(opacityOf(line)).toBe('1');
+    for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
+      for (const letter of lettersOf(block)) {
+        expect(letter.style.opacity).toBe('1');
+      }
     }
-    expect(opacityOf(container.querySelector('[data-legend="stamp"]'))).toBe('1');
-    expect(opacityOf(container.querySelector('[data-legend="voice"]'))).toBe('1');
-    expect(opacityOf(container.querySelector('[data-legend="rest"]'))).toBe('1');
-    const next = container.querySelector('[data-legend="continue"]') as HTMLElement;
+    expect(one(container, 'stamp').style.opacity).toBe('1');
+    const next = one(container, 'continue');
     expect(next.style.visibility).not.toBe('hidden');
     expect(next.style.opacity).toBe('1');
   });
 
-  test('in the end state the myth is dimmed behind the stamp, but still there', () => {
+  test('in the end state the quill and the caret are gone', () => {
     const { container } = renderIntro();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
 
-    expect(opacityOf(container.querySelector('[data-legend="myth"]'))).toBe('0.4');
-    expect(lineElements(container).map(line => line.textContent)).toEqual(legendIntro.lines);
+    expect(one(container, 'quill-body').style.opacity).toBe('0');
+    expect(one(container, 'caret').style.opacity).toBe('0');
+  });
+
+  test('in the end state the myth is dimmed to 50% behind the stamp, but still there', () => {
+    const { container } = renderIntro();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    expect(one(container, 'myth').style.opacity).toBe('0.5');
+    expect(all(container, 'line').map(line => line.textContent)).toEqual(legendIntro.lines);
   });
 
   test('Skip does not end the intro: onDone is not called', () => {
@@ -174,17 +233,19 @@ describe('LegendIntro: onEnded', () => {
 });
 
 describe('LegendIntro: a returning visitor (startAtEnd)', () => {
-  test('opens at the end state: every line, the stamp, the debunk and Continue are shown at once', () => {
+  test('opens at the end state: every letter, the stamp and Continue are shown at once', () => {
     const { container } = renderIntro({ startAtEnd: true });
 
-    for (const line of lineElements(container)) {
-      expect(opacityOf(line)).toBe('1');
+    for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
+      for (const letter of lettersOf(block)) {
+        expect(letter.style.opacity).toBe('1');
+      }
     }
-    expect(opacityOf(container.querySelector('[data-legend="myth"]'))).toBe('0.4');
-    expect(opacityOf(container.querySelector('[data-legend="stamp"]'))).toBe('1');
-    expect(opacityOf(container.querySelector('[data-legend="voice"]'))).toBe('1');
-    expect(opacityOf(container.querySelector('[data-legend="rest"]'))).toBe('1');
-    expect((container.querySelector('[data-legend="continue"]') as HTMLElement).style.visibility).not.toBe('hidden');
+    expect(one(container, 'myth').style.opacity).toBe('0.5');
+    expect(one(container, 'stamp').style.opacity).toBe('1');
+    expect(one(container, 'continue').style.visibility).not.toBe('hidden');
+    expect(one(container, 'quill-body').style.opacity).toBe('0');
+    expect(one(container, 'caret').style.opacity).toBe('0');
   });
 
   test('has no Skip, and Continue has the focus', () => {
@@ -225,17 +286,21 @@ describe('LegendIntro: video', () => {
     expect(element.closest('[aria-hidden="true"]')).not.toBeNull();
   });
 
-  test('labels the video "Illustration"', () => {
-    renderIntro({ video });
+  test('labels the video "Illustration" and shows its credit beside the label', () => {
+    const { container } = renderIntro({ video });
 
-    expect(screen.getByText('Illustration')).toBeDefined();
+    const label = screen.getByText('Illustration');
+    expect(label.parentElement?.textContent).toContain(video.credit);
+    expect(one(container, 'credit').textContent).toBe(video.credit);
+    expect(label.closest('[aria-hidden="true"]')).toBeNull();
   });
 
-  test('without a video there is no video element and no "Illustration" label', () => {
+  test('without a video there is no video element, no label and no credit', () => {
     const { container } = renderIntro();
 
     expect(container.querySelector('video')).toBeNull();
     expect(screen.queryByText('Illustration')).toBeNull();
+    expect(container.querySelector('[data-legend="credit"]')).toBeNull();
   });
 });
 
@@ -244,12 +309,32 @@ describe('LegendIntro: reduced motion', () => {
     stubMatchMedia({ reducedMotion: true });
   });
 
-  test('shows the poster image instead of the video, still labelled "Illustration"', () => {
+  test('shows the poster image instead of the video, still labelled and credited', () => {
     const { container } = renderIntro({ video });
 
     expect(container.querySelector('video')).toBeNull();
     expect(container.querySelector('img')?.getAttribute('src')).toBe(video.poster);
     expect(screen.getByText('Illustration')).toBeDefined();
+    expect(one(container, 'credit').textContent).toBe(video.credit);
+  });
+
+  test('no quill and no typing: the lines and the debunk are not split into letters', () => {
+    const { container } = renderIntro();
+
+    for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
+      expect(block.children).toHaveLength(0);
+    }
+    expect(one(container, 'quill-body').style.opacity).toBe('');
+    expect(one(container, 'quill-body').getAttribute('class')).toContain('opacity-0');
+    expect(one(container, 'caret').style.opacity).toBe('');
+  });
+
+  test('the lines, the stamp and the debunk start hidden and fade in whole', () => {
+    const { container } = renderIntro();
+
+    for (const block of [...all(container, 'line'), one(container, 'stamp'), one(container, 'debunk')]) {
+      expect(block.style.opacity).toBe('0');
+    }
   });
 
   test('fades only: nothing is moved, scaled or blurred', () => {
@@ -259,14 +344,16 @@ describe('LegendIntro: reduced motion', () => {
       expect(element.style.transform).toBe('');
       expect(element.style.filter).toBe('');
     }
-    expect(opacityOf(lineElements(container)[0])).toBe('0');
   });
 
-  test('Skip and Continue work the same way', () => {
+  test('Skip shows everything, and Continue works the same way', () => {
     const { container, onDone } = renderIntro();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-    expect(opacityOf(container.querySelector('[data-legend="stamp"]'))).toBe('1');
+    for (const block of [...all(container, 'line'), one(container, 'stamp'), one(container, 'debunk')]) {
+      expect(block.style.opacity).toBe('1');
+    }
+    expect(one(container, 'myth').style.opacity).toBe('0.5');
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -278,7 +365,8 @@ describe('LegendIntro: without matchMedia', () => {
     vi.stubGlobal('matchMedia', undefined);
     const { container, onDone } = renderIntro();
 
-    expect(opacityOf(lineElements(container)[0])).toBe('');
+    expect(one(container, 'line').style.opacity).toBe('');
+    expect(one(container, 'line').children).toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
