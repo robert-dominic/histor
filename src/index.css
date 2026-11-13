@@ -43,6 +43,20 @@
   }
 }
 
+/* Everything clickable shows a pointer on devices that hover (design.md). Tailwind v4 no longer does this for buttons. */
+@layer base {
+  @media (hover: hover) and (pointer: fine) {
+    a[href],
+    button:not(:disabled),
+    [role="button"]:not([aria-disabled="true"]),
+    summary,
+    select,
+    label[for] {
+      cursor: pointer;
+    }
+  }
+}
+
 /* A faint grain over everything (design.md). Static, so it costs nothing to animate, and it never takes clicks. */
 body::after {
   content: "";

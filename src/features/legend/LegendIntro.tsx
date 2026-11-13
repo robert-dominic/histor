@@ -17,7 +17,7 @@ gsap.registerPlugin(useGSAP, SplitText);
 const FULL = {
   start: 0.5,
   /** Letters the quill writes per second. */
-  quillRate: 22,
+  quillRate: 16,
   /** How long one letter takes to soak in. */
   inkDuration: 0.28,
   pauseBetweenLines: 0.6,
@@ -26,7 +26,7 @@ const FULL = {
   stampDuration: 0.18,
   pauseBeforeTyping: 0.8,
   /** Letters the typewriter types per second. */
-  typeRate: 40,
+  typeRate: 30,
   caretLinger: 0.6,
   pauseBeforeContinue: 0.3,
   continueDuration: 0.4,
@@ -242,12 +242,17 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
               timeline.call(moveCaret, [letters[0], true], typeStart - 0.4);
             }
             timeline.set(caret, { opacity: 1 }, typeStart - 0.4);
+            // The caret blinks while it waits and is solid while letters are being typed.
+            const setTyping = (typing: boolean) => caret.setAttribute('data-typing', String(typing));
+            const typeEnd = typeStart + letters.length / FULL.typeRate;
+            timeline.call(setTyping, [true], typeStart);
             letters.forEach((letter, index) => {
               const at = typeStart + index / FULL.typeRate;
               timeline.set(letter, { opacity: 1 }, at);
               timeline.call(moveCaret, [letter, false], at);
             });
-            timeline.set(caret, { opacity: 0 }, typeStart + letters.length / FULL.typeRate + FULL.caretLinger);
+            timeline.call(setTyping, [false], typeEnd);
+            timeline.set(caret, { opacity: 0 }, typeEnd + FULL.caretLinger);
           });
 
           // 4. Continue. Hidden with visibility as well as opacity, so it cannot be focused before it is shown.
@@ -381,9 +386,14 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
         <span aria-hidden="true" data-legend="debunk">
           {legendIntro.debunk}
         </span>
-        {/* The typewriter's caret. Moved to the last typed letter; it blinks on its own. */}
-        <span data-legend="caret" aria-hidden="true" className="pointer-events-none absolute top-0 left-0 opacity-0">
-          <span className="block h-[1.15em] w-[0.5em] -translate-y-full animate-caret bg-night-ink/85" />
+        {/* The typewriter's caret. Moved to the last typed letter. It blinks when idle and is solid while typing. */}
+        <span
+          data-legend="caret"
+          data-typing="false"
+          aria-hidden="true"
+          className="group pointer-events-none absolute top-0 left-0 opacity-0"
+        >
+          <span className="block h-[1.15em] w-[0.5em] -translate-y-full animate-caret bg-night-ink/85 group-data-[typing=true]:animate-none" />
         </span>
       </p>
 

@@ -24,7 +24,7 @@ export const maryCeleste: Case = {
     ],
     stamp: 'Well... that never happened.',
     debunk:
-      'The men who boarded her found nothing to eat or drink on the table. The warm breakfast grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
+      'The men who boarded her found nothing to eat or drink on the table. The famous "warm breakfast" grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
   },
   
   story: [

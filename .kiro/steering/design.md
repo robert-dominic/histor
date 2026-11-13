@@ -11,8 +11,8 @@ The legend is dramatic, the record is old print, and the app talks like a case c
 | Role | Font | Use |
 | --- | --- | --- |
 | The legend, display | Grenze Gotisch | Legend intro lines, case titles, big moments. Headings only: never set paragraphs in Grenze Gotisch. |
-| The record | Old Standard TT | Story text, testimony, evidence files, the debunk, any long reading |
-| The app's voice | Special Elite | Stamps, labels, buttons, prompts, small UI text, the app talking |
+| The record | Old Standard TT | Story text, testimony, evidence files, any long reading |
+| The app's voice | Special Elite | Stamps, labels, buttons, prompts, small UI text, the app talking. The legend intro's debunk is the app talking, so it uses Special Elite. |
 
 Confirmed. No handwriting face in V1.
 
@@ -63,6 +63,10 @@ Each case sets its own accent, texture, video and sounds in its folder (`theme.c
 
 - Night sea blue-black, salt-stained paper, brass fittings.
 - Sounds: creaking timber, rope and sailcloth, wind, water against the hull, a ship's bell, a pen nib on paper, a wax seal, a court gavel.
+
+## Interaction
+
+- Every clickable element (buttons, links, Skip, Continue) shows `cursor: pointer` on hover devices. Tailwind v4 no longer does this for buttons, so the rule is set globally in `src/index.css`. Do not override it per component.
 
 ## Images and video
 
