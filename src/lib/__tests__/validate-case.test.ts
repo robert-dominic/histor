@@ -1027,3 +1027,252 @@ describe('validateCase - Task 2.2 (Referential Integrity)', () => {
     expect(errors).toContain("Field story[0].body[0]: reference ID 'invalid-ref' not found in references");
   });
 });
+
+// ===== story-engine 2.2: portal markup checks (Requirements 4.2 to 4.5, 4.11 to 4.13, 6.4 to 6.7) =====
+
+/**
+ * A valid case with two story sections, three evidence files (index 2 disputed) and three
+ * references (ids 'a', 'c', 'briggs'), so every Markup_Field kind exists at a non-zero index.
+ */
+function createMarkupCase(): Case {
+  return createValidCase({
+    story: [
+      { id: 's1', heading: 'Section 1', body: ['First paragraph', 'Second paragraph'], hook: 'First hook' },
+      { id: 's2', heading: 'Section 2', body: ['Third paragraph', 'Fourth paragraph'], hook: 'Second hook' }
+    ],
+    evidence: [
+      {
+        id: 'e1',
+        title: 'Evidence 1',
+        detail: ['Detail one', 'Detail two'],
+        sources: ['src1'],
+        reading: { supports: [], weakens: [], note: 'Note' },
+        status: 'record'
+      },
+      {
+        id: 'e2',
+        title: 'Evidence 2',
+        detail: ['Detail one', 'Detail two'],
+        sources: ['src1'],
+        reading: { supports: [], weakens: [], note: 'Note' },
+        status: 'legend',
+        origin: 'A later story'
+      },
+      {
+        id: 'e3',
+        title: 'Evidence 3',
+        detail: ['Detail one', 'Detail two'],
+        sources: ['src1'],
+        reading: { supports: [], weakens: [], note: 'Note' },
+        status: 'disputed',
+        dispute: { claim: 'One side', challenge: 'Other side' }
+      }
+    ],
+    references: [
+      { id: 'a', kind: 'person', label: 'A', profile: ['Profile one', 'Profile two'] },
+      { id: 'c', kind: 'place', label: 'C', profile: ['Profile one', 'Profile two'] },
+      { id: 'briggs', kind: 'person', label: 'Briggs', profile: ['Profile one', 'Profile two'] }
+    ]
+  });
+}
+
+type FieldSetter = (c: Case, text: string) => void;
+
+/** One Markup_Field of each kind, at non-zero indexes. */
+const markupLocations: Array<[string, FieldSetter]> = [
+  ['story[1].body[1]', (c, t) => { c.story[1].body[1] = t; }],
+  ['story[1].hook', (c, t) => { c.story[1].hook = t; }],
+  ['evidence[2].detail[1]', (c, t) => { c.evidence[2].detail[1] = t; }],
+  ['references[1].profile[1]', (c, t) => { c.references[1].profile[1] = t; }]
+];
+
+function caseWithField(set: FieldSetter, text: string): Case {
+  const c = createMarkupCase();
+  set(c, text);
+  return c;
+}
+
+/** First n code points of s. */
+function codePoints(s: string, n: number): string {
+  return Array.from(s).slice(0, n).join('');
+}
+
+describe('validateCase - story-engine markup fixture', () => {
+  test('the markup fixture case is valid on its own', () => {
+    expect(validateCase(createMarkupCase())).toEqual([]);
+  });
+
+  test('known refs in every Markup_Field kind give no errors', () => {
+    const c = createMarkupCase();
+    for (const [, set] of markupLocations) set(c, 'See {{ref:a|A}} and {{ref:c|C}}.');
+    expect(validateCase(c)).toEqual([]);
+  });
+});
+
+describe('validateCase - Field_Location for each Markup_Field kind (6.4)', () => {
+  test.each(markupLocations)('unknown id in %s is reported at that location', (location, set) => {
+    const errors = validateCase(caseWithField(set, 'Text {{ref:ghost|Ghost}} here.'));
+    expect(errors).toEqual([`Field ${location}: reference ID 'ghost' not found in references`]);
+  });
+
+  test.each(markupLocations)('two unknown ids in %s give one error each', (location, set) => {
+    const errors = validateCase(caseWithField(set, '{{ref:ghost|G}} and {{ref:ghost|G}}'));
+    expect(errors).toEqual([
+      `Field ${location}: reference ID 'ghost' not found in references`,
+      `Field ${location}: reference ID 'ghost' not found in references`
+    ]);
+  });
+
+  test.each(markupLocations)('empty label in %s is reported at that location', (location, set) => {
+    const errors = validateCase(caseWithField(set, 'Text {{ref:a|}} here.'));
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup - label cannot be empty`]);
+  });
+
+  test.each(markupLocations)('whitespace-only label in %s is reported at that location', (location, set) => {
+    const errors = validateCase(caseWithField(set, 'Text {{ref:a|  }} here.'));
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup - label cannot be empty`]);
+  });
+
+  test.each(markupLocations)('unclosed markup in %s is reported at that location', (location, set) => {
+    const errors = validateCase(caseWithField(set, 'Text {{ref:a|b'));
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup near '{{ref:a|b'`]);
+  });
+
+  test.each(markupLocations)('wrong prefix in %s is reported at that location', (location, set) => {
+    const errors = validateCase(caseWithField(set, 'Text {{REF:a|b}} here.'));
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup near '{{REF:a|b}} here.'`]);
+  });
+});
+
+describe('validateCase - malformed markup excerpt (4.4)', () => {
+  const [location, set] = markupLocations[0];
+
+  test('a long tail is cut to 40 code points', () => {
+    const malformed = '{{foo:' + 'y'.repeat(60);
+    const errors = validateCase(caseWithField(set, 'Intro ' + malformed));
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup near '${malformed.slice(0, 40)}'`]);
+  });
+
+  test('an emoji that is the 40th code point is kept whole', () => {
+    // '{{foo:' (6) + 33 'y' = 39 code points, then the emoji is the 40th.
+    const malformed = '{{foo:' + 'y'.repeat(33) + '😀' + 'tail';
+    const errors = validateCase(caseWithField(set, malformed));
+    const expected = '{{foo:' + 'y'.repeat(33) + '😀';
+    expect(Array.from(expected)).toHaveLength(40);
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup near '${expected}'`]);
+  });
+
+  test('an emoji that is the 41st code point is dropped, never split', () => {
+    const malformed = '{{foo:' + 'y'.repeat(34) + '😀' + 'tail';
+    const errors = validateCase(caseWithField(set, malformed));
+    expect(errors).toEqual([`Field ${location}: Invalid reference markup near '${'{{foo:' + 'y'.repeat(34)}'`]);
+    expect(errors[0]).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+  });
+});
+
+describe('validateCase - portal markup in Plain_Fields (4.11, 6.5)', () => {
+  const plainCases: Array<[string, FieldSetter]> = [
+    ['title', (c, t) => { c.title = t; }],
+    ['theories[0].claim', (c, t) => { c.theories[0].claim = t; }],
+    ['story[1].heading', (c, t) => { c.story[1].heading = t; }],
+    [
+      'evidence[2].dispute.claim',
+      (c, t) => {
+        const ev = c.evidence[2];
+        if (ev.status !== 'disputed') throw new Error('fixture: evidence[2] must be disputed');
+        ev.dispute.claim = t;
+      }
+    ]
+  ];
+
+  test.each(plainCases)('{{ in %s is reported at that path', (path, set) => {
+    const errors = validateCase(caseWithField(set, 'Some {{ref:a|A}} text'));
+    expect(errors).toEqual([`Field ${path}: portal markup is not allowed in this field`]);
+  });
+
+  test.each(plainCases)('several {{ in %s give one error for that path', (path, set) => {
+    const errors = validateCase(caseWithField(set, '{{ one {{ two {{{ three'));
+    expect(errors).toEqual([`Field ${path}: portal markup is not allowed in this field`]);
+  });
+});
+
+describe('validateCase - reference id format (4.12, 6.6)', () => {
+  function caseWithReferenceId(id: string): Case {
+    const c = createMarkupCase();
+    c.references.push({ id, kind: 'term', label: 'Extra', profile: ['Profile'] });
+    return c;
+  }
+
+  test.each(['Briggs', 'dei gratia', 'dei_gratia', ''])("id '%s' is not a valid reference ID", (id) => {
+    expect(validateCase(caseWithReferenceId(id))).toEqual([
+      `Field references[3].id: '${id}' is not a valid reference ID`
+    ]);
+  });
+
+  test.each(['dei-gratia', 'e-lifeboat', 'ref1'])("id '%s' gives no error", (id) => {
+    expect(validateCase(caseWithReferenceId(id))).toEqual([]);
+  });
+
+  test("id 'a{{b' gives both the invalid-id and the markup-not-allowed error", () => {
+    expect(validateCase(caseWithReferenceId('a{{b'))).toEqual([
+      "Field references[3].id: 'a{{b' is not a valid reference ID",
+      'Field references[3].id: portal markup is not allowed in this field'
+    ]);
+  });
+});
+
+describe('validateCase - stray braces (4.13, 6.7)', () => {
+  const [L, set] = markupLocations[0];
+
+  test('{{{ref:a|b}} gives one stray-brace error', () => {
+    expect(validateCase(caseWithField(set, '{{{ref:a|b}}'))).toEqual([
+      `Field ${L}: Stray brace near '{{{ref:a|b}}'`
+    ]);
+  });
+
+  test('{{ref:a|b}}} gives one stray-brace error', () => {
+    expect(validateCase(caseWithField(set, '{{ref:a|b}}}'))).toEqual([
+      `Field ${L}: Stray brace near '}'`
+    ]);
+  });
+
+  test('nested {{ref:a|b {{ref:c|d}}}} gives one malformed error and one stray-brace error for the leftover }}', () => {
+    expect(validateCase(caseWithField(set, '{{ref:a|b {{ref:c|d}}}}'))).toEqual([
+      `Field ${L}: Invalid reference markup near '{{ref:a|b {{ref:c|d}}}}'`,
+      `Field ${L}: Stray brace near '}}'`
+    ]);
+  });
+
+  test('{{{x gives two overlapping malformed errors and no stray-brace error', () => {
+    expect(validateCase(caseWithField(set, '{{{x'))).toEqual([
+      `Field ${L}: Invalid reference markup near '{{{x'`,
+      `Field ${L}: Invalid reference markup near '{{x'`
+    ]);
+  });
+
+  test('a lone } in prose gives one stray-brace error', () => {
+    expect(validateCase(caseWithField(set, 'The bell rang } twice.'))).toEqual([
+      `Field ${L}: Stray brace near '} twice.'`
+    ]);
+  });
+
+  test('a lone { and a later } in one text segment give exactly one stray-brace error', () => {
+    expect(validateCase(caseWithField(set, 'Open { then close } here'))).toEqual([
+      `Field ${L}: Stray brace near '{ then close } here'`
+    ]);
+  });
+
+  test('the stray-brace excerpt is cut to 40 code points', () => {
+    const tail = '} ' + '😀'.repeat(10) + 'z'.repeat(50);
+    const errors = validateCase(caseWithField(set, 'Prose ' + tail));
+    const expected = codePoints(tail, 40);
+    expect(Array.from(expected)).toHaveLength(40);
+    expect(errors).toEqual([`Field ${L}: Stray brace near '${expected}'`]);
+  });
+
+  test('{{ref:a|}} x } gives only the empty-label error and no stray-brace error', () => {
+    expect(validateCase(caseWithField(set, '{{ref:a|}} x }'))).toEqual([
+      `Field ${L}: Invalid reference markup - label cannot be empty`
+    ]);
+  });
+});

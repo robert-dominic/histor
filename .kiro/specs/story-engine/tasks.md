@@ -58,7 +58,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint` and the report described in the Overview
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12, 4.13, 7.1, 7.2_
 
-  - [ ] 2.2 Write validator unit tests
+  - [x] 2.2 Write validator unit tests
     - First check the fast-check and Vitest APIs for the installed versions with Context7
     - Append new `describe` blocks to `src/lib/__tests__/validate-case.test.ts`; leave existing tests untouched
     - Unknown id and Malformed_Markup reported with the right Field_Location for `story[i].body[j]`, `story[i].hook`, `evidence[i].detail[j]` and `references[i].profile[j]` (6.4)
