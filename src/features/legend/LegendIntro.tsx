@@ -230,7 +230,7 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
         <button
           type="button"
           onClick={handleSkip}
-          className="absolute top-3 right-3 min-h-11 px-3 font-stamp text-xs tracking-[0.14em] text-ghost-night/85 uppercase transition-[scale,color] duration-150 ease-out hover:text-night-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-night-ink active:scale-[0.97] sm:top-5 sm:right-5"
+          className="absolute top-3 right-3 min-h-11 px-3 font-stamp text-xs tracking-[0.14em] text-ghost-night/85 uppercase transition-[scale,color] duration-150 ease-out hover:text-night-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] sm:top-5 sm:right-5"
         >
           Skip
         </button>
@@ -272,7 +272,7 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
           ref={continueRef}
           type="button"
           onClick={onDone}
-          className="min-h-11 border border-night-ink/60 px-7 pt-3.5 pb-3 font-stamp text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,background-color,color] duration-150 ease-out hover:bg-night-ink hover:text-night focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-night-ink active:scale-[0.97]"
+          className="min-h-11 border border-night-ink/60 px-7 pt-3.5 pb-3 font-stamp text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,background-color,color] duration-150 ease-out hover:bg-night-ink hover:text-night focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]"
       >
           Continue
         </button>
