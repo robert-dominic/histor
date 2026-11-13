@@ -71,7 +71,7 @@ Rules for every task:
     - _Requirements: 4.2, 4.3, 4.4, 4.5, 4.11, 4.12, 4.13, 6.4, 6.5, 6.6, 6.7_
 
 - [ ] 3. Validator property tests
-  - [ ] 3.1 Write `src/lib/__tests__/validate-case-refs.property.test.ts`
+  - [x] 3.1 Write `src/lib/__tests__/validate-case-refs.property.test.ts`
     - First check the fast-check and Vitest APIs for the installed versions with Context7
     - Build a markup-safe valid case generator in this file (do not reuse the existing one): every string from `fc.string({ minLength: 1 }).filter(s => s.trim().length > 0 && !/[{}]/.test(s))`, reference ids from the Ref_Id generator made unique with `fc.uniqueArray`, `closeThreshold` from `fc.integer` inside `chain` (no `fc.sample`)
     - One `test` per property, each `fc.assert(..., { numRuns: 100 })` and tagged `// Feature: story-engine, Property N: ...`:
