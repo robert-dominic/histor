@@ -18,7 +18,7 @@ Rules for every task:
 
 ## Tasks
 
-- [ ] 1. Parser and serializer
+- [x] 1. Parser and serializer
   - [x] 1.1 Implement `src/lib/parse-refs.ts`
     - Export `TextSegment`, `RefSegment`, `Segment`, `isRefId`, `isRefLabel`, `parseRefs` and `serializeSegments` exactly as in the design section "`src/lib/parse-refs.ts`"
     - Use the hand-written `matchRefAt` scan from the design: `indexOf('{{', i)`, advance by one on a miss so overlapping `{{` is retried, consume and continue after `}}` on a hit, flush pending text only before a ref and at the end
@@ -41,7 +41,7 @@ Rules for every task:
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3_
 
 - [ ] 2. Validator extension
-  - [ ] 2.1 Extend `validateCase` in `src/lib/validate-case.ts` and update the existing generator
+  - [x] 2.1 Extend `validateCase` in `src/lib/validate-case.ts` and update the existing generator
     - Delete the regex-based block under `// Validate story reference markup {{ref:id|label}} (7.22, 7.23)` and replace it with the parser-based checks; leave every other existing check unchanged
     - Check A (4.12): for each `references[i]` whose id fails `isRefId`, push `Field references[<i>].id: '<id>' is not a valid reference ID`
     - Check B (4.1 to 4.7, 4.13): add `markupFields(c)` returning `{ location, text }` for `story[i].body[j]`, `story[i].hook`, `evidence[i].detail[j]`, `references[i].profile[j]`, guarded with `Array.isArray` / `typeof === 'string'`. Parse each field once and walk segments with a running offset:

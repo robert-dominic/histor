@@ -21,7 +21,7 @@ import type {
 function nonEmptyString(): fc.Arbitrary<string> {
   return fc
     .string({ minLength: 1 })
-    .filter(s => s.trim().length > 0);
+    .filter(s => s.trim().length > 0 && !/[{}]/.test(s));
 }
 
 /**

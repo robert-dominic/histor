@@ -1,5 +1,6 @@
 // src/lib/validate-case.ts
 import type { Case } from '@/types/case';
+import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
  * Validates a Case object against all structural and referential integrity constraints.
@@ -248,38 +249,160 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
-  // Validate story reference markup {{ref:id|label}} (7.22, 7.23)
-  const referenceMarkupRegex = /\{\{ref:(\S+)\|([^}]*)\}\}/g;
-  if (Array.isArray(caseData.story)) {
-    for (let sectionIndex = 0; sectionIndex < caseData.story.length; sectionIndex++) {
-      const section = caseData.story[sectionIndex];
-      if (Array.isArray(section.body)) {
-        for (let paragraphIndex = 0; paragraphIndex < section.body.length; paragraphIndex++) {
-          const paragraph = section.body[paragraphIndex];
-          let match;
-          while ((match = referenceMarkupRegex.exec(paragraph)) !== null) {
-            const refId = match[1];
-            const label = match[2];
+  // ===== Portal markup checks {{ref:id|label}} (story-engine 4.1 to 4.13) =====
 
-            // Verify format: id should not contain whitespace (already verified by \S+)
-            // Verify label is non-empty (could be whitespace)
-            if (!label || label.trim() === '') {
-              errors.push(
-                `Field story[${sectionIndex}].body[${paragraphIndex}]: Invalid reference markup - label cannot be empty`
-              );
-            }
-
-            // Verify reference ID exists
-            if (!validReferenceIds.has(refId)) {
-              errors.push(
-                `Field story[${sectionIndex}].body[${paragraphIndex}]: reference ID '${refId}' not found in references`
-              );
-            }
-          }
-        }
+  // Check A: reference id format (4.12)
+  if (Array.isArray(caseData.references)) {
+    caseData.references.forEach((ref, i) => {
+      if (!isRefId(ref.id)) {
+        errors.push(`Field references[${i}].id: '${ref.id}' is not a valid reference ID`);
       }
-    }
+    });
   }
 
+  // Check B: Markup_Fields (4.1 to 4.7, 4.13)
+  const fields = markupFields(caseData);
+  for (const field of fields) {
+    checkMarkupField(field, validReferenceIds, errors);
+  }
+
+  // Check C: '{{' in Plain_Fields (4.11)
+  const skip = new Set(fields.map(f => f.location));
+  collectPlainMarkupErrors(caseData, '', skip, new WeakSet(), errors);
+
   return errors;
+}
+
+interface MarkupField {
+  location: string;
+  text: string;
+}
+
+/** Matches Malformed_Markup of the form {{ref:<Ref_Id>|<empty or whitespace>}} (4.3). */
+const EMPTY_LABEL_MARKUP = /^\{\{ref:[a-z0-9]+(?:-[a-z0-9]+)*\|\s*\}\}/;
+const ANY_BRACE = /[{}]/;
+const EXCERPT_MAX = 40;
+
+/** First `max` code points of s. Never splits a surrogate pair. */
+function excerpt(s: string, max = EXCERPT_MAX): string {
+  let out = '';
+  let n = 0;
+  for (const cp of s) {
+    if (n++ === max) break;
+    out += cp;
+  }
+  return out;
+}
+
+/**
+ * Every Markup_Field of the case, in order: story[i].body[j], story[i].hook,
+ * evidence[i].detail[j], references[i].profile[j]. Only string values are returned.
+ */
+function markupFields(c: Case): MarkupField[] {
+  const out: MarkupField[] = [];
+
+  if (Array.isArray(c.story)) {
+    c.story.forEach((section, i) => {
+      if (Array.isArray(section?.body)) {
+        section.body.forEach((text, j) => {
+          if (typeof text === 'string') out.push({ location: `story[${i}].body[${j}]`, text });
+        });
+      }
+      if (typeof section?.hook === 'string') {
+        out.push({ location: `story[${i}].hook`, text: section.hook });
+      }
+    });
+  }
+
+  if (Array.isArray(c.evidence)) {
+    c.evidence.forEach((ev, i) => {
+      if (Array.isArray(ev?.detail)) {
+        ev.detail.forEach((text, j) => {
+          if (typeof text === 'string') out.push({ location: `evidence[${i}].detail[${j}]`, text });
+        });
+      }
+    });
+  }
+
+  if (Array.isArray(c.references)) {
+    c.references.forEach((ref, i) => {
+      if (Array.isArray(ref?.profile)) {
+        ref.profile.forEach((text, j) => {
+          if (typeof text === 'string') out.push({ location: `references[${i}].profile[${j}]`, text });
+        });
+      }
+    });
+  }
+
+  return out;
+}
+
+/** Parses one Markup_Field and reports unknown ids, Malformed_Markup and stray braces. */
+function checkMarkupField(field: MarkupField, knownIds: Set<string>, errors: string[]): void {
+  const { location, text: fieldText } = field;
+  let offset = 0;
+
+  for (const seg of parseRefs(fieldText)) {
+    if (seg.kind === 'ref') {
+      if (!knownIds.has(seg.id)) {
+        errors.push(`Field ${location}: reference ID '${seg.id}' not found in references`);
+      }
+      offset += seg.raw.length;
+      continue;
+    }
+
+    const t = seg.text;
+    let hasDoubleBrace = false;
+    for (let p = 0; p < t.length - 1; p++) {
+      if (t[p] !== '{' || t[p + 1] !== '{') continue;
+      hasDoubleBrace = true;
+      const rest = fieldText.slice(offset + p);
+      if (EMPTY_LABEL_MARKUP.test(rest)) {
+        errors.push(`Field ${location}: Invalid reference markup - label cannot be empty`);
+      } else {
+        errors.push(`Field ${location}: Invalid reference markup near '${excerpt(rest)}'`);
+      }
+    }
+
+    if (!hasDoubleBrace) {
+      const b = t.search(ANY_BRACE);
+      if (b !== -1) {
+        errors.push(`Field ${location}: Stray brace near '${excerpt(fieldText.slice(offset + b))}'`);
+      }
+    }
+
+    offset += t.length;
+  }
+}
+
+/**
+ * Walks every string in the case and reports '{{' in any Plain_Field (4.11).
+ * Markup_Field locations in `skip` are not checked here.
+ */
+function collectPlainMarkupErrors(
+  value: unknown,
+  path: string,
+  skip: Set<string>,
+  seen: WeakSet<object>,
+  errors: string[]
+): void {
+  if (typeof value === 'string') {
+    if (!skip.has(path) && value.includes('{{')) {
+      errors.push(`Field ${path}: portal markup is not allowed in this field`);
+    }
+    return;
+  }
+  if (value === null || typeof value !== 'object') return;
+  if (seen.has(value)) return;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    value.forEach((item, i) => collectPlainMarkupErrors(item, `${path}[${i}]`, skip, seen, errors));
+    return;
+  }
+
+  for (const key of Object.keys(value)) {
+    const childPath = path === '' ? key : `${path}.${key}`;
+    collectPlainMarkupErrors((value as Record<string, unknown>)[key], childPath, skip, seen, errors);
+  }
 }
