@@ -24,7 +24,7 @@ Originals are in `~/histor-media/`. Claude Code crops, compresses and copies the
 
 | Chapter | File | What it is | Credit line | Mood / grade |
 | --- | --- | --- | --- | --- |
-| 1. Ten people set sail | `s-voyage.jpg` | Edward Moran, *Off Governors Island* (New York harbour), c. 1870 | Painting by Edward Moran, c. 1870. Public domain, via Wikimedia Commons. | Daylight |
+| 1. Ten people set sail | `s-voyage.jpg` | Edward Moran, *Off Governors Island* (New York harbour), c. 1870 | Painting by Edward Moran, c. 1870. Not the Mary Celeste. Public domain, via Wikimedia Commons. | Daylight |
 | 2. Six miles from land | `s-last-entry.jpg` | Ivan Aivazovsky, *Stormy Sea at Sunset*, 1896 | Painting by Ivan Aivazovsky, 1896. Not the Mary Celeste. Public domain, via Wikimedia Commons. | Storm, dim |
 | 3. She kept sailing | `s-found.jpg` | The Mary Celeste in 1861, under her first name, *Amazon*, entering Marseilles (cropped) | The Mary Celeste as the *Amazon*, 1861. Artist unconfirmed. Public domain, via Wikimedia Commons. | Overcast, colder |
 | 4. Everything, except the people | still from `s-aboard.mp4` | AI-generated still of an empty deck | Illustration. AI-generated (Google Gemini). | Dusk |
