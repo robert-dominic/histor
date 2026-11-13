@@ -26,7 +26,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint` and the report described in the Overview
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.1, 7.1_
 
-  - [ ] 1.2 Write parser unit tests and property tests
+  - [x] 1.2 Write parser unit tests and property tests
     - First check the fast-check and Vitest APIs for the installed versions with Context7
     - Create `src/lib/__tests__/parse-refs.test.ts` with the exact expected Segment_List for every malformed form in Requirement 2 (unclosed, missing label, empty id, empty label, whitespace-only label, `{{foo:x|y}}`, `{{REF:x|y}}`, `{{ ref:x|y}}`, ids `Briggs`, `dei gratia`, `dei_gratia`, `{{ref:a|b|c}}`, nested `{{ref:a|b {{ref:c|d}}}}`, extra leading `{{{ref:a|b}}`); `''` gives `[]`; `The {{ref:dei-gratia|Dei Gratia}} found her drifting.` gives text, ref, text; refs at the start, at the end and back to back; `isRefId` and `isRefLabel` on the glossary examples and non-examples
     - Create `src/lib/__tests__/parse-refs.property.test.ts` with one `test` per property, each `fc.assert(..., { numRuns: 100 })` and tagged `// Feature: story-engine, Property N: ...`, using the generators in the design's Testing Strategy table (full Unicode, arbitrary UTF-16 code units including lone surrogates, markup fragments, Ref_Id, Ref_Label):
