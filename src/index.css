@@ -1,4 +1,20 @@
 @import "tailwindcss";
 
-/* Design tokens (colours, fonts, easing) will go here when the designed screens are built. */
-@theme {}
+/* Design tokens shared by every screen. */
+@theme {
+  /* Ash palette */
+  --color-night: #0d1317;
+  --color-ghost-night: #a8c3d3;
+  --color-night-ink: #e6e1d3;
+  --color-rust: #9e3326;
+
+  /* Fonts */
+  --font-legend: "Grenze Gotisch", "Old Standard TT", Georgia, serif;
+  --font-record: "Old Standard TT", Georgia, "Times New Roman", serif;
+  --font-stamp: "Special Elite", "Courier New", monospace;
+
+  /* Easing (motion.md). The same curves are registered for GSAP in src/lib/motion.ts. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}

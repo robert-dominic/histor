@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 // src/pages/__tests__/Case.test.tsx
 // Task 7.2: the case page handles a missing case, a sealed case and an open case.
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registry } from '@/cases';
 import { validateCase } from '@/lib/validate-case';
 import Case from '@/pages/Case';
+import { finishLegendIntro } from '@/test/legend-intro';
+import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
 
 // Keep the real validator, but let single tests replace its result.
@@ -39,10 +41,12 @@ function expectHomeLink() {
 
 beforeEach(() => {
   localStorage.clear();
+  stubMatchMedia();
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.mocked(validateCase).mockClear();
 });
@@ -82,12 +86,37 @@ describe('Case page: sealed case', () => {
 });
 
 describe('Case page: open case', () => {
-  test('shows the title of the case from the registry', () => {
+  test('shows the legend intro first, with the lines, stamp and debunk from the case data', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
-    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+    const { lines, stamp, debunk } = openEntry.data.legendIntro;
+    const intro = screen.getByRole('region', { name: 'The legend' });
+    for (const line of lines) {
+      expect(intro.textContent).toContain(line);
+    }
+    expect(intro.textContent).toContain(stamp);
+    expect(intro.textContent).toContain(debunk);
+    expect(screen.queryByRole('heading', { name: openEntry.data.title })).toBeNull();
     expect(screen.queryByText('Case not found')).toBeNull();
     expect(screen.queryByText('This case is sealed.')).toBeNull();
+  });
+
+  test('Skip alone keeps the intro on screen', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.queryByRole('heading', { name: openEntry.data.title })).toBeNull();
+  });
+
+  test('after Continue, the intro is gone and the case title is shown', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+
+    finishLegendIntro();
+
+    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
+    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
   });
 
   test('loads the saved investigation for that case', () => {
@@ -117,6 +146,7 @@ describe('Case page: open case', () => {
 
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError.mock.calls[0][1]).toEqual(errors);
+    finishLegendIntro();
     expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
   });
 });

@@ -5,6 +5,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import { registry } from '@/cases';
+import { finishLegendIntro } from '@/test/legend-intro';
+import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
 
 type OpenEntry = Extract<RegistryEntry, { sealed: false }>;
@@ -21,10 +23,12 @@ function renderAppAt(path: string) {
 
 beforeEach(() => {
   localStorage.clear();
+  stubMatchMedia();
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   window.history.pushState({}, '', '/');
 });
@@ -42,6 +46,9 @@ describe('App routing', () => {
   test('"/case/<open id>" renders the case page for that case', () => {
     renderAppAt(`/case/${openEntry.id}`);
 
+    // An open case starts with its legend intro; the case page proper follows it.
+    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    finishLegendIntro();
     expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
   });
 
@@ -64,6 +71,7 @@ describe('App routing', () => {
     fireEvent.click(screen.getByRole('link', { name: new RegExp(openEntry.title) }));
 
     expect(window.location.pathname).toBe(`/case/${openEntry.id}`);
+    finishLegendIntro();
     expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
   });
 

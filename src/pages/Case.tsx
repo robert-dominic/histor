@@ -1,17 +1,21 @@
 // src/pages/Case.tsx
-// One case, looked up from the route. Plain on purpose: this proves the routing and data wiring.
-// The designed screens come later.
+// One case, looked up from the route. An open case starts with its legend intro.
+// What follows the intro is still the plain page: the designed story comes later.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import { getCaseById } from '@/cases';
+import { getCaseMedia } from '@/cases/media';
+import LegendIntro from '@/features/legend/LegendIntro';
 import { validateCase } from '@/lib/validate-case';
 
 export default function Case() {
   const { id } = useParams();
   const entry = getCaseById(id);
   const caseData = entry !== undefined && !entry.sealed ? entry.data : undefined;
+  // The id of the case whose intro has been finished. Keyed by case, so every case starts with its own intro.
+  const [introDoneFor, setIntroDoneFor] = useState<string | null>(null);
 
   // In development, check the case content and report every problem in the console.
   useEffect(() => {
@@ -55,12 +59,22 @@ export default function Case() {
   return (
     // The key gives every case its own provider, so one case never starts with another case's investigation.
     <InvestigationProvider key={caseData.id} caseData={caseData}>
-      <main>
-        <h1>{caseData.title}</h1>
-        <p>
-          <Link to="/">Return to home</Link>
-        </p>
-      </main>
+      {introDoneFor === caseData.id ? (
+        <main>
+          <h1>{caseData.title}</h1>
+          <p>
+            <Link to="/">Return to home</Link>
+          </p>
+        </main>
+      ) : (
+        <main>
+          <LegendIntro
+            legendIntro={caseData.legendIntro}
+            video={getCaseMedia(caseData.id).legendVideo}
+            onDone={() => setIntroDoneFor(caseData.id)}
+          />
+        </main>
+      )}
     </InvestigationProvider>
   );
 }

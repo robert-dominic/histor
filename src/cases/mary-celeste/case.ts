@@ -14,11 +14,15 @@ export const maryCeleste: Case = {
   
   legendIntro: {
     lines: [
-      'TODO: real content - legend line 1',
-      'TODO: real content - legend line 2'
+      'December 1872. A ship is found drifting in the Atlantic.',
+      'Not a soul aboard.',
+      "In the captain's cabin, breakfast is laid out.",
+      'Half-eaten. The tea is still warm.',
+      'As if everyone simply vanished.',
     ],
-    stamp: 'TODO: real content - stamp text',
-    debunk: 'TODO: real content - debunk text'
+    stamp: 'Not in the record',
+    debunk:
+      'Well... that never happened. The men who boarded her found nothing to eat or drink on the table. The warm breakfast grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
   },
   
   story: [
