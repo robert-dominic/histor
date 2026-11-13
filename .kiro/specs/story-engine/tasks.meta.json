@@ -1,11 +1,86 @@
 {
-  "pbtResults": {},
+  "pbtResults": {
+    "1.2 Write parser unit tests and property tests": {
+      "status": "passed",
+      "lastRunTimestamp": 1794582556442
+    },
+    "3.1 Write `src/lib/__tests__/validate-case-refs.property.test.ts`": {
+      "status": "passed",
+      "lastRunTimestamp": 1794585371898
+    }
+  },
   "executionHistory": {
     "1.1 Implement `src/lib/parse-refs.ts`": [
       {
         "executionId": "de9ca010-6c2b-474b-ac6e-583af499bac7",
         "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
         "timestamp": 1794581895624
+      }
+    ],
+    "1.2 Write parser unit tests and property tests": [
+      {
+        "executionId": "3484e657-6562-46b3-af13-572cd3cbf3d8",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794582338555
+      },
+      {
+        "executionId": "6b8d344a-f135-43e7-b9ff-fc4ef11cb453",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794582793326
+      }
+    ],
+    "1. Parser and serializer": [
+      {
+        "executionId": "6b8d344a-f135-43e7-b9ff-fc4ef11cb453",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794582793586
+      }
+    ],
+    "2.1 Extend `validateCase` in `src/lib/validate-case.ts` and update the existing generator": [
+      {
+        "executionId": "6b8d344a-f135-43e7-b9ff-fc4ef11cb453",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794582816671
+      },
+      {
+        "executionId": "b04b4226-bdff-4d50-8457-3f2bf6c31a14",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794583685412
+      }
+    ],
+    "2.2 Write validator unit tests": [
+      {
+        "executionId": "1bae3e02-2ffa-4100-ab5c-1b93a438df3b",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794584135899
+      }
+    ],
+    "3.1 Write `src/lib/__tests__/validate-case-refs.property.test.ts`": [
+      {
+        "executionId": "be942ed3-c379-4ef8-905f-5dc5a859fd48",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794584932936
+      }
+    ],
+    "2. Validator extension": [
+      {
+        "executionId": "82b25449-d71b-4118-ba62-5dd7bcce33c0",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794585796886
+      }
+    ],
+    "3. Validator property tests": [
+      {
+        "executionId": "82b25449-d71b-4118-ba62-5dd7bcce33c0",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794585797148
+      }
+    ],
+    "4. Final checkpoint": [
+      {
+        "executionId": "82b25449-d71b-4118-ba62-5dd7bcce33c0",
+        "chatSessionId": "sess_ba850a04-f6da-4dbd-9508-e3d61a1fefff",
+        "timestamp": 1794585797272
       }
     ]
   }
