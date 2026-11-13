@@ -8,11 +8,11 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 | --- | --- | --- |
 | Spec-driven development | Used | `.kiro/specs/histor-data-foundation/` (requirements, design, tasks, tasks-meta.json) |
 | Steering docs | Used | `.kiro/steering/` (6 docs, one with conditional inclusion) |
-| Property-based testing | Used | `*.property.test.ts`, `pbtResults` in tasks-meta.json |
+| Property-based testing | Used | `*.property.test.ts`, `pbtResults` in tasks-meta.json; caught an incomplete fix with a shrunk counterexample (story-engine, 13 Nov) |
 | Agent hooks | Configured, did not fire | `.kiro/hooks/test-on-case-change.json` |
 | Kiro IDE | Used | All Kiro work done in the IDE |
-| MCP | Planned | Docs MCP for current library docs |
-| Kiro powers | To try | |
+| MCP | Used | Context7 (via its power) for current fast-check and Vitest docs |
+| Kiro powers | Used | Context7 power installed and used in the story-engine spec |
 | Custom agents | To try | Idea: a Histor content reviewer |
 
 ## Log
@@ -84,6 +84,43 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 - While fixing the lint, Claude Code's first attempt caused two type errors, which `tsc` caught. It fixed them and reported them unprompted.
 - **Data foundation complete.** Kiro produced the spec, the types-driven validator, the registry and storage. Claude Code finished the provider, the reducer, routing and cleanup. The spec was kept in step with the code throughout: storage key, criteria 5.12 and 5.13, Properties 27 and 28.
 - First deploy to Vercel: https://histor-vestigia.vercel.app/ (temporary name). Every push now redeploys automatically. Checked on the live site: a direct link to `/case/mary-celeste` and a refresh both load, and unknown URLs show Histor's own "Page not found", so the `vercel.json` fix works in production.
+
+### 13 Nov 2026: Kiro returns with Opus
+
+- Installed the Context7 power. Switched Kiro to Claude Opus 5.5 for writing specs and Sonnet 5.5 for executing them, now that hackathon credits are available.
+- **First real use of a power (MCP):** while writing the story-engine design, Kiro called the Context7 power's `resolve-library-id` tool to look up current library docs (fast-check and Vitest) instead of relying on memory. It also ran a quick check in the terminal, which showed that `fc.fullUnicodeString` and `fc.unicodeString` are `undefined` in the installed fast-check. Both are older APIs. The requirements asked for "full Unicode strings", and a model writing from memory would likely have used one of the removed functions.
+- Started the `story-engine` spec (portal markup parser + validation), written by Kiro on Opus. The requirements came back far stronger than the first spec on a cheap model. They give exact definitions of a valid ref, every malformed form spelled out with what should happen, a lossless round-trip guarantee, and error messages with field locations. Review found three gaps:
+  - A contradiction: "replace the old story-body ref check" vs "every existing test passes unchanged."
+  - Markup typed into a field that isn't parsed (e.g. a theory claim) would show raw `{{ref:…}}` to users. It's now a validation error.
+  - Reference ids that don't match the ref id format could never be linked. They're now a validation error too.
+- **story-engine design (Kiro, Opus):** a hand-written linear parser with written proofs that it never throws and never loses a character. Generators were checked against current fast-check docs via Context7 (e.g. `fc.string({ unit: 'binary' })` replaces the removed `fc.fullUnicodeString`).
+- **Kiro predicted a test failure before writing any code.** The new "no `{{` in plain fields" rule would break an *existing* property test (Property 8, "validator accepts valid cases"), because its random-text generator can produce `{{`. Kiro ran a throwaway probe of 2,000 generated cases and measured `{{` in 8.9% of them, so the test would fail on about 99.99% of runs. It raised this as an open question instead of quietly editing the test. Decision: amend requirement 4.9 and add a one-line filter so the generator's idea of a "valid case" matches the new rules.
+- Review found one more gap: a stray single brace next to a valid ref (e.g. `{{{ref:a|b}}` or `{{ref:a|b}}}`) passed validation and would show a stray `{` or `}` beside the portal. Added a "stray brace" rule.
+- **Kiro caught a side effect of our own fix.** While adding the stray-brace rule, Kiro re-measured the old generator: even with `{{` filtered out, 13.6% of its strings still contained a single `{` or `}`, which is now an error in story text. So the one-line fix we had approved would still have left the old property test failing on almost every run. Kiro widened the filter to exclude all braces, and documented the decision with worked examples showing the exact errors for each tricky input.
+- **Kiro corrected its own earlier claim, unprompted.** Before starting the new spec, Kiro (now on Opus) said its earlier statement that the hook worked was wrong. It had only run the hook's command by hand, which proves the command works but not that Kiro fires the hook on save. It also withdrew its "known limitation" explanation as unchecked. The real cause is still unknown.
+
+- story-engine execution switched to Sonnet 5.5. Kiro now runs one task at a time, commits only the task's own files after test, build and lint pass, never pushes, and stops for review.
+- Task 1.1 (Kiro, Sonnet): `parse-refs.ts`, the parser and serializer, copied from the design's algorithm. Before committing, Kiro ran a throwaway sanity check outside the repo with 11 tricky inputs (the worked examples, back-to-back refs, whitespace labels); all matched the design and all round-tripped. 200 tests still passing (the parser's own tests come in 1.2), build and lint clean.
+- Process gap caught in the same report: the "commit only this task's files" rule had left the story-engine spec documents themselves uncommitted. They were committed separately, since the spec is the main evidence of spec-driven work.
+
+- Task 1.2 (Kiro, Sonnet): 46 unit tests and 6 property tests for the parser. All passed first time, with no counterexamples. The parser was designed with written proofs, so that was expected. 252 tests across 14 files. Kiro re-checked the fast-check and Vitest APIs through Context7 before writing the tests.
+- **Test-quality catch:** Kiro noticed that with the design's generators, random inputs would almost never contain a complete valid ref, so "every ref is well formed" would pass without ever checking a ref. It added a generator that mixes whole refs into the random fragments. A property that never exercises its subject proves nothing.
+
+- Task 2.1 (Kiro, Sonnet): `validateCase` extended. The old regex check was replaced by parser-based checks: ref id format, unknown refs, malformed markup and stray braces in story text, and markup in plain fields. The old generator filter was widened as designed. All 252 tests pass with no existing assertion changed, exactly as the design's compatibility table predicted. Kiro's report also listed which new behaviour is *not yet* tested (covered in 2.2 and 3.1).
+
+- **⭐ Property-based testing caught an incomplete fix (verified with real output).** To verify the design's prediction, Kiro temporarily reverted the existing "Validator accepts valid cases" property test's generator and ran it twice, without committing anything:
+  - **Original filter:** failed after 1 test (seed -69950100, shrunk 182 times).
+  - **The `{{`-only filter we had first approved:** also failed after 1 test (seed -317016507, shrunk 160 times). fast-check shrank the random case down to a minimal counterexample: an evidence detail of just `"{ "`, which the new rule reports as `Field evidence[0].detail[0]: Stray brace near '{ '`.
+
+  So the one-line fix we approved during design review would have shipped a test suite that fails almost every run. The property test proved it in one try and handed us the smallest failing input. The committed filter (no braces at all) was restored and all 252 tests pass. Kiro also noted, honestly, that shrinking always prefers the smaller failure (a single `{`), so run 1 didn't show the `{{` route the design described.
+- Kiro flagged that `tasks.md` was being rewritten outside its control (task ticks reverting after commits), probably by a stale copy open in the editor. Kiro re-ticked through its task tool and reported it rather than ignoring it.
+
+- Task 2.2 (Kiro, Sonnet): 53 validator unit tests, each asserting the complete error list rather than just "contains". They cover every field kind, emoji at the 40-character cut point (no broken characters), and all four stray-brace examples. All passed first time. 305 tests.
+
+- Task 3.1 (Kiro, Sonnet): 5 validator property tests with their own random "valid case" generator, built so every generated case passes all existing checks. Stricter than the design: three properties assert the complete error list. All passed first time. 310 tests across 15 files.
+
+- Task 4 checkpoint (Kiro, Sonnet): test, build and lint all clean, and the fixed files (`case.ts`, `src/cases/`) untouched. Kiro produced a full coverage table mapping every acceptance criterion to the tests that prove it, and flagged the one criterion with no direct test (4.8, "validator is pure"; it rests on code review).
+- **story-engine complete:** a Kiro-written spec (Opus), executed by Kiro (Sonnet) in 6 tasks and 7 commits, with 110 new tests (310 total) and one real property-test catch. Time from first prompt to done: about 2 hours.
 
 ## Lessons so far
 
