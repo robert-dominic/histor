@@ -1,0 +1,11 @@
+## mary-celeste-engraving
+- Page: https://commons.wikimedia.org/wiki/File:Mary_Celeste_engraving.jpg
+- Shows: Engraving of the Mary Celeste.
+- Made by: Original uploader was RedCoat10 at en.wikipedia
+- Date: between 1870 and 1890
+- Licence: Public domain
+- Type: Illustration (engraving)
+- Credit line: Engraving of the Mary Celeste, artist and date unknown. Public domain, via Wikimedia Commons.
+- Alt text: Engraving of a two-masted ship under sail on a rough sea
+- Use for: (leave blank, I'll fill this in)
+- Doubts: Commons says "Created: 1850", but the ship was built in 1861, so that date is wrong. Scanned from a 2004 book; original source unknown.
