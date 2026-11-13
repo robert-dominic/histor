@@ -40,7 +40,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint` and the report described in the Overview
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3_
 
-- [ ] 2. Validator extension
+- [x] 2. Validator extension
   - [x] 2.1 Extend `validateCase` in `src/lib/validate-case.ts` and update the existing generator
     - Delete the regex-based block under `// Validate story reference markup {{ref:id|label}} (7.22, 7.23)` and replace it with the parser-based checks; leave every other existing check unchanged
     - Check A (4.12): for each `references[i]` whose id fails `isRefId`, push `Field references[<i>].id: '<id>' is not a valid reference ID`
@@ -70,7 +70,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint` and the report described in the Overview
     - _Requirements: 4.2, 4.3, 4.4, 4.5, 4.11, 4.12, 4.13, 6.4, 6.5, 6.6, 6.7_
 
-- [ ] 3. Validator property tests
+- [x] 3. Validator property tests
   - [x] 3.1 Write `src/lib/__tests__/validate-case-refs.property.test.ts`
     - First check the fast-check and Vitest APIs for the installed versions with Context7
     - Build a markup-safe valid case generator in this file (do not reuse the existing one): every string from `fc.string({ minLength: 1 }).filter(s => s.trim().length > 0 && !/[{}]/.test(s))`, reference ids from the Ref_Id generator made unique with `fc.uniqueArray`, `closeThreshold` from `fc.integer` inside `chain` (no `fc.sample`)
@@ -84,7 +84,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint` and the report described in the Overview
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.11, 4.13, 5.1, 5.8, 5.9, 5.10, 5.11_
 
-- [ ] 4. Final checkpoint
+- [x] 4. Final checkpoint
   - Run `npm test`, `npm run build` and `npm run lint` and fix any remaining errors
   - Run `git diff --stat -- src/types/case.ts src/cases/` and confirm it shows no changes (Requirement 7.2)
   - Write the final report in the format described in the Overview, collecting every changed existing assertion and generator from tasks 1 to 3 (Requirement 4.9)
