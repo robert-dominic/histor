@@ -143,6 +143,8 @@ export interface CaseTheme {
   ambientAudio?: string;
   /** Named sound effects for this case. */
   sounds?: Partial<Record<'stamp' | 'open' | 'pin' | 'portal' | 'close', string>>;
+  /** Illustration video behind the legend intro, with a still frame shown while it loads and under reduced motion. */
+  legendVideo?: { src: string; poster: string };
 }
 
 // ---------- Case ----------

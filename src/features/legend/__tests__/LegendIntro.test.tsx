@@ -14,7 +14,7 @@ const legendIntro: LegendIntroData = {
   debunk: 'Well... no. This is the second sentence. And a third.',
 };
 
-const video = { src: '/test-video.mp4', poster: '/test-poster.jpg' };
+const video = { src: '/test-video.mp4', poster: '/test-poster.webp' };
 
 function renderIntro(props: Partial<Parameters<typeof LegendIntro>[0]> = {}) {
   const onDone = vi.fn();
@@ -160,6 +160,57 @@ describe('LegendIntro: the sequence', () => {
   });
 });
 
+describe('LegendIntro: onEnded', () => {
+  test('is called once when Skip reaches the end state, and not again by Continue', () => {
+    const onEnded = vi.fn();
+    renderIntro({ onEnded });
+    expect(onEnded).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onEnded).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LegendIntro: a returning visitor (startAtEnd)', () => {
+  test('opens at the end state: every line, the stamp, the debunk and Continue are shown at once', () => {
+    const { container } = renderIntro({ startAtEnd: true });
+
+    for (const line of lineElements(container)) {
+      expect(opacityOf(line)).toBe('1');
+    }
+    expect(opacityOf(container.querySelector('[data-legend="myth"]'))).toBe('0.4');
+    expect(opacityOf(container.querySelector('[data-legend="stamp"]'))).toBe('1');
+    expect(opacityOf(container.querySelector('[data-legend="voice"]'))).toBe('1');
+    expect(opacityOf(container.querySelector('[data-legend="rest"]'))).toBe('1');
+    expect((container.querySelector('[data-legend="continue"]') as HTMLElement).style.visibility).not.toBe('hidden');
+  });
+
+  test('has no Skip, and Continue has the focus', () => {
+    renderIntro({ startAtEnd: true });
+
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue' }));
+  });
+
+  test('does not call onEnded again, and Continue still calls onDone', () => {
+    const onEnded = vi.fn();
+    const { onDone } = renderIntro({ startAtEnd: true, onEnded });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onEnded).not.toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  test('a first-time visitor does not get focus moved to Continue', () => {
+    renderIntro();
+
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
 describe('LegendIntro: video', () => {
   test('plays the video muted, looping and inline, with the poster, hidden from screen readers', () => {
     const { container } = renderIntro({ video });
@@ -199,14 +250,6 @@ describe('LegendIntro: reduced motion', () => {
     expect(container.querySelector('video')).toBeNull();
     expect(container.querySelector('img')?.getAttribute('src')).toBe(video.poster);
     expect(screen.getByText('Illustration')).toBeDefined();
-  });
-
-  test('shows no video and no label when there is no poster to show', () => {
-    const { container } = renderIntro({ video: { src: video.src } });
-
-    expect(container.querySelector('video')).toBeNull();
-    expect(container.querySelector('img')).toBeNull();
-    expect(screen.queryByText('Illustration')).toBeNull();
   });
 
   test('fades only: nothing is moved, scaled or blurred', () => {

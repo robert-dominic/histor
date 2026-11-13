@@ -2,12 +2,12 @@
 // One case, looked up from the route. An open case starts with its legend intro.
 // What follows the intro is still the plain page: the designed story comes later.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import { getCaseById } from '@/cases';
-import { getCaseMedia } from '@/cases/media';
 import LegendIntro from '@/features/legend/LegendIntro';
+import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
 import { validateCase } from '@/lib/validate-case';
 
 export default function Case() {
@@ -16,6 +16,9 @@ export default function Case() {
   const caseData = entry !== undefined && !entry.sealed ? entry.data : undefined;
   // The id of the case whose intro has been finished. Keyed by case, so every case starts with its own intro.
   const [introDoneFor, setIntroDoneFor] = useState<string | null>(null);
+  // Read once per case, when the page opens. A first-time visitor gets the full intro even after it is marked seen.
+  const caseId = caseData?.id;
+  const introSeenBefore = useMemo(() => (caseId === undefined ? false : hasSeenIntro(caseId)), [caseId]);
 
   // In development, check the case content and report every problem in the console.
   useEffect(() => {
@@ -69,8 +72,11 @@ export default function Case() {
       ) : (
         <main>
           <LegendIntro
+            key={caseData.id}
             legendIntro={caseData.legendIntro}
-            video={getCaseMedia(caseData.id).legendVideo}
+            video={caseData.theme.legendVideo}
+            startAtEnd={introSeenBefore}
+            onEnded={() => markIntroSeen(caseData.id)}
             onDone={() => setIntroDoneFor(caseData.id)}
           />
         </main>

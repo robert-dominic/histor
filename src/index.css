@@ -7,6 +7,8 @@
   --color-ghost-night: #a8c3d3;
   --color-night-ink: #e6e1d3;
   --color-rust: #9e3326;
+  /* Rust for dark backgrounds: about 4.6:1 on night. */
+  --color-rust-night: #d0574a;
 
   /* Fonts */
   --font-legend: "Grenze Gotisch", "Old Standard TT", Georgia, serif;

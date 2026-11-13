@@ -110,6 +110,39 @@ describe('Case page: open case', () => {
     expect(screen.queryByRole('heading', { name: openEntry.data.title })).toBeNull();
   });
 
+  test('remembers that the intro was seen once its end state is reached', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+    expect(localStorage.getItem(`histor:intro-seen:${openEntry.id}`)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    expect(localStorage.getItem(`histor:intro-seen:${openEntry.id}`)).toBe('1');
+  });
+
+  test('on a later visit the intro opens at its end state, with Continue focused and no Skip', () => {
+    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+
+    renderCasePage(`/case/${openEntry.id}`);
+
+    const intro = screen.getByRole('region', { name: 'The legend' });
+    expect(intro.getAttribute('data-ended')).toBe('true');
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+  });
+
+  test('the intro still plays when localStorage cannot be read', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError');
+    });
+
+    renderCasePage(`/case/${openEntry.id}`);
+
+    expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
+  });
+
   test('after Continue, the intro is gone and the case title is shown', () => {
     renderCasePage(`/case/${openEntry.id}`);
 

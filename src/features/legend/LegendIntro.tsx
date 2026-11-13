@@ -2,13 +2,12 @@
 // The legend intro: the famous myth told line by line, then stamped as not in the record.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import type { LegendVideo } from '@/cases/media';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
-import type { LegendIntro as LegendIntroData } from '@/types/case';
+import type { CaseTheme, LegendIntro as LegendIntroData } from '@/types/case';
 
 gsap.registerPlugin(useGSAP);
 
@@ -28,7 +27,7 @@ function splitFirstSentence(text: string): { first: string; rest: string } {
 const TIMING = {
   full: {
     start: 0.5,
-    lineGap: 1.2,
+    lineGap: 1.0,
     lineDuration: 0.9,
     pauseBeforeStamp: 0.9,
     stampDuration: 0.18,
@@ -61,26 +60,48 @@ interface LegendIntroProps {
   /** The myth, the stamp text and the debunk, from the case data. */
   legendIntro: LegendIntroData;
   /** Optional illustration video behind the text. */
-  video?: LegendVideo;
+  video?: CaseTheme['legendVideo'];
+  /** True for a visitor who has seen this intro before: open at the end state, with no animation. */
+  startAtEnd?: boolean;
+  /** Called once when the end state is first reached, by playing through or by Skip. */
+  onEnded?: () => void;
   /** Called when the visitor presses Continue. */
   onDone: () => void;
 }
 
-export default function LegendIntro({ legendIntro, video, onDone }: LegendIntroProps) {
+export default function LegendIntro({ legendIntro, video, startAtEnd = false, onEnded, onDone }: LegendIntroProps) {
   const rootRef = useRef<HTMLElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
-  const endedRef = useRef(false);
+  // Only the value at mount counts: an intro that has started keeps playing.
+  const [startedAtEnd] = useState(startAtEnd);
+  const endedRef = useRef(startedAtEnd);
+  const onEndedRef = useRef(onEnded);
   // True once every beat has played, or the visitor skipped to the end.
-  const [ended, setEnded] = useState(false);
+  const [ended, setEnded] = useState(startedAtEnd);
   const reducedMotion = useReducedMotion();
 
   const { first: voiceLine, rest: debunkRest } = splitFirstSentence(legendIntro.debunk);
 
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
+
   const markEnded = useCallback(() => {
+    if (endedRef.current) {
+      return;
+    }
     endedRef.current = true;
     setEnded(true);
+    onEndedRef.current?.();
   }, []);
+
+  // A returning visitor lands on the end state, so Continue is the one thing left to do.
+  useEffect(() => {
+    if (startedAtEnd) {
+      continueRef.current?.focus({ preventScroll: true });
+    }
+  }, [startedAtEnd]);
 
   useGSAP(
     () => {
@@ -150,7 +171,7 @@ export default function LegendIntro({ legendIntro, video, onDone }: LegendIntroP
           `>+=${t.pauseBeforeContinue}`
         );
 
-        // If the motion setting changes after the intro has ended, stay at the end.
+        // Already ended (a returning visitor, or the motion setting changed afterwards): show the end state at once.
         if (endedRef.current) {
           timeline.progress(1);
         }
@@ -173,7 +194,7 @@ export default function LegendIntro({ legendIntro, video, onDone }: LegendIntroP
   };
 
   const showVideo = video !== undefined && !reducedMotion;
-  const showPoster = video?.poster !== undefined && reducedMotion;
+  const showPoster = video !== undefined && reducedMotion;
 
   return (
     <section
@@ -231,7 +252,7 @@ export default function LegendIntro({ legendIntro, video, onDone }: LegendIntroP
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <p
             data-legend="stamp"
-            className="max-w-[92%] -rotate-6 rounded-[0.14em] border-[0.16em] border-rust bg-night/80 px-[0.55em] pt-[0.34em] pb-[0.22em] font-stamp text-[clamp(1.35rem,0.9rem+2.6vw,3.25rem)] leading-none tracking-[0.08em] text-rust uppercase"
+            className="max-w-[92%] -rotate-6 rounded-[0.14em] border-[0.16em] border-rust-night bg-night/80 px-[0.55em] pt-[0.34em] pb-[0.22em] font-stamp text-[clamp(1.35rem,0.9rem+2.6vw,3.25rem)] leading-none tracking-[0.08em] text-rust-night uppercase"
           >
             <strong className="font-normal">{legendIntro.stamp}</strong>
           </p>

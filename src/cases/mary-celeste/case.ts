@@ -1,5 +1,7 @@
 // src/cases/mary-celeste/case.ts
 import type { Case } from '@/types/case';
+import legendVideoPoster from './assets/video/legend-night-poster.webp';
+import legendVideoSrc from './assets/video/legend-night.mp4';
 
 /**
  * Minimal valid Case object for Mary Celeste.
@@ -98,7 +100,8 @@ export const maryCeleste: Case = {
   theme: {
     id: 'mary-celeste-theme',
     ambientAudio: undefined,
-    sounds: undefined
+    sounds: undefined,
+    legendVideo: { src: legendVideoSrc, poster: legendVideoPoster }
   }
 };
 
