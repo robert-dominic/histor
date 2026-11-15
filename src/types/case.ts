@@ -125,6 +125,8 @@ export interface StorySection {
   body: string[];
   /** Optional closing line that pulls the reader into the next section. */
   hook?: string;
+  /** The chapter's image, shown beside the text with its credit. */
+  image?: ImageAsset;
 }
 
 export interface Fork {
@@ -156,6 +158,10 @@ export interface Case {
   id: string;
   title: string;
   year: number;
+  /** Last year of the case when it spans more than one, e.g. 1873 for "1872 – 1873". Never before `year`. */
+  yearEnd?: number;
+  /** True for a case with no accepted answer. Shows the UNSOLVED stamp. */
+  unsolved?: boolean;
   /** One line for the home page. */
   teaser: string;
   legendIntro: LegendIntro;

@@ -66,6 +66,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 10. THE Type_System SHALL define Case interface with id field of type string, title field of type string, year field of type number, teaser field of type string, legendIntro field of type LegendIntro, story field of type StorySection array, theories field of type Theory array, evidence field of type Evidence array, sources field of type Source array, references field of type Reference array, and theme field of type CaseTheme
 11. THE Type_System SHALL enforce type constraints through TypeScript compile-time type checking such that invalid case data produces TypeScript compiler errors
 12. THE Type_System SHALL define NonEmptyArray<T> as a tuple type requiring minimum one element of type T
+13. THE Type_System SHALL define StorySection with image field of type optional ImageAsset, and Case with yearEnd field of type optional number and unsolved field of type optional boolean
 
 ### Requirement 4: Case Registry
 
@@ -149,6 +150,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 25. IF validation encounters any constraint violation, THEN THE Validator SHALL add a descriptive error message to the results array including the field path and constraint violated
 26. IF validation completes with no constraint violations, THEN THE Validator SHALL return an empty array
 27. THE Validator SHALL return an array of strings where each string describes one validation error
+28. WHEN a story section has an image, THE Validator SHALL verify its src, alt and credit are non-empty strings; WHEN case.yearEnd is present, THE Validator SHALL verify it is an integer not before case.year
 
 ### Requirement 8: Source Validation
 

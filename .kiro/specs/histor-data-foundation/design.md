@@ -113,6 +113,7 @@ export function validateCase(caseData: Case): string[];
 - Legend evidence: status='legend' requires non-empty `origin` field
 - Disputed evidence: status='disputed' requires non-empty `dispute.claim` and `dispute.challenge` fields
 - Legend video: when `theme.legendVideo` is present, its `src`, `poster` and `credit` must be non-empty strings
+- New optional fields: `StorySection.image` (when present, `src`, `alt` and `credit` must be non-empty strings), `Case.yearEnd` (when present, an integer with `yearEnd >= year`) and `Case.unsolved` (boolean, shows the UNSOLVED stamp)
 
 **Implementation notes:**
 - Pure function with no side effects

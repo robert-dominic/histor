@@ -35,6 +35,13 @@ export function validateCase(caseData: Case): string[] {
     errors.push('Field year: Must be a positive integer');
   }
 
+  // Validate the optional yearEnd: an integer that is not before year
+  if (caseData.yearEnd !== undefined && caseData.yearEnd !== null) {
+    if (!Number.isInteger(caseData.yearEnd) || caseData.yearEnd < caseData.year) {
+      errors.push('Field yearEnd: Must be an integer not before year');
+    }
+  }
+
   // Validate non-empty arrays
   if (!Array.isArray(caseData.theories) || caseData.theories.length === 0) {
     errors.push('Field theories: Must contain at least one theory');
@@ -269,6 +276,22 @@ export function validateCase(caseData: Case): string[] {
         errors.push(`Field theme.legendVideo.${field}: Must be a non-empty string`);
       }
     }
+  }
+
+  // Validate the optional chapter image: when present, src, alt and credit must be non-empty
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const image: { src?: unknown; alt?: unknown; credit?: unknown } | undefined | null = section?.image;
+      if (image === undefined || image === null) {
+        return;
+      }
+      for (const field of ['src', 'alt', 'credit'] as const) {
+        const value = image[field];
+        if (typeof value !== 'string' || value.trim() === '') {
+          errors.push(`Field story[${i}].image.${field}: Must be a non-empty string`);
+        }
+      }
+    });
   }
 
   // Check B: Markup_Fields (4.1 to 4.7, 4.13)
