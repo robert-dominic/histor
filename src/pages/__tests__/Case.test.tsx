@@ -19,6 +19,10 @@ vi.mock('@/lib/validate-case', async importOriginal => {
   return { ...original, validateCase: vi.fn(original.validateCase) };
 });
 
+// These tests render the whole case page, intro and story, and several take 4 to 5 seconds under load.
+// A longer timeout for this file only; what they assert is unchanged.
+vi.setConfig({ testTimeout: 15_000 });
+
 type OpenEntry = Extract<RegistryEntry, { sealed: false }>;
 type SealedEntry = Extract<RegistryEntry, { sealed: true }>;
 

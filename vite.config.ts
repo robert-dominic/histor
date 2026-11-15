@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -11,5 +12,9 @@ export default defineConfig({
       // "@/..." means "src/...". Keep in step with "paths" in tsconfig.app.json.
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  test: {
+    // At most two test files at once, so the full suite uses less memory.
+    maxWorkers: 2,
   },
 })
