@@ -5,6 +5,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, test } from 'vitest';
 import { registry } from '@/cases';
+import { formatCaseYears } from '@/lib/case-years';
 import Home from '@/pages/Home';
 
 function renderHome() {
@@ -35,6 +36,16 @@ describe('Home', () => {
       expect(text).toContain(entry.title);
       expect(text).toContain(String(entry.year));
       expect(text).toContain(entry.teaser);
+    });
+  });
+
+  test('shows the years of an open case as on its title card, e.g. "1872 – 1873"', () => {
+    renderHome();
+
+    const items = screen.getAllByRole('listitem');
+    registry.forEach((entry, index) => {
+      const years = formatCaseYears(entry.year, entry.sealed ? undefined : entry.data.yearEnd);
+      expect(items[index].textContent).toContain(`(${years})`);
     });
   });
 

@@ -3,8 +3,8 @@
 
 import { fireEvent, screen } from '@testing-library/react';
 
-/** Presses Skip, then Continue. */
+/** Presses Skip, which shows the end of the intro and the story below it, then the scroll cue. */
 export function finishLegendIntro(): void {
   fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.click(screen.getByRole('button', { name: 'See what really happened' }));
 }

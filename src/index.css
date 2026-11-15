@@ -32,6 +32,19 @@
   /* The typewriter caret: on, off, with no fade. Constant motion, so keyframes are fine here. */
   --animate-caret: caret-blink 1s steps(1, end) infinite;
 
+  /* The scroll cue's arrow: a slow nod downwards. Constant motion, so keyframes are fine here. */
+  --animate-cue: cue-nod 1.8s var(--ease-in-out) infinite;
+
+  @keyframes cue-nod {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(4px);
+    }
+  }
+
   @keyframes caret-blink {
     0%,
     100% {

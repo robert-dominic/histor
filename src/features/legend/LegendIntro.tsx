@@ -1,5 +1,6 @@
 // src/features/legend/LegendIntro.tsx
-// The legend intro: a quill writes the famous myth, a stamp lands on it, and a typewriter answers.
+// The legend intro: a title card, then a quill writes the famous myth, a stamp lands on it, and a typewriter
+// answers. It ends on a scroll cue that leads into the story.
 // The quill is the legend's voice; the typewriter is the app's voice.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 
@@ -7,7 +8,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
+import Quill from '@/components/Quill';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import type { CaseTheme, LegendIntro as LegendIntroData } from '@/types/case';
 
@@ -16,10 +19,6 @@ gsap.registerPlugin(useGSAP, SplitText);
 /** Timings in seconds for the full version. */
 const FULL = {
   start: 0.5,
-  /** Letters the quill writes per second. */
-  quillRate: 16,
-  /** How long one letter takes to soak in. */
-  inkDuration: 0.28,
   pauseBetweenLines: 0.6,
   /** Time to finish reading the last line before the stamp. */
   holdBeforeStamp: 1.5,
@@ -48,23 +47,59 @@ const REDUCED = {
 /** How far the myth dims once the stamp has landed on it. At 50% the lines still reach 3:1 on night. */
 const DIMMED_OPACITY = 0.5;
 
-/** One back-and-forth of the quill's tilt while it writes, in seconds. */
-const QUILL_SWAY = 0.16;
+/** The title card, the first beat: about three seconds, then it gives way to the myth. Seconds. */
+const TITLE = {
+  start: 0.4,
+  pauseBeforeYears: 0.15,
+  yearsDuration: 0.4,
+  pauseBeforeStamp: 0.35,
+  stampDuration: 0.18,
+  /** When the card starts to leave, counted from the start of the intro. */
+  leaveAt: 3,
+  leaveDuration: 0.4,
+} as const;
+
+const TITLE_REDUCED = {
+  start: 0.2,
+  titleDuration: 0.5,
+  yearsAt: 0.7,
+  stampAt: 1.2,
+  leaveAt: 2.8,
+  leaveDuration: 0.4,
+} as const;
+
+/** What the title card shows. The page builds it from the case data. */
+export interface TitleCard {
+  title: string;
+  /** e.g. "1872 – 1873". */
+  years: string;
+  /** Shows the UNSOLVED stamp. */
+  unsolved: boolean;
+}
 
 interface LegendIntroProps {
   /** The myth, the stamp text and the debunk, from the case data. */
   legendIntro: LegendIntroData;
+  /** Optional first beat: the case title, its years and the UNSOLVED stamp. Skip covers it too. */
+  titleCard?: TitleCard;
   /** Optional illustration video behind the text. */
   video?: CaseTheme['legendVideo'];
   /** True for a visitor who has seen this intro before: open at the end state, with no animation. */
   startAtEnd?: boolean;
   /** Called once when the end state is first reached, by playing through or by Skip. */
   onEnded?: () => void;
-  /** Called when the visitor presses Continue. */
+  /** Called when the visitor presses the scroll cue at the end. */
   onDone: () => void;
 }
 
-export default function LegendIntro({ legendIntro, video, startAtEnd = false, onEnded, onDone }: LegendIntroProps) {
+export default function LegendIntro({
+  legendIntro,
+  titleCard,
+  video,
+  startAtEnd = false,
+  onEnded,
+  onDone,
+}: LegendIntroProps) {
   const rootRef = useRef<HTMLElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
@@ -89,7 +124,7 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
     onEndedRef.current?.();
   }, []);
 
-  // A returning visitor lands on the end state, so Continue is the one thing left to do.
+  // A returning visitor lands on the end state, so the scroll cue is the one thing left to do.
   useEffect(() => {
     if (startedAtEnd) {
       continueRef.current?.focus({ preventScroll: true });
@@ -116,18 +151,33 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
         const stamp = select('stamp');
         const debunk = select('debunk');
         const next = select('continue');
+        const card = select('title-card');
+        const title = select('title');
+        const years = select('years');
+        const unsolved = select('unsolved');
+        const hasTitleCard = card.length > 0;
 
         const timeline = gsap.timeline({ defaults: { ease: EASE.out }, onComplete: markEnded });
         const splits: SplitText[] = [];
 
         if (reduced) {
+          // 0. The title card: the title, the years and the stamp fade in, then the card fades away.
+          let mythStart: number = REDUCED.start;
+          if (hasTitleCard) {
+            timeline.fromTo(title, { opacity: 0 }, { opacity: 1, duration: TITLE_REDUCED.titleDuration }, TITLE_REDUCED.start);
+            timeline.fromTo(years, { opacity: 0 }, { opacity: 1, duration: 0.4 }, TITLE_REDUCED.yearsAt);
+            timeline.fromTo(unsolved, { opacity: 0 }, { opacity: 1, duration: 0.2 }, TITLE_REDUCED.stampAt);
+            timeline.to(card, { opacity: 0, duration: TITLE_REDUCED.leaveDuration }, TITLE_REDUCED.leaveAt);
+            mythStart = TITLE_REDUCED.leaveAt + TITLE_REDUCED.leaveDuration + REDUCED.start;
+          }
+
           // Whole lines fade in, one after another.
           lines.forEach((line, index) => {
             timeline.fromTo(
               line,
               { opacity: 0 },
               { opacity: 1, duration: REDUCED.lineDuration },
-              REDUCED.start + index * REDUCED.lineGap
+              mythStart + index * REDUCED.lineGap
             );
           });
 
@@ -149,69 +199,40 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
             `>+=${REDUCED.pauseBeforeContinue}`
           );
         } else {
-          const stage = select('stage')[0];
-          const quill = select('quill')[0];
-          const quillBody = select('quill-body')[0];
           const caret = select('caret')[0];
+          const quill = createQuillWriter(select('quill')[0], select('quill-body')[0]);
 
-          // The quill follows the last written letter. quickTo smooths the hop from one letter to the next.
-          const quillX = gsap.quickTo(quill, 'x', { duration: 0.09, ease: 'power2.out' });
-          const quillY = gsap.quickTo(quill, 'y', { duration: 0.09, ease: 'power2.out' });
-          const moveQuill = (letter: HTMLElement, jump: boolean) => {
-            const box = letter.getBoundingClientRect();
-            const origin = stage.getBoundingClientRect();
-            const x = box.right - origin.left;
-            const y = box.bottom - origin.top - box.height * 0.18;
-            // The first letter of a line is a jump, not a glide across the page.
-            quillX(x, jump ? x : undefined);
-            quillY(y, jump ? y : undefined);
-          };
-
-          // 1. The myth, written letter by letter. Each letter soaks in like ink.
+          // 0. The title card: the quill writes the title, the years follow, the stamp lands,
+          // and the card gives way to the myth.
           let cursor: number = FULL.start;
-          lines.forEach(line => {
-            const split = SplitText.create(line, { type: 'words,chars', aria: 'none' });
-            splits.push(split);
-            const letters = split.chars as HTMLElement[];
-            const lineStart = cursor;
-            const lineDuration = letters.length / FULL.quillRate;
-            // Hide every letter in one pass. The blur is only applied while a letter is being written.
-            gsap.set(letters, { opacity: 0 });
-
-            letters.forEach((letter, index) => {
-              const at = lineStart + index / FULL.quillRate;
-              timeline.call(moveQuill, [letter, index === 0], at);
-              timeline.fromTo(
-                letter,
-                { opacity: 0, filter: 'blur(1px)' },
-                {
-                  opacity: 1,
-                  filter: 'blur(0px)',
-                  duration: FULL.inkDuration,
-                  ease: 'none',
-                  clearProps: 'filter',
-                  immediateRender: false,
-                },
-                at
-              );
+          if (hasTitleCard) {
+            let at: number = TITLE.start;
+            title.forEach(block => {
+              const split = splitForQuill(block);
+              splits.push(split);
+              at += quill.write(timeline, split.chars as HTMLElement[], at);
             });
-
-            // The quill comes down, tilts a little as it writes, and lifts away at the end of the line.
-            const sways = Math.max(1, Math.floor(lineDuration / QUILL_SWAY));
-            timeline.fromTo(quillBody, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.2 }, lineStart);
+            at += TITLE.pauseBeforeYears;
+            timeline.fromTo(years, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: TITLE.yearsDuration }, at);
+            at += TITLE.yearsDuration + TITLE.pauseBeforeStamp;
             timeline.fromTo(
-              quillBody,
-              { rotation: -3 },
-              { rotation: 5, duration: QUILL_SWAY, ease: 'sine.inOut', repeat: sways - 1, yoyo: true },
-              lineStart
+              unsolved,
+              { opacity: 0, scale: 1.15 },
+              { opacity: 1, scale: 1, duration: TITLE.stampDuration },
+              at
             );
-            timeline.to(
-              quillBody,
-              { opacity: 0, y: -18, rotation: -12, duration: 0.3 },
-              lineStart + Math.max(lineDuration, sways * QUILL_SWAY) + 0.05
-            );
+            // A long title is still given time to be read before the card leaves.
+            const leaveAt = Math.max(TITLE.leaveAt, at + TITLE.stampDuration + 0.8);
+            timeline.to(card, { opacity: 0, duration: TITLE.leaveDuration }, leaveAt);
+            cursor = leaveAt + TITLE.leaveDuration + FULL.start;
+          }
 
-            cursor = lineStart + lineDuration + FULL.pauseBetweenLines;
+          // 1. The myth, written letter by letter.
+          lines.forEach(line => {
+            const split = splitForQuill(line);
+            splits.push(split);
+            const lineDuration = quill.write(timeline, split.chars as HTMLElement[], cursor);
+            cursor += lineDuration + FULL.pauseBetweenLines;
           });
 
           // 2. The stamp lands, fast, and the myth dims behind it.
@@ -255,7 +276,7 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
             timeline.set(caret, { opacity: 0 }, typeEnd + FULL.caretLinger);
           });
 
-          // 4. Continue. Hidden with visibility as well as opacity, so it cannot be focused before it is shown.
+          // 4. The scroll cue. Hidden with visibility as well as opacity, so it cannot be focused before it is shown.
           timeline.fromTo(
             next,
             { autoAlpha: 0, y: 8 },
@@ -277,7 +298,7 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
         };
       });
     },
-    { scope: rootRef, dependencies: [legendIntro, markEnded] }
+    { scope: rootRef, dependencies: [legendIntro, titleCard?.title, titleCard?.years, titleCard?.unsolved, markEnded] }
   );
 
   /** Skip: jump straight to the end state, so everything can still be read. */
@@ -285,7 +306,7 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
     // Suppress callbacks: the quill and the caret must not be moved by letters that were skipped.
     timelineRef.current?.progress(1, true);
     markEnded();
-    // Skip is about to leave the screen. Hand its focus to Continue.
+    // Skip is about to leave the screen. Hand its focus to the scroll cue.
     continueRef.current?.focus({ preventScroll: true });
   };
 
@@ -347,29 +368,37 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
           ))}
         </div>
 
-        {/* The quill. This zero-sized point is moved to the letter being written; the nib sits exactly on it. */}
-        <div data-legend="quill" aria-hidden="true" className="pointer-events-none absolute top-0 left-0 h-0 w-0">
-          <svg
-            data-legend="quill-body"
-            viewBox="0 0 48 48"
-            fill="none"
-            className="absolute bottom-0 left-0 h-[clamp(2.75rem,5.5vw,4.25rem)] w-auto origin-bottom-left text-night-ink opacity-0"
+        {/* The quill. Its point is moved to the letter being written. */}
+        <Quill attribute="data-legend" />
+
+        {/* The title card: the first beat. It lies over the empty page, then fades away before the myth is written. */}
+        {titleCard !== undefined && (
+          <div
+            data-legend="title-card"
+            className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4 ${ended ? 'opacity-0' : ''}`}
           >
-            {/* Vane */}
-            <path
-              d="M45 2C33 4 22 11 16 22c-2 4-3 8-3 11l4-3c-1 3-1 5 0 7 9-3 17-10 22-19 3-5 5-11 6-16Z"
-              fill="currentColor"
-              fillOpacity="0.9"
-            />
-            {/* Splits in the vane */}
-            <path d="M29 12l-3 6M36 10l-4 9M24 20l-2 6" stroke="var(--color-night)" strokeWidth="0.9" strokeLinecap="round" />
-            {/* Shaft */}
-            <path d="M41 6C30 16 18 29 8 40" stroke="var(--color-night)" strokeWidth="1" strokeLinecap="round" />
-            {/* Nib */}
-            <path d="M13 34L1.5 46.5l2.2-9.2Z" fill="currentColor" />
-            <path d="M8 40L2 46" stroke="var(--color-night)" strokeWidth="0.8" strokeLinecap="round" />
-          </svg>
-        </div>
+            <h1 className="font-legend text-[clamp(2.75rem,1.6rem+5.6vw,6rem)] leading-none text-balance text-night-ink">
+              <span className="sr-only">{titleCard.title}</span>
+              <span aria-hidden="true" data-legend="title">
+                {titleCard.title}
+              </span>
+            </h1>
+            <p
+              data-legend="years"
+              className="font-voice text-[clamp(0.875rem,0.8rem+0.4vw,1.125rem)] tracking-[0.22em] text-ghost-night tabular-nums"
+            >
+              {titleCard.years}
+            </p>
+            {titleCard.unsolved && (
+              <p
+                data-legend="unsolved"
+                className="mt-1 -rotate-3 rounded-[0.14em] border-[0.14em] border-rust-night px-[0.6em] pt-[0.45em] pb-[0.3em] font-voice text-[clamp(0.75rem,0.7rem+0.3vw,0.9375rem)] leading-none tracking-[0.2em] text-rust-night uppercase"
+              >
+                Unsolved
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <p
@@ -397,15 +426,27 @@ export default function LegendIntro({ legendIntro, video, startAtEnd = false, on
         </span>
       </p>
 
-      {/* GSAP animates this wrapper, not the button, so the button keeps its own press feedback. */}
+      {/* The scroll cue. GSAP animates this wrapper, not the button, so the button keeps its own press feedback. */}
       <div data-legend="continue" className="mt-6 sm:mt-10">
         <button
           ref={continueRef}
           type="button"
           onClick={onDone}
-          className="min-h-11 border border-night-ink/60 px-7 pt-3.5 pb-3 font-voice text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,background-color,color] duration-150 ease-out hover:bg-night-ink hover:text-night focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]"
+          className="group flex min-h-11 flex-col items-center gap-2 px-4 pt-2 pb-1 font-voice text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,color] duration-150 ease-out hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]"
         >
-          Continue
+          <span>See what really happened</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-4 animate-cue motion-reduce:animate-none"
+          >
+            <path d="M8 1v17M2 12l6 6 6-6" />
+          </svg>
         </button>
       </div>
 

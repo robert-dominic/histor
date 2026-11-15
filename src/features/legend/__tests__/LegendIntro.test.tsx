@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // src/features/legend/__tests__/LegendIntro.test.tsx
-// The legend intro renders everything from its data, Skip jumps to the end state, and Continue calls onDone.
+// The legend intro renders everything from its data, Skip jumps to the end state, and the scroll cue calls onDone.
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import LegendIntro from '@/features/legend/LegendIntro';
@@ -13,6 +13,11 @@ const legendIntro: LegendIntroData = {
   stamp: 'Test stamp... really.',
   debunk: 'This is the debunk. It has a second sentence.',
 };
+
+/** The scroll cue at the end of the intro. */
+const CUE = 'See what really happened';
+
+const titleCard = { title: 'Test Case', years: '1900 – 1901', unsolved: true };
 
 const video = { src: '/test-video.mp4', poster: '/test-poster.webp', credit: 'Test credit (not real)' };
 
@@ -124,7 +129,7 @@ describe('LegendIntro: the sequence', () => {
     expect(letters.map(letter => letter.textContent).join('')).toBe(withoutSpaces(legendIntro.debunk));
   });
 
-  test('starts with every letter, the stamp, the quill, the caret and Continue hidden', () => {
+  test('starts with every letter, the stamp, the quill, the caret and the scroll cue hidden', () => {
     const { container } = renderIntro();
 
     for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
@@ -144,7 +149,7 @@ describe('LegendIntro: the sequence', () => {
     expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
   });
 
-  test('Skip shows the end state: every letter of every line and of the debunk, the stamp and Continue', () => {
+  test('Skip shows the end state: every letter of every line and of the debunk, the stamp and the scroll cue', () => {
     const { container } = renderIntro();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
@@ -186,7 +191,7 @@ describe('LegendIntro: the sequence', () => {
     expect(onDone).not.toHaveBeenCalled();
   });
 
-  test('Skip goes away once the end state is shown, and focus moves to Continue', () => {
+  test('Skip goes away once the end state is shown, and focus moves to the scroll cue', () => {
     renderIntro();
     const skip = screen.getByRole('button', { name: 'Skip' });
     skip.focus();
@@ -194,46 +199,46 @@ describe('LegendIntro: the sequence', () => {
     fireEvent.click(skip);
 
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: CUE }));
   });
 
-  test('Continue calls onDone', () => {
+  test('the scroll cue calls onDone', () => {
     const { onDone } = renderIntro();
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: CUE }));
 
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  test('Skip and Continue are real buttons, so Tab and Enter work', () => {
+  test('Skip and the scroll cue are real buttons, so Tab and Enter work', () => {
     renderIntro();
 
     const skip = screen.getByRole('button', { name: 'Skip' });
     expect(skip.tagName).toBe('BUTTON');
     expect(skip.getAttribute('tabindex')).toBeNull();
     fireEvent.click(skip);
-    const next = screen.getByRole('button', { name: 'Continue' });
+    const next = screen.getByRole('button', { name: CUE });
     expect(next.tagName).toBe('BUTTON');
     expect(next.getAttribute('tabindex')).toBeNull();
   });
 });
 
 describe('LegendIntro: onEnded', () => {
-  test('is called once when Skip reaches the end state, and not again by Continue', () => {
+  test('is called once when Skip reaches the end state, and not again by the scroll cue', () => {
     const onEnded = vi.fn();
     renderIntro({ onEnded });
     expect(onEnded).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: CUE }));
 
     expect(onEnded).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('LegendIntro: a returning visitor (startAtEnd)', () => {
-  test('opens at the end state: every letter, the stamp and Continue are shown at once', () => {
+  test('opens at the end state: every letter, the stamp and the scroll cue are shown at once', () => {
     const { container } = renderIntro({ startAtEnd: true });
 
     for (const block of [...all(container, 'line'), one(container, 'debunk')]) {
@@ -248,24 +253,24 @@ describe('LegendIntro: a returning visitor (startAtEnd)', () => {
     expect(one(container, 'caret').style.opacity).toBe('0');
   });
 
-  test('has no Skip, and Continue has the focus', () => {
+  test('has no Skip, and the scroll cue has the focus', () => {
     renderIntro({ startAtEnd: true });
 
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: CUE }));
   });
 
-  test('does not call onEnded again, and Continue still calls onDone', () => {
+  test('does not call onEnded again, and the scroll cue still calls onDone', () => {
     const onEnded = vi.fn();
     const { onDone } = renderIntro({ startAtEnd: true, onEnded });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: CUE }));
 
     expect(onEnded).not.toHaveBeenCalled();
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  test('a first-time visitor does not get focus moved to Continue', () => {
+  test('a first-time visitor does not get focus moved to the scroll cue', () => {
     renderIntro();
 
     expect(document.activeElement).toBe(document.body);
@@ -346,7 +351,7 @@ describe('LegendIntro: reduced motion', () => {
     }
   });
 
-  test('Skip shows everything, and Continue works the same way', () => {
+  test('Skip shows everything, and the scroll cue works the same way', () => {
     const { container, onDone } = renderIntro();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
@@ -354,7 +359,7 @@ describe('LegendIntro: reduced motion', () => {
       expect(block.style.opacity).toBe('1');
     }
     expect(one(container, 'myth').style.opacity).toBe('0.5');
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: CUE }));
 
     expect(onDone).toHaveBeenCalledTimes(1);
   });
@@ -368,8 +373,83 @@ describe('LegendIntro: without matchMedia', () => {
     expect(one(container, 'line').style.opacity).toBe('');
     expect(one(container, 'line').children).toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: CUE }));
 
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LegendIntro: the title card', () => {
+  test('without a title card there is none, and no page heading', () => {
+    const { container } = renderIntro();
+
+    expect(container.querySelector('[data-legend="title-card"]')).toBeNull();
+    expect(screen.queryByRole('heading')).toBeNull();
+  });
+
+  test('shows the title as the page heading, the years and the UNSOLVED stamp', () => {
+    const { container } = renderIntro({ titleCard });
+
+    expect(screen.getByRole('heading', { level: 1, name: titleCard.title })).toBeDefined();
+    expect(one(container, 'years').textContent).toBe(titleCard.years);
+    expect(one(container, 'unsolved').textContent).toBe('Unsolved');
+    expect(one(container, 'unsolved').className).toContain('uppercase');
+  });
+
+  test('has no stamp for a case that is not marked unsolved', () => {
+    const { container } = renderIntro({ titleCard: { ...titleCard, unsolved: false } });
+
+    expect(container.querySelector('[data-legend="unsolved"]')).toBeNull();
+  });
+
+  test('the title is split into letters for the quill, and starts hidden with the years and the stamp', () => {
+    const { container } = renderIntro({ titleCard });
+
+    const letters = lettersOf(one(container, 'title'));
+    expect(letters.map(letter => letter.textContent).join('')).toBe(withoutSpaces(titleCard.title));
+    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
+    expect(one(container, 'years').style.opacity).toBe('0');
+    expect(one(container, 'unsolved').style.opacity).toBe('0');
+  });
+
+  test('screen readers get the whole title; the written copy is hidden from them', () => {
+    const { container } = renderIntro({ titleCard });
+
+    expect(one(container, 'title').getAttribute('aria-hidden')).toBe('true');
+    expect(screen.getByRole('heading', { level: 1 }).querySelector('.sr-only')?.textContent).toBe(titleCard.title);
+  });
+
+  test('Skip covers the title card too: it is gone in the end state, and the myth is shown', () => {
+    const { container } = renderIntro({ titleCard });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    expect(one(container, 'title-card').style.opacity).toBe('0');
+    for (const letter of all(container, 'line').flatMap(lettersOf)) {
+      expect(letter.style.opacity).toBe('1');
+    }
+  });
+
+  test('a returning visitor does not see the title card again', () => {
+    const { container } = renderIntro({ titleCard, startAtEnd: true });
+
+    expect(one(container, 'title-card').style.opacity).toBe('0');
+  });
+
+  test('reduced motion: the title is not split, and it fades in whole', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    const { container } = renderIntro({ titleCard });
+
+    expect(one(container, 'title').children).toHaveLength(0);
+    expect(one(container, 'title').style.opacity).toBe('0');
+    expect(one(container, 'title').style.transform).toBe('');
+  });
+
+  test('without matchMedia the title card is hidden, so it never covers the myth', () => {
+    vi.unstubAllGlobals();
+    const { container } = renderIntro({ titleCard });
+
+    expect(one(container, 'title-card').className).toContain('opacity-0');
   });
 });

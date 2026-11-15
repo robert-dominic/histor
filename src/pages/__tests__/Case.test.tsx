@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 // src/pages/__tests__/Case.test.tsx
 // Task 7.2: the case page handles a missing case, a sealed case and an open case.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+// An open case is its legend intro, then its story below it.
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registry } from '@/cases';
+import { formatCaseYears } from '@/lib/case-years';
 import { validateCase } from '@/lib/validate-case';
 import Case from '@/pages/Case';
 import { finishLegendIntro } from '@/test/legend-intro';
@@ -96,18 +98,40 @@ describe('Case page: open case', () => {
     }
     expect(intro.textContent).toContain(stamp);
     expect(intro.textContent).toContain(debunk);
-    expect(screen.queryByRole('heading', { name: openEntry.data.title })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
     expect(screen.queryByText('Case not found')).toBeNull();
     expect(screen.queryByText('This case is sealed.')).toBeNull();
   });
 
-  test('Skip alone keeps the intro on screen', () => {
+  test('the intro opens on the title card: the case title as the page heading, its years and the stamp', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+
+    const intro = screen.getByRole('region', { name: 'The legend' });
+    expect(within(intro).getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
+    expect(intro.textContent).toContain(formatCaseYears(openEntry.data.year, openEntry.data.yearEnd));
+    expect(intro.querySelector('[data-legend="unsolved"]') !== null).toBe(openEntry.data.unsolved === true);
+  });
+
+  test('Skip keeps the intro on screen, and the story follows below it', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
 
-    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
-    expect(screen.queryByRole('heading', { name: openEntry.data.title })).toBeNull();
+    const intro = screen.getByRole('region', { name: 'The legend' });
+    const story = screen.getByRole('region', { name: 'The story' });
+    expect(intro.compareDocumentPosition(story) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('the story has every chapter of the case and ends on its central question', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    const story = screen.getByRole('region', { name: 'The story' });
+    for (const section of openEntry.data.story) {
+      expect(within(story).getByRole('heading', { name: section.heading })).toBeDefined();
+    }
+    expect(within(story).getByRole('heading', { name: openEntry.data.centralQuestion })).toBeDefined();
   });
 
   test('remembers that the intro was seen once its end state is reached', () => {
@@ -119,7 +143,7 @@ describe('Case page: open case', () => {
     expect(localStorage.getItem(`histor:intro-seen:${openEntry.id}`)).toBe('1');
   });
 
-  test('on a later visit the intro opens at its end state, with Continue focused and no Skip', () => {
+  test('on a later visit the intro opens at its end state, with the scroll cue focused, no Skip, and the story below', () => {
     localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
 
     renderCasePage(`/case/${openEntry.id}`);
@@ -127,10 +151,8 @@ describe('Case page: open case', () => {
     const intro = screen.getByRole('region', { name: 'The legend' });
     expect(intro.getAttribute('data-ended')).toBe('true');
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Continue' }));
-
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'See what really happened' }));
+    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
   });
 
   test('the intro still plays when localStorage cannot be read', () => {
@@ -143,13 +165,21 @@ describe('Case page: open case', () => {
     expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
   });
 
-  test('after Continue, the intro is gone and the case title is shown', () => {
-    renderCasePage(`/case/${openEntry.id}`);
+  test('the scroll cue scrolls smoothly to the story', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      renderCasePage(`/case/${openEntry.id}`);
 
-    finishLegendIntro();
+      finishLegendIntro();
 
-    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
-    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+      expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('region', { name: 'The story' }).parentElement);
+    } finally {
+      // jsdom has no scrollIntoView of its own.
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
   });
 
   test('loads the saved investigation for that case', () => {
