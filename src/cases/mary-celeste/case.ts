@@ -19,7 +19,7 @@ import legendVideoSrc from './assets/video/legend-night.mp4';
  * The legend intro, the story, the central question, the references and their sources are real content,
  * from docs/content/mary-celeste-story.md and docs/content/mary-celeste-evidence.md. Image credits come from docs/content/mary-celeste-scenes.md.
  * The theories, evidence and historians' summary are real content, copied from docs/content/mary-celeste-evidence.md.
- * Only the fork is still a placeholder, marked "TODO: real content".
+ * The fork's wording comes from product.md.
  */
 export const maryCeleste: Case = {
   id: 'mary-celeste',
@@ -153,9 +153,9 @@ export const maryCeleste: Case = {
     'Why would Captain Briggs abandon a sound ship, one he partly owned, and put his wife, his two-year-old daughter and his crew into a small lifeboat in the middle of the Atlantic?',
 
   fork: {
-    prompt: 'TODO: real content - continue investigating?',
-    investigateLabel: 'TODO: real content - label for investigate button',
-    leaveLabel: 'TODO: real content - label for leave button'
+    prompt: 'Most people stop here. Want to see what the evidence says?',
+    investigateLabel: 'Open the case files',
+    leaveLabel: "I've heard enough",
   },
 
   theories: [
