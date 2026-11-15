@@ -18,8 +18,8 @@ Rules for every task:
 
 ## Tasks
 
-- [ ] 1. Report_Builder
-  - [ ] 1.1 Implement `src/lib/case-report.ts`
+- [x] 1. Report_Builder
+  - [x] 1.1 Implement `src/lib/case-report.ts`
     - Export `HistoriansReading`, `VerdictLink`, `ReportVerdict`, `PinReading`, `ReliedOnEntry`, `AgainstVerdictEntry`, `NeverOpenedEntry`, `LegendTrustedEntry`, `TheoryStandingEntry`, `CaseReport` and `buildCaseReport` exactly as in the design section "`src/lib/case-report.ts`"
     - `cleanState` (not exported): build a `Set` of case evidence ids and a `Map` of theories by id; keep `opened` entries only from an array, only strings, only known ids, deduplicated by a `Set`; keep `pins` entries from `Object.entries` only when `pins` is a non-null, non-array object, the key is a known evidence id, and the value is a string that is `"none"` or a known theory id, stored in a `Map`; set `chosen` only when `verdict` is a string naming a known theory. Wrap the whole step in `try/catch` and return an empty investigation on any exception
     - `historiansReading` and `verdictLink`: check `reading.supports` before `reading.weakens`, so `agree` and `supports` win on overlap; for `"none"`, `agree` when `reading.supports` is empty, otherwise `disagree`
@@ -30,7 +30,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint`, the report and a `[kiro]` commit, as described in the Overview
     - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 7.1, 7.2, 7.3, 8.1, 8.2, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-  - [ ] 1.2 Write unit tests in `src/lib/__tests__/case-report.test.ts`
+  - [x] 1.2 Write unit tests in `src/lib/__tests__/case-report.test.ts`
     - First check the Vitest APIs for the installed version with Context7
     - Use the real Mary Celeste case from `@/cases/mary-celeste/case` and hand-built States; no DOM, so leave the default Node environment
     - The design's worked example (verdict `t-sinking`, opened `[e-water, e-lifeboat]`, the four pins), checking every part of the report with its exact expected value and order
@@ -45,8 +45,8 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint`, the report and a `[kiro]` commit, as described in the Overview
     - _Requirements: 1.1, 1.2, 2.1, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 3.1, 3.2, 4.1, 4.2, 5.1, 5.2, 5.5, 6.1, 6.3, 7.1, 7.2, 7.3, 8.1, 9.2, 9.3, 10.6_
 
-- [ ] 2. Property tests
-  - [ ] 2.1 Write `src/lib/__tests__/case-report.property.test.ts`
+- [x] 2. Property tests
+  - [x] 2.1 Write `src/lib/__tests__/case-report.property.test.ts`
     - First check the fast-check and Vitest APIs for the installed versions with Context7
     - Build the generators from the design's Testing Strategy in this file, following `src/app/__tests__/InvestigationProvider.property.test.ts`: prefixed ids from one shared `fc.stringMatching(/^[a-z0-9]{1,8}$/)` (case ids `e-` and `t-`, unknown ids `x-` and `z-`); a case with 1 to 12 unique evidence ids and 1 to 5 unique theory ids, each evidence item with a status from `fc.constantFrom`, `supports` and `weakens` from `fc.subarray(theoryIds)` (overlap allowed), an `origin` for legends and a `dispute` for disputed items; a valid-ish state drawn with `.chain` from the case's own ids mixed with unknown ids and duplicates; and garbage states from `fc.anything()`, for the whole state and for each field
     - One `test` per property, each `fc.assert(fc.property(...))` with the default 100 runs, and tagged `// Feature: case-report, Property N: ...`:
@@ -61,7 +61,7 @@ Rules for every task:
     - Finish with `npm test`, `npm run build`, `npm run lint`, the report and a `[kiro]` commit, as described in the Overview
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 3. Final checkpoint
+- [x] 3. Final checkpoint
   - Run `npm test`, `npm run build` and `npm run lint` and fix any remaining errors
   - Run `git diff --stat 3f42c47 -- src/types/case.ts src/app/InvestigationProvider.tsx src/cases/` (`3f42c47` is the last commit before this spec) and confirm it shows no changes
   - Write the final report in the format described in the Overview, listing every requirement and the test that covers it
