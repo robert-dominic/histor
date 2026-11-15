@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader from '@/components/CaseHeader';
 import { getCaseById } from '@/cases';
+import Fork from '@/features/fork/Fork';
 import LegendIntro, { type TitleCard } from '@/features/legend/LegendIntro';
 import Story from '@/features/story/Story';
 import { formatCaseYears } from '@/lib/case-years';
@@ -115,6 +116,12 @@ export default function Case() {
               centralQuestion={caseData.centralQuestion}
               references={caseData.references}
               sources={caseData.sources}
+            />
+            {/* After the central question: stop here, or open the case files. */}
+            <Fork
+              fork={caseData.fork}
+              historiansSummary={caseData.historiansSummary}
+              filesHref={`/case/${caseData.id}/files`}
             />
           </div>
         )}

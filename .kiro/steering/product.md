@@ -61,7 +61,7 @@ When the user has opened enough files (6 files, set per case by closeThreshold),
 - their verdict
 - the evidence they relied on
 - important evidence they never opened
-- any legend they pinned as support ("You trusted a novelist.")
+- any legend they pinned as support ("You trusted a legend.")
 - where historians stand, and that no one knows for sure
 
 The report is not graded. It mirrors the user's reasoning.
@@ -104,7 +104,7 @@ Refined during the build. Working direction: dry, a little mischievous, never ch
 
 - "Well... that part never happened."
 - "Most people stop here."
-- "You trusted a novelist. Happens to the best of us."
+- "You trusted a legend. Happens to the best of us."
 
 ## Atmosphere
 

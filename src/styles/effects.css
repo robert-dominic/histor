@@ -1,0 +1,43 @@
+/* src/styles/effects.css
+   Signature effects for the investigation (design.md, "Evidence status: the visual language").
+   The effects encode trust: crisp ink is record, a smudge is disputed, ghost ink is legend. */
+
+/* Disputed: the stamp lands smudged. A soft blur and a faint offset double of the ink. Static. */
+.stamp-smudged {
+  filter: blur(0.45px);
+  text-shadow: 0.08em 0.05em 0.12em currentColor;
+}
+
+/* Legend: once the stamp lands, the file's text turns to faded ghost ink, slightly blurred (≤2px), with a
+   faint flicker. Only opacity is animated; constant motion, so keyframes are fine (motion.md). */
+[data-ink="ghost"] [data-file-ink] {
+  color: var(--color-ghost-day);
+  filter: blur(0.6px);
+  animation: ghost-flicker 5.5s steps(1, end) infinite;
+}
+
+/* Reduced motion keeps the ghost ink, without the flicker. */
+@media (prefers-reduced-motion: reduce) {
+  [data-ink="ghost"] [data-file-ink] {
+    animation: none;
+  }
+}
+
+@keyframes ghost-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  41% {
+    opacity: 0.86;
+  }
+  43% {
+    opacity: 1;
+  }
+  77% {
+    opacity: 0.9;
+  }
+  78% {
+    opacity: 1;
+  }
+}
