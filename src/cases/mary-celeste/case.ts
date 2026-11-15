@@ -1,6 +1,10 @@
 // src/cases/mary-celeste/case.ts
 import type { Case } from '@/types/case';
+import refBenjaminBriggsImage from './assets/images/ref-benjamin-briggs.webp';
+import refGibraltarImage from './assets/images/ref-gibraltar.webp';
 import refMaryCelesteImage from './assets/images/ref-mary-celeste.webp';
+import refSarahBriggsImage from './assets/images/ref-sarah-briggs.webp';
+import refSophiaBriggsImage from './assets/images/ref-sophia-briggs.webp';
 import aboardImage from './assets/images/s-aboard.webp';
 import foundImage from './assets/images/s-found.webp';
 import inquiryImage from './assets/images/s-inquiry.webp';
@@ -79,6 +83,7 @@ export const maryCeleste: Case = {
         src: foundImage,
         alt: 'Painting of a two-masted sailing ship with pale sails and a red flag on calm blue water, seen from the side.',
         credit: 'The Mary Celeste as the Amazon, 1861. Artist unconfirmed. Public domain, via Wikimedia Commons.',
+        caption: 'The Mary Celeste, 1861',
         isIllustration: false,
       },
       kicker: '4 December 1872',
@@ -218,10 +223,28 @@ export const maryCeleste: Case = {
     { id: 'dei-gratia', kind: 'ship', label: 'Dei Gratia', sources: ['src-rmg'],
       profile: ['The ship whose crew found the Mary Celeste drifting on 4 December 1872. Her captain was David Morehouse.'] },
     { id: 'benjamin-briggs', kind: 'person', label: 'Captain Benjamin Briggs', sources: ['src-rmg', 'src-maryceleste-net', 'src-smithsonian'],
+      image: {
+        src: refBenjaminBriggsImage,
+        alt: 'Black-and-white photograph of a seated man with a short beard, wearing a dark buttoned jacket.',
+        credit: 'Photograph, before 1872. Photographer unknown. Via Wikimedia Commons.',
+        isIllustration: false,
+      },
       profile: ['Captain of the Mary Celeste. An experienced, respected sailor who also owned a third of the ship, so losing her would have cost him money.', 'His wife and young daughter sailed with him.'] },
     { id: 'sarah-briggs', kind: 'person', label: 'Sarah Briggs', sources: ['src-rmg', 'src-maryceleste-net'],
+      image: {
+        src: refSarahBriggsImage,
+        alt: 'Black-and-white photograph of a seated woman with her hair pulled back, wearing a striped dress with a dark belt.',
+        credit: 'Photograph, before 1872. Photographer unknown. Via Wikimedia Commons.',
+        isIllustration: false,
+      },
       profile: ['Wife of Captain Briggs. She sailed with him, together with their two-year-old daughter.'] },
     { id: 'sophia-briggs', kind: 'person', label: 'Sophia Briggs', sources: ['src-rmg', 'src-maryceleste-net'],
+      image: {
+        src: refSophiaBriggsImage,
+        alt: 'Black-and-white photograph of a baby in a pale dress sitting in a dark upholstered chair.',
+        credit: 'Photograph, before 1872. Photographer unknown. Via Wikimedia Commons.',
+        isIllustration: false,
+      },
       profile: ["The Briggses' two-year-old daughter. Her brother Arthur, seven, stayed home in Massachusetts with his grandmother."] },
     { id: 'david-morehouse', kind: 'person', label: 'David Morehouse', sources: ['src-rmg', 'src-smithsonian', 'src-american-heritage'],
       profile: ['Captain of the Dei Gratia. His crew claimed salvage money for bringing the Mary Celeste in, which later made him a suspect.', 'The court found no evidence of foul play.'] },
@@ -236,6 +259,12 @@ export const maryCeleste: Case = {
     { id: 'santa-maria', kind: 'place', label: 'Santa Maria', sources: ['src-maryceleste-net'],
       profile: ['The southernmost island of the Azores. The last note on the log slate put it six miles away.'] },
     { id: 'gibraltar', kind: 'place', label: 'Gibraltar', sources: ['src-rmg', 'src-maryceleste-net'],
+      image: {
+        src: refGibraltarImage,
+        alt: 'Old printed map of the Gibraltar peninsula, with Gibraltar Bay on the left and the Mediterranean on the right.',
+        credit: 'Map of Gibraltar, from A History of Gibraltar and its Sieges (1870). Public domain, via Wikimedia Commons.',
+        isIllustration: false,
+      },
       profile: ['A British territory at the southern tip of Spain, where the inquiry was held.'] },
     { id: 'log-slate', kind: 'term', label: 'log slate', sources: ['src-rmg', 'src-maryceleste-net'],
       profile: ['A board for rough notes. Sailors wrote positions and times on it during the day, then copied them into the logbook.', 'The last note never made it into the logbook.'] },

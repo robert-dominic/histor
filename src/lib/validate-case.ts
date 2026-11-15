@@ -294,6 +294,28 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional image caption, wherever an image can be: when present, it must be non-empty
+  const captioned: { location: string; image: { caption?: unknown } | undefined | null }[] = [
+    ...(Array.isArray(caseData.story) ? caseData.story : []).map((section, i) => ({
+      location: `story[${i}].image`,
+      image: section?.image,
+    })),
+    ...(Array.isArray(caseData.references) ? caseData.references : []).map((reference, i) => ({
+      location: `references[${i}].image`,
+      image: reference?.image,
+    })),
+    ...(Array.isArray(caseData.evidence) ? caseData.evidence : []).map((evidence, i) => ({
+      location: `evidence[${i}].image`,
+      image: evidence?.image,
+    })),
+  ];
+  for (const { location, image } of captioned) {
+    const caption = image?.caption;
+    if (caption !== undefined && caption !== null && (typeof caption !== 'string' || caption.trim() === '')) {
+      errors.push(`Field ${location}.caption: Must be a non-empty string`);
+    }
+  }
+
   // Check B: Markup_Fields (4.1 to 4.7, 4.13)
   const fields = markupFields(caseData);
   for (const field of fields) {

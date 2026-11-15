@@ -28,6 +28,8 @@ export interface ImageAsset {
   src: string;
   alt: string;
   credit: string;
+  /** Optional short caption that is always shown on the image, e.g. "The Mary Celeste, 1861". */
+  caption?: string;
   /** True for drawings, reconstructions or AI images. Never shown as a photograph. */
   isIllustration: boolean;
 }

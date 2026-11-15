@@ -154,3 +154,46 @@ describe('validateCase: unsolved', () => {
     expect(validateCase(createCase({ unsolved }))).toEqual([]);
   });
 });
+
+describe('validateCase: ImageAsset.caption', () => {
+  test('an image without a caption is valid', () => {
+    expect(validateCase(withImage(validImage))).toEqual([]);
+  });
+
+  test('an image with a caption is valid', () => {
+    expect(validateCase(withImage({ ...validImage, caption: 'Test caption, 1900' }))).toEqual([]);
+  });
+
+  test.each(['', '   '])('reports an empty caption on a chapter image: "%s"', caption => {
+    expect(validateCase(withImage({ ...validImage, caption }))).toEqual([
+      'Field story[1].image.caption: Must be a non-empty string',
+    ]);
+  });
+
+  test('reports a caption that is not a string', () => {
+    expect(validateCase(withImage({ ...validImage, caption: 1861 }))).toEqual([
+      'Field story[1].image.caption: Must be a non-empty string',
+    ]);
+  });
+
+  test('reports an empty caption on a reference image', () => {
+    const broken = createCase({
+      references: [{ id: 'thing', kind: 'term', label: 'Thing', profile: ['A thing.'], image: { ...validImage, caption: '' } }],
+    });
+
+    expect(validateCase(broken)).toEqual(['Field references[0].image.caption: Must be a non-empty string']);
+  });
+
+  test('reports an empty caption on an evidence image', () => {
+    const base = createCase();
+    const broken: Case = { ...base, evidence: [{ ...base.evidence[0], image: { ...validImage, caption: ' ' } }] };
+
+    expect(validateCase(broken)).toEqual(['Field evidence[0].image.caption: Must be a non-empty string']);
+  });
+
+  test('portal markup is not allowed in a caption', () => {
+    expect(validateCase(withImage({ ...validImage, caption: 'A {{ref:thing|thing}}' }))).toEqual([
+      'Field story[1].image.caption: portal markup is not allowed in this field',
+    ]);
+  });
+});
