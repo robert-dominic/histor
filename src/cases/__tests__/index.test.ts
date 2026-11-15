@@ -9,7 +9,7 @@ describe('getCaseById - Task 4.3', () => {
 
     expect(result).toBeDefined();
     expect(result?.id).toBe('mary-celeste');
-    expect(result?.title).toBe('The Mystery of the Mary Celeste');
+    expect(result?.title).toBe('The Mary Celeste');
     expect(result?.year).toBe(1872);
     expect(result?.sealed).toBe(false);
     expect((result as { data?: unknown } | undefined)?.data).toBeDefined();

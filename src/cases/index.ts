@@ -10,9 +10,9 @@ import maryCeleste from '@/cases/mary-celeste/case';
 export const registry: RegistryEntry[] = [
   {
     id: 'mary-celeste',
-    title: 'The Mystery of the Mary Celeste',
+    title: 'The Mary Celeste',
     year: 1872,
-    teaser: 'TODO: real content - one line teaser for home page',
+    teaser: 'A ship found sailing with no one aboard. Ten people, never seen again.',
     sealed: false,
     data: maryCeleste,
   },
