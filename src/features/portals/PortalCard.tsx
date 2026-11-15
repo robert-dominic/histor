@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import CreditInfo from '@/components/CreditInfo';
 import PortalText from '@/features/portals/PortalText';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
@@ -19,6 +20,9 @@ const KIND_LABEL: Record<ReferenceKind, string> = {
   ship: 'Ship',
   term: 'Term',
 };
+
+const LABEL_CLASSES =
+  'bg-night/75 px-1.5 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase';
 
 /** Seconds. Opening a portal happens many times, so it is fast; closing is faster. */
 const OPEN_DURATION = 0.22;
@@ -75,11 +79,13 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
       const left = Math.max(MARGIN, Math.min(word.left, viewportWidth - width - MARGIN));
       // Below the word when it fits there, above when it only fits there, and otherwise on the side with more room.
       const roomBelow = window.innerHeight - MARGIN - (word.bottom + GAP);
-      const roomAbove = word.top - GAP - MARGIN;
+      const roomAbove = word.top - GAP - MARGIN - (document.querySelector('[data-case-header="bar"]')?.getBoundingClientRect().bottom ?? 0);
       const below = height <= roomBelow || (height > roomAbove && roomBelow >= roomAbove);
       // A card taller than the room it has is kept on the screen, even if that covers the word.
       const wanted = below ? word.bottom + GAP : word.top - GAP - height;
-      const top = Math.max(MARGIN, Math.min(wanted, window.innerHeight - MARGIN - height));
+      // Never under the case header, when the page has one.
+      const header = document.querySelector('[data-case-header="bar"]')?.getBoundingClientRect().bottom ?? 0;
+      const top = Math.max(header + MARGIN, Math.min(wanted, window.innerHeight - MARGIN - height));
       // The card is positioned in the page, not the screen, so it stays with its word when the page scrolls.
       card.style.left = `${left + window.scrollX}px`;
       card.style.top = `${top + window.scrollY}px`;
@@ -296,24 +302,37 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
 
         <div className="px-5 pt-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:px-6 lg:pb-6">
           {reference.image !== undefined && (
-            <figure className="mb-4">
+            // The frame hugs the image, so a small portrait is shown at its own size and never stretched.
+            <figure className="relative mx-auto mb-4 w-fit max-w-full">
               <img
                 src={reference.image.src}
                 alt={reference.image.alt}
                 decoding="async"
                 // The image makes the card taller once it has loaded: place the card again.
                 onLoad={place}
-                className="block w-full border border-ink/15"
+                className="block max-h-[min(26rem,50svh)] w-auto max-w-full border border-ink/15"
               />
-              <figcaption className="mt-1.5 font-voice text-[0.625rem] leading-snug tracking-[0.04em] text-ink/75">
-                {reference.image.isIllustration && (
-                  <>
-                    <span className="tracking-[0.14em] uppercase">Illustration</span>
-                    <span aria-hidden="true"> · </span>
-                  </>
-                )}
-                <span data-portal="credit">{reference.image.credit}</span>
-              </figcaption>
+              {/* Always visible: what the reader must know at a glance. The full credit is behind the ⓘ. */}
+              {(reference.image.isIllustration || reference.image.caption !== undefined) && (
+                <figcaption className="absolute top-1.5 left-1.5 flex max-w-[calc(100%-0.75rem)] flex-wrap gap-1">
+                  {reference.image.isIllustration && (
+                    <span data-portal="illustration" className={LABEL_CLASSES}>
+                      Illustration
+                    </span>
+                  )}
+                  {reference.image.caption !== undefined && (
+                    <span data-portal="caption" className={LABEL_CLASSES}>
+                      {reference.image.caption}
+                    </span>
+                  )}
+                </figcaption>
+              )}
+              <CreditInfo
+                credit={reference.image.credit}
+                attribute="data-portal"
+                placement="above"
+                className="right-0 bottom-0"
+              />
             </figure>
           )}
 

@@ -1,6 +1,7 @@
 // src/features/legend/LegendIntro.tsx
 // The legend intro: a title card, then a quill writes the famous myth, a stamp lands on it, and a typewriter
 // answers. It ends on a scroll cue that leads into the story.
+// When the page has a case header (components/CaseHeader.tsx), the title card's title shrinks and docks into it.
 // The quill is the legend's voice; the typewriter is the app's voice.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 
@@ -57,6 +58,9 @@ const TITLE = {
   /** When the card starts to leave, counted from the start of the intro. */
   leaveAt: 3,
   leaveDuration: 0.4,
+  /** The title's flight up into the case header, and the crossfade once it has landed. */
+  dockDuration: 0.65,
+  landDuration: 0.25,
 } as const;
 
 const TITLE_REDUCED = {
@@ -156,6 +160,13 @@ export default function LegendIntro({
         const years = select('years');
         const unsolved = select('unsolved');
         const hasTitleCard = card.length > 0;
+        // The case header is outside this component, fixed to the top of the page. Hidden until the title docks.
+        const headerBar = document.querySelector<HTMLElement>('[data-case-header="bar"]');
+        const headerTitle = document.querySelector<HTMLElement>('[data-case-header="title"]');
+        const docks = hasTitleCard && headerBar !== null && headerTitle !== null;
+        if (docks) {
+          gsap.set(headerBar, { opacity: 0 });
+        }
 
         const timeline = gsap.timeline({ defaults: { ease: EASE.out }, onComplete: markEnded });
         const splits: SplitText[] = [];
@@ -168,6 +179,10 @@ export default function LegendIntro({
             timeline.fromTo(years, { opacity: 0 }, { opacity: 1, duration: 0.4 }, TITLE_REDUCED.yearsAt);
             timeline.fromTo(unsolved, { opacity: 0 }, { opacity: 1, duration: 0.2 }, TITLE_REDUCED.stampAt);
             timeline.to(card, { opacity: 0, duration: TITLE_REDUCED.leaveDuration }, TITLE_REDUCED.leaveAt);
+            // No flight: the card fades away and the header fades in.
+            if (docks) {
+              timeline.to(headerBar, { opacity: 1, duration: TITLE_REDUCED.leaveDuration }, TITLE_REDUCED.leaveAt);
+            }
             mythStart = TITLE_REDUCED.leaveAt + TITLE_REDUCED.leaveDuration + REDUCED.start;
           }
 
@@ -223,8 +238,36 @@ export default function LegendIntro({
             );
             // A long title is still given time to be read before the card leaves.
             const leaveAt = Math.max(TITLE.leaveAt, at + TITLE.stampDuration + 0.8);
-            timeline.to(card, { opacity: 0, duration: TITLE.leaveDuration }, leaveAt);
-            cursor = leaveAt + TITLE.leaveDuration + FULL.start;
+            if (docks && title.length > 0) {
+              // The title shrinks and flies up to where the header's title is. The years and the stamp stay behind
+              // and fade. Once it has landed, the header fades in over it and the card goes: the two titles are
+              // then the same size in the same place, so the swap cannot be seen.
+              const big = title[0];
+              const flight = () => {
+                const from = big.getBoundingClientRect();
+                const to = headerTitle.getBoundingClientRect();
+                return { x: to.left - from.left, y: to.top - from.top, scale: from.width > 0 ? to.width / from.width : 1 };
+              };
+              timeline.to([...years, ...unsolved], { opacity: 0, duration: 0.25 }, leaveAt);
+              timeline.to(
+                big,
+                {
+                  x: () => flight().x,
+                  y: () => flight().y,
+                  scale: () => flight().scale,
+                  duration: TITLE.dockDuration,
+                  ease: EASE.inOut,
+                },
+                leaveAt
+              );
+              const landAt = leaveAt + TITLE.dockDuration;
+              timeline.to(headerBar, { opacity: 1, duration: TITLE.landDuration }, landAt);
+              timeline.to(card, { opacity: 0, duration: TITLE.landDuration }, landAt);
+              cursor = landAt + TITLE.landDuration + 0.3;
+            } else {
+              timeline.to(card, { opacity: 0, duration: TITLE.leaveDuration }, leaveAt);
+              cursor = leaveAt + TITLE.leaveDuration + FULL.start;
+            }
           }
 
           // 1. The myth, written letter by letter.
@@ -346,7 +389,7 @@ export default function LegendIntro({
         <button
           type="button"
           onClick={handleSkip}
-          className="absolute top-3 right-3 min-h-11 px-3 font-voice text-xs tracking-[0.14em] text-ghost-night/85 uppercase transition-[scale,color] duration-150 ease-out hover:text-night-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] sm:top-5 sm:right-5"
+          className="absolute top-[calc(var(--case-header)+0.25rem)] right-2 min-h-11 px-3 font-voice text-xs tracking-[0.14em] text-ghost-night/85 uppercase transition-[scale,color] duration-150 ease-out hover:text-night-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] sm:right-4"
         >
           Skip
         </button>
@@ -371,18 +414,19 @@ export default function LegendIntro({
         {/* The quill. Its point is moved to the letter being written. */}
         <Quill attribute="data-legend" />
 
-        {/* The title card: the first beat. It lies over the empty page, then fades away before the myth is written. */}
+        {/* The title card: the first beat. It lies over the empty page, then gives way to the myth: its title docks
+            into the case header, which is the page's real heading, so the card itself is hidden from screen readers. */}
         {titleCard !== undefined && (
           <div
             data-legend="title-card"
+            aria-hidden="true"
             className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4 ${ended ? 'opacity-0' : ''}`}
           >
-            <h1 className="font-legend text-[clamp(2.75rem,1.6rem+5.6vw,6rem)] leading-none text-balance text-night-ink">
-              <span className="sr-only">{titleCard.title}</span>
-              <span aria-hidden="true" data-legend="title">
+            <p className="font-legend text-[clamp(2.75rem,1.6rem+5.6vw,6rem)] leading-none whitespace-nowrap text-night-ink">
+              <span data-legend="title" className="inline-block origin-top-left">
                 {titleCard.title}
               </span>
-            </h1>
+            </p>
             <p
               data-legend="years"
               className="font-voice text-[clamp(0.875rem,0.8rem+0.4vw,1.125rem)] tracking-[0.22em] text-ghost-night tabular-nums"

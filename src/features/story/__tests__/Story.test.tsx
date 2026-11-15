@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/features/story/__tests__/Story.test.tsx
 // The story renders every chapter from the case data: kicker, heading, body, hook and image, then the central question.
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
@@ -183,15 +183,87 @@ describe('Story: structure and loading', () => {
     expect(brightness.every((value, index) => index === 0 || value < brightness[index - 1])).toBe(true);
   });
 
-  test('body text is ink in the day chapters and night-ink once the background is dark', () => {
+  test('body text takes its colour from the sky: every text cell follows the tone set on the grid', () => {
     const { container } = renderStory();
 
-    const classes = [...container.querySelectorAll('[data-story="text"]')].map(cell => cell.className);
-    expect(classes[0]).toContain('text-ink');
-    expect(classes[classes.length - 1]).toContain('text-night-ink');
-    // Once it has turned to night-ink it never turns back.
-    const firstDark = classes.findIndex(name => name.includes('text-night-ink'));
-    expect(classes.slice(firstDark).every(name => name.includes('text-night-ink'))).toBe(true);
+    const grid = container.querySelector('[data-story="grid"]') as HTMLElement;
+    // Before the reader reaches the story it is still under the legend's night.
+    expect(grid.getAttribute('data-tone')).toBe('night-ink');
+    for (const cell of container.querySelectorAll('[data-story="text"]')) {
+      expect(cell.className).toContain('text-ink');
+      expect(cell.className).toContain('group-data-[tone=black]/sky:text-black');
+      expect(cell.className).toContain('group-data-[tone=white]/sky:text-white');
+      expect(cell.className).toContain('group-data-[tone=night-ink]/sky:text-night-ink');
+    }
+  });
+});
+
+describe('Story: image credits and labels', () => {
+  test('every chapter image has an ⓘ button, and the credit is its tooltip, not printed on the image', () => {
+    const { container } = renderStory();
+
+    for (const section of maryCeleste.story) {
+      const chapter = chapterOf(container, section);
+      const button = within(chapter).getByRole('button', { name: 'Image credit' });
+      const tooltip = within(chapter).getByRole('tooltip', { hidden: true });
+      expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
+      expect(tooltip.textContent).toBe(section.image?.credit);
+      expect(tooltip.className).toContain('opacity-0');
+      expect(chapter.querySelectorAll('[data-story="credit"]')).toHaveLength(1);
+    }
+  });
+
+  test('a tap on the ⓘ pins the credit open, and a second tap closes it', () => {
+    const { container } = renderStory();
+    const chapter = chapterOf(container, maryCeleste.story[0]);
+    const button = within(chapter).getByRole('button', { name: 'Image credit' });
+
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.parentElement?.getAttribute('data-open')).toBe('true');
+
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('a tap anywhere else, or Escape, closes a pinned credit', () => {
+    const { container } = renderStory();
+    const chapter = chapterOf(container, maryCeleste.story[0]);
+    const button = within(chapter).getByRole('button', { name: 'Image credit' });
+
+    fireEvent.click(button);
+    fireEvent.pointerDown(document.body);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(button);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('the "Illustration" label is always visible, and only on the illustration', () => {
+    const { container } = renderStory();
+
+    for (const section of maryCeleste.story) {
+      const label = chapterOf(container, section).querySelector('[data-story="illustration"]');
+      expect(label !== null).toBe(section.image?.isIllustration);
+    }
+  });
+
+  test('chapter 3 carries its caption, "The Mary Celeste, 1861", and no other chapter has one', () => {
+    const { container } = renderStory();
+
+    const captions = maryCeleste.story.map(
+      section => chapterOf(container, section).querySelector('[data-story="caption"]')?.textContent ?? null
+    );
+    expect(captions).toEqual([null, null, 'The Mary Celeste, 1861', null, null, null]);
+  });
+
+  test('the image starts below the case header: its sticky offset is the header height', () => {
+    const { container } = renderStory();
+
+    for (const pane of container.querySelectorAll('[data-story="pane"]')) {
+      expect(pane.className).toContain('top-[var(--case-header)]');
+    }
   });
 });
 

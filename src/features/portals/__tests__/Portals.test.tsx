@@ -210,15 +210,32 @@ describe('Portal card: contents', () => {
     expect(within(screen.getByRole('dialog')).queryByText('Sources')).toBeNull();
   });
 
-  test('shows the image with its alt text and credit, labelled "Illustration" when it is one', () => {
+  test('shows the image with its alt text, labelled "Illustration" when it is one', () => {
     renderText();
 
     fireEvent.click(trigger('port'));
 
     const card = screen.getByRole('dialog');
     expect(within(card).getByRole('img', { name: 'Test alt for the port.' }).getAttribute('src')).toBe('/port.webp');
-    expect(card.querySelector('[data-portal="credit"]')?.textContent).toBe('Test credit for the port.');
     expect(within(card).getByText('Illustration')).toBeDefined();
+  });
+
+  test('the image credit is behind an ⓘ button: a tooltip, shown on tap', () => {
+    renderText();
+
+    fireEvent.click(trigger('port'));
+
+    const card = screen.getByRole('dialog');
+    const button = within(card).getByRole('button', { name: 'Image credit' });
+    const tooltip = within(card).getByRole('tooltip', { hidden: true });
+    expect(tooltip.textContent).toBe('Test credit for the port.');
+    expect(card.querySelector('[data-portal="credit"]')?.textContent).toBe('Test credit for the port.');
+    expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
+
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    // The card stays open: the tap was inside it.
+    expect(screen.getByRole('dialog')).toBeDefined();
   });
 
   test('a reference without an image has none', () => {

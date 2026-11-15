@@ -1,9 +1,10 @@
 // src/features/story/StoryChapter.tsx
 // One chapter of the story: its image, with the kicker and the heading written over it, and its text.
-// The chapter is two cells of the story's grid (Story.tsx). The image cell is sticky and stays put;
-// the text cell is the only part that scrolls. The article itself has no box (`contents`).
+// The chapter is two cells of the story's grid (Story.tsx). The image cell is sticky and stays put, below the
+// case header; the text cell is the only part that scrolls. The article itself has no box (`contents`).
 // Everything shown comes from props.
 
+import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import PortalText from '@/features/portals/PortalText';
 import type { DayNightStep, ImageGrade } from '@/lib/day-night';
@@ -21,13 +22,24 @@ interface StoryChapterProps {
   grade: ImageGrade;
   /** True to load the image now. Images further down the story wait until the reader is one chapter away. */
   loadImage: boolean;
-  /** True when nothing is animated: the text cell then carries its own background. */
+  /** True when nothing is animated: the text cell then carries its own background and text colour. */
   plain: boolean;
 }
+
+/**
+ * Body text follows the sky (Story.tsx sets `data-tone` on the grid as the background changes), so it keeps
+ * 4.5:1 against the background at every point of a transition, not only at its ends.
+ */
+const TONE_CLASSES =
+  'text-ink group-data-[tone=black]/sky:text-black group-data-[tone=white]/sky:text-white group-data-[tone=night-ink]/sky:text-night-ink';
+
+const LABEL_CLASSES =
+  'bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase lg:text-[0.6875rem]';
 
 export default function StoryChapter({ section, index, count, step, grade, loadImage, plain }: StoryChapterProps) {
   const headingId = `story-${section.id}`;
   const { image } = section;
+  const plainTone = step.dark ? 'text-night-ink' : 'text-ink';
 
   return (
     <article
@@ -44,7 +56,7 @@ export default function StoryChapter({ section, index, count, step, grade, loadI
         className={
           plain
             ? 'relative h-[50svh] overflow-hidden'
-            : 'sticky top-0 z-20 col-start-1 h-[50svh] self-start overflow-hidden lg:h-svh'
+            : 'sticky top-[var(--case-header)] z-20 col-start-1 h-[calc((100svh-var(--case-header))/2)] self-start overflow-hidden lg:h-[calc(100svh-var(--case-header))]'
         }
         style={plain ? undefined : { gridRow: `1 / span ${count}` }}
       >
@@ -69,16 +81,31 @@ export default function StoryChapter({ section, index, count, step, grade, loadI
               aria-hidden="true"
               className="absolute inset-0 bg-linear-to-t from-night/90 via-night/60 via-30% to-transparent to-65%"
             />
-            <figcaption className="absolute top-3 left-3 max-w-[calc(100%-1.5rem)] bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-snug tracking-[0.04em] text-night-ink/85 sm:max-w-[70%] lg:top-4 lg:left-4 lg:max-w-[60%] lg:text-[0.6875rem]">
-              {image.isIllustration && (
-                <>
-                  <span className="tracking-[0.14em] uppercase">Illustration</span>
-                  <span aria-hidden="true"> · </span>
-                </>
-              )}
-              <span data-story="credit">{image.credit}</span>
-            </figcaption>
           </figure>
+        )}
+
+        {/* Always visible: what the reader must know at a glance. The full credit is behind the ⓘ. */}
+        {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
+          <p className="absolute top-2.5 left-2.5 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:top-3.5 lg:left-3.5">
+            {image.isIllustration && (
+              <span data-story="illustration" className={LABEL_CLASSES}>
+                Illustration
+              </span>
+            )}
+            {image.caption !== undefined && (
+              <span data-story="caption" className={LABEL_CLASSES}>
+                {image.caption}
+              </span>
+            )}
+          </p>
+        )}
+        {image !== undefined && (
+          <CreditInfo
+            credit={image.credit}
+            attribute="data-story"
+            placement="below"
+            className="top-0 right-0 lg:top-1 lg:right-1"
+          />
         )}
 
         <header className="absolute inset-x-0 bottom-0 px-5 pb-5 sm:px-8 sm:pb-7 lg:px-12 lg:pb-12">
@@ -109,12 +136,12 @@ export default function StoryChapter({ section, index, count, step, grade, loadI
         data-story="text"
         className={`relative z-10 px-5 sm:px-8 lg:px-16 xl:px-24 ${
           plain
-            ? 'py-10'
-            : `col-start-1 pb-[50svh] lg:col-start-2 lg:flex lg:min-h-svh lg:flex-col lg:justify-center lg:py-[24svh] ${
+            ? `py-10 ${plainTone}`
+            : `col-start-1 pb-[50svh] lg:col-start-2 lg:flex lg:min-h-svh lg:flex-col lg:justify-center lg:py-[24svh] ${TONE_CLASSES} ${
                 // On a phone the first chapter's text starts below the image, which covers the top half.
-                index === 0 ? 'pt-[calc(50svh+2.5rem)]' : 'pt-10'
+                index === 0 ? 'pt-[calc((100svh-var(--case-header))/2+2.5rem)]' : 'pt-10'
               }`
-        } ${step.dark ? 'text-night-ink' : 'text-ink'}`}
+        }`}
         style={plain ? { backgroundColor: step.background } : { gridRow: index + 1 }}
       >
         <div className="mx-auto flex w-full max-w-[34rem] flex-col gap-[1.15em] font-record text-[clamp(1.0625rem,1rem+0.35vw,1.25rem)] leading-[1.62] lg:mx-0">

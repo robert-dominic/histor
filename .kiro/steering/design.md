@@ -70,7 +70,10 @@ Each case sets its own accent, texture, video and sounds in its folder (`theme.c
 
 ## Images and video
 
-- Every image and video carries a credit. AI-generated or artist-made media is labelled "Illustration" on screen.
+- Every image and video carries a credit.
+- **Chapter and portal images keep the credit behind a small ⓘ button** in a corner of the image. Hovering (on mouse devices), keyboard focus or a tap shows the credit in a small tooltip. Never print the full credit line over the image.
+- **Two labels are always visible on an image:** "Illustration" on AI-generated or artist-made media (`isIllustration: true`), and the image's short caption when it has one (`caption`), e.g. "The Mary Celeste, 1861". Nothing else is printed on the image.
+- The legend intro's video keeps its visible "Illustration" label and credit line.
 - Never AI-generate real people. Real people appear only in real photos or period portraits.
 
 ## Avoid

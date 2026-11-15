@@ -6,7 +6,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { dayNightStep, imageGrade, INK_UNTIL, NIGHT_INK_FROM, nightProgress } from '@/lib/day-night';
+import {
+  dayNightStep,
+  imageGrade,
+  INK_UNTIL,
+  NIGHT_INK_FROM,
+  nightProgress,
+  textTone,
+  TONE_FLIP,
+  type TextTone,
+} from '@/lib/day-night';
 
 const css = readFileSync(fileURLToPath(new URL('../../index.css', import.meta.url)), 'utf8');
 
@@ -111,6 +120,41 @@ describe('dayNightStep', () => {
 
     expect(ratios).toHaveLength(6);
     expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('textTone: body text follows the background through a transition', () => {
+  const colours: Record<TextTone, Rgb> = { ink, 'night-ink': nightInk, black: [0, 0, 0], white: [255, 255, 255] };
+
+  test('it is ink in daylight and night-ink at night', () => {
+    expect(textTone(0)).toBe('ink');
+    expect(textTone(INK_UNTIL)).toBe('ink');
+    expect(textTone(NIGHT_INK_FROM)).toBe('night-ink');
+    expect(textTone(1)).toBe('night-ink');
+  });
+
+  test('inside the band it is black on the lighter side and white on the darker side', () => {
+    expect(textTone(INK_UNTIL + 0.01)).toBe('black');
+    expect(textTone(TONE_FLIP - 0.001)).toBe('black');
+    expect(textTone(TONE_FLIP)).toBe('white');
+    expect(textTone(NIGHT_INK_FROM - 0.01)).toBe('white');
+  });
+
+  test('body text never drops below 4.5:1, at any point between ash and night', () => {
+    let lowest = Infinity;
+    for (let step = 0; step <= 10000; step++) {
+      const mix = step / 10000;
+      lowest = Math.min(lowest, contrast(colours[textTone(mix)], background(mix)));
+    }
+
+    expect(lowest).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test('every chapter of the Mary Celeste rests on ink or night-ink, never on the in-between colours', () => {
+    const count = maryCeleste.story.length;
+    const tones = maryCeleste.story.map((_, index) => textTone(dayNightStep(index, count).mix));
+
+    expect(tones).toEqual(['ink', 'ink', 'ink', 'night-ink', 'night-ink', 'night-ink']);
   });
 });
 

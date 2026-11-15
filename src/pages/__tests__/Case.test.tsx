@@ -75,6 +75,12 @@ describe('Case page: sealed case', () => {
     expect(screen.getByText('This case is sealed.')).toBeDefined();
   });
 
+  test('has no case header', () => {
+    renderCasePage(`/case/${sealedEntry.id}`);
+
+    expect(document.querySelector('[data-case-header="bar"]')).toBeNull();
+  });
+
   test('shows no case content and reads no saved investigation', () => {
     const getItem = vi.spyOn(Storage.prototype, 'getItem');
 
@@ -103,12 +109,29 @@ describe('Case page: open case', () => {
     expect(screen.queryByText('This case is sealed.')).toBeNull();
   });
 
-  test('the intro opens on the title card: the case title as the page heading, its years and the stamp', () => {
+  test('the case title is the page heading, in a header that stays for the whole page, with the years', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+
+    const header = document.querySelector('[data-case-header="bar"]') as HTMLElement;
+    expect(within(header).getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
+    expect(header.textContent).toContain(formatCaseYears(openEntry.data.year, openEntry.data.yearEnd));
+    expect(header.className).toContain('fixed');
+
+    // Still there once the story is on the page.
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
+    expect(document.querySelector('[data-case-header="bar"]')).toBe(header);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+
+  test('the intro opens on the title card: the title large, its years and the stamp', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
     const intro = screen.getByRole('region', { name: 'The legend' });
-    expect(within(intro).getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
-    expect(intro.textContent).toContain(formatCaseYears(openEntry.data.year, openEntry.data.yearEnd));
+    expect(intro.querySelector('[data-legend="title"]')?.textContent).toBe(openEntry.data.title);
+    expect(intro.querySelector('[data-legend="years"]')?.textContent).toBe(
+      formatCaseYears(openEntry.data.year, openEntry.data.yearEnd)
+    );
     expect(intro.querySelector('[data-legend="unsolved"]') !== null).toBe(openEntry.data.unsolved === true);
   });
 

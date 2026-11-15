@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
+import CaseHeader from '@/components/CaseHeader';
 import { getCaseById } from '@/cases';
 import LegendIntro, { type TitleCard } from '@/features/legend/LegendIntro';
 import Story from '@/features/story/Story';
@@ -87,6 +88,10 @@ export default function Case() {
   return (
     // The key gives every case its own provider, so one case never starts with another case's investigation.
     <InvestigationProvider key={caseData.id} caseData={caseData}>
+      {/* The title stays at the top for the whole page. The intro's title card docks into it. */}
+      {titleCard !== undefined && (
+        <CaseHeader title={titleCard.title} years={titleCard.years} unsolved={titleCard.unsolved} />
+      )}
       <main>
         <LegendIntro
           key={caseData.id}
@@ -101,7 +106,8 @@ export default function Case() {
           onDone={scrollToStory}
         />
         {showStory && (
-          <div ref={storyRef}>
+          // The scroll cue stops with the story's top just below the header.
+          <div ref={storyRef} className="scroll-mt-[var(--case-header)]">
             <Story
               key={caseData.id}
               story={caseData.story}

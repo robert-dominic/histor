@@ -11,7 +11,7 @@ import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import CentralQuestion from '@/features/story/CentralQuestion';
 import StoryChapter from '@/features/story/StoryChapter';
-import { dayNightStep, imageGrade } from '@/lib/day-night';
+import { dayNightStep, imageGrade, textTone } from '@/lib/day-night';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { createQuillWriter, splitForQuill, type QuillWriter } from '@/lib/quill-writing';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
@@ -30,10 +30,8 @@ const LINES = {
     takeover: '82%',
     /** A paragraph drops in when its top reaches this line. */
     reveal: '88%',
-    /** A paragraph is out of sight once its bottom is above this line: under the image. */
-    gone: '50%',
   },
-  desktop: { takeover: '60%', reveal: '86%', gone: '0%' },
+  desktop: { takeover: '60%', reveal: '86%' },
 } as const;
 
 /** The first chapter takes over when the top of the story reaches this line. */
@@ -112,7 +110,8 @@ export default function Story({ story, centralQuestion, references, sources }: S
 
       mm.add({ ...MOTION_QUERIES, desktop: DESKTOP_QUERY }, context => {
         const reduced = context.conditions?.reduced === true;
-        const lines = context.conditions?.desktop === true ? LINES.desktop : LINES.phone;
+        const desktop = context.conditions?.desktop === true;
+        const lines = desktop ? LINES.desktop : LINES.phone;
         const grid = one('[data-story="grid"]');
         if (grid === null) {
           return;
@@ -274,9 +273,19 @@ export default function Story({ story, centralQuestion, references, sources }: S
           });
           gsap.set(targets, hiddenLine);
         };
+        // A paragraph is out of sight once its bottom is above this line: under the case header on a desktop,
+        // and under the image, which sits below the header, on a phone. Measured, so it follows both.
+        const goneLine = () => {
+          const pane = first?.pane;
+          if (pane === undefined) {
+            return 0;
+          }
+          const headerHeight = parseFloat(getComputedStyle(pane).top) || 0;
+          return Math.round(desktop ? headerHeight : headerHeight + pane.offsetHeight);
+        };
         ScrollTrigger.batch(paragraphs, {
           start: `top ${lines.reveal}`,
-          end: `bottom ${lines.gone}`,
+          end: () => `bottom ${goneLine()}px`,
           onEnter: targets => show(targets, ENTRANCE.paragraphDrop),
           onEnterBack: targets => show(targets, -ENTRANCE.paragraphDrop),
           onLeave: hide,
@@ -286,17 +295,42 @@ export default function Story({ story, centralQuestion, references, sources }: S
         // ---- Day into night: the background eases from one chapter's step to the next as the reader scrolls
         // between them. Each step is a layer that is faded in, so only opacity is animated.
         const sky = all('[data-story="sky"]');
+        const fades: (gsap.core.Tween | undefined)[] = [];
+        let dawnFade: gsap.core.Tween | undefined;
+
+        // Body text switches colour in step with the background, so it keeps 4.5:1 all the way through a
+        // transition. The colour is switched, never animated: one attribute on the grid, written only when it changes.
+        let tone = grid.dataset.tone;
+        const followSky = () => {
+          // The background on screen is the steps laid over each other, each as far faded in as its scrub is.
+          let mix = steps[0]?.mix ?? 0;
+          fades.forEach((fade, index) => {
+            if (fade !== undefined) {
+              mix += (steps[index].mix - mix) * fade.progress();
+            }
+          });
+          if (dawnFade !== undefined) {
+            mix += (1 - mix) * (1 - dawnFade.progress());
+          }
+          const next = textTone(mix);
+          if (next !== tone) {
+            tone = next;
+            grid.dataset.tone = next;
+          }
+        };
+
         chapters.forEach((chapter, index) => {
           const layer = sky[index];
           if (index === 0 || layer === undefined) {
             return;
           }
-          gsap.fromTo(
+          fades[index] = gsap.fromTo(
             layer,
             { opacity: 0 },
             {
               opacity: 1,
               ease: 'none',
+              onUpdate: followSky,
               scrollTrigger: { trigger: chapter.text, start: 'top bottom', end: `top ${lines.takeover}`, scrub: 0.4 },
             }
           );
@@ -304,16 +338,18 @@ export default function Story({ story, centralQuestion, references, sources }: S
         // Coming out of the legend's night, the story's first screen eases into daylight.
         const dawn = one('[data-story="dawn"]');
         if (dawn !== null) {
-          gsap.fromTo(
+          dawnFade = gsap.fromTo(
             dawn,
             { opacity: 1 },
             {
               opacity: 0,
               ease: 'none',
+              onUpdate: followSky,
               scrollTrigger: { trigger: grid, start: 'top bottom', end: `top ${FIRST_TAKEOVER}`, scrub: 0.4 },
             }
           );
         }
+        followSky();
 
         // ---- The central question, written in slowly: one phrase after another.
         let stopWriting = () => {};
@@ -364,6 +400,7 @@ export default function Story({ story, centralQuestion, references, sources }: S
           const shown = chapters.flatMap(chapter => [chapter.kicker, chapter.heading]).filter(part => part !== null);
           gsap.set([...paragraphs, ...phrases, ...shown], { clearProps: 'opacity,transform' });
           splits.forEach(split => split.revert());
+          grid.dataset.tone = 'ink';
         };
       });
     },
@@ -375,7 +412,7 @@ export default function Story({ story, centralQuestion, references, sources }: S
       <section ref={rootRef} aria-label="The story" data-story="root" className="relative bg-ash">
         {/* One grid for the whole story. A chapter's image cell and text cell are both placed in it
             (StoryChapter.tsx), which is what lets every image stay stuck from the first chapter to the last. */}
-        <div data-story="grid" className="relative grid grid-cols-1 lg:grid-cols-2">
+        <div data-story="grid" data-tone="ink" className="group/sky relative grid grid-cols-1 lg:grid-cols-2">
           {/* The sky: one layer per step from day into night, stuck behind the text. */}
           {!plain && (
             <div

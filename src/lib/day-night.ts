@@ -11,6 +11,30 @@
 export const INK_UNTIL = 0.36;
 export const NIGHT_INK_FROM = 0.56;
 
+/**
+ * Inside that band, body text is pure black on the lighter side and pure white on the darker side: the only
+ * two colours that still reach 4.5:1 there. This is where it switches from one to the other. The background
+ * only passes through the band while the reader scrolls from one chapter to the next.
+ */
+export const TONE_FLIP = 0.46;
+
+/** The colour of body text: the `ink` and `night-ink` tokens, or black and white while crossing the band. */
+export type TextTone = 'ink' | 'black' | 'white' | 'night-ink';
+
+/** The body text colour that reaches 4.5:1 on a background with this share of `night` (0 to 1). */
+export function textTone(mix: number): TextTone {
+  if (mix <= INK_UNTIL) {
+    return 'ink';
+  }
+  if (mix < TONE_FLIP) {
+    return 'black';
+  }
+  if (mix < NIGHT_INK_FROM) {
+    return 'white';
+  }
+  return 'night-ink';
+}
+
 export interface DayNightStep {
   /** CSS colour for the background of this step. */
   background: string;

@@ -3,6 +3,7 @@
 // The legend intro renders everything from its data, Skip jumps to the end state, and the scroll cue calls onDone.
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import CaseHeader from '@/components/CaseHeader';
 import LegendIntro from '@/features/legend/LegendIntro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { LegendIntro as LegendIntroData } from '@/types/case';
@@ -380,17 +381,16 @@ describe('LegendIntro: without matchMedia', () => {
 });
 
 describe('LegendIntro: the title card', () => {
-  test('without a title card there is none, and no page heading', () => {
+  test('without a title card there is none', () => {
     const { container } = renderIntro();
 
     expect(container.querySelector('[data-legend="title-card"]')).toBeNull();
-    expect(screen.queryByRole('heading')).toBeNull();
   });
 
-  test('shows the title as the page heading, the years and the UNSOLVED stamp', () => {
+  test('shows the title, the years and the UNSOLVED stamp', () => {
     const { container } = renderIntro({ titleCard });
 
-    expect(screen.getByRole('heading', { level: 1, name: titleCard.title })).toBeDefined();
+    expect(one(container, 'title').textContent).toBe(titleCard.title);
     expect(one(container, 'years').textContent).toBe(titleCard.years);
     expect(one(container, 'unsolved').textContent).toBe('Unsolved');
     expect(one(container, 'unsolved').className).toContain('uppercase');
@@ -412,11 +412,11 @@ describe('LegendIntro: the title card', () => {
     expect(one(container, 'unsolved').style.opacity).toBe('0');
   });
 
-  test('screen readers get the whole title; the written copy is hidden from them', () => {
+  test('the card is decoration: the case header is the page heading, so the card is hidden from screen readers', () => {
     const { container } = renderIntro({ titleCard });
 
-    expect(one(container, 'title').getAttribute('aria-hidden')).toBe('true');
-    expect(screen.getByRole('heading', { level: 1 }).querySelector('.sr-only')?.textContent).toBe(titleCard.title);
+    expect(one(container, 'title-card').getAttribute('aria-hidden')).toBe('true');
+    expect(screen.queryByRole('heading')).toBeNull();
   });
 
   test('Skip covers the title card too: it is gone in the end state, and the myth is shown', () => {
@@ -451,5 +451,65 @@ describe('LegendIntro: the title card', () => {
     const { container } = renderIntro({ titleCard });
 
     expect(one(container, 'title-card').className).toContain('opacity-0');
+  });
+});
+
+describe('LegendIntro: docking the title into the case header', () => {
+  /** The page's case header, as the case page renders it next to the intro. */
+  function renderWithHeader(props: Partial<Parameters<typeof LegendIntro>[0]> = {}) {
+    return render(
+      <>
+        <CaseHeader title={titleCard.title} years={titleCard.years} unsolved />
+        <LegendIntro legendIntro={legendIntro} titleCard={titleCard} onDone={vi.fn()} {...props} />
+      </>
+    );
+  }
+  const bar = (container: HTMLElement) => container.querySelector('[data-case-header="bar"]') as HTMLElement;
+
+  test('the header is hidden while the title card shows the title large', () => {
+    const { container } = renderWithHeader();
+
+    expect(bar(container).style.opacity).toBe('0');
+    expect(one(container, 'title-card').style.opacity).not.toBe('0');
+  });
+
+  test('the header is still the page heading for screen readers while it is hidden', () => {
+    renderWithHeader();
+
+    expect(screen.getByRole('heading', { level: 1, name: titleCard.title })).toBeDefined();
+  });
+
+  test('Skip docks the title: the header is shown and the card is gone', () => {
+    const { container } = renderWithHeader();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    expect(bar(container).style.opacity).toBe('1');
+    expect(one(container, 'title-card').style.opacity).toBe('0');
+  });
+
+  test('a returning visitor gets the header at once', () => {
+    const { container } = renderWithHeader({ startAtEnd: true });
+
+    expect(bar(container).style.opacity).toBe('1');
+  });
+
+  test('reduced motion: the title does not fly, the header fades in', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    const { container } = renderWithHeader();
+
+    expect(bar(container).style.opacity).toBe('0');
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+
+    expect(bar(container).style.opacity).toBe('1');
+    expect(one(container, 'title').style.transform).toBe('');
+  });
+
+  test('without matchMedia the header is simply there', () => {
+    vi.unstubAllGlobals();
+    const { container } = renderWithHeader();
+
+    expect(bar(container).style.opacity).toBe('');
   });
 });

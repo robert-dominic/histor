@@ -56,6 +56,17 @@
   }
 }
 
+/* The height of the slim case header (components/CaseHeader.tsx). Sticky things below it start at this offset. */
+:root {
+  --case-header: 2rem;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --case-header: 2.75rem;
+  }
+}
+
 /* Everything clickable shows a pointer on devices that hover (design.md). Tailwind v4 no longer does this for buttons. */
 @layer base {
   @media (hover: hover) and (pointer: fine) {
