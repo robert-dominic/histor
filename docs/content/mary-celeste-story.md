@@ -1,13 +1,8 @@
-# Mary Celeste: the real story (draft 2, darker)
+# Mary Celeste: the real story (draft 3, fact-checked)
 
 Part 1 is the story as a reader sees it. **Bold** words are portals: tap one and a small card opens. Part 2 is the same content as data, for `src/cases/mary-celeste/case.ts`.
 
-How it stays spooky *and* clear:
-- Every section opens by saying plainly where and when we are.
-- The dread comes from true details: a family aboard, a ship sailing on alone, belongings left behind. Nothing is invented.
-- Each section ends on a line that pulls you to the next.
-
-Every fact comes from the Mary Celeste study brief (Gibraltar court testimony, as reported by Royal Museums Greenwich, maryceleste.net, Smithsonian and American Heritage).
+Draft 3 applies every fix from the `histor-content-reviewer` agent's report (15 Nov 2026): 62 claims checked, 49 confirmed, 12 too strong, 1 wrong. Each fix softens a claim to what the sources actually support.
 
 ---
 
@@ -17,7 +12,7 @@ Every fact comes from the Mary Celeste study brief (Gibraltar court testimony, a
 
 In November 1872, the **Mary Celeste**, a small merchant ship, left New York for **Genoa**, Italy.
 
-In her hold: 1,701 barrels of **industrial alcohol**. On board: ten people.
+In her hold: 1,701 barrels of **high-grade alcohol**. On board: ten people.
 
 Her captain, **Benjamin Briggs**, was an experienced sailor. He had brought his family along: his wife, **Sarah**, and their two-year-old daughter, **Sophia**. Their seven-year-old son stayed home for school.
 
@@ -27,11 +22,11 @@ The other seven were the crew.
 
 ### 2. Near the Azores, 24–25 November: Six miles from land
 
-On 24 November, near the **Azores**, a group of islands in the middle of the Atlantic, someone made the last entry in the ship's logbook. The day before, **the captain** had turned north, toward **Santa Maria** island.
+On 24 November, near the **Azores**, a group of islands in the middle of the Atlantic, someone made the last entry in the ship's logbook.
 
-That night, the wind rose to a gale.
+Weather records suggest the wind rose hard that night.
 
-In the morning, someone wrote one more line on the **log slate**, the board for rough notes: Santa Maria, six miles away.
+In the morning, someone wrote one more line on the **log slate**, the board for rough notes: **Santa Maria** island, six miles away.
 
 > *Then the writing stops.*
 
@@ -53,27 +48,27 @@ Not the captain. Not Sarah. Not little Sophia. Not one of the seven crew.
 
 The ship herself was sound. The cargo was nearly all there. There was food and water for six months. In the crew's quarters, their belongings lay where they had left them.
 
-But the signs of something wrong were everywhere. Water sloshed in the hold, three and a half feet deep. One of the **pumps** had been pulled half apart. In the galley, the stove had been knocked out of place. Two sails had blown away.
+But some things were wrong. Water sloshed in the hold, three and a half feet deep. One of the **pumps** had been pulled half apart. In the galley, the stove had been knocked out of place. Two sails had blown away.
 
 And some things were missing. The only **lifeboat**. The captain's **chronometer**, his sextant, his navigation book, the ship's papers.
 
-> *Whoever left had taken the tools to find land. They had left almost everything else behind.*
+> *It looked as if they had left on purpose.*
 
 ### 5. Gibraltar, December 1872: Murder?
 
 Deveau and two sailors brought her 600 nautical miles to **Gibraltar**, where a court spent more than two months on the case.
 
-The man leading it, **Frederick Solly-Flood**, believed there had been murder. He pointed to dark stains on the captain's sword, and cuts on the ship's bow.
+The Crown's lawyer, **Frederick Solly-Flood**, believed there had been murder. He pointed to faint marks on the captain's sword, and cuts on the ship's bow.
 
-Tests showed the stains were not blood. No proof of violence was ever found. Not one body was ever found.
+Tests showed the marks were not blood. No proof of violence was ever found. Not one body was ever found.
 
-The court paid the Dei Gratia's crew for bringing her in, but only a small sum. Historians read it as a sign that suspicion never quite went away.
+The court paid the Dei Gratia's crew for bringing her in, but only a small sum. Some writers read it as a sign that suspicion lingered.
 
 > *The case was closed. The question was not.*
 
 ### 6. The question: Why?
 
-Most historians believe everyone left the ship on purpose, in a hurry, in that small lifeboat, and was lost at sea.
+Most accounts agree that the ten left the ship on purpose, in the small lifeboat, and were lost at sea.
 
 That explains where they went. It doesn't explain why they went.
 
@@ -86,21 +81,21 @@ That explains where they went. It doesn't explain why they went.
 | --- | --- | --- |
 | Mary Celeste / She | Ship | A two-masted merchant ship, a brigantine. Built in Nova Scotia in 1861 under the name Amazon. In 1872 she sailed from New York for Genoa with ten people aboard. |
 | Dei Gratia | Ship | The ship whose crew found the Mary Celeste drifting on 4 December 1872. Her captain was David Morehouse. |
-| Benjamin Briggs / the captain | Person | Captain of the Mary Celeste. An experienced, respected sailor who also owned shares in the ship, so losing her would have cost him money. His wife and young daughter sailed with him. |
+| Benjamin Briggs | Person | Captain of the Mary Celeste. An experienced, respected sailor who also owned a third of the ship, so losing her would have cost him money. His wife and young daughter sailed with him. |
 | Sarah | Person | Sarah Briggs, wife of the captain. She sailed with him, together with their two-year-old daughter. |
-| Sophia | Person | Sophia Briggs, the couple's two-year-old daughter. Her brother Arthur, seven, stayed home in Massachusetts for school. |
-| David Morehouse | Person | Captain of the Dei Gratia. His crew claimed salvage money for bringing the Mary Celeste in, which later made him a suspect. No evidence against him was ever found. |
-| Oliver Deveau | Person | First mate of the Dei Gratia. He led the boarding party and sailed the Mary Celeste to Gibraltar. His sworn testimony is the core of what we know. |
-| Frederick Solly-Flood | Person | Attorney General of Gibraltar, in charge of the inquiry. Sure from the start that there had been murder, he kept arguing it as the evidence turned against him. |
-| Genoa | Place | A port city in northern Italy, and the Mary Celeste's destination. |
+| Sophia | Person | Sophia Briggs, the couple's two-year-old daughter. Her brother Arthur, seven, stayed home in Massachusetts with his grandmother. |
+| David Morehouse | Person | Captain of the Dei Gratia. His crew claimed salvage money for bringing the Mary Celeste in, which later made him a suspect. The court found no evidence of foul play. |
+| Oliver Deveau | Person | First mate of the Dei Gratia. He led the boarding party and sailed the Mary Celeste to Gibraltar. His sworn testimony is one of our main sources. |
+| Frederick Solly-Flood | Person | Attorney General of Gibraltar, the Crown's lawyer at the inquiry. Convinced early on that there had been murder, he kept arguing it as the evidence turned against him. |
+| Genoa | Place | A port city in northwestern Italy, and the Mary Celeste's destination. |
 | Azores | Place | A group of Portuguese islands in the middle of the Atlantic, roughly 1,400 km west of mainland Portugal. |
-| Santa Maria | Place | The southeasternmost island of the Azores. The last note on the log slate put it six miles away. |
+| Santa Maria | Place | The southernmost island of the Azores. The last note on the log slate put it six miles away. |
 | Gibraltar | Place | A British territory at the southern tip of Spain, where the inquiry was held. |
 | log slate | Term | A board for rough notes. Sailors wrote positions and times on it during the day, then copied them into the logbook. The last note never made it into the logbook. |
-| industrial alcohol | Term | Alcohol made for industry, not for drinking. It is undrinkable and toxic, which matters for one of the theories. |
+| high-grade alcohol | Term | Strong alcohol, shipped for industry and for fortifying wine. Whether it was fit to drink is disputed, and that question matters for one of the theories. |
 | pumps | Term | Ships pumped seawater out of their hold. A sounding rod, found nearby, measures how much water is inside. |
 | lifeboat | Term | A small open boat carried for emergencies. The Mary Celeste had one, and it was gone. |
-| chronometer | Term | A very precise clock used to work out a ship's position at sea. Without it, a captain can't tell exactly where he is. |
+| chronometer | Term | A very accurate clock that navigators used to work out their position. Without one, a captain struggles to know how far east or west he is. |
 
 ---
 
@@ -119,7 +114,7 @@ story: [
     heading: 'Ten people set sail',
     body: [
       'In November 1872, the {{ref:mary-celeste|Mary Celeste}}, a small merchant ship, left New York for {{ref:genoa|Genoa}}, Italy.',
-      'In her hold: 1,701 barrels of {{ref:industrial-alcohol|industrial alcohol}}. On board: ten people.',
+      'In her hold: 1,701 barrels of {{ref:alcohol|high-grade alcohol}}. On board: ten people.',
       'Her captain, {{ref:benjamin-briggs|Benjamin Briggs}}, was an experienced sailor. He had brought his family along: his wife, {{ref:sarah-briggs|Sarah}}, and their two-year-old daughter, {{ref:sophia-briggs|Sophia}}. Their seven-year-old son stayed home for school.',
       'The other seven were the crew.',
     ],
@@ -130,9 +125,9 @@ story: [
     kicker: 'Near the Azores, 24–25 November',
     heading: 'Six miles from land',
     body: [
-      "On 24 November, near the {{ref:azores|Azores}}, a group of islands in the middle of the Atlantic, someone made the last entry in the ship's logbook. The day before, {{ref:benjamin-briggs|the captain}} had turned north, toward {{ref:santa-maria|Santa Maria}} island.",
-      'That night, the wind rose to a gale.',
-      'In the morning, someone wrote one more line on the {{ref:log-slate|log slate}}, the board for rough notes: Santa Maria, six miles away.',
+      "On 24 November, near the {{ref:azores|Azores}}, a group of islands in the middle of the Atlantic, someone made the last entry in the ship's logbook.",
+      'Weather records suggest the wind rose hard that night.',
+      'In the morning, someone wrote one more line on the {{ref:log-slate|log slate}}, the board for rough notes: {{ref:santa-maria|Santa Maria}} island, six miles away.',
     ],
     hook: 'Then the writing stops.',
   },
@@ -155,10 +150,10 @@ story: [
       'Deveau climbed aboard. No one was there.',
       'Not the captain. Not Sarah. Not little Sophia. Not one of the seven crew.',
       "The ship herself was sound. The cargo was nearly all there. There was food and water for six months. In the crew's quarters, their belongings lay where they had left them.",
-      'But the signs of something wrong were everywhere. Water sloshed in the hold, three and a half feet deep. One of the {{ref:pump|pumps}} had been pulled half apart. In the galley, the stove had been knocked out of place. Two sails had blown away.',
+      'But some things were wrong. Water sloshed in the hold, three and a half feet deep. One of the {{ref:pump|pumps}} had been pulled half apart. In the galley, the stove had been knocked out of place. Two sails had blown away.',
       "And some things were missing. The only {{ref:lifeboat|lifeboat}}. The captain's {{ref:chronometer|chronometer}}, his sextant, his navigation book, the ship's papers.",
     ],
-    hook: 'Whoever left had taken the tools to find land. They had left almost everything else behind.',
+    hook: 'It looked as if they had left on purpose.',
   },
   {
     id: 's-inquiry',
@@ -166,9 +161,9 @@ story: [
     heading: 'Murder?',
     body: [
       'Deveau and two sailors brought her 600 nautical miles to {{ref:gibraltar|Gibraltar}}, where a court spent more than two months on the case.',
-      "The man leading it, {{ref:solly-flood|Frederick Solly-Flood}}, believed there had been murder. He pointed to dark stains on the captain's sword, and cuts on the ship's bow.",
-      'Tests showed the stains were not blood. No proof of violence was ever found. Not one body was ever found.',
-      "The court paid the Dei Gratia's crew for bringing her in, but only a small sum. Historians read it as a sign that suspicion never quite went away.",
+      "The Crown's lawyer, {{ref:solly-flood|Frederick Solly-Flood}}, believed there had been murder. He pointed to faint marks on the captain's sword, and cuts on the ship's bow.",
+      'Tests showed the marks were not blood. No proof of violence was ever found. Not one body was ever found.',
+      "The court paid the Dei Gratia's crew for bringing her in, but only a small sum. Some writers read it as a sign that suspicion lingered.",
     ],
     hook: 'The case was closed. The question was not.',
   },
@@ -177,7 +172,7 @@ story: [
     kicker: 'The question',
     heading: 'Why?',
     body: [
-      'Most historians believe everyone left the ship on purpose, in a hurry, in that small lifeboat, and was lost at sea.',
+      'Most accounts agree that the ten left the ship on purpose, in the small lifeboat, and were lost at sea.',
       "That explains where they went. It doesn't explain why they went.",
     ],
   },
@@ -188,47 +183,55 @@ references: [
     profile: ['A two-masted merchant ship, a brigantine. Built in Nova Scotia in 1861 under the name Amazon.', 'In 1872 she sailed from New York for Genoa with ten people aboard.'] },
   { id: 'dei-gratia', kind: 'ship', label: 'Dei Gratia', sources: ['src-rmg'],
     profile: ['The ship whose crew found the Mary Celeste drifting on 4 December 1872. Her captain was David Morehouse.'] },
-  { id: 'benjamin-briggs', kind: 'person', label: 'Captain Benjamin Briggs', sources: ['src-rmg', 'src-maryceleste-net'],
-    profile: ['Captain of the Mary Celeste. An experienced, respected sailor who also owned shares in the ship, so losing her would have cost him money.', 'His wife and young daughter sailed with him.'] },
-  { id: 'sarah-briggs', kind: 'person', label: 'Sarah Briggs', sources: ['src-maryceleste-net'],
+  { id: 'benjamin-briggs', kind: 'person', label: 'Captain Benjamin Briggs', sources: ['src-rmg', 'src-maryceleste-net', 'src-smithsonian'],
+    profile: ['Captain of the Mary Celeste. An experienced, respected sailor who also owned a third of the ship, so losing her would have cost him money.', 'His wife and young daughter sailed with him.'] },
+  { id: 'sarah-briggs', kind: 'person', label: 'Sarah Briggs', sources: ['src-rmg', 'src-maryceleste-net'],
     profile: ['Wife of Captain Briggs. She sailed with him, together with their two-year-old daughter.'] },
-  { id: 'sophia-briggs', kind: 'person', label: 'Sophia Briggs', sources: ['src-maryceleste-net'],
-    profile: ["The Briggses' two-year-old daughter. Her brother Arthur, seven, stayed home in Massachusetts for school."] },
-  { id: 'david-morehouse', kind: 'person', label: 'David Morehouse', sources: ['src-rmg', 'src-american-heritage'],
-    profile: ['Captain of the Dei Gratia. His crew claimed salvage money for bringing the Mary Celeste in, which later made him a suspect.', 'No evidence against him was ever found.'] },
-  { id: 'oliver-deveau', kind: 'person', label: 'Oliver Deveau', sources: ['src-rmg'],
-    profile: ['First mate of the Dei Gratia. He led the boarding party and sailed the Mary Celeste to Gibraltar.', 'His sworn testimony is the core of what we know.'] },
+  { id: 'sophia-briggs', kind: 'person', label: 'Sophia Briggs', sources: ['src-rmg', 'src-maryceleste-net'],
+    profile: ["The Briggses' two-year-old daughter. Her brother Arthur, seven, stayed home in Massachusetts with his grandmother."] },
+  { id: 'david-morehouse', kind: 'person', label: 'David Morehouse', sources: ['src-rmg', 'src-smithsonian', 'src-american-heritage'],
+    profile: ['Captain of the Dei Gratia. His crew claimed salvage money for bringing the Mary Celeste in, which later made him a suspect.', 'The court found no evidence of foul play.'] },
+  { id: 'oliver-deveau', kind: 'person', label: 'Oliver Deveau', sources: ['src-rmg', 'src-american-heritage'],
+    profile: ['First mate of the Dei Gratia. He led the boarding party and sailed the Mary Celeste to Gibraltar.', 'His sworn testimony is one of our main sources.'] },
   { id: 'solly-flood', kind: 'person', label: 'Frederick Solly-Flood', sources: ['src-rmg', 'src-american-heritage'],
-    profile: ['Attorney General of Gibraltar, in charge of the inquiry.', 'Sure from the start that there had been murder, he kept arguing it as the evidence turned against him.'] },
-  { id: 'genoa', kind: 'place', label: 'Genoa',
-    profile: ["A port city in northern Italy, and the Mary Celeste's destination."] },
+    profile: ["Attorney General of Gibraltar, the Crown's lawyer at the inquiry.", 'Convinced early on that there had been murder, he kept arguing it as the evidence turned against him.'] },
+  { id: 'genoa', kind: 'place', label: 'Genoa', sources: ['src-rmg'],
+    profile: ["A port city in northwestern Italy, and the Mary Celeste's destination."] },
   { id: 'azores', kind: 'place', label: 'Azores',
     profile: ['A group of Portuguese islands in the middle of the Atlantic, roughly 1,400 km west of mainland Portugal.'] },
-  { id: 'santa-maria', kind: 'place', label: 'Santa Maria', sources: ['src-maryceleste-net', 'src-smithsonian'],
-    profile: ['The southeasternmost island of the Azores. The last note on the log slate put it six miles away.'] },
-  { id: 'gibraltar', kind: 'place', label: 'Gibraltar', sources: ['src-rmg'],
+  { id: 'santa-maria', kind: 'place', label: 'Santa Maria', sources: ['src-maryceleste-net'],
+    profile: ['The southernmost island of the Azores. The last note on the log slate put it six miles away.'] },
+  { id: 'gibraltar', kind: 'place', label: 'Gibraltar', sources: ['src-rmg', 'src-maryceleste-net'],
     profile: ['A British territory at the southern tip of Spain, where the inquiry was held.'] },
-  { id: 'log-slate', kind: 'term', label: 'log slate', sources: ['src-maryceleste-net', 'src-smithsonian'],
+  { id: 'log-slate', kind: 'term', label: 'log slate', sources: ['src-rmg', 'src-maryceleste-net'],
     profile: ['A board for rough notes. Sailors wrote positions and times on it during the day, then copied them into the logbook.', 'The last note never made it into the logbook.'] },
-  { id: 'industrial-alcohol', kind: 'term', label: 'industrial alcohol', sources: ['src-smithsonian'],
-    profile: ['Alcohol made for industry, not for drinking. It is undrinkable and toxic, which matters for one of the theories.'] },
+  { id: 'alcohol', kind: 'term', label: 'high-grade alcohol', sources: ['src-rmg', 'src-maryceleste-net', 'src-smithsonian'],
+    profile: ['Strong alcohol, shipped for industry and for fortifying wine.', 'Whether it was fit to drink is disputed, and that question matters for one of the theories.'] },
   { id: 'pump', kind: 'term', label: 'pumps', sources: ['src-rmg'],
     profile: ['Ships pumped seawater out of their hold. A sounding rod, found nearby, measures how much water is inside.'] },
-  { id: 'lifeboat', kind: 'term', label: 'lifeboat', sources: ['src-rmg'],
+  { id: 'lifeboat', kind: 'term', label: 'lifeboat', sources: ['src-rmg', 'src-american-heritage'],
     profile: ['A small open boat carried for emergencies. The Mary Celeste had one, and it was gone.'] },
-  { id: 'chronometer', kind: 'term', label: 'chronometer', sources: ['src-smithsonian'],
-    profile: ["A very precise clock used to work out a ship's position at sea. Without it, a captain can't tell exactly where he is."] },
+  { id: 'chronometer', kind: 'term', label: 'chronometer', sources: ['src-rmg'],
+    profile: ['A very accurate clock that navigators used to work out their position. Without one, a captain struggles to know how far east or west he is.'] },
 ],
 
 sources: [
-  { id: 'src-rmg', kind: 'secondary', title: 'The mystery of the Mary Celeste', citation: 'Royal Museums Greenwich, "The mystery of the Mary Celeste"' },
-  { id: 'src-maryceleste-net', kind: 'secondary', title: 'The Mary Celeste: Facts not fiction', citation: 'maryceleste.net, "The Mary Celeste: Facts not fiction", drawing on Charles Edey Fay\'s 1942 study' },
-  { id: 'src-smithsonian', kind: 'secondary', title: 'Abandoned Ship: The Mary Celeste', citation: 'Smithsonian Magazine, "Abandoned Ship: The Mary Celeste"' },
-  { id: 'src-american-heritage', kind: 'secondary', title: 'The Mystery of the Mary Celeste', citation: 'American Heritage, "The Mystery of the Mary Celeste"' },
+  { id: 'src-rmg', kind: 'secondary', title: 'The mystery of the Mary Celeste',
+    url: 'https://www.rmg.co.uk/stories/maritime-history/mystery-mary-celeste',
+    citation: 'Royal Museums Greenwich, "The mystery of the Mary Celeste"' },
+  { id: 'src-maryceleste-net', kind: 'secondary', title: 'The Mary Celeste: Facts not fiction',
+    url: 'https://www.maryceleste.net/facts.htm',
+    citation: "maryceleste.net, \"The Mary Celeste: Facts not fiction\", drawing on Charles Edey Fay's 1942 study" },
+  { id: 'src-smithsonian', kind: 'secondary', title: 'Abandoned Ship: The Mary Celeste',
+    url: 'https://www.smithsonianmag.com/history/abandoned-ship-the-mary-celeste-174488104',
+    citation: 'Smithsonian Magazine, "Abandoned Ship: The Mary Celeste"' },
+  { id: 'src-american-heritage', kind: 'secondary', title: 'The Mystery of the Mary Celeste',
+    url: 'https://www.americanheritage.com/mystery-mary-celeste',
+    citation: 'American Heritage, "The Mystery of the Mary Celeste", Vol. 32, Issue 2 (1981)' },
 ],
 ```
 
 Notes:
-- Source URLs are left out on purpose: I won't guess links. The type accepts a citation instead. The content reviewer (with Tavily) should find and add the exact URLs.
 - If the placeholder evidence still points at old source ids, keep those sources too, so the validator passes.
-- Portraits and maps come later. The cards work as text first.
+- Removed after review: "the captain had turned north toward Santa Maria" (one documentary's reconstruction) and "in a hurry" (sources disagree).
+- The central question stays as written in product.md. Note that it assumes the captain gave the order to leave, which no source proves; it is posed as a question, not a claim.

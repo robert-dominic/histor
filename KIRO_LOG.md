@@ -13,7 +13,7 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 | Kiro IDE | Used | All Kiro work done in the IDE |
 | MCP | Used | Context7 (via its power) for current fast-check and Vitest docs |
 | Kiro powers | Used | Context7 power installed and used in the story-engine spec |
-| Custom agents | To try | Idea: a Histor content reviewer |
+| Custom agents | Used | `histor-content-reviewer`: a read-only fact-checker with write access denied by config |
 
 ## Log
 
@@ -121,6 +121,26 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 
 - Task 4 checkpoint (Kiro, Sonnet): test, build and lint all clean, and the fixed files (`case.ts`, `src/cases/`) untouched. Kiro produced a full coverage table mapping every acceptance criterion to the tests that prove it, and flagged the one criterion with no direct test (4.8, "validator is pure"; it rests on code review).
 - **story-engine complete:** a Kiro-written spec (Opus), executed by Kiro (Sonnet) in 6 tasks and 7 commits, with 110 new tests (310 total) and one real property-test catch. Time from first prompt to done: about 2 hours.
+
+### 13 Nov 2026 (afternoon): First designed screen
+
+- Legend intro built by Claude Code (Fable) from a written brief: the myth line by line over an AI-generated night video (labelled "Illustration"), the "Not in the record" stamp, then the debunk. Skippable, reduced-motion version, keyboard accessible. Checked in headless Chrome at 375px and 1440px. 333 tests.
+- Claude Code caught that the steering file `design.md` in the repo still listed the *old* fonts and lacked the Ash palette, while the brief used the final choices. The updated steering had never made it into the repo. It followed the brief and flagged the conflict.
+- Also flagged: the rust stamp colour was too low-contrast on the night background (about 2.8:1). Fixed with a lighter rust for dark backgrounds (about 4.6:1).
+- Follow-up: the video was compressed from 3.86 MB to 368 KB, with a 26 KB WebP poster. The legend video moved into the case's own theme data (one approved type change), so adding a case is still one folder plus one line. The intro is remembered after the first viewing. 349 tests.
+- Redesign after Robert's review: the legend is now *written* letter by letter with a quill (the legend's voice), one stamp ("Well... that never happened."), then the explanation *typed* like a typewriter (the app's voice). The video loop seam was fixed by crossfading its end into its start with ffmpeg. The video credit was added to the type, the validator and the spec. 371 tests.
+- Polish from Robert's review: a pointer cursor on every clickable element (now a steering rule), slower quill and typewriter, the famous "warm breakfast" in quotes. The steering files were updated to match what was built.
+
+### 15 Nov 2026: Tavily
+
+- Installed the Tavily power in Kiro (web search, for fact-checking case content). Without an account it runs in a free mode with a small daily cap, which Kiro hit on its first search. Kiro worked around the missing tool by installing Tavily's command-line tool outside the repo, and reported the cap honestly. Connected Robert's Tavily account through browser sign-in (OAuth): the token lives in the home folder, and no API key ever touches the public repo.
+- **Custom agent created: `histor-content-reviewer`.** Written by Kiro from our instructions. It fact-checks story sentences, portal cards, source URLs and image credits with Tavily, and returns a verdict per claim (Confirmed / Too strong / Unsupported / Wrong). "Never edit files" is enforced by the agent's permissions (all file writes denied), not just requested in the prompt. Destructive shell commands and git commits are also denied.
+- **First run of the content reviewer** on the Mary Celeste story (Sonnet 5.5, using Tavily to read Royal Museums Greenwich, maryceleste.net, Smithsonian, American Heritage and Wikimedia Commons). **62 claims checked: 49 confirmed, 12 too strong, 1 wrong, 0 unsupported.** No legend presented as record. Key catches:
+  - **Wrong:** a portal card called the cargo "undrinkable and toxic" industrial alcohol. maryceleste.net disputes that it was denatured at all, so the card now says it's disputed.
+  - **Too strong:** Solly-Flood didn't "lead" the inquiry (the Chief Justice presided; he was the Crown's lawyer). "Dark stains" on the sword were "faint marks." "Turned north toward Santa Maria" and "a gale" came from one documentary's reconstruction, not testimony. "Historians read it" was really one or two writers.
+  - **Image credits:** confirmed artist, date and licence for the Commons images, and corrected one painting's title.
+  - It also found the exact URLs for all four cited sources, which I had deliberately left blank rather than guess.
+- All fixes applied in story draft 3: every flagged claim was softened to what the sources support, or removed.
 
 ## Lessons so far
 
