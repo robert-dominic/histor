@@ -12,6 +12,7 @@ import {
   INK_UNTIL,
   NIGHT_INK_FROM,
   nightProgress,
+  skyColour,
   textTone,
   TONE_FLIP,
   type TextTone,
@@ -52,6 +53,16 @@ const nightInk = token('night-ink');
 
 /** The colour that `color-mix(in srgb, ash, night <mix>)` gives. */
 const background = (mix: number): Rgb => ash.map((channel, index) => channel + (night[index] - channel) * mix) as Rgb;
+
+describe('skyColour', () => {
+  test('mixes the ash and night tokens, rounded to a tenth of a percent and kept between 0 and 100%', () => {
+    expect(skyColour(0)).toBe('color-mix(in srgb, var(--color-ash), var(--color-night) 0%)');
+    expect(skyColour(0.12345)).toBe('color-mix(in srgb, var(--color-ash), var(--color-night) 12.3%)');
+    expect(skyColour(1)).toBe('color-mix(in srgb, var(--color-ash), var(--color-night) 100%)');
+    expect(skyColour(-0.2)).toBe(skyColour(0));
+    expect(skyColour(1.4)).toBe(skyColour(1));
+  });
+});
 
 describe('dayNightStep', () => {
   test('the first chapter is ash and the last is night', () => {

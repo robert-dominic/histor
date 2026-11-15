@@ -73,8 +73,9 @@
   scrollbar-gutter: stable;
 }
 
-/* The gutter shows the page's own background. The case page is framed in night (its header, its intro), so the
-   gutter is night there too, instead of a white strip. */
+/* The gutter shows the page's own background. The case page starts in night (its header, its intro), so the
+   gutter is night there too, instead of a white strip. Once the story is on the page it writes its current sky
+   colour to the root element over this (features/story/Story.tsx), so the gutter follows day into night. */
 :root:has(main[data-page="case"]) {
   background-color: var(--color-night);
 }

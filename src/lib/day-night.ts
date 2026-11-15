@@ -49,15 +49,20 @@ export function nightProgress(index: number, count: number): number {
   return count <= 1 ? 0 : Math.min(1, Math.max(0, index / (count - 1)));
 }
 
+/** The CSS colour of a sky with this share of `night` (0 to 1), rounded to a tenth of a percent. */
+export function skyColour(mix: number): string {
+  const percent = Math.round(Math.min(1, Math.max(0, mix)) * 1000) / 10;
+  return `color-mix(in srgb, var(--color-ash), var(--color-night) ${percent}%)`;
+}
+
 /** The background step for chapter `index` of `count`: even steps from `ash` to `night`. */
 export function dayNightStep(index: number, count: number): DayNightStep {
   let mix = nightProgress(index, count);
   if (mix > INK_UNTIL && mix < NIGHT_INK_FROM) {
     mix = mix - INK_UNTIL <= NIGHT_INK_FROM - mix ? INK_UNTIL : NIGHT_INK_FROM;
   }
-  const percent = Math.round(mix * 1000) / 10;
   return {
-    background: `color-mix(in srgb, var(--color-ash), var(--color-night) ${percent}%)`,
+    background: skyColour(mix),
     mix,
     dark: mix >= NIGHT_INK_FROM,
   };

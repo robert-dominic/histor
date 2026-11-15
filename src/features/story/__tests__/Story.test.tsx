@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
+import { skyColour } from '@/lib/day-night';
 import { parseRefs } from '@/lib/parse-refs';
 import { splitIntoPhrases } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
@@ -56,6 +57,23 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+describe('Story: the page background follows the sky', () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty('background-color');
+  });
+
+  test('writes the current sky to the root element, so the scrollbar gutter matches it', () => {
+    const { unmount } = renderStory();
+
+    // Nothing is scrolled yet: the story is still below the legend's night.
+    expect(document.documentElement.style.backgroundColor).toBe(skyColour(1));
+
+    unmount();
+    // Gone with the story: the stylesheet decides again.
+    expect(document.documentElement.style.backgroundColor).toBe('');
+  });
 });
 
 describe('Story: the Mary Celeste', () => {

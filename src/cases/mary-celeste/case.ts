@@ -36,9 +36,9 @@ export const maryCeleste: Case = {
       'Half-eaten. The tea is still warm.',
       'As if everyone simply vanished.',
     ],
-    stamp: 'Well... that part never happened.',
+    stamp: 'Legend',
     debunk:
-      'The men who boarded her found nothing to eat or drink on the table. The famous "warm breakfast" grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
+      'Well... that part never happened. The men who boarded her found nothing to eat or drink on the table. The famous "warm breakfast" grew out of a short story Arthur Conan Doyle published in 1884, and the retellings that followed it.',
   },
 
   story: [

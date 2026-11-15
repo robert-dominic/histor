@@ -11,7 +11,7 @@ import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import CentralQuestion from '@/features/story/CentralQuestion';
 import StoryChapter from '@/features/story/StoryChapter';
-import { dayNightStep, imageGrade, textTone } from '@/lib/day-night';
+import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { createQuillWriter, splitForQuill, type QuillWriter } from '@/lib/quill-writing';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
@@ -301,6 +301,7 @@ export default function Story({ story, centralQuestion, references, sources }: S
         // Body text switches colour in step with the background, so it keeps 4.5:1 all the way through a
         // transition. The colour is switched, never animated: one attribute on the grid, written only when it changes.
         let tone = grid.dataset.tone;
+        let rootColour = '';
         const followSky = () => {
           // The background on screen is the steps laid over each other, each as far faded in as its scrub is.
           let mix = steps[0]?.mix ?? 0;
@@ -316,6 +317,13 @@ export default function Story({ story, centralQuestion, references, sources }: S
           if (next !== tone) {
             tone = next;
             grid.dataset.tone = next;
+          }
+          // The page's own background (and so its scrollbar gutter) is the same sky. Written to the root element,
+          // never to React state, and only when the colour changes.
+          const colour = skyColour(mix);
+          if (colour !== rootColour) {
+            rootColour = colour;
+            document.documentElement.style.backgroundColor = colour;
           }
         };
 
@@ -401,6 +409,8 @@ export default function Story({ story, centralQuestion, references, sources }: S
           gsap.set([...paragraphs, ...phrases, ...shown], { clearProps: 'opacity,transform' });
           splits.forEach(split => split.revert());
           grid.dataset.tone = 'ink';
+          // Hand the page's background back to the stylesheet (night on a case page, index.css).
+          document.documentElement.style.removeProperty('background-color');
         };
       });
     },

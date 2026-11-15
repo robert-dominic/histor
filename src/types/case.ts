@@ -112,9 +112,9 @@ export type Evidence =
 export interface LegendIntro {
   /** The legend, told line by line. */
   lines: string[];
-  /** Text on the stamp, e.g. "Not in the record". */
+  /** Text on the stamp, e.g. "Legend". */
   stamp: string;
-  /** What the app says after the stamp, e.g. "Well... that never happened." */
+  /** What the app says after the stamp, e.g. "Well... that part never happened. The men who boarded her..." */
   debunk: string;
 }
 

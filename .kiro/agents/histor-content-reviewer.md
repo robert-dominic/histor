@@ -11,11 +11,19 @@ permissions:
     - capability: fs_write
       match: ["**"]
       effect: deny
+    # Shell is an allow-list: tvly only. Kiro resolves rules deny > ask > allow, so the deny below excludes tvly
+    # rather than relying on the allow to win. Compound commands are split and each part is checked on its own,
+    # so `tvly ... | python3 ...` still has its python3 part denied.
     - capability: shell
       match: ["tvly *"]
       effect: allow
     - capability: shell
-      match: ["rm *", "mv *", "cp *", "sed -i *", "tee *", "git commit *", "git push *", "git checkout *", "git reset *"]
+      match: ["*"]
+      exclude: ["tvly *"]
+      effect: deny
+    # tvly itself can write files: its output flags and shell redirection are denied too.
+    - capability: shell
+      match: ["tvly * -o *", "tvly * --output *", "tvly * --output-dir *", "tvly *>*"]
       effect: deny
 welcomeMessage: "Name the files to review, for example docs/content/mary-celeste-story.md. I will report only and never edit."
 ---
@@ -52,4 +60,4 @@ Rules: keep suggested wording short and in the story's existing voice. Don't rew
 
 Report format: one table per story section and one for the portal cards (claim, verdict, source URL, suggestion), then a short summary with counts per verdict and the list of source URLs.
 
-Tool note: run Tavily through the shell with `tvly search "<query>" --json` and `tvly extract "<url>" --json`, or use Tavily tools if they are available in the session. Quote URLs. Return the report in your reply; do not write it to a file.
+Tool note: the shell runs `tvly` and nothing else. Run each call as one plain command, `tvly search "<query>" --json` or `tvly extract "<url>" --json`, and read the JSON it prints. No pipes, redirects, `-o`, `export` or other programs: they are denied. `tvly` is already on the PATH. For Wikimedia Commons, extract the file page itself (`tvly extract "https://commons.wikimedia.org/wiki/File:..." --json`). Quote URLs. Return the report in your reply; do not write it to a file.
