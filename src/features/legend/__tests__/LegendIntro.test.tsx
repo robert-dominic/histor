@@ -292,13 +292,23 @@ describe('LegendIntro: video', () => {
     expect(element.closest('[aria-hidden="true"]')).not.toBeNull();
   });
 
-  test('labels the video "Illustration" and shows its credit beside the label', () => {
+  test('labels the video "Illustration", always visible, and puts its credit behind an ⓘ button', () => {
     const { container } = renderIntro({ video });
 
     const label = screen.getByText('Illustration');
-    expect(label.parentElement?.textContent).toContain(video.credit);
-    expect(one(container, 'credit').textContent).toBe(video.credit);
     expect(label.closest('[aria-hidden="true"]')).toBeNull();
+    // The credit is not printed beside the label any more.
+    expect(label.textContent).toBe('Illustration');
+    expect(label.textContent).not.toContain(video.credit);
+
+    const button = screen.getByRole('button', { name: 'Image credit' });
+    const tooltip = screen.getByRole('tooltip', { hidden: true });
+    expect(tooltip.textContent).toBe(video.credit);
+    expect(one(container, 'credit').textContent).toBe(video.credit);
+    expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
+
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
   });
 
   test('without a video there is no video element, no label and no credit', () => {

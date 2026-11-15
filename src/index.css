@@ -67,6 +67,48 @@
   }
 }
 
+/* The page keeps room for its scrollbar from the start, so nothing shifts sideways when one appears
+   (for example once the intro has ended and the story is added below it). */
+:root {
+  scrollbar-gutter: stable;
+}
+
+/* The gutter shows the page's own background. The case page is framed in night (its header, its intro), so the
+   gutter is night there too, instead of a white strip. */
+:root:has(main[data-page="case"]) {
+  background-color: var(--color-night);
+}
+
+/* Thin scrollbars everywhere: a rounded thumb in muted ash on a clear track. Muted reads on both ash and night;
+   the thumb is part-transparent and turns solid on hover, which is stronger on either background.
+   Chrome and Safari use ::-webkit-scrollbar. Chrome ignores those rules once scrollbar-width or scrollbar-color
+   is set, so the standard properties are only given to browsers without ::-webkit-scrollbar (Firefox). */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--color-muted) 65%, transparent);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-muted) 65%, transparent) transparent;
+  }
+}
+
 /* Everything clickable shows a pointer on devices that hover (design.md). Tailwind v4 no longer does this for buttons. */
 @layer base {
   @media (hover: hover) and (pointer: fine) {

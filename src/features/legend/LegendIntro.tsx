@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
+import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
@@ -494,12 +495,22 @@ export default function LegendIntro({
         </button>
       </div>
 
+      {/* Always visible: the video is an illustration. The full credit is behind the ⓘ, as on the chapter images. */}
       {video !== undefined && (
-        <p className="absolute right-4 bottom-3 left-4 text-left font-voice text-[0.6875rem] leading-snug tracking-[0.06em] text-ghost-night/70 sm:bottom-5 sm:left-6">
-          <span className="tracking-[0.14em] uppercase">Illustration</span>
-          <span aria-hidden="true"> · </span>
-          <span data-legend="credit">{video.credit}</span>
-        </p>
+        <>
+          <p
+            data-legend="illustration"
+            className="absolute bottom-3 left-4 font-voice text-[0.6875rem] leading-snug tracking-[0.14em] text-ghost-night/70 uppercase sm:bottom-5 sm:left-6"
+          >
+            Illustration
+          </p>
+          <CreditInfo
+            credit={video.credit}
+            attribute="data-legend"
+            placement="above"
+            className="right-0 bottom-0 sm:right-2 sm:bottom-2"
+          />
+        </>
       )}
     </section>
   );

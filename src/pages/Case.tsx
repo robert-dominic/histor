@@ -92,7 +92,8 @@ export default function Case() {
       {titleCard !== undefined && (
         <CaseHeader title={titleCard.title} years={titleCard.years} unsolved={titleCard.unsolved} />
       )}
-      <main>
+      {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
+      <main data-page="case">
         <LegendIntro
           key={caseData.id}
           legendIntro={caseData.legendIntro}

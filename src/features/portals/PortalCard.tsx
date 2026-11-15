@@ -101,6 +101,30 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
   // Before the first paint, so the card is never seen in the wrong place.
   useLayoutEffect(place, [place]);
 
+  // The card grows with its content up to its maximum height, and only then scrolls. While there is more below,
+  // `data-more` is set on the card and a soft fade shows at its bottom edge. Written to the element, not to state.
+  useEffect(() => {
+    const card = cardRef.current;
+    if (card === null) {
+      return;
+    }
+    const update = () => {
+      const more = card.scrollHeight - card.scrollTop - card.clientHeight > 1;
+      card.dataset.more = String(more);
+    };
+    update();
+    card.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    // Late fonts can change the content's height after the card opens: watch the card and what is inside it.
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null;
+    [card, ...card.children].forEach(element => observer?.observe(element));
+    return () => {
+      card.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
+  }, []);
+
   // Focus moves into the card when it opens.
   useEffect(() => {
     cardRef.current?.focus({ preventScroll: true });
@@ -258,8 +282,9 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
         aria-labelledby={titleId}
         tabIndex={-1}
         data-portal="card"
+        data-more="false"
         onKeyDown={handleKeyDown}
-        className="fixed inset-x-0 bottom-0 z-40 max-h-[82svh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink/15 bg-paper text-ink shadow-2xl shadow-night/60 outline-none lg:absolute lg:inset-x-auto lg:bottom-auto lg:max-h-[calc(100svh-2rem)] lg:w-[23rem] lg:rounded-sm lg:border"
+        className="group/card fixed inset-x-0 bottom-0 z-40 max-h-[85svh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink/15 bg-paper text-ink shadow-2xl shadow-night/60 outline-none lg:absolute lg:inset-x-auto lg:bottom-auto lg:max-h-[70vh] lg:w-[23rem] lg:rounded-sm lg:border"
       >
         <div
           data-portal="grab"
@@ -302,15 +327,17 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
 
         <div className="px-5 pt-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] lg:px-6 lg:pb-6">
           {reference.image !== undefined && (
-            // The frame hugs the image, so a small portrait is shown at its own size and never stretched.
-            <figure className="relative mx-auto mb-4 w-fit max-w-full">
+            // A fixed frame: the card is the same height before and after the image loads. The image is shown whole,
+            // never cropped; one smaller than the frame keeps its own size, centred.
+            <figure
+              data-portal="frame"
+              className="relative mb-4 flex h-[180px] items-center justify-center overflow-hidden border border-ink/15 bg-ash/45 lg:h-[220px]"
+            >
               <img
                 src={reference.image.src}
                 alt={reference.image.alt}
                 decoding="async"
-                // The image makes the card taller once it has loaded: place the card again.
-                onLoad={place}
-                className="block max-h-[min(26rem,50svh)] w-auto max-w-full border border-ink/15"
+                className="block h-auto max-h-full w-auto max-w-full object-contain"
               />
               {/* Always visible: what the reader must know at a glance. The full credit is behind the ⓘ. */}
               {(reference.image.isIllustration || reference.image.caption !== undefined) && (
@@ -372,6 +399,13 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
             </div>
           )}
         </div>
+
+        {/* A soft fade at the bottom edge while there is more to read. It takes no room and never takes clicks. */}
+        <div
+          aria-hidden="true"
+          data-portal="fade"
+          className="pointer-events-none sticky bottom-0 -mt-12 h-12 bg-linear-to-t from-paper to-transparent opacity-0 transition-opacity duration-150 ease-out group-data-[more=true]/card:opacity-100"
+        />
       </div>
     </div>
   );

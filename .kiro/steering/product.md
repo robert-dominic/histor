@@ -30,7 +30,7 @@ One fixed flow per case. Each step has one job.
 A list of cases. V1 has one open case, the Mary Celeste (1872); other cases appear sealed. Job: show this is a collection, and invite the first click.
 
 ### 2. Legend intro
-The case's most famous legend, told dramatically. For the Mary Celeste this is the version popularised by Arthur Conan Doyle's 1884 story: breakfast half-eaten, tea still warm. The legend is written out as if by a quill; then one stamp lands: "Well... that never happened." The app explains what really happened, typed like a typewriter. It makes its point quickly and is always skippable. Job: hook the user and show the product's point.
+The case's most famous legend, told dramatically. For the Mary Celeste this is the version popularised by Arthur Conan Doyle's 1884 story: breakfast half-eaten, tea still warm. The legend is written out as if by a quill; then one stamp lands: "Well... that part never happened." The app explains what really happened, typed like a typewriter. It makes its point quickly and is always skippable. Job: hook the user and show the product's point.
 
 ### 3. The real story
 A scroll-driven telling of what the record says, built with GSAP ScrollTrigger.
@@ -102,7 +102,7 @@ Actions that write to it: opening a file, answering "Which theory does this poin
 
 Refined during the build. Working direction: dry, a little mischievous, never cheesy. It speaks plainly, then twists the knife.
 
-- "Well... that never happened."
+- "Well... that part never happened."
 - "Most people stop here."
 - "You trusted a novelist. Happens to the best of us."
 

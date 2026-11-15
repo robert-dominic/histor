@@ -247,6 +247,67 @@ describe('Portal card: contents', () => {
   });
 });
 
+describe('Portal card: image frame and height', () => {
+  test('the image sits in a fixed frame and is shown whole, never cropped or stretched', () => {
+    renderText();
+
+    fireEvent.click(trigger('port'));
+
+    const card = screen.getByRole('dialog');
+    const frame = card.querySelector<HTMLElement>('[data-portal="frame"]');
+    const image = within(card).getByRole('img', { name: 'Test alt for the port.' });
+    expect(frame).not.toBeNull();
+    expect(image.parentElement).toBe(frame);
+    // 180px on a phone, 220px on a desktop, centred on a paper-toned ground.
+    expect(frame?.className).toContain('h-[180px]');
+    expect(frame?.className).toContain('lg:h-[220px]');
+    expect(frame?.className).toContain('justify-center');
+    expect(frame?.className).toContain('items-center');
+    // Contained and capped by the frame, so a small image keeps its own size and is never enlarged.
+    expect(image.className).toContain('object-contain');
+    expect(image.className).toContain('max-h-full');
+    expect(image.className).toContain('max-w-full');
+    expect(image.className).not.toContain('object-cover');
+    expect(image.className).not.toMatch(/(^|\s)(w-full|h-full)(\s|$)/);
+  });
+
+  test('the card grows with its content up to 85svh as a sheet and 70vh on a desktop, then scrolls', () => {
+    renderText();
+
+    fireEvent.click(trigger('port'));
+
+    const card = screen.getByRole('dialog');
+    expect(card.className).toContain('max-h-[85svh]');
+    expect(card.className).toContain('lg:max-h-[70vh]');
+    expect(card.className).toContain('overflow-y-auto');
+  });
+
+  test('a soft fade shows at the bottom only while there is more to scroll to', () => {
+    renderText();
+
+    fireEvent.click(trigger('the captain'));
+
+    const card = screen.getByRole('dialog');
+    const fade = card.querySelector<HTMLElement>('[data-portal="fade"]');
+    expect(fade?.getAttribute('aria-hidden')).toBe('true');
+    expect(fade?.className).toContain('pointer-events-none');
+    // jsdom lays nothing out: everything fits, so there is no fade.
+    expect(card.dataset.more).toBe('false');
+
+    // Content taller than the card, scrolled to the top: there is more below.
+    Object.defineProperty(card, 'scrollHeight', { configurable: true, value: 900 });
+    Object.defineProperty(card, 'clientHeight', { configurable: true, value: 500 });
+    card.scrollTop = 0;
+    fireEvent.scroll(card);
+    expect(card.dataset.more).toBe('true');
+
+    // Scrolled to the end: nothing more, so the fade goes.
+    Object.defineProperty(card, 'scrollTop', { configurable: true, value: 400 });
+    fireEvent.scroll(card);
+    expect(card.dataset.more).toBe('false');
+  });
+});
+
 describe('Portal card: closing', () => {
   test('Escape closes the card and returns the focus to the word', async () => {
     renderText();
