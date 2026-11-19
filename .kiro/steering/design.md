@@ -41,9 +41,19 @@ Body text must reach 4.5:1 contrast against its background; large display text a
 ## Day into night
 
 - The **legend intro** happens at night: the myth lives in the dark.
-- The **story** begins in ash daylight and darkens gradually as it goes, reaching full night at the central question.
+- The **story** begins in ash daylight and darkens gradually as it goes, reaching full night at the central question. Each image's grade darkens chapter by chapter, and the sky colour around and behind the full-screen scenes (and the page's scrollbar gutter) follows the chapter on screen.
 - The **board and verdict** sit in night, lit by brass and paper.
 - A faint grain over everything; light is scarce but text stays readable.
+
+## The story: cinematic scenes
+
+The story is told like a documentary, one full-screen scene per chapter (`docs/briefs/story-redesign.md`).
+
+- **Scene:** the chapter's image fills the screen (`object-fit: cover`, `100svh`) under a slow scrubbed camera (scale 1.0 → 1.12 and a slight pan, each chapter a different way). A dark gradient over the bottom 45% keeps text at 4.5:1. All scenes share one pinned stage; the next image cross-dissolves in over the old one.
+- **Type over the image:** kicker in Special Elite, heading in Grenze Gotisch written by the quill, large and centred. The text arrives in **beats** (one sentence each) in the lower third, Old Standard TT, centred, about 32 characters a line on phones. The **hook** is Old Standard TT italic, large and centred, over an image dimmed almost to black.
+- **Corners:** image labels top-left and the credit ⓘ top-right, below the case header. The voyage chart inset (old-chart look: `paper` lines on `night`) bottom-right, about 160px wide on desktop and 110px on phones. The play/pause control bottom-left. Beats and hooks keep clear of all four.
+- **Full text** is always in the DOM for screen readers; the beats are `aria-hidden`. A keyboard user who tabs to a portal sees the full chapter text as a panel.
+- **Reduced motion:** plain stacked sections, still images, text that fades in. No camera, scrub or auto-play.
 
 ## Evidence status: the visual language
 

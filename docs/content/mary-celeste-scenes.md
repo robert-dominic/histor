@@ -1,13 +1,20 @@
 # Mary Celeste: scene list (one image per chapter)
 
-## The layout (decided)
+## The layout (decided): cinematic scenes
 
-- **Phone:** the image fills the top half of the screen and stays pinned. The text fills the bottom half and is the only part that scrolls.
-- **Desktop:** the same idea side by side: the image is pinned on the left half and the text scrolls on the right half.
-- **The reader sets the pace.** Nothing advances by itself. The next chapter's image takes over only when the reader scrolls on.
-- **Each chapter:** its title is written by the quill over the image, then the paragraphs drop in one by one as you scroll.
-- **Entrance animations replay every time** a chapter comes into view, in both scroll directions. They are not remembered like the legend intro.
-- **Day into night:** each image gets a colour grade (desaturated, sepia-cool) that darkens chapter by chapter. The grade also makes the different paintings, engravings and stills look like one set.
+From docs/briefs/story-redesign.md. The same on phones and desktops.
+
+- **Each chapter is a full-screen scene.** The image fills the screen (`object-fit: cover`, `100svh`). All six scenes lie in one pinned stage, and the scroll scrubs one timeline that plays them in turn.
+- **A slow documentary camera:** over each chapter the image pushes in from 1.0 to 1.12 and pans a little, in a different direction each chapter.
+- **The opening:** the kicker fades in, then the quill writes the heading large and centred over the image.
+- **Beats:** the text arrives one sentence at a time in the lower third, over a dark gradient on the bottom 45% of the image. Each beat comes in (fade, rise, unblur), holds for its reading time, and leaves before the next.
+- **The hook** takes the whole screen: the image dims almost to black and the line appears large, in italic. Then a short stretch of stillness before the next scene dissolves in over it. No hard cuts.
+- **The roll call (chapter 1):** after "On board: ten people.", the ten names appear one by one in a column over the darkened image, and stay. At the hook they go out last to first, like candles.
+- **The voyage chart:** a small inset in the bottom-right corner draws the route as the reader scrolls. The stretch from the last slate note to where she was found is dashed and ghostly. Genoa stays a faint dotted destination. Tap it for a larger view with labels.
+- **Play the story:** at the start, "Play the story" or "Read at my pace". Playing scrolls at reading pace (240 words a minute, at least 2.5s a beat, about 4s a hook) and stops at the fork. Any wheel, touch, key or scrollbar input, or opening a portal, pauses it. A small play/pause control floats in the bottom-left corner throughout.
+- **Day into night:** each image gets a colour grade (desaturated, sepia-cool) that darkens chapter by chapter, and the sky colour around and behind the scenes (and the page's scrollbar gutter) follows the chapter on screen.
+- **Screen readers** get every paragraph whole; the beats are for the eyes only.
+- **Reduced motion:** no camera, no scrub and no auto-play. The chapters are plain stacked sections with still images, and the text fades in.
 - **After the legend intro:** the "Continue" button becomes a scroll cue: **"See what really happened"**.
 
 ## The case title card (before the legend intro)

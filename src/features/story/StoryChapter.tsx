@@ -1,92 +1,56 @@
 // src/features/story/StoryChapter.tsx
-// One chapter of the story: its image, with the kicker and the heading written over it, and its text.
-// The chapter is two cells of the story's grid (Story.tsx). The image cell is sticky and stays put, below the
-// case header; the text cell is the only part that scrolls. The article itself has no box (`contents`).
+// One chapter as a plain stacked section, for reduced motion (and browsers that cannot honour it): a still,
+// graded image with the kicker and heading over it, then the text in full on the chapter's sky. No camera, no
+// scrub; Story.tsx only fades the text in as it comes into view.
 // Everything shown comes from props.
 
 import CreditInfo from '@/components/CreditInfo';
-import Quill from '@/components/Quill';
 import PortalText from '@/features/portals/PortalText';
+import VoyageChart from '@/features/story/VoyageChart';
 import type { DayNightStep, ImageGrade } from '@/lib/day-night';
+import type { ChartRoute } from '@/lib/voyage-chart';
 import type { StorySection } from '@/types/case';
 
 interface StoryChapterProps {
   section: StorySection;
-  /** Position in the story, from 0. */
   index: number;
-  /** Number of chapters in the story. */
-  count: number;
-  /** This chapter's step from day into night. */
   step: DayNightStep;
-  /** This chapter's image grade. */
   grade: ImageGrade;
-  /** True to load the image now. Images further down the story wait until the reader is one chapter away. */
-  loadImage: boolean;
-  /** True when nothing is animated: the text cell then carries its own background and text colour. */
-  plain: boolean;
+  /** The voyage, drawn as far as this chapter when one of its points is in it. */
+  route: ChartRoute;
 }
-
-/**
- * Body text follows the sky (Story.tsx sets `data-tone` on the grid as the background changes), so it keeps
- * 4.5:1 against the background at every point of a transition, not only at its ends.
- */
-const TONE_CLASSES =
-  'text-ink group-data-[tone=black]/sky:text-black group-data-[tone=white]/sky:text-white group-data-[tone=night-ink]/sky:text-night-ink';
 
 const LABEL_CLASSES =
   'bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase lg:text-[0.6875rem]';
 
-export default function StoryChapter({ section, index, count, step, grade, loadImage, plain }: StoryChapterProps) {
+export default function StoryChapter({ section, index, step, grade, route }: StoryChapterProps) {
   const headingId = `story-${section.id}`;
-  const { image } = section;
-  const plainTone = step.dark ? 'text-night-ink' : 'text-ink';
+  const { image, rollCall } = section;
+  const tone = step.dark ? 'text-night-ink' : 'text-ink';
+  const roleTone = step.dark ? 'text-ghost-night' : 'text-muted';
+  const hasChartPoint = route.points.some(point => point.chapterIndex === index && point.unreached !== true);
 
   return (
-    <article
-      data-story="chapter"
-      data-chapter={section.id}
-      aria-labelledby={headingId}
-      // Not animated: a plain block, image above text. Otherwise the two cells sit in the story's grid.
-      className={plain ? 'col-span-full' : 'contents'}
-    >
-      {/* The image cell. It spans every row of the grid, so it stays stuck for the whole story;
-          the chapters' image cells lie on top of each other and the current one is faded in. */}
-      <div
-        data-story="pane"
-        className={
-          plain
-            ? 'relative h-[50svh] overflow-hidden'
-            : 'sticky top-[var(--case-header)] z-20 col-start-1 h-[calc((100svh-var(--case-header))/2)] self-start overflow-hidden lg:h-[calc(100svh-var(--case-header))]'
-        }
-        style={plain ? undefined : { gridRow: `1 / span ${count}` }}
-      >
+    <article data-story="chapter" data-chapter={section.id} data-index={index} aria-labelledby={headingId}>
+      <div data-story="pane" className="relative h-[70svh] overflow-hidden">
         {image !== undefined && (
           <figure data-story="figure" className="absolute inset-0 bg-night">
             <img
               data-story="image"
-              src={loadImage ? image.src : undefined}
+              src={image.src}
               alt={image.alt}
+              loading={index === 0 ? 'eager' : 'lazy'}
               decoding="async"
               draggable={false}
               className="h-full w-full object-cover"
               style={{ filter: grade.filter }}
             />
-            {/* The cold tint of the grade, and a dark gradient where the kicker and the heading lie over the image. */}
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 bg-ghost-night mix-blend-color"
-              style={{ opacity: grade.tint }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 bg-linear-to-t from-night/90 via-night/60 via-30% to-transparent to-65%"
-            />
+            <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />
+            <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[45%] bg-linear-to-t from-night/95 via-night/70 to-transparent" />
           </figure>
         )}
-
-        {/* Always visible: what the reader must know at a glance. The full credit is behind the ⓘ. */}
         {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
-          <p className="absolute top-2.5 left-2.5 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:top-3.5 lg:left-3.5">
+          <p className="absolute top-[calc(var(--case-header)+0.625rem)] left-2.5 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:left-3.5">
             {image.isIllustration && (
               <span data-story="illustration" className={LABEL_CLASSES}>
                 Illustration
@@ -104,61 +68,48 @@ export default function StoryChapter({ section, index, count, step, grade, loadI
             credit={image.credit}
             attribute="data-story"
             placement="below"
-            className="top-0 right-0 lg:top-1 lg:right-1"
+            className="top-[var(--case-header)] right-0 lg:right-1"
           />
         )}
-
-        <header className="absolute inset-x-0 bottom-0 px-5 pb-5 sm:px-8 sm:pb-7 lg:px-12 lg:pb-12">
+        <header className="absolute inset-x-0 bottom-0 px-5 pb-6 text-center sm:px-10 sm:pb-10">
           {section.kicker !== undefined && (
-            <p
-              data-story="kicker"
-              className="font-voice text-[0.6875rem] leading-snug tracking-[0.18em] text-night-ink uppercase sm:text-xs"
-            >
+            <p data-story="kicker" className="font-voice text-[0.75rem] tracking-[0.2em] text-night-ink uppercase sm:text-sm">
               {section.kicker}
             </p>
           )}
-          <h2
-            id={headingId}
-            className="mt-2 font-legend text-[clamp(2.125rem,1.4rem+3.4vw,4.25rem)] leading-[1.02] text-balance text-night-ink"
-          >
-            {/* Screen readers get the whole heading at once; the copy the quill writes is for the eyes only. */}
-            <span className="sr-only">{section.heading}</span>
-            <span aria-hidden="true" data-story="heading">
-              {section.heading}
-            </span>
+          <h2 id={headingId} className="mt-2 font-legend text-[clamp(2.375rem,1.5rem+4vw,5rem)] leading-none text-balance text-night-ink">
+            <span data-story="heading">{section.heading}</span>
           </h2>
-          <Quill attribute="data-story" sizeClassName="h-[clamp(2.5rem,4.5vw,3.75rem)]" />
         </header>
       </div>
 
-      {/* The text cell. */}
       <div
         data-story="text"
-        className={`relative z-10 px-5 sm:px-8 lg:px-16 xl:px-24 ${
-          plain
-            ? `py-10 ${plainTone}`
-            : `col-start-1 pb-[50svh] lg:col-start-2 lg:flex lg:min-h-svh lg:flex-col lg:justify-center lg:py-[24svh] ${TONE_CLASSES} ${
-                // On a phone the first chapter's text starts below the image, which covers the top half.
-                index === 0 ? 'pt-[calc((100svh-var(--case-header))/2+2.5rem)]' : 'pt-10'
-              }`
-        }`}
-        style={plain ? { backgroundColor: step.background } : { gridRow: index + 1 }}
+        className={`px-5 py-12 sm:px-10 ${tone}`}
+        style={{ backgroundColor: step.background }}
       >
-        <div className="mx-auto flex w-full max-w-[34rem] flex-col gap-[1.15em] font-record text-[clamp(1.0625rem,1rem+0.35vw,1.25rem)] leading-[1.62] lg:mx-0">
+        <div className="mx-auto flex max-w-[34rem] flex-col gap-[1.1em] font-record text-[clamp(1.125rem,1rem+0.45vw,1.375rem)] leading-[1.6]">
           {section.body.map((paragraph, paragraphIndex) => (
             <p key={paragraphIndex} data-story="line" className="text-pretty">
               <PortalText text={paragraph} />
             </p>
           ))}
+          {rollCall !== undefined && rollCall.length > 0 && (
+            <ul data-story="roll-call" aria-label="The ten aboard" className="flex flex-col gap-1.5">
+              {rollCall.map(entry => (
+                <li key={entry.name} data-story="name" className="leading-tight">
+                  {entry.name}
+                  <span className={`font-voice text-[0.75rem] tracking-[0.08em] ${roleTone}`}> · {entry.role}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           {section.hook !== undefined && (
-            <p
-              data-story="line"
-              data-hook="true"
-              className="mt-[1.1em] text-[1.4em] leading-[1.28] text-balance italic"
-            >
+            <p data-story="line" data-hook="true" className="mt-[0.6em] text-[1.4em] leading-[1.28] text-balance italic">
               <PortalText text={section.hook} />
             </p>
           )}
+          {hasChartPoint && <VoyageChart route={route} variant="still" upTo={index} />}
         </div>
       </div>
     </article>

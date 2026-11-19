@@ -127,8 +127,44 @@ export interface StorySection {
   body: string[];
   /** Optional closing line that pulls the reader into the next section. */
   hook?: string;
-  /** The chapter's image, shown beside the text with its credit. */
+  /** The chapter's image, shown full screen behind the text, with its credit. */
   image?: ImageAsset;
+  /**
+   * The people this chapter calls by name, in order. They appear one by one just before the first beat that
+   * names the first of them, and go out one by one at the chapter's hook.
+   */
+  rollCall?: RollCallEntry[];
+}
+
+export interface RollCallEntry {
+  /** e.g. "Benjamin Briggs". */
+  name: string;
+  /** e.g. "captain". */
+  role: string;
+}
+
+// ---------- Voyage chart ----------
+
+export type VoyagePointKind = 'port' | 'record' | 'found';
+
+export interface VoyagePoint {
+  id: string;
+  /** Shown on the expanded chart, e.g. "Found adrift". */
+  label: string;
+  /** Degrees, north positive. */
+  lat: number;
+  /** Degrees, east positive. */
+  lon: number;
+  /** The id of the story chapter in which the point appears on the chart. */
+  chapter: string;
+  kind: VoyagePointKind;
+  /** A destination never reached: drawn faint and dotted, with no route to it. */
+  unreached?: boolean;
+}
+
+/** The route drawn on the story's chart: through the reached points, in order. */
+export interface Voyage {
+  points: VoyagePoint[];
 }
 
 export interface Fork {
@@ -178,6 +214,8 @@ export interface Case {
   historiansSummary: string[];
   /** Files the user must open before "Close the case" unlocks. */
   closeThreshold: number;
+  /** The voyage, drawn on a small chart that follows the story. */
+  voyage?: Voyage;
   theme: CaseTheme;
 }
 

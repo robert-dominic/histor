@@ -12,6 +12,8 @@ interface PortalProviderProps {
   references: Reference[];
   /** Every source of the case. A card lists the ones its reference names. */
   sources: Source[];
+  /** Called each time a card opens, e.g. to pause a story that plays itself. */
+  onOpen?: () => void;
   children: ReactNode;
 }
 
@@ -20,7 +22,7 @@ interface OpenPortal {
   trigger: HTMLElement;
 }
 
-export default function PortalProvider({ references, sources, children }: PortalProviderProps) {
+export default function PortalProvider({ references, sources, onOpen, children }: PortalProviderProps) {
   const [openPortal, setOpenPortal] = useState<OpenPortal | null>(null);
 
   const referencesById = useMemo(() => new Map(references.map(reference => [reference.id, reference])), [references]);
@@ -34,11 +36,12 @@ export default function PortalProvider({ references, sources, children }: Portal
         const reference = referencesById.get(id);
         if (reference !== undefined) {
           setOpenPortal({ reference, trigger });
+          onOpen?.();
         }
       },
       openId,
     }),
-    [referencesById, openId]
+    [referencesById, openId, onOpen]
   );
 
   const handleClosed = useCallback(() => setOpenPortal(null), []);

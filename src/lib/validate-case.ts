@@ -294,6 +294,69 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional roll call (3.14): when present, an array whose every name and role is non-empty
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const rollCall: unknown = section?.rollCall;
+      if (rollCall === undefined || rollCall === null) {
+        return;
+      }
+      if (!Array.isArray(rollCall)) {
+        errors.push(`Field story[${i}].rollCall: Must be an array`);
+        return;
+      }
+      rollCall.forEach((entry: { name?: unknown; role?: unknown } | null | undefined, j) => {
+        for (const field of ['name', 'role'] as const) {
+          const value = entry?.[field];
+          if (typeof value !== 'string' || value.trim() === '') {
+            errors.push(`Field story[${i}].rollCall[${j}].${field}: Must be a non-empty string`);
+          }
+        }
+      });
+    });
+  }
+
+  // Validate the optional voyage (3.15): unique non-empty ids, non-empty labels, latitudes from -90 to 90,
+  // longitudes from -180 to 180, a chapter that is in the story, and a known kind
+  const voyage: { points?: unknown } | undefined | null = caseData.voyage;
+  if (voyage !== undefined && voyage !== null) {
+    if (!Array.isArray(voyage.points) || voyage.points.length === 0) {
+      errors.push('Field voyage.points: Must contain at least one point');
+    } else {
+      const chapterIds = new Set(Array.isArray(caseData.story) ? caseData.story.map(section => section?.id) : []);
+      const pointIds = new Set<string>();
+      voyage.points.forEach((raw: unknown, i) => {
+        const point = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+        const at = `voyage.points[${i}]`;
+        if (typeof point.id !== 'string' || point.id.trim() === '') {
+          errors.push(`Field ${at}.id: Must be a non-empty string`);
+        } else if (pointIds.has(point.id)) {
+          errors.push(`Field voyage.points: duplicate ID '${point.id}' found`);
+        } else {
+          pointIds.add(point.id);
+        }
+        if (typeof point.label !== 'string' || point.label.trim() === '') {
+          errors.push(`Field ${at}.label: Must be a non-empty string`);
+        }
+        if (typeof point.lat !== 'number' || !Number.isFinite(point.lat) || point.lat < -90 || point.lat > 90) {
+          errors.push(`Field ${at}.lat: Must be a number from -90 to 90`);
+        }
+        if (typeof point.lon !== 'number' || !Number.isFinite(point.lon) || point.lon < -180 || point.lon > 180) {
+          errors.push(`Field ${at}.lon: Must be a number from -180 to 180`);
+        }
+        if (typeof point.chapter !== 'string' || !chapterIds.has(point.chapter)) {
+          errors.push(`Field ${at}.chapter: reference ID '${String(point.chapter)}' not found in story`);
+        }
+        if (point.kind !== 'port' && point.kind !== 'record' && point.kind !== 'found') {
+          errors.push(`Field ${at}.kind: Must be one of: port, record, found`);
+        }
+        if (point.unreached !== undefined && typeof point.unreached !== 'boolean') {
+          errors.push(`Field ${at}.unreached: Must be a boolean`);
+        }
+      });
+    }
+  }
+
   // Validate the optional image caption, wherever an image can be: when present, it must be non-empty
   const captioned: { location: string; image: { caption?: unknown } | undefined | null }[] = [
     ...(Array.isArray(caseData.story) ? caseData.story : []).map((section, i) => ({

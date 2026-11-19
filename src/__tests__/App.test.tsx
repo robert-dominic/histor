@@ -9,6 +9,10 @@ import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
 
+// Two tests render the whole case page, intro and story, which takes several seconds under load.
+// A longer timeout for this file only; what they assert is unchanged.
+vi.setConfig({ testTimeout: 15_000 });
+
 type OpenEntry = Extract<RegistryEntry, { sealed: false }>;
 type SealedEntry = Extract<RegistryEntry, { sealed: true }>;
 

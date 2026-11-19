@@ -11,9 +11,14 @@ interface PortalTextProps {
   text: string;
   /** False to show every label as plain text, e.g. inside a portal card. */
   interactive?: boolean;
+  /**
+   * False to keep the triggers out of the Tab order while they stay tappable: for a copy of the text that is
+   * hidden from screen readers, whose complete version is reachable elsewhere.
+   */
+  tabbable?: boolean;
 }
 
-export default function PortalText({ text, interactive = true }: PortalTextProps) {
+export default function PortalText({ text, interactive = true, tabbable = true }: PortalTextProps) {
   const portals = useContext(PortalContext);
 
   return (
@@ -24,7 +29,7 @@ export default function PortalText({ text, interactive = true }: PortalTextProps
         }
         const known = interactive && portals?.getReference(segment.id) !== undefined;
         return known ? (
-          <PortalTrigger key={index} id={segment.id} label={segment.label} />
+          <PortalTrigger key={index} id={segment.id} label={segment.label} tabbable={tabbable} />
         ) : (
           <Fragment key={index}>{segment.label}</Fragment>
         );

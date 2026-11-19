@@ -59,6 +59,18 @@ export const maryCeleste: Case = {
         'The other seven were the crew: first mate {{ref:albert-richardson|Albert Richardson}}, second mate Andrew Gilling, the steward and cook, William Head, and four seamen: the brothers Volkert and Boz Lorenzen, Arian Martens and Gottlieb Goodschaal.',
       ],
       hook: 'Not one of them would ever be seen again.',
+      rollCall: [
+        { name: 'Benjamin Briggs', role: 'captain' },
+        { name: 'Sarah Briggs', role: 'his wife' },
+        { name: 'Sophia Briggs', role: 'their daughter, aged two' },
+        { name: 'Albert Richardson', role: 'first mate' },
+        { name: 'Andrew Gilling', role: 'second mate' },
+        { name: 'William Head', role: 'steward and cook' },
+        { name: 'Volkert Lorenzen', role: 'seaman' },
+        { name: 'Boz Lorenzen', role: 'seaman' },
+        { name: 'Arian Martens', role: 'seaman' },
+        { name: 'Gottlieb Goodschaal', role: 'seaman' },
+      ],
     },
     {
       id: 's-last-entry',
@@ -388,6 +400,19 @@ export const maryCeleste: Case = {
   ],
 
   closeThreshold: 6,
+
+  // Positions from maryceleste.net, "Facts not fiction", item 15 (the slate position is worked out there,
+  // not given in the testimony). West and south are negative.
+  voyage: {
+    points: [
+      { id: 'new-york', label: 'New York', lat: 40.7, lon: -74.0, chapter: 's-voyage', kind: 'port' },
+      { id: 'last-log', label: 'Last log entry', lat: 36.93, lon: -27.33, chapter: 's-last-entry', kind: 'record' },
+      { id: 'last-slate', label: 'The last slate note', lat: 37.02, lon: -25.02, chapter: 's-last-entry', kind: 'record' },
+      { id: 'found', label: 'Found adrift', lat: 38.33, lon: -17.25, chapter: 's-found', kind: 'found' },
+      { id: 'gibraltar', label: 'Gibraltar', lat: 36.14, lon: -5.35, chapter: 's-inquiry', kind: 'port' },
+      { id: 'genoa', label: 'Genoa, never reached', lat: 44.41, lon: 8.93, chapter: 's-voyage', kind: 'port', unreached: true },
+    ],
+  },
 
   theme: {
     id: 'mary-celeste-theme',

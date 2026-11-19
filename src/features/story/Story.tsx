@@ -1,60 +1,77 @@
 // src/features/story/Story.tsx
-// The real story: the reader scrolls through the chapters, from daylight into night, and ends on the
-// case's central question. Each chapter's image stays put while its text scrolls; the next chapter's image
-// takes over when the reader scrolls on. The reader sets the pace: nothing advances by itself.
+// The real story, told like a documentary (docs/briefs/story-redesign.md). Every chapter is a full-screen scene:
+// the image fills the screen under a slow camera, the quill writes the heading, the text arrives one sentence
+// at a time, and the hook takes the whole screen before the next scene dissolves in. The scenes lie on top of
+// each other in one pinned stage, and one timeline, scrubbed by the scroll, plays them in turn.
+// A small chart in the corner draws the voyage as it goes. The reader can scroll, or let the story play itself.
+// Under reduced motion the chapters are plain stacked sections with still images, and the text only fades in.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import CentralQuestion from '@/features/story/CentralQuestion';
+import PlayControl from '@/features/story/PlayControl';
 import StoryChapter from '@/features/story/StoryChapter';
+import StoryScene from '@/features/story/StoryScene';
+import StoryStart from '@/features/story/StoryStart';
+import VoyageChart from '@/features/story/VoyageChart';
+import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
-import { createQuillWriter, splitForQuill, type QuillWriter } from '@/lib/quill-writing';
-import { DESKTOP_QUERY } from '@/lib/use-media-query';
-import type { Reference, Source, StorySection } from '@/types/case';
+import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
+import { beatSeconds, rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
+import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
+import { useReducedMotion } from '@/lib/use-reduced-motion';
+import { buildRoute } from '@/lib/voyage-chart';
+import type { Reference, Source, StorySection, Voyage } from '@/types/case';
 
 // ScrollTrigger is registered inside the component: it needs window.matchMedia as soon as it is registered.
-gsap.registerPlugin(useGSAP);
+gsap.registerPlugin(useGSAP, ScrollToPlugin);
 
 /**
- * Where on the screen things happen, as a distance from the top.
- * On a phone the text only shows in the bottom half, below the image. On a desktop it has the full height.
+ * The scenes' timeline, in seconds of reading. One second takes pxPerSecond() pixels of scroll, so playing the
+ * story at that speed gives each beat its reading time.
  */
-const LINES = {
-  phone: {
-    /** A chapter takes over when the top of its text reaches this line. */
-    takeover: '82%',
-    /** A paragraph drops in when its top reaches this line. */
-    reveal: '88%',
-  },
-  desktop: { takeover: '60%', reveal: '86%' },
-} as const;
-
-/** The first chapter takes over when the top of the story reaches this line. */
-const FIRST_TAKEOVER = '45%';
-
-/** Seconds. */
-const ENTRANCE = {
-  imageFade: 0.7,
-  imageSettle: 1.4,
+const SCENE = {
+  /** The next image cross-dissolves in over the old one. */
+  dissolve: 1.4,
   kickerAt: 0.3,
-  kickerDuration: 0.4,
-  headingAt: 0.6,
-  /** A leaving image waits for the next one to cover it, then goes faster than it came. */
-  exitDelay: 0.35,
-  exitDuration: 0.35,
-  paragraphDuration: 0.4,
-  paragraphStagger: 0.08,
-  /** How far a paragraph drops in from, in pixels. */
-  paragraphDrop: 16,
-  /** The central question: each phrase fades in slowly, one after another. */
-  phraseDuration: 1.2,
-  phraseStagger: 0.8,
+  kicker: 0.6,
+  headingAt: 0.7,
+  titleHold: 1.2,
+  titleOut: 0.6,
+  beatIn: 0.6,
+  beatOut: 0.45,
+  beatGap: 0.15,
+  nameEvery: 0.32,
+  nameIn: 0.45,
+  rollCallDim: 0.55,
+  nameOut: 0.36,
+  hookDim: 0.92,
+  hookIn: 0.9,
+  /** "Hooks hold about 4s." */
+  hookHold: 4,
+  /** A beat of stillness: nothing changes before the next scene. */
+  stillness: 1.6,
+  /** A chapter without a hook still pauses before the next. */
+  restWithoutHook: 1,
+  /** The camera's slow push in. */
+  zoomTo: 1.12,
 } as const;
+
+/** Each chapter's camera pans its own way, as a share of the image (xPercent, yPercent). */
+const PANS = [
+  { x: -3.5, y: -1.5 },
+  { x: 3.5, y: -1 },
+  { x: -2.5, y: 2 },
+  { x: 3, y: 1.5 },
+  { x: -3, y: -2 },
+  { x: 2.5, y: -2.5 },
+] as const;
 
 interface StoryProps {
   /** The chapters, in order. */
@@ -65,318 +82,380 @@ interface StoryProps {
   references: Reference[];
   /** Every source of the case, listed in the portal cards. */
   sources: Source[];
+  /** The voyage, drawn on the chart as the story goes. */
+  voyage?: Voyage;
 }
 
-/** The animated parts of one chapter. */
-interface ChapterParts {
-  pane: HTMLElement;
-  figure: HTMLElement | null;
-  kicker: HTMLElement | null;
-  heading: HTMLElement | null;
-  text: HTMLElement;
-  letters: HTMLElement[];
-  quill: QuillWriter | null;
-  entrance: gsap.core.Timeline | null;
-  exit: gsap.core.Tween | null;
-}
-
-export default function Story({ story, centralQuestion, references, sources }: StoryProps) {
+export default function Story({ story, centralQuestion, references, sources, voyage }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
-  // Images load one chapter ahead of the reader. The first one loads at once: the story starts one scroll away.
+  const reducedMotion = useReducedMotion();
+  // Without matchMedia a reduced-motion request cannot be honoured, so nothing is animated.
+  const canAnimate = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const cinematic = canAnimate && !reducedMotion;
+  const player = useStoryPlayer(cinematic);
+  // Images load one chapter ahead of the reader. The first one loads at once.
   const [loadedThrough, setLoadedThrough] = useState(0);
-  // True when nothing can be animated: every chapter is then simply shown, on its own background.
-  const [plain, setPlain] = useState(false);
 
   const steps = useMemo(() => story.map((_, index) => dayNightStep(index, count)), [story, count]);
   const grades = useMemo(() => story.map((_, index) => imageGrade(index, count)), [story, count]);
+  const beats = useMemo(() => story.map(section => section.body.flatMap(splitIntoBeats)), [story]);
+  const route = useMemo(() => buildRoute(voyage, story), [voyage, story]);
+
+  /** "Read at my pace": a short glide to the first scene. */
+  const goToFirstScene = useCallback(() => {
+    const stage = rootRef.current?.querySelector<HTMLElement>('[data-story="stage"]');
+    if (stage === null || stage === undefined) {
+      return;
+    }
+    const y = stage.getBoundingClientRect().top + window.scrollY;
+    gsap.to(window, { scrollTo: { y, autoKill: true }, duration: 0.8, ease: EASE.inOut });
+  }, []);
 
   useGSAP(
     () => {
       const root = rootRef.current;
-      // Without matchMedia there is no way to honour a reduced-motion request, so nothing is animated.
-      if (root === null || typeof window.matchMedia !== 'function') {
-        setPlain(true);
-        setLoadedThrough(count);
+      if (root === null || !canAnimate) {
         return;
       }
-
       gsap.registerPlugin(ScrollTrigger);
+      // Phones: the browser bar showing or hiding must not make the pinned stage jump.
+      ScrollTrigger.config({ ignoreMobileResize: true });
 
       const all = (selector: string, parent: Element = root) => [...parent.querySelectorAll<HTMLElement>(selector)];
       const one = (selector: string, parent: Element = root) => parent.querySelector<HTMLElement>(selector);
 
       const mm = gsap.matchMedia();
-
-      mm.add({ ...MOTION_QUERIES, desktop: DESKTOP_QUERY }, context => {
+      mm.add(MOTION_QUERIES, context => {
         const reduced = context.conditions?.reduced === true;
-        const desktop = context.conditions?.desktop === true;
-        const lines = desktop ? LINES.desktop : LINES.phone;
-        const grid = one('[data-story="grid"]');
-        if (grid === null) {
-          return;
-        }
 
-        const splits: ReturnType<typeof splitForQuill>[] = [];
-        const hiddenLine = reduced ? { opacity: 0 } : { opacity: 0, y: ENTRANCE.paragraphDrop };
-
-        const chapters: ChapterParts[] = all('[data-story="chapter"]').flatMap(chapter => {
-          const pane = one('[data-story="pane"]', chapter);
-          const text = one('[data-story="text"]', chapter);
-          if (pane === null || text === null) {
-            return [];
+        // ---- Day into night. The sky is the page's background (and its scrollbar gutter), the colour around
+        // the scenes and behind them while they dissolve, and the tone of text set on it. Written to elements,
+        // never to React state, and only when it changes.
+        let tone = '';
+        let colour = '';
+        const writeSky = (mix: number) => {
+          const nextTone = textTone(mix);
+          if (nextTone !== tone) {
+            tone = nextTone;
+            root.dataset.tone = nextTone;
           }
-          const heading = one('[data-story="heading"]', chapter);
-          const point = one('[data-story="quill"]', chapter);
-          const body = one('[data-story="quill-body"]', chapter);
-          let letters: HTMLElement[] = [];
-          let quill: QuillWriter | null = null;
-          // Full motion: the heading is split into letters for the quill.
-          if (!reduced && heading !== null && point !== null && body !== null) {
-            const split = splitForQuill(heading);
-            splits.push(split);
-            letters = split.chars as HTMLElement[];
-            quill = createQuillWriter(point, body);
-          }
-          const figure = one('[data-story="figure"]', chapter);
-          const kicker = one('[data-story="kicker"]', chapter);
-          // Every image starts hidden: the current chapter's is faded in when it takes over.
-          gsap.set(pane, { opacity: 0 });
-          // The kicker and the heading start hidden too, until the chapter's entrance shows them.
-          gsap.set([kicker, quill === null ? heading : null].filter(part => part !== null), { opacity: 0 });
-          return [
-            {
-              pane,
-              figure,
-              kicker,
-              heading,
-              text,
-              letters,
-              quill,
-              entrance: null,
-              exit: null,
-            },
-          ];
-        });
-
-        const panes = chapters.map(chapter => chapter.pane);
-
-        // The first image is there from the start, so the story never scrolls into view as an empty block.
-        // Its entrance (settling, the kicker, the heading) still waits for the chapter to take over.
-        const first = chapters[0];
-        const beforeFirst = () => {
-          if (first === undefined) {
-            return;
-          }
-          gsap.set(first.pane, { opacity: 1 });
-          if (!reduced && first.figure !== null) {
-            gsap.set(first.figure, { scale: 1.04 });
+          const nextColour = skyColour(mix);
+          if (nextColour !== colour) {
+            colour = nextColour;
+            root.style.setProperty('--story-sky', nextColour);
+            document.documentElement.style.backgroundColor = nextColour;
           }
         };
-        beforeFirst();
 
-        // ---- A chapter takes over: its image fades and settles in, the kicker fades in, the quill writes the heading.
-        // Built afresh every time, so the entrance replays on every visit, in both scroll directions.
-        const enter = (index: number) => {
-          const chapter = chapters[index];
-          chapter.exit?.kill();
-          chapter.entrance?.kill();
-          chapter.quill?.hide();
-          // Load this chapter's image if it has not been yet, and the next one ahead of the reader.
-          setLoadedThrough(loaded => Math.max(loaded, index + 1));
+        const cleanups: (() => void)[] = [];
 
-          gsap.set(panes, { zIndex: 20 });
-          gsap.set(chapter.pane, { zIndex: 21 });
-
-          const timeline = gsap.timeline({ defaults: { ease: EASE.out } });
-          timeline.to(chapter.pane, { opacity: 1, duration: ENTRANCE.imageFade }, 0);
-          if (!reduced && chapter.figure !== null) {
-            timeline.fromTo(chapter.figure, { scale: 1.04 }, { scale: 1, duration: ENTRANCE.imageSettle }, 0);
-          }
-          if (chapter.kicker !== null) {
-            timeline.fromTo(
-              chapter.kicker,
-              { opacity: 0 },
-              { opacity: 1, duration: ENTRANCE.kickerDuration },
-              ENTRANCE.kickerAt
-            );
-          }
-          if (chapter.quill !== null) {
-            gsap.set(chapter.letters, { opacity: 0 });
-            chapter.quill.write(timeline, chapter.letters, ENTRANCE.headingAt);
-          } else if (chapter.heading !== null) {
-            // Reduced motion: no quill, the heading fades in whole, after the kicker.
-            timeline.fromTo(chapter.heading, { opacity: 0 }, { opacity: 1, duration: 0.5 }, ENTRANCE.headingAt);
-          }
-          chapter.entrance = timeline;
-        };
-
-        const leave = (index: number, towardsStart: boolean) => {
-          const chapter = chapters[index];
-          chapter.entrance?.kill();
-          chapter.exit?.kill();
-          chapter.quill?.hide();
-          // Back above the first chapter: its image stays, and its words wait to be written again.
-          if (index === 0 && towardsStart) {
-            const words = [chapter.kicker, chapter.quill === null ? chapter.heading : null, ...chapter.letters];
-            gsap.set(
-              words.filter(part => part !== null),
-              { opacity: 0 }
-            );
-            beforeFirst();
-            return;
-          }
-          chapter.exit = gsap.to(chapter.pane, {
-            opacity: 0,
-            duration: ENTRANCE.exitDuration,
-            delay: ENTRANCE.exitDelay,
-            ease: EASE.out,
+        if (reduced || !cinematic) {
+          // ---- Reduced motion: stacked sections. The text fades in as it comes into view; nothing moves.
+          writeSky(1);
+          const fading = all('[data-story="line"], [data-story="roll-call"], [data-chart="frame"]');
+          gsap.set(fading, { opacity: 0 });
+          ScrollTrigger.batch(fading, {
+            start: 'top 88%',
+            once: true,
+            onEnter: targets => gsap.to(targets, { opacity: 1, duration: 0.6, ease: EASE.out, stagger: 0.08 }),
           });
-        };
-
-        chapters.forEach((chapter, index) => {
-          const next = chapters[index + 1];
+          // The sky follows the chapter on screen.
+          all('[data-story="chapter"]').forEach((chapter, index) => {
+            ScrollTrigger.create({
+              trigger: chapter,
+              start: 'top 60%',
+              end: 'bottom 60%',
+              onToggle: self => self.isActive && writeSky(steps[index]?.mix ?? 1),
+            });
+          });
           ScrollTrigger.create({
-            trigger: index === 0 ? grid : chapter.text,
-            start: index === 0 ? `top ${FIRST_TAKEOVER}` : `top ${lines.takeover}`,
-            endTrigger: next === undefined ? grid : next.text,
-            end: next === undefined ? 'bottom top' : `top ${lines.takeover}`,
-            onToggle: self => (self.isActive ? enter(index) : leave(index, self.direction < 0)),
+            trigger: one('[data-story="question"]'),
+            start: 'top 60%',
+            onToggle: self => writeSky(self.isActive ? 1 : (steps[count - 1]?.mix ?? 1)),
           });
-        });
-
-        // ---- Paragraphs drop in one by one as they scroll into view, from either direction.
-        // They are only ever hidden while out of sight, so nothing disappears in front of the reader.
-        const paragraphs = all('[data-story="line"]');
-        gsap.set(paragraphs, hiddenLine);
-        // One tween per paragraph, kept by hand, so a paragraph that leaves mid-entrance is stopped for certain.
-        const dropping = new Map<Element, gsap.core.Tween>();
-        const show = (targets: Element[], from: number) => {
-          targets.forEach((target, index) => {
-            dropping.get(target)?.kill();
-            dropping.set(
-              target,
-              gsap.fromTo(target, reduced ? { opacity: 0 } : { opacity: 0, y: from }, {
-                opacity: 1,
-                y: 0,
-                duration: ENTRANCE.paragraphDuration,
-                ease: EASE.out,
-                delay: index * ENTRANCE.paragraphStagger,
-              })
-            );
-          });
-        };
-        const hide = (targets: Element[]) => {
-          targets.forEach(target => {
-            dropping.get(target)?.kill();
-            dropping.delete(target);
-          });
-          gsap.set(targets, hiddenLine);
-        };
-        // A paragraph is out of sight once its bottom is above this line: under the case header on a desktop,
-        // and under the image, which sits below the header, on a phone. Measured, so it follows both.
-        const goneLine = () => {
-          const pane = first?.pane;
-          if (pane === undefined) {
-            return 0;
-          }
-          const headerHeight = parseFloat(getComputedStyle(pane).top) || 0;
-          return Math.round(desktop ? headerHeight : headerHeight + pane.offsetHeight);
-        };
-        ScrollTrigger.batch(paragraphs, {
-          start: `top ${lines.reveal}`,
-          end: () => `bottom ${goneLine()}px`,
-          onEnter: targets => show(targets, ENTRANCE.paragraphDrop),
-          onEnterBack: targets => show(targets, -ENTRANCE.paragraphDrop),
-          onLeave: hide,
-          onLeaveBack: hide,
-        });
-
-        // ---- Day into night: the background eases from one chapter's step to the next as the reader scrolls
-        // between them. Each step is a layer that is faded in, so only opacity is animated.
-        const sky = all('[data-story="sky"]');
-        const fades: (gsap.core.Tween | undefined)[] = [];
-        let dawnFade: gsap.core.Tween | undefined;
-
-        // Body text switches colour in step with the background, so it keeps 4.5:1 all the way through a
-        // transition. The colour is switched, never animated: one attribute on the grid, written only when it changes.
-        let tone = grid.dataset.tone;
-        let rootColour = '';
-        const followSky = () => {
-          // The background on screen is the steps laid over each other, each as far faded in as its scrub is.
-          let mix = steps[0]?.mix ?? 0;
-          fades.forEach((fade, index) => {
-            if (fade !== undefined) {
-              mix += (steps[index].mix - mix) * fade.progress();
-            }
-          });
-          if (dawnFade !== undefined) {
-            mix += (1 - mix) * (1 - dawnFade.progress());
-          }
-          const next = textTone(mix);
-          if (next !== tone) {
-            tone = next;
-            grid.dataset.tone = next;
-          }
-          // The page's own background (and so its scrollbar gutter) is the same sky. Written to the root element,
-          // never to React state, and only when the colour changes.
-          const colour = skyColour(mix);
-          if (colour !== rootColour) {
-            rootColour = colour;
-            document.documentElement.style.backgroundColor = colour;
-          }
-        };
-
-        chapters.forEach((chapter, index) => {
-          const layer = sky[index];
-          if (index === 0 || layer === undefined) {
+          cleanups.push(() => gsap.set(fading, { clearProps: 'opacity' }));
+        } else {
+          // ---- The cinematic story: one pinned stage, one scrubbed timeline.
+          const stage = one('[data-story="stage"]');
+          if (stage === null) {
             return;
           }
-          fades[index] = gsap.fromTo(
-            layer,
-            { opacity: 0 },
-            {
-              opacity: 1,
-              ease: 'none',
-              onUpdate: followSky,
-              scrollTrigger: { trigger: chapter.text, start: 'top bottom', end: `top ${lines.takeover}`, scrub: 0.4 },
+          const scenes = all('[data-story="chapter"]', stage);
+          const chartFrame = one('[data-chart="frame"][data-variant="live"]');
+          const playControl = one('[data-story="play-control"]');
+          const splits: ReturnType<typeof splitForQuill>[] = [];
+          const timeline = gsap.timeline({ defaults: { ease: 'none' } });
+          let direction: StoryDirection = 'forward';
+          const emitAt = (at: number, make: () => Parameters<typeof emitStoryEvent>[0]) =>
+            timeline.call(() => emitStoryEvent(make()), undefined, at);
+
+          interface Span {
+            start: number;
+            /** When the beats begin and end: the chart draws its route in between. */
+            textFrom: number;
+            textTo: number;
+            end: number;
+          }
+          const spans: Span[] = [];
+          let t = 0;
+
+          scenes.forEach((scene, index) => {
+            const section = story[index];
+            const start = t;
+            const quote = (selector: string) => all(selector, scene);
+            const dim = one('[data-story="dim"]', scene);
+            let dimLevel = 0;
+            const dimTo = (level: number, at: number, duration: number) => {
+              timeline.fromTo(dim, { opacity: dimLevel }, { opacity: level, duration, immediateRender: false }, at);
+              dimLevel = level;
+            };
+
+            timeline.addLabel(`chapter-${index}`, start);
+            if (index > 0) {
+              timeline.fromTo(scene, { opacity: 0 }, { opacity: 1, duration: SCENE.dissolve, immediateRender: false }, start);
+              t += SCENE.dissolve;
             }
-          );
-        });
-        // Coming out of the legend's night, the story's first screen eases into daylight.
-        const dawn = one('[data-story="dawn"]');
-        if (dawn !== null) {
-          dawnFade = gsap.fromTo(
-            dawn,
-            { opacity: 1 },
-            {
-              opacity: 0,
-              ease: 'none',
-              onUpdate: followSky,
-              scrollTrigger: { trigger: grid, start: 'top bottom', end: `top ${FIRST_TAKEOVER}`, scrub: 0.4 },
+            timeline.call(
+              () => {
+                // Load this chapter's image, and the next one ahead of the reader.
+                setLoadedThrough(loaded => Math.max(loaded, index + 1));
+                emitStoryEvent({ type: 'chapter-enter', chapter: section.id, direction });
+              },
+              undefined,
+              start + 0.01
+            );
+
+            // The opening: the kicker, then the quill writes the heading.
+            const kicker = one('[data-story="kicker"]', scene);
+            const title = one('[data-story="title"]', scene);
+            const heading = one('[data-story="heading"]', scene);
+            const point = one('[data-story="quill"]', scene);
+            const body = one('[data-story="quill-body"]', scene);
+            if (kicker !== null) {
+              timeline.fromTo(kicker, { opacity: 0 }, { opacity: 1, duration: SCENE.kicker, immediateRender: false }, t + SCENE.kickerAt);
             }
-          );
+            let written = 0.8;
+            if (heading !== null && point !== null && body !== null) {
+              const split = splitForQuill(heading);
+              splits.push(split);
+              written = createQuillWriter(point, body).write(timeline, split.chars as HTMLElement[], t + SCENE.headingAt);
+            }
+            t += SCENE.headingAt + written + SCENE.titleHold;
+            timeline.fromTo(title, { opacity: 1, y: 0 }, { opacity: 0, y: -14, duration: SCENE.titleOut, immediateRender: false }, t);
+            t += SCENE.titleOut;
+            const textFrom = t;
+
+            // The beats, one at a time in the lower third.
+            const beatTexts = beats[index] ?? [];
+            const names = quote('[data-story="name"]');
+            const rollAfter = names.length > 0 ? rollCallBeatIndex(beatTexts, names.length) : -1;
+            quote('[data-story="beat"]').forEach((beat, beatIndex) => {
+              timeline.fromTo(
+                beat,
+                { opacity: 0, y: 20, filter: 'blur(2px)' },
+                { opacity: 1, y: 0, filter: 'blur(0px)', duration: SCENE.beatIn, immediateRender: false },
+                t
+              );
+              emitAt(t, () => ({ type: 'beat', chapter: section.id, index: beatIndex, direction }));
+              t += SCENE.beatIn + beatSeconds(beatTexts[beatIndex] ?? '');
+              timeline.fromTo(
+                beat,
+                { opacity: 1, y: 0, filter: 'blur(0px)' },
+                { opacity: 0, y: -10, filter: 'blur(2px)', duration: SCENE.beatOut, immediateRender: false },
+                t
+              );
+              t += SCENE.beatOut + SCENE.beatGap;
+
+              // The roll call: after the beat that gives their number, the names appear one by one, and stay.
+              if (beatIndex === rollAfter) {
+                dimTo(SCENE.rollCallDim, t, 0.6);
+                names.forEach((name, nameIndex) => {
+                  timeline.fromTo(
+                    name,
+                    { opacity: 0, y: 6 },
+                    { opacity: 1, y: 0, duration: SCENE.nameIn, immediateRender: false },
+                    t + 0.3 + nameIndex * SCENE.nameEvery
+                  );
+                });
+                t += 0.3 + names.length * SCENE.nameEvery + SCENE.nameIn;
+              }
+            });
+            const textTo = t;
+
+            // The hook: the names go out like candles, last to first; the image dims almost to black; the line
+            // takes the screen; then stillness.
+            const hook = one('[data-story="hook-moment"]', scene);
+            if (hook !== null) {
+              [...names].reverse().forEach(name => {
+                timeline.fromTo(
+                  name,
+                  { opacity: 1 },
+                  {
+                    keyframes: [
+                      { opacity: 0.35, duration: 0.07 },
+                      { opacity: 0.9, duration: 0.07 },
+                      { opacity: 0.5, duration: 0.05 },
+                      { opacity: 0, duration: 0.17 },
+                    ],
+                    immediateRender: false,
+                  },
+                  t
+                );
+                const label = name.querySelector('span')?.textContent ?? '';
+                emitAt(t, () => ({ type: 'roll-call-out', chapter: section.id, name: label, direction }));
+                t += SCENE.nameOut;
+              });
+              dimTo(SCENE.hookDim, t, 0.9);
+              timeline.fromTo(
+                hook,
+                { opacity: 0, y: 12, filter: 'blur(2px)' },
+                { opacity: 1, y: 0, filter: 'blur(0px)', duration: SCENE.hookIn, immediateRender: false },
+                t + 0.35
+              );
+              emitAt(t + 0.35, () => ({ type: 'hook', chapter: section.id, direction }));
+              t += 0.35 + SCENE.hookIn + SCENE.hookHold + SCENE.stillness;
+            } else {
+              t += SCENE.restWithoutHook;
+            }
+
+            // The camera: a slow push in and pan across the whole chapter, still moving as the next dissolves in.
+            const image = one('[data-story="image"]', scene);
+            const pan = PANS[index % PANS.length];
+            if (image !== null) {
+              timeline.fromTo(
+                image,
+                { scale: 1, xPercent: 0, yPercent: 0 },
+                { scale: SCENE.zoomTo, xPercent: pan.x, yPercent: pan.y, duration: t - start + SCENE.dissolve },
+                start
+              );
+            }
+            spans.push({ start, textFrom, textTo, end: t });
+          });
+
+          // ---- The chart: each stretch of the route draws itself during the chapter it ends in, and the ship
+          // follows the line. The stretch she sailed alone is dashed and ghostly (VoyageChart.tsx).
+          if (chartFrame !== null) {
+            const reveals = all('[data-chart="reveal"]', chartFrame);
+            const ship = chartFrame.querySelector('[data-chart="ship"]');
+            const dots = new Map(all('[data-chart="point"]', chartFrame).map(dot => [dot.dataset.id, dot]));
+            route.segments.forEach((segment, index) => {
+              const span = spans[segment.to.chapterIndex];
+              const reveal = reveals[index];
+              if (span === undefined || reveal === undefined) {
+                return;
+              }
+              const share = (span.textTo - span.textFrom) / segment.slots;
+              const at = span.textFrom + segment.slot * share;
+              const duration = Math.max(0.5, share * 0.85);
+              timeline.fromTo(
+                reveal,
+                { attr: { 'stroke-dashoffset': 1 } },
+                {
+                  attr: { 'stroke-dashoffset': 0 },
+                  duration,
+                  immediateRender: false,
+                  onUpdate() {
+                    const p = this.progress();
+                    const x = segment.from.x + (segment.to.x - segment.from.x) * p;
+                    const y = segment.from.y + (segment.to.y - segment.from.y) * p;
+                    ship?.setAttribute('transform', `translate(${x} ${y})`);
+                  },
+                },
+                at
+              );
+              const dot = dots.get(segment.to.id);
+              if (dot !== undefined) {
+                timeline.fromTo(dot, { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, at + duration);
+              }
+            });
+          }
+
+          // ---- The sky over the scenes: each chapter's step, eased across the dissolve between two.
+          const mixAt = (time: number) => {
+            let mix = steps[0]?.mix ?? 0;
+            spans.forEach((span, index) => {
+              if (time < span.start || index === 0) {
+                return;
+              }
+              const into = Math.min(1, (time - span.start) / SCENE.dissolve);
+              mix = steps[index - 1].mix + (steps[index].mix - steps[index - 1].mix) * into;
+            });
+            return mix;
+          };
+
+          const pinned = ScrollTrigger.create({
+            trigger: stage,
+            start: 'top top',
+            end: () => `+=${Math.round(timeline.duration() * pxPerSecond())}`,
+            pin: true,
+            scrub: 0.6,
+            anticipatePin: 1,
+            animation: timeline,
+            invalidateOnRefresh: true,
+            onUpdate: self => {
+              direction = self.direction < 0 ? 'backward' : 'forward';
+              writeSky(mixAt(timeline.time()));
+            },
+            onToggle: self => {
+              if (chartFrame !== null) {
+                chartFrame.dataset.visible = String(self.isActive);
+              }
+            },
+          });
+
+          // ---- Coming out of the legend's night, the start of the story eases into the first scene's sky.
+          ScrollTrigger.create({
+            trigger: one('[data-story="start"]'),
+            start: 'top bottom',
+            end: 'bottom bottom',
+            onUpdate: self => {
+              if (pinned.progress === 0) {
+                writeSky(1 + ((steps[0]?.mix ?? 0) - 1) * self.progress);
+              }
+            },
+          });
+          // After the last scene, full night for the question.
+          ScrollTrigger.create({
+            trigger: one('[data-story="question"]'),
+            start: 'top bottom',
+            onToggle: self => self.isActive && writeSky(1),
+          });
+          // The play control shows while the story is on screen.
+          ScrollTrigger.create({
+            trigger: root,
+            start: 'top 70%',
+            end: 'bottom 30%',
+            onToggle: self => {
+              if (playControl !== null) {
+                playControl.dataset.visible = String(self.isActive);
+              }
+            },
+          });
+          writeSky(1);
+          cleanups.push(() => {
+            splits.forEach(split => split.revert());
+            if (chartFrame !== null) {
+              chartFrame.dataset.visible = 'false';
+            }
+          });
         }
-        followSky();
 
         // ---- The central question, written in slowly: one phrase after another.
-        let stopWriting = () => {};
         const question = one('[data-story="question"]');
         const phrases = all('[data-story="phrase"]');
+        let writing: gsap.core.Tween | null = null;
         if (question !== null && phrases.length > 0) {
           gsap.set(phrases, { opacity: 0 });
-          let writing: gsap.core.Tween | null = null;
           const write = () => {
             writing?.kill();
             writing = gsap.fromTo(
               phrases,
               { opacity: 0 },
-              { opacity: 1, duration: ENTRANCE.phraseDuration, ease: 'sine.out', stagger: ENTRANCE.phraseStagger }
+              { opacity: 1, duration: 1.2, ease: 'sine.out', stagger: reduced ? 0.4 : 0.8 }
             );
           };
-          stopWriting = () => writing?.kill();
           ScrollTrigger.create({ trigger: question, start: 'top 35%', onEnter: write, onEnterBack: write });
-          // It is cleared only once it is fully off the screen, so it is written again on the next visit.
           ScrollTrigger.create({
             trigger: question,
             start: 'top bottom',
@@ -389,74 +468,66 @@ export default function Story({ story, centralQuestion, references, sources }: S
 
         // Web fonts change the height of the text. Measure again once they are in.
         let current = true;
-        document.fonts?.ready.then(() => {
-          if (current) {
-            ScrollTrigger.refresh();
-          }
-        });
+        document.fonts?.ready.then(() => current && ScrollTrigger.refresh());
 
         return () => {
           current = false;
-          // Animations started from scroll callbacks are not tracked by the context: stop them by hand.
-          chapters.forEach(chapter => {
-            chapter.entrance?.kill();
-            chapter.exit?.kill();
-            chapter.quill?.hide();
-          });
-          dropping.forEach(tween => tween.kill());
-          stopWriting();
-          const shown = chapters.flatMap(chapter => [chapter.kicker, chapter.heading]).filter(part => part !== null);
-          gsap.set([...paragraphs, ...phrases, ...shown], { clearProps: 'opacity,transform' });
-          splits.forEach(split => split.revert());
-          grid.dataset.tone = 'ink';
+          writing?.kill();
+          gsap.set(phrases, { clearProps: 'opacity' });
+          cleanups.forEach(cleanup => cleanup());
+          delete root.dataset.tone;
+          root.style.removeProperty('--story-sky');
           // Hand the page's background back to the stylesheet (night on a case page, index.css).
           document.documentElement.style.removeProperty('background-color');
         };
       });
     },
-    { scope: rootRef, dependencies: [story, centralQuestion] }
+    { scope: rootRef, dependencies: [story, centralQuestion, cinematic, beats, route, steps, count, canAnimate], revertOnUpdate: true }
   );
 
   return (
-    <PortalProvider references={references} sources={sources}>
-      <section ref={rootRef} aria-label="The story" data-story="root" className="relative bg-ash">
-        {/* One grid for the whole story. A chapter's image cell and text cell are both placed in it
-            (StoryChapter.tsx), which is what lets every image stay stuck from the first chapter to the last. */}
-        <div data-story="grid" data-tone="ink" className="group/sky relative grid grid-cols-1 lg:grid-cols-2">
-          {/* The sky: one layer per step from day into night, stuck behind the text. */}
-          {!plain && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none sticky top-0 col-span-full col-start-1 h-lvh self-start"
-              style={{ gridRow: `1 / span ${Math.max(1, count)}` }}
-            >
-              {steps.map((step, index) => (
-                <div
-                  key={index}
-                  data-story="sky"
-                  className="absolute inset-0"
-                  style={{ backgroundColor: step.background }}
-                />
-              ))}
-              <div data-story="dawn" className="absolute inset-0 bg-night" />
-            </div>
-          )}
+    <PortalProvider references={references} sources={sources} onOpen={player.pause}>
+      <section
+        ref={rootRef}
+        aria-label="The story"
+        data-story="root"
+        data-mode={cinematic ? 'cinematic' : 'stacked'}
+        data-tone="night-ink"
+        className="group/sky relative bg-[var(--story-sky)]"
+        style={{ '--story-sky': 'var(--color-night)' } as React.CSSProperties}
+      >
+        <StoryStart player={cinematic ? player : null} onRead={goToFirstScene} />
 
-          {story.map((section, index) => (
+        {cinematic ? (
+          <div data-story="stage" className="relative h-svh overflow-hidden bg-[var(--story-sky)]">
+            {story.map((section, index) => (
+              <StoryScene
+                key={section.id}
+                section={section}
+                index={index}
+                grade={grades[index]}
+                beats={beats[index]}
+                loadImage={index <= loadedThrough}
+              />
+            ))}
+          </div>
+        ) : (
+          story.map((section, index) => (
             <StoryChapter
               key={section.id}
               section={section}
               index={index}
-              count={count}
               step={steps[index]}
               grade={grades[index]}
-              loadImage={index <= loadedThrough}
-              plain={plain}
+              route={route}
             />
-          ))}
-        </div>
+          ))
+        )}
 
         <CentralQuestion question={centralQuestion} />
+
+        {cinematic && <VoyageChart route={route} variant="live" onExpand={player.pause} />}
+        {cinematic && <PlayControl player={player} />}
       </section>
     </PortalProvider>
   );

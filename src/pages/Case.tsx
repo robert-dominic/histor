@@ -116,6 +116,7 @@ export default function Case() {
               centralQuestion={caseData.centralQuestion}
               references={caseData.references}
               sources={caseData.sources}
+              voyage={caseData.voyage}
             />
             {/* After the central question: stop here, or open the case files. */}
             <Fork

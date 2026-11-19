@@ -67,6 +67,8 @@ The Histor Data Foundation provides the core data model, type system, validation
 11. THE Type_System SHALL enforce type constraints through TypeScript compile-time type checking such that invalid case data produces TypeScript compiler errors
 12. THE Type_System SHALL define NonEmptyArray<T> as a tuple type requiring minimum one element of type T
 13. THE Type_System SHALL define StorySection with image field of type optional ImageAsset, and Case with yearEnd field of type optional number and unsolved field of type optional boolean
+14. THE Type_System SHALL define StorySection with rollCall field of type optional array of { name: string; role: string }; WHEN a section has a rollCall, THE Validator SHALL verify that every name and role is a non-empty string
+15. THE Type_System SHALL define Case with voyage field of type optional { points: VoyagePoint[] }, where VoyagePoint has id, label, lat, lon, chapter, kind ('port' | 'record' | 'found') and optional unreached; WHEN a case has a voyage, THE Validator SHALL verify at least one point, unique non-empty ids, non-empty labels, lat from -90 to 90, lon from -180 to 180, a chapter id that is in story, a known kind, and that unreached, when present, is a boolean
 
 ### Requirement 4: Case Registry
 

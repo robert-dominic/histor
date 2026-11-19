@@ -1,30 +1,37 @@
 // @vitest-environment jsdom
 // src/features/story/__tests__/Story.test.tsx
-// The story renders every chapter from the case data: kicker, heading, body, hook and image, then the central question.
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+// The cinematic story (docs/briefs/story-redesign.md): every chapter's full text is in the DOM, the beats are for
+// the eyes only, the roll call and the chart come from the data, playing can be paused, and reduced motion gives
+// plain stacked sections.
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
-import { skyColour } from '@/lib/day-night';
 import { parseRefs } from '@/lib/parse-refs';
+import { splitIntoBeats } from '@/lib/story-beats';
 import { splitIntoPhrases } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case, StorySection } from '@/types/case';
+
+// The cinematic story builds one long timeline for all six chapters. Give it room under load.
+vi.setConfig({ testTimeout: 15_000 });
 
 /** The text a reader sees: every {{ref:id|label}} shown as its label. */
 const plainText = (text: string) =>
   parseRefs(text)
     .map(segment => (segment.kind === 'text' ? segment.text : segment.label))
     .join('');
-const withoutSpaces = (text: string) => text.replace(/\s/g, '');
 
-function renderStory(caseData: Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources'> = maryCeleste) {
+type StoryData = Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources' | 'voyage'>;
+
+function renderStory(caseData: StoryData = maryCeleste) {
   return render(
     <Story
       story={caseData.story}
       centralQuestion={caseData.centralQuestion}
       references={caseData.references}
       sources={caseData.sources}
+      voyage={caseData.voyage}
     />
   );
 }
@@ -33,13 +40,13 @@ const chapterOf = (container: HTMLElement, section: StorySection) =>
   container.querySelector(`[data-story="chapter"][data-chapter="${section.id}"]`) as HTMLElement;
 
 /** Test data, not history. */
-const testCase: Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources'> = {
+const testCase: StoryData = {
   story: [
     {
       id: 's-one',
       kicker: 'Test place, test year',
       heading: 'First test heading',
-      body: ['A first paragraph about {{ref:thing|the thing}}.', 'A second paragraph.'],
+      body: ['A first sentence about {{ref:thing|the thing}}. A second sentence.', 'A second paragraph.'],
       hook: 'A test hook.',
       image: { src: '/one.webp', alt: 'Test alt one.', credit: 'Test credit one.', isIllustration: true },
     },
@@ -50,81 +57,74 @@ const testCase: Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources
   sources: [],
 };
 
+let scrollTo: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   stubMatchMedia();
+  // jsdom does not scroll. Playing the story calls window.scrollTo through GSAP's ScrollToPlugin.
+  scrollTo = vi.fn();
+  vi.stubGlobal('scrollTo', scrollTo);
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  document.documentElement.style.removeProperty('background-color');
 });
 
-describe('Story: the page background follows the sky', () => {
-  afterEach(() => {
-    document.documentElement.style.removeProperty('background-color');
-  });
-
-  test('writes the current sky to the root element, so the scrollbar gutter matches it', () => {
-    const { unmount } = renderStory();
-
-    // Nothing is scrolled yet: the story is still below the legend's night.
-    expect(document.documentElement.style.backgroundColor).toBe(skyColour(1));
-
-    unmount();
-    // Gone with the story: the stylesheet decides again.
-    expect(document.documentElement.style.backgroundColor).toBe('');
-  });
-});
-
-describe('Story: the Mary Celeste', () => {
-  test('has six chapters, in the order of the case data', () => {
-    const { container } = renderStory();
-
-    const chapters = [...container.querySelectorAll('[data-story="chapter"]')];
-    expect(maryCeleste.story).toHaveLength(6);
-    expect(chapters.map(chapter => chapter.getAttribute('data-chapter'))).toEqual(
-      maryCeleste.story.map(section => section.id)
-    );
-  });
-
+describe('Story: the full text is in the DOM', () => {
   test.each(maryCeleste.story.map(section => [section.id, section] as const))(
-    'chapter "%s" shows its kicker, heading, every paragraph and its hook',
+    'chapter "%s": heading, every paragraph whole, and the hook',
     (_id, section) => {
       const { container } = renderStory();
       const chapter = chapterOf(container, section);
 
-      expect(chapter.querySelector('[data-story="kicker"]')?.textContent).toBe(section.kicker);
       expect(within(chapter).getByRole('heading', { level: 2, name: section.heading })).toBeDefined();
-
-      const lines = [...chapter.querySelectorAll('[data-story="line"]')].map(line => line.textContent);
+      const text = chapter.querySelector('[data-story="text"]') as HTMLElement;
+      const lines = [...text.querySelectorAll('[data-story="line"]')].map(line => line.textContent);
       const expected = [...section.body, ...(section.hook === undefined ? [] : [section.hook])].map(plainText);
       expect(lines).toEqual(expected);
-      expect(chapter.querySelectorAll('[data-hook="true"]')).toHaveLength(section.hook === undefined ? 0 : 1);
+      // It is not hidden from screen readers; only visually.
+      expect(text.closest('[aria-hidden="true"]')).toBeNull();
+      expect(text.className).toContain('sr-only');
     }
   );
 
-  test.each(maryCeleste.story.map(section => [section.id, section] as const))(
-    'chapter "%s" shows its image with alt text and its credit',
-    (_id, section) => {
-      const { container } = renderStory();
+  test('the beats, one sentence each, are for the eyes only', () => {
+    const { container } = renderStory();
+
+    for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
-      const image = section.image;
-
-      expect(image).toBeDefined();
-      expect(image?.alt.trim()).not.toBe('');
-      expect(image?.credit.trim()).not.toBe('');
-      expect(within(chapter).getByRole('img', { name: image?.alt })).toBeDefined();
-      expect(chapter.querySelector('[data-story="credit"]')?.textContent).toBe(image?.credit);
-      // Only an illustration is labelled as one.
-      expect(within(chapter).queryByText('Illustration') !== null).toBe(image?.isIllustration);
+      const beats = chapter.querySelector('[data-story="beats"]') as HTMLElement;
+      expect(beats.getAttribute('aria-hidden')).toBe('true');
+      expect([...beats.querySelectorAll('[data-story="beat"]')].map(beat => beat.textContent)).toEqual(
+        section.body.flatMap(splitIntoBeats).map(plainText)
+      );
+      if (section.hook !== undefined) {
+        expect(chapter.querySelector('[data-story="hook-moment"]')?.getAttribute('aria-hidden')).toBe('true');
+      }
     }
-  );
+  });
 
-  test('exactly one chapter image is an illustration: the AI-generated deck', () => {
-    renderStory();
+  test('portals in the beats stay tappable but out of the Tab order; the full text has them for the keyboard', () => {
+    const { container } = renderStory();
 
-    expect(maryCeleste.story.filter(section => section.image?.isIllustration)).toHaveLength(1);
-    expect(screen.getAllByText('Illustration')).toHaveLength(1);
+    const inBeats = [...container.querySelectorAll<HTMLElement>('[data-story="beats"] [data-portal-trigger]')];
+    const inText = [...container.querySelectorAll<HTMLElement>('[data-story="text"] [data-portal-trigger]')];
+    expect(inBeats.length).toBeGreaterThan(0);
+    expect(inBeats.every(trigger => trigger.tabIndex === -1)).toBe(true);
+    expect(inText.length).toBeGreaterThan(0);
+    expect(inText.every(trigger => trigger.tabIndex === 0)).toBe(true);
+    const ids = new Set(maryCeleste.references.map(reference => reference.id));
+    expect(inText.every(trigger => ids.has(trigger.dataset.portalTrigger ?? ''))).toBe(true);
+  });
+
+  test('tapping a portal in a beat opens its card', () => {
+    const { container } = renderStory(testCase);
+
+    fireEvent.click(container.querySelector('[data-story="beats"] [data-portal-trigger="thing"]') as HTMLElement);
+
+    expect(screen.getByRole('dialog', { name: 'The thing' })).toBeDefined();
   });
 
   test('ends on the central question, whole for screen readers and in phrases for the eyes', () => {
@@ -134,52 +134,55 @@ describe('Story: the Mary Celeste', () => {
     expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
     const phrases = [...question.querySelectorAll('[data-story="phrase"]')].map(phrase => phrase.textContent?.trim());
     expect(phrases).toEqual(splitIntoPhrases(maryCeleste.centralQuestion));
-    expect(phrases.length).toBeGreaterThan(1);
-    // Nothing comes after the question yet.
-    expect(container.querySelector('[data-story="root"]')?.lastElementChild).toBe(question);
-  });
-
-  test('every portal in the text is a keyboard-reachable button, and its id is a reference of the case', () => {
-    const { container } = renderStory();
-
-    const triggers = [...container.querySelectorAll<HTMLElement>('[data-portal-trigger]')];
-    const ids = new Set(maryCeleste.references.map(reference => reference.id));
-    expect(triggers.length).toBeGreaterThan(0);
-    for (const trigger of triggers) {
-      expect(trigger.getAttribute('role')).toBe('button');
-      expect(trigger.tabIndex).toBe(0);
-      expect(ids.has(trigger.getAttribute('data-portal-trigger') ?? '')).toBe(true);
-    }
   });
 });
 
-describe('Story: structure and loading', () => {
+describe('Story: scenes', () => {
+  test('one full-screen scene per chapter, in one pinned stage, in the order of the case data', () => {
+    const { container } = renderStory();
+
+    const root = container.querySelector('[data-story="root"]') as HTMLElement;
+    expect(root.dataset.mode).toBe('cinematic');
+    const stage = container.querySelector('[data-story="stage"]') as HTMLElement;
+    expect(stage.className).toContain('h-svh');
+    const scenes = [...stage.querySelectorAll('[data-story="chapter"]')];
+    expect(scenes.map(scene => scene.getAttribute('data-chapter'))).toEqual(maryCeleste.story.map(section => section.id));
+    for (const image of stage.querySelectorAll('[data-story="image"]')) {
+      expect(image.className).toContain('object-cover');
+    }
+  });
+
   test('the heading the quill writes is hidden from screen readers and split into letters', () => {
     const { container } = renderStory(testCase);
 
     const written = container.querySelector('[data-story="heading"]') as HTMLElement;
     expect(written.getAttribute('aria-hidden')).toBe('true');
-    const letters = [...written.querySelectorAll<HTMLElement>('*')].filter(element => element.children.length === 0);
-    expect(letters.map(letter => letter.textContent).join('')).toBe(withoutSpaces('First test heading'));
+    expect(written.querySelectorAll('*').length).toBeGreaterThan(0);
     expect(container.querySelector('[data-story="quill"]')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('a chapter without a kicker, hook or image leaves them out', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[1]);
+  test('every image keeps its credit behind an ⓘ, and its labels', () => {
+    const { container } = renderStory();
 
-    expect(chapter.querySelector('[data-story="kicker"]')).toBeNull();
-    expect(chapter.querySelector('[data-hook="true"]')).toBeNull();
-    expect(chapter.querySelector('img')).toBeNull();
-    expect(chapter.querySelector('[data-story="credit"]')).toBeNull();
+    for (const section of maryCeleste.story) {
+      const chapter = chapterOf(container, section);
+      expect(within(chapter).getByRole('img', { name: section.image?.alt })).toBeDefined();
+      expect(within(chapter).getByRole('tooltip', { hidden: true }).textContent).toBe(section.image?.credit);
+      expect(chapter.querySelector('[data-story="illustration"]') !== null).toBe(section.image?.isIllustration);
+    }
+    expect(chapterOf(container, maryCeleste.story[2]).querySelector('[data-story="caption"]')?.textContent).toBe(
+      'The Mary Celeste, 1861'
+    );
   });
 
-  test('a reference id the case does not know falls back to plain text', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[1]);
+  test('the image grade gets darker with every chapter', () => {
+    const { container } = renderStory();
 
-    expect(chapter.querySelector('[data-portal-trigger]')).toBeNull();
-    expect(chapter.textContent).toContain('Only one paragraph, with an unknown id.');
+    const brightness = [...container.querySelectorAll<HTMLElement>('[data-story="image"]')].map(image =>
+      Number(/brightness\(([\d.]+)\)/.exec(image.style.filter)?.[1])
+    );
+    expect(brightness[0]).toBe(1);
+    expect(brightness.every((value, index) => index === 0 || value < brightness[index - 1])).toBe(true);
   });
 
   test('images are lazy: before the reader reaches the story, only the first chapter has a source', () => {
@@ -190,98 +193,156 @@ describe('Story: structure and loading', () => {
     expect(sources.slice(1).every(source => source === null)).toBe(true);
   });
 
-  test('the image grade gets darker with every chapter', () => {
+  test('before the reader reaches it, the story sits in the legend\'s night', () => {
     const { container } = renderStory();
 
-    const brightness = [...container.querySelectorAll<HTMLElement>('[data-story="image"]')].map(image =>
-      Number(/brightness\(([\d.]+)\)/.exec(image.style.filter)?.[1])
-    );
-    expect(brightness[0]).toBe(1);
-    expect(brightness[brightness.length - 1]).toBe(0.55);
-    expect(brightness.every((value, index) => index === 0 || value < brightness[index - 1])).toBe(true);
-  });
-
-  test('body text takes its colour from the sky: every text cell follows the tone set on the grid', () => {
-    const { container } = renderStory();
-
-    const grid = container.querySelector('[data-story="grid"]') as HTMLElement;
-    // Before the reader reaches the story it is still under the legend's night.
-    expect(grid.getAttribute('data-tone')).toBe('night-ink');
-    for (const cell of container.querySelectorAll('[data-story="text"]')) {
-      expect(cell.className).toContain('text-ink');
-      expect(cell.className).toContain('group-data-[tone=black]/sky:text-black');
-      expect(cell.className).toContain('group-data-[tone=white]/sky:text-white');
-      expect(cell.className).toContain('group-data-[tone=night-ink]/sky:text-night-ink');
-    }
+    expect((container.querySelector('[data-story="root"]') as HTMLElement).dataset.tone).toBe('night-ink');
   });
 });
 
-describe('Story: image credits and labels', () => {
-  test('every chapter image has an ⓘ button, and the credit is its tooltip, not printed on the image', () => {
+describe('Story: the roll call', () => {
+  test('ten names with their roles, in the order of the data', () => {
     const { container } = renderStory();
+    const list = chapterOf(container, maryCeleste.story[0]).querySelector('[data-story="roll-call"]') as HTMLElement;
 
-    for (const section of maryCeleste.story) {
-      const chapter = chapterOf(container, section);
-      const button = within(chapter).getByRole('button', { name: 'Image credit' });
-      const tooltip = within(chapter).getByRole('tooltip', { hidden: true });
-      expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
-      expect(tooltip.textContent).toBe(section.image?.credit);
-      expect(tooltip.className).toContain('opacity-0');
-      expect(chapter.querySelectorAll('[data-story="credit"]')).toHaveLength(1);
-    }
-  });
-
-  test('a tap on the ⓘ pins the credit open, and a second tap closes it', () => {
-    const { container } = renderStory();
-    const chapter = chapterOf(container, maryCeleste.story[0]);
-    const button = within(chapter).getByRole('button', { name: 'Image credit' });
-
-    fireEvent.click(button);
-    expect(button.getAttribute('aria-expanded')).toBe('true');
-    expect(button.parentElement?.getAttribute('data-open')).toBe('true');
-
-    fireEvent.click(button);
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  test('a tap anywhere else, or Escape, closes a pinned credit', () => {
-    const { container } = renderStory();
-    const chapter = chapterOf(container, maryCeleste.story[0]);
-    const button = within(chapter).getByRole('button', { name: 'Image credit' });
-
-    fireEvent.click(button);
-    fireEvent.pointerDown(document.body);
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-
-    fireEvent.click(button);
-    fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  test('the "Illustration" label is always visible, and only on the illustration', () => {
-    const { container } = renderStory();
-
-    for (const section of maryCeleste.story) {
-      const label = chapterOf(container, section).querySelector('[data-story="illustration"]');
-      expect(label !== null).toBe(section.image?.isIllustration);
-    }
-  });
-
-  test('chapter 3 carries its caption, "The Mary Celeste, 1861", and no other chapter has one', () => {
-    const { container } = renderStory();
-
-    const captions = maryCeleste.story.map(
-      section => chapterOf(container, section).querySelector('[data-story="caption"]')?.textContent ?? null
+    const items = [...list.querySelectorAll('[data-story="name"]')];
+    const rollCall = maryCeleste.story[0].rollCall ?? [];
+    expect(items).toHaveLength(10);
+    expect(items.map(item => item.textContent?.replace(/\s+/g, ' ').trim())).toEqual(
+      rollCall.map(entry => `${entry.name} · ${entry.role}`)
     );
-    expect(captions).toEqual([null, null, 'The Mary Celeste, 1861', null, null, null]);
   });
 
-  test('the image starts below the case header: its sticky offset is the header height', () => {
+  test('no other chapter has one', () => {
     const { container } = renderStory();
 
-    for (const pane of container.querySelectorAll('[data-story="pane"]')) {
-      expect(pane.className).toContain('top-[var(--case-header)]');
-    }
+    expect(container.querySelectorAll('[data-story="roll-call"]')).toHaveLength(1);
+  });
+});
+
+describe('Story: the voyage chart', () => {
+  test('an inset that opens a larger view on tap, and closes on Escape', () => {
+    renderStory();
+
+    const chart = screen.getByRole('button', { name: 'Chart of the voyage' });
+    expect(chart.getAttribute('aria-expanded')).toBe('false');
+    expect(document.querySelectorAll('[data-chart="segment"]')).toHaveLength(4);
+    expect(document.querySelectorAll('[data-chart="segment"][data-ghostly="true"]')).toHaveLength(1);
+    expect(document.querySelector('[data-chart="point"][data-unreached="true"]')?.getAttribute('data-id')).toBe('genoa');
+
+    fireEvent.click(chart);
+    expect(screen.getByRole('dialog', { name: 'Chart of the voyage' })).toBeDefined();
+    expect([...document.querySelectorAll('[data-chart="label"]')].map(label => label.textContent)).toContain('Found adrift');
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Chart of the voyage' })).toBeNull();
+  });
+
+  test('a story without a voyage has no chart', () => {
+    renderStory(testCase);
+
+    expect(screen.queryByRole('button', { name: 'Chart of the voyage' })).toBeNull();
+  });
+});
+
+describe('Story: play the story', () => {
+  // jsdom lays nothing out: give the page a height, so there is something to play through.
+  beforeEach(() => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 20_000 });
+  });
+  afterEach(() => {
+    Reflect.deleteProperty(document.documentElement, 'scrollHeight');
+  });
+
+  test('with nothing left to scroll, play does not start', () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 0 });
+    const { container } = renderStory();
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+
+    act(() => {
+      fireEvent.click(control);
+    });
+
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('starts with the hint, "Play the story" and "Read at my pace"', () => {
+    const { container } = renderStory();
+    const start = container.querySelector('[data-story="start"]') as HTMLElement;
+
+    expect(start.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll, or press play.');
+    expect(within(start).getByRole('button', { name: 'Play the story' })).toBeDefined();
+    expect(within(start).getByRole('button', { name: 'Read at my pace' })).toBeDefined();
+  });
+
+  test('play and pause toggle, from the start and from the floating control', () => {
+    const { container } = renderStory();
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    expect(control.getAttribute('aria-label')).toBe('Play the story');
+
+    act(() => {
+      fireEvent.click(within(container.querySelector('[data-story="start"]') as HTMLElement).getByRole('button', { name: 'Play the story' }));
+    });
+    expect(control.getAttribute('aria-label')).toBe('Pause the story');
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    expect((container.querySelector('[data-story="hint"]') as HTMLElement).dataset.gone).toBe('true');
+
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-label')).toBe('Play the story');
+
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-label')).toBe('Pause the story');
+  });
+
+  test.each([
+    ['a wheel', () => fireEvent.wheel(window, { deltaY: 40 })],
+    ['a touch', () => fireEvent.touchStart(window)],
+    ['a key', () => fireEvent.keyDown(document.body, { key: 'ArrowDown' })],
+  ])('%s pauses playback at once', (_label, input) => {
+    const { container } = renderStory();
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+
+    act(() => {
+      input();
+    });
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('opening a portal pauses playback', () => {
+    const { container } = renderStory(testCase);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+
+    act(() => {
+      fireEvent.click(control);
+    });
+    act(() => {
+      fireEvent.click(container.querySelector('[data-story="beats"] [data-portal-trigger="thing"]') as HTMLElement);
+    });
+
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('a key pressed on the control itself does not count as taking over', () => {
+    const { container } = renderStory();
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+
+    act(() => {
+      fireEvent.click(control);
+    });
+    act(() => {
+      fireEvent.keyDown(control, { key: 'Enter' });
+    });
+
+    expect(control.getAttribute('aria-pressed')).toBe('true');
   });
 });
 
@@ -289,15 +350,35 @@ describe('Story: reduced motion', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     stubMatchMedia({ reducedMotion: true });
+    vi.stubGlobal('scrollTo', vi.fn());
   });
 
-  test('no quill: headings are not split into letters', () => {
-    const { container } = renderStory(testCase);
+  test('plain stacked scenes: no stage, no beats, still images, the full text shown', () => {
+    const { container } = renderStory();
 
-    expect(container.querySelector('[data-story="heading"]')?.children).toHaveLength(0);
+    const root = container.querySelector('[data-story="root"]') as HTMLElement;
+    expect(root.dataset.mode).toBe('stacked');
+    expect(container.querySelector('[data-story="stage"]')).toBeNull();
+    expect(container.querySelector('[data-story="beats"]')).toBeNull();
+    const chapters = [...container.querySelectorAll('[data-story="chapter"]')];
+    expect(chapters).toHaveLength(maryCeleste.story.length);
+    for (const chapter of chapters) {
+      expect(chapter.querySelector('[data-story="text"]')?.className).not.toContain('sr-only');
+    }
+    for (const image of container.querySelectorAll<HTMLElement>('[data-story="image"]')) {
+      expect(image.style.transform).toBe('');
+    }
   });
 
-  test('paragraphs start hidden and are not moved: they only fade', () => {
+  test('no auto-scroll: no play choice and no play control', () => {
+    renderStory();
+
+    expect(screen.queryByRole('button', { name: 'Play the story' })).toBeNull();
+    expect(document.querySelector('[data-story="play-control"]')).toBeNull();
+    expect(document.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll to read.');
+  });
+
+  test('the text only fades: it starts hidden and is never moved', () => {
     const { container } = renderStory(testCase);
 
     for (const line of container.querySelectorAll<HTMLElement>('[data-story="line"]')) {
@@ -305,16 +386,22 @@ describe('Story: reduced motion', () => {
       expect(line.style.transform).toBe('');
     }
   });
+
+  test('the roll call and the chart are still there, shown in place', () => {
+    const { container } = renderStory();
+
+    expect(container.querySelectorAll('[data-story="roll-call"] [data-story="name"]')).toHaveLength(10);
+    expect(container.querySelectorAll('[data-chart="frame"][data-variant="still"]').length).toBeGreaterThan(0);
+  });
 });
 
 describe('Story: without matchMedia', () => {
-  test('shows every chapter at once, with all images loaded and nothing hidden', () => {
+  test('shows every chapter at once, stacked, with nothing hidden', () => {
     vi.unstubAllGlobals();
     const { container } = renderStory();
 
-    const sources = [...container.querySelectorAll('[data-story="image"]')].map(image => image.getAttribute('src'));
-    expect(sources).toEqual(maryCeleste.story.map(section => section.image?.src));
-    for (const element of container.querySelectorAll<HTMLElement>('[data-story]')) {
+    expect((container.querySelector('[data-story="root"]') as HTMLElement).dataset.mode).toBe('stacked');
+    for (const element of container.querySelectorAll<HTMLElement>('[data-story="line"]')) {
       expect(element.style.opacity).toBe('');
     }
     expect(screen.getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();

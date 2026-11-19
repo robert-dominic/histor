@@ -10,9 +10,11 @@ interface PortalTriggerProps {
   id: string;
   /** The words shown in the text. */
   label: string;
+  /** False to keep it out of the Tab order (it stays tappable). */
+  tabbable?: boolean;
 }
 
-export default function PortalTrigger({ id, label }: PortalTriggerProps) {
+export default function PortalTrigger({ id, label, tabbable = true }: PortalTriggerProps) {
   const portals = useContext(PortalContext);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
@@ -26,7 +28,7 @@ export default function PortalTrigger({ id, label }: PortalTriggerProps) {
   return (
     <span
       role="button"
-      tabIndex={0}
+      tabIndex={tabbable ? 0 : -1}
       aria-haspopup="dialog"
       aria-expanded={portals?.openId === id}
       data-portal-trigger={id}
