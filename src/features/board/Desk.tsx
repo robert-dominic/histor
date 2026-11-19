@@ -8,7 +8,9 @@ import { Link, Outlet, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
+import DeskSurface from '@/features/board/DeskSurface';
 import Folder from '@/features/board/Folder';
+import Lamp from '@/features/board/Lamp';
 import TheoryCard from '@/features/board/TheoryCard';
 import Threads from '@/features/board/Threads';
 import { fileNumber, pinTargetTitle } from '@/lib/case-files';
@@ -27,13 +29,6 @@ function progressLine(opened: number, total: number, threshold: number): string 
   return `${count} You can close the case.`;
 }
 
-/** The lamp over the desk and the dark at its edges. Colours are tokens. */
-const LAMP_STYLE = {
-  backgroundImage: [
-    'radial-gradient(ellipse 70% 45% at 50% 0%, color-mix(in srgb, var(--color-brass) 16%, transparent), transparent 70%)',
-    'radial-gradient(ellipse 120% 90% at 50% 30%, transparent 55%, color-mix(in srgb, black 55%, transparent) 100%)',
-  ].join(', '),
-};
 
 export default function Desk() {
   const { state, caseData } = useInvestigation();
@@ -90,10 +85,11 @@ export default function Desk() {
       aria-labelledby="board-title"
       className="relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink"
     >
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10" style={LAMP_STYLE} />
+      <DeskSurface />
 
       <div className="mx-auto max-w-[90rem] px-4 pt-6 pb-16 lg:px-10 lg:pt-10">
-        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        {/* Above the lamp's shadow: the progress line and the way to close the case are always readable. */}
+        <header className="relative z-[21] flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
             <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
               The case files
@@ -177,6 +173,7 @@ export default function Desk() {
           </section>
         </div>
       </div>
+      <Lamp />
     </main>
     <Outlet />
     </>

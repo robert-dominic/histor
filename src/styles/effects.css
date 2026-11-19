@@ -42,3 +42,57 @@
     opacity: 1;
   }
 }
+
+/* ---- The investigation desk (.kiro/specs/desk) ---- */
+
+/* Old wood at night: long, uneven grain lines in a near-night brown, no image files. */
+.desk-surface {
+  background-color: color-mix(in srgb, var(--color-night), var(--color-brass) 7%);
+  background-image:
+    repeating-linear-gradient(
+      91deg,
+      color-mix(in srgb, var(--color-night), var(--color-brass) 10%) 0 2px,
+      transparent 2px 9px,
+      color-mix(in srgb, var(--color-night), var(--color-brass) 4%) 9px 10px,
+      transparent 10px 23px
+    ),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-night), var(--color-brass) 9%), var(--color-night));
+}
+
+/* A strong vignette: the desk's edges fall away into the dark. */
+.desk-vignette {
+  background: radial-gradient(
+    ellipse 85% 75% at 50% 45%,
+    transparent 40%,
+    color-mix(in srgb, var(--color-night) 92%, transparent) 100%
+  );
+}
+
+/* The lamp: one overlay. Everything outside the pool falls to about 25% brightness. The pool's centre and size
+   come from CSS variables that Lamp.tsx writes every frame; nothing here animates by itself. */
+.desk-lamp {
+  --lamp-x: 50vw;
+  --lamp-y: 45vh;
+  --lamp-r: 420px;
+}
+
+.desk-lamp-shadow {
+  background-color: color-mix(in srgb, var(--color-night) 75%, transparent);
+  -webkit-mask-image: radial-gradient(
+    circle var(--lamp-r) at var(--lamp-x) var(--lamp-y),
+    transparent 0,
+    transparent 32%,
+    black 100%
+  );
+  mask-image: radial-gradient(circle var(--lamp-r) at var(--lamp-x) var(--lamp-y), transparent 0, transparent 32%, black 100%);
+}
+
+/* The warmth of the bulb, inside the pool only. */
+.desk-lamp-warmth {
+  background: radial-gradient(
+    circle var(--lamp-r) at var(--lamp-x) var(--lamp-y),
+    color-mix(in srgb, var(--color-brass) 13%, transparent) 0,
+    transparent 70%
+  );
+  mix-blend-mode: soft-light;
+}
