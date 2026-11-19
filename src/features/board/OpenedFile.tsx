@@ -39,7 +39,7 @@ interface OpenedFileProps {
 
 export default function OpenedFile({ evidence, index }: OpenedFileProps) {
   const { state, dispatch, caseData } = useInvestigation();
-  const rootRef = useRef<HTMLElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const revealRef = useRef<HTMLDivElement>(null);
   // Only the value when the file is first shown counts: a file opened before is shown stamped at once.
@@ -149,11 +149,14 @@ export default function OpenedFile({ evidence, index }: OpenedFileProps) {
   ];
 
   return (
-    <main
+    <div
       ref={rootRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="file-title"
       data-page="case"
       data-ink={openedBefore && isLegend ? 'ghost' : undefined}
-      className="min-h-svh scroll-mt-[var(--case-header)] bg-night px-3 pt-[calc(var(--case-header)+1.25rem)] pb-12 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
+      className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-night px-3 pt-[calc(var(--case-header)+1.25rem)] pb-12 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
     >
       <article
         data-file="sheet"
@@ -286,6 +289,6 @@ export default function OpenedFile({ evidence, index }: OpenedFileProps) {
           )}
         </nav>
       </article>
-    </main>
+    </div>
   );
 }

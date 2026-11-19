@@ -14,7 +14,7 @@ export default function CaseFile() {
 
   if (index === -1) {
     return (
-      <main data-page="case" className="min-h-svh bg-night px-5 pt-[calc(var(--case-header)+2rem)] text-night-ink">
+      <div role="dialog" aria-modal="true" aria-label="File not found" className="fixed inset-0 z-40 bg-night px-5 pt-[calc(var(--case-header)+2rem)] text-night-ink">
         <p className="font-voice text-base">File not found</p>
         <Link
           to={board}
@@ -22,7 +22,7 @@ export default function CaseFile() {
         >
           Back to the board
         </Link>
-      </main>
+      </div>
     );
   }
 

@@ -1,10 +1,10 @@
-// src/features/board/Board.tsx
+// src/features/board/Desk.tsx
 // The board: a night investigation desk under a brass lamp. Theories across the top, the case files below.
 // Desktop draws a thread from each pinned folder to its theory; phones swipe the theories and list the folders.
 // Everything shown comes from the case data and the investigation.
 
 import { useId, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Outlet, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
@@ -35,8 +35,10 @@ const LAMP_STYLE = {
   ].join(', '),
 };
 
-export default function Board() {
+export default function Desk() {
   const { state, caseData } = useInvestigation();
+  // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
+  const fileOpen = useParams().evidenceId !== undefined;
   const rootRef = useRef<HTMLElement>(null);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const isSmallPhone = useMediaQuery(SMALL_PHONE_QUERY);
@@ -80,9 +82,11 @@ export default function Board() {
   );
 
   return (
+    <>
     <main
       ref={rootRef}
       data-page="case"
+      inert={fileOpen}
       aria-labelledby="board-title"
       className="relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink"
     >
@@ -174,5 +178,7 @@ export default function Board() {
         </div>
       </div>
     </main>
+    <Outlet />
+    </>
   );
 }

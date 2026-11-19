@@ -296,6 +296,16 @@ describe('An opened file', () => {
     expect(screen.getByRole('link', { name: 'Back to the board' }).getAttribute('href')).toBe(`${BASE}/files`);
   });
 
+  test("opening a file's URL directly shows the desk with that file open over it", () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+
+    const file = screen.getByRole('dialog', { name: evidence('e-lifeboat').title });
+    expect(file).toBeDefined();
+    // The desk is still there underneath, and cannot be reached while the file is open.
+    expect(folders()).toHaveLength(CASE.evidence.length);
+    expect(document.querySelector('main[aria-labelledby="board-title"]')?.hasAttribute('inert')).toBe(true);
+  });
+
   test('an unknown file id shows "File not found" with a link back to the board', () => {
     renderAt(`${BASE}/files/e-no-such-file`);
 
