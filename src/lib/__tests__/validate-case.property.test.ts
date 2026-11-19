@@ -206,17 +206,19 @@ function validCaseArbitrary(): fc.Arbitrary<Case> {
       positiveInteger(),
       nonEmptyString(),
       nonEmptyString(),
-      fc.array(
+      // Ids are unique within each list, so a valid case can never contain a duplicate by chance
+      // (failing seed -1131047925 gave two theories the id "theory-97-apply").
+      fc.uniqueArray(
         fc.integer({ min: 0, max: 100 }).chain(i => theoryArbitrary(i)),
-        { minLength: 1, maxLength: 10 }
+        { selector: theory => theory.id, minLength: 1, maxLength: 10 }
       ),
-      fc.array(
+      fc.uniqueArray(
         fc.integer({ min: 0, max: 100 }).chain(i => sourceArbitrary(i)),
-        { minLength: 1, maxLength: 10 }
+        { selector: source => source.id, minLength: 1, maxLength: 10 }
       ),
-      fc.array(
+      fc.uniqueArray(
         fc.integer({ min: 0, max: 100 }).chain(i => storySectionArbitrary(i)),
-        { minLength: 1, maxLength: 10 }
+        { selector: section => section.id, minLength: 1, maxLength: 10 }
       ),
       legendIntroArbitrary(),
       caseThemeArbitrary()
@@ -239,9 +241,9 @@ function validCaseArbitrary(): fc.Arbitrary<Case> {
 
         return fc
           .tuple(
-            fc.array(
+            fc.uniqueArray(
               fc.integer({ min: 0, max: 100 }).chain(i => evidenceArbitrary(sourceIds, theoryIds, i)),
-              { minLength: 1, maxLength: 10 }
+              { selector: evidence => evidence.id, minLength: 1, maxLength: 10 }
             ),
             fc.array(nonEmptyString(), { minLength: 1, maxLength: 10 })
           )
