@@ -1,14 +1,20 @@
 // src/features/board/FileDocument.tsx
 // The document inside a folder: a sheet of paper held by a paper clip, with the file's number, its title, its
-// status stamp and its detail (through PortalText, so the references in it open portals). A disputed file
-// adds the claim and the challenge; a legend adds where it came from. Whatever follows the paper's text
-// (the question, the links) is passed in as children.
-// The open file animates it from outside, by its data-file attributes.
+// status stamp and its detail (through PortalText, so the references in it open portals).
+// It starts as plain paper. When the stamp lands (OpenFile sets data-revealed on the sheet), the paper becomes
+// its status (effects.css):
+//   Record: crisp official paper, a letterhead in record ink, and an embossed seal beside the stamp.
+//   Disputed: sheet one holds "The claim", underlined wavy in rust (never struck through) with a hand-drawn "?"
+//   and a note in the margin; a second sheet, askew, holds "The challenge".
+//   Legend: the paper yellows and turns faintly see-through, the ink fades to ghost ink, and a typed slip,
+//   "Where this came from", slides out from under it.
+// Whatever follows the paper (the question, the links) is passed in as children. Motion is applied from outside.
 
 import type { ReactNode, Ref } from 'react';
 import Stamp from '@/components/Stamp';
 import PortalText from '@/features/portals/PortalText';
 import { STATUS_LABEL } from '@/lib/case-files';
+import { firstSentence } from '@/lib/desk';
 import type { Evidence } from '@/types/case';
 
 interface FileDocumentProps {
@@ -16,6 +22,8 @@ interface FileDocumentProps {
   /** e.g. "07". */
   number: string;
   headingRef: Ref<HTMLHeadingElement>;
+  /** Already shown as its status: a file opened before. Otherwise OpenFile reveals it when the stamp lands. */
+  revealed: boolean;
   children?: ReactNode;
 }
 
@@ -37,66 +45,167 @@ function PaperClip() {
   );
 }
 
-export default function FileDocument({ evidence, number, headingRef, children }: FileDocumentProps) {
-  const isLegend = evidence.status === 'legend';
-
+/** The record's seal: two rings in record ink around an eight-pointed star, pressed into the paper. */
+function RecordSeal() {
+  const star = Array.from({ length: 16 }, (_, index) => {
+    const angle = (Math.PI * index) / 8 - Math.PI / 2;
+    const radius = index % 2 === 0 ? 11 : 4.6;
+    return `${(28 + radius * Math.cos(angle)).toFixed(2)},${(28 + radius * Math.sin(angle)).toFixed(2)}`;
+  }).join(' ');
   return (
-    <article
-      data-file="sheet"
-      data-status={evidence.status}
-      aria-labelledby="file-title"
-      className={`relative rounded-[2px] px-5 pt-8 pb-8 text-ink shadow-2xl shadow-black/60 sm:px-10 sm:pt-10 ${
-        isLegend ? 'bg-paper/90' : 'bg-paper'
-      }`}
+    <svg aria-hidden="true" viewBox="0 0 56 56" className="record-seal h-12 w-12 text-record sm:h-14 sm:w-14">
+      <circle cx="28" cy="28" r="25.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="28" cy="28" r="21.5" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="1.4 1.8" />
+      <circle cx="28" cy="28" r="17" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="0.8" />
+      <polygon points={star} fill="currentColor" fillOpacity="0.75" />
+    </svg>
+  );
+}
+
+/** A question mark, drawn by hand in the margin: a hook and a dot. */
+function QueryMark() {
+  return (
+    <svg
+      data-file="query"
+      aria-hidden="true"
+      viewBox="0 0 16 26"
+      className="query-mark absolute top-6 -left-[1.1rem] h-6 w-3.5 text-rust sm:-left-8 sm:h-7 sm:w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <PaperClip />
+      <path pathLength={1} d="M3.2 7.5 C2.6 2.6, 12.8 1.4, 13.2 7.2 C13.5 11.4, 8.2 11.6, 7.9 17.2" />
+      <path pathLength={1} d="M7.8 21.6 L8.1 22.4" />
+    </svg>
+  );
+}
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="font-voice text-[0.8125rem] tracking-[0.18em] text-ink/75 tabular-nums">File {number}</p>
-          <h2
-            id="file-title"
-            ref={headingRef}
-            tabIndex={-1}
-            className="mt-1 font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-[1.02] text-balance outline-none"
+export default function FileDocument({ evidence, number, headingRef, revealed, children }: FileDocumentProps) {
+  return (
+    <div data-file="document" className="relative">
+      <article
+        data-file="sheet"
+        data-status={evidence.status}
+        data-revealed={revealed ? 'true' : undefined}
+        aria-labelledby="file-title"
+        // A disputed sheet keeps room at its foot, where the second sheet overlaps it.
+        className={`relative z-[1] px-5 pt-8 text-ink shadow-xl shadow-black/40 sm:px-10 sm:pt-10 ${
+          evidence.status === 'record' ? 'rounded-none' : 'rounded-[2px]'
+        } ${evidence.status === 'disputed' ? 'pb-12 sm:pb-14' : 'pb-8'}`}
+      >
+        {/* The paper itself, under the text: plain at first; a legend's yellows into the aged sheet. */}
+        <div aria-hidden="true" data-paper="plain" className="absolute inset-0 -z-10 rounded-[inherit] bg-paper" />
+        {evidence.status === 'legend' && (
+          <div aria-hidden="true" data-paper="aged" className="absolute inset-0 -z-10 rounded-[inherit]" />
+        )}
+        <PaperClip />
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p
+              data-file="number"
+              className="inline-block border-b border-transparent pb-1 font-voice text-[0.8125rem] tracking-[0.18em] text-ink/75 tabular-nums"
+            >
+              File {number}
+            </p>
+            <h2
+              id="file-title"
+              ref={headingRef}
+              tabIndex={-1}
+              className="mt-1 font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-[1.02] text-balance outline-none"
+            >
+              {evidence.title}
+            </h2>
+          </div>
+          {/* The stamp, and for a record the seal pressed in just below it. */}
+          <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1">
+            <div data-file="stamp">
+              <Stamp label={STATUS_LABEL[evidence.status]} tone={evidence.status} size="lg" />
+            </div>
+            {evidence.status === 'record' && (
+              <span data-file="seal" className="mr-3 inline-block">
+                <RecordSeal />
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 font-record text-[1.125rem] leading-[1.6]">
+          {evidence.detail.map((paragraph, paragraphIndex) => (
+            <p key={paragraphIndex} data-file-ink>
+              <PortalText text={paragraph} />
+            </p>
+          ))}
+        </div>
+
+        {evidence.status === 'disputed' && (
+          <section
+            data-file="claim"
+            aria-labelledby="file-claim"
+            className="relative mt-7 grid gap-x-5 gap-y-2 sm:grid-cols-[1fr_8.5rem]"
           >
-            {evidence.title}
-          </h2>
-        </div>
-        <div data-file="stamp" className="shrink-0 pt-2">
-          <Stamp label={STATUS_LABEL[evidence.status]} tone={evidence.status} size="lg" />
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-col gap-3 font-record text-[1.125rem] leading-[1.6]">
-        {evidence.detail.map((paragraph, paragraphIndex) => (
-          <p key={paragraphIndex} data-file-ink>
-            <PortalText text={paragraph} />
-          </p>
-        ))}
-      </div>
-
-      {evidence.status === 'disputed' && (
-        <div data-file="after" className="mt-6 grid gap-4 xl:grid-cols-2">
-          <section className="border-l-2 border-rust/60 pl-4">
-            <h3 className="font-voice text-xs tracking-[0.18em] text-rust uppercase">The claim</h3>
-            <p className="mt-1.5 font-record text-[1.0625rem] leading-normal">{evidence.dispute.claim}</p>
+            <div className="relative">
+              <QueryMark />
+              <h3 id="file-claim" className="font-voice text-xs tracking-[0.18em] text-rust uppercase">
+                The claim
+              </h3>
+              <p
+                data-file="claim-line"
+                data-text={evidence.dispute.claim}
+                className="claim-underline relative mt-1.5 font-record text-[1.0625rem] leading-[1.75]"
+              >
+                {evidence.dispute.claim}
+              </p>
+            </div>
+            {/* A note in the margin: the first full sentence of the challenge, read in full on sheet two. */}
+            <p
+              data-file="margin-note"
+              aria-hidden="true"
+              className="justify-self-end text-right font-voice text-[0.75rem] leading-snug text-rust sm:self-center sm:justify-self-start sm:text-left"
+            >
+              <span className="inline-block -rotate-2">{firstSentence(evidence.dispute.challenge)}</span>
+            </p>
           </section>
-          <section className="border-l-2 border-record/60 pl-4">
-            <h3 className="font-voice text-xs tracking-[0.18em] text-record uppercase">The challenge</h3>
-            <p className="mt-1.5 font-record text-[1.0625rem] leading-normal">{evidence.dispute.challenge}</p>
+        )}
+      </article>
+
+      {/* Disputed: the second sheet, laid askew over the foot of the first. The tilt is on the paper inside,
+          so the slide in (on the wrapper) never resets it. */}
+      {evidence.status === 'disputed' && (
+        <div data-file="sheet-two" className="relative z-[2] -mt-5 ml-5 sm:-mt-6 sm:ml-12">
+          <section
+            aria-labelledby="file-challenge"
+            className="rotate-[1.4deg] rounded-[2px] bg-paper px-5 pt-4 pb-5 text-ink shadow-lg shadow-black/40 sm:px-7"
+          >
+            <h3 id="file-challenge" className="font-voice text-xs tracking-[0.18em] text-record uppercase">
+              The challenge
+            </h3>
+            <p data-file="challenge" className="mt-1.5 font-record text-[1.0625rem] leading-normal">
+              {evidence.dispute.challenge}
+            </p>
           </section>
         </div>
       )}
 
+      {/* Legend: a typed slip that slides out from under the sheet. */}
       {evidence.status === 'legend' && (
-        <section data-file="after" className="mt-6 border-t border-ink/15 pt-4">
-          <h3 className="font-voice text-xs tracking-[0.18em] text-ink/75 uppercase">Where it came from</h3>
-          <p className="mt-1.5 font-record text-[1.0625rem] leading-normal">{evidence.origin}</p>
-        </section>
+        <div className="relative z-0 mx-4 sm:mx-8">
+          <section
+            data-file="slip"
+            aria-labelledby="file-origin"
+            className="rounded-b-[2px] bg-paper px-4 pt-3 pb-4 text-ink shadow-md shadow-black/35 sm:px-6"
+          >
+            <h3 id="file-origin" className="font-voice text-xs tracking-[0.18em] text-ink/75 uppercase">
+              Where this came from
+            </h3>
+            <p className="mt-1.5 font-voice text-[0.9375rem] leading-normal">{evidence.origin}</p>
+          </section>
+        </div>
       )}
 
       {children}
-    </article>
+    </div>
   );
 }

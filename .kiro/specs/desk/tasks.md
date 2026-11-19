@@ -78,7 +78,7 @@ Rules for every task:
   - Tests: opening dispatches `OPEN_EVIDENCE`; the label and index card come from the data; Escape closes; "File not found" still works
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 10.1, 11.3, 11.4, 12.3_
 
-- [ ] 9. The reveal: the paper becomes its status
+- [x] 9. The reveal: the paper becomes its status
   - Plain paper first; after a short beat the stamp lands (motion.md stamp rule); emit `stamp`
   - Record: crisp paper, typed heading, embossed `record` seal pressing in beside the stamp
   - Disputed: a second sheet slides in askew; "The claim" / "The challenge"; the claim line gets a wavy `rust` underline and a hand-drawn "?" in the margin, never a strike-through (D7); the margin note is the first full sentence of `dispute.challenge` via `firstSentence` (D6); smudged stamp

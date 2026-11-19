@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
+import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
 import FileDocument from '@/features/board/FileDocument';
@@ -23,7 +24,7 @@ import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 import type { Evidence, PinTarget, Source } from '@/types/case';
 
-gsap.registerPlugin(useGSAP, Flip);
+gsap.registerPlugin(useGSAP, Flip, SplitText);
 
 /** Seconds. Opening a file happens many times: the flight and the flip are quick, the stamp waits a short beat. */
 const TIMING = {
@@ -34,7 +35,18 @@ const TIMING = {
   enter: 0.25,
   stampBeat: 0.3,
   stamp: 0.18,
-  after: 0.35,
+  seal: 0.3,
+  sheet: 0.45,
+  slip: 0.5,
+} as const;
+
+/** A legend's drifting ink: each word dims to `dim` and returns over `wave` seconds, in `waves` slow waves. */
+const DRIFT = {
+  dim: 0.72,
+  wave: 2.6,
+  each: 0.07,
+  rest: 3.5,
+  waves: 3,
 } as const;
 
 /** How far the cover swings open: almost flat, still lifted a little off the desk. */
@@ -75,7 +87,6 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     .map(id => caseData.sources.find(source => source.id === id))
     .filter((source): source is Source => source !== undefined);
   const nextId = nextUnopenedId(caseData, state.opened, evidence.id);
-  const isLegend = evidence.status === 'legend';
 
   /** Closing: remember where the open folder is, so the desk can fly it home, then go back to the desk. */
   const close = useCallback(() => {
@@ -122,6 +133,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         const folder = folderRef.current;
         const cover = '[data-file="cover"]';
         const timeline = gsap.timeline({ defaults: { ease: EASE.out } });
+        let split: SplitText | null = null;
         timeline.fromTo('[data-file="backdrop"]', { opacity: 0 }, { opacity: 1, duration: TIMING.backdrop }, 0);
 
         let revealAt: number = TIMING.enter;
@@ -168,39 +180,84 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         if (openedBefore) {
           return;
         }
+        // Plain paper first; after a short beat the stamp presses in: it shrinks onto the paper as its ink is
+        // uncovered (motion.md).
         const stampAt = revealAt + TIMING.stampBeat;
-        const stamp = '[data-file="stamp"]';
-        const after = gsap.utils.toArray<HTMLElement>('[data-file="after"]');
-        // The stamp presses in: it shrinks onto the paper as its ink is uncovered (motion.md).
+        const landed = stampAt + TIMING.stamp;
         timeline.fromTo(
-          stamp,
+          '[data-file="stamp"]',
           reduced ? { opacity: 0 } : { opacity: 0, scale: 1.15, clipPath: 'inset(0% 50% 0% 50%)' },
           { opacity: 1, scale: 1, clipPath: 'inset(0% 0% 0% 0%)', duration: TIMING.stamp },
           stampAt
         );
-        // A legend's text turns to ghost ink the moment the stamp lands. Written to the element, not to state.
-        // Full motion: the ink swims in out of a slight blur (≤2px), then rests crisp and readable.
-        if (isLegend) {
-          const inkAt = stampAt + TIMING.stamp;
-          timeline.call(() => rootRef.current?.setAttribute('data-ink', 'ghost'), undefined, inkAt);
+        // As it lands, the paper becomes its status. The end states live in effects.css, keyed on data-revealed;
+        // written to the element, never to React state.
+        timeline.call(
+          () => {
+            rootRef.current?.querySelector('[data-file="sheet"]')?.setAttribute('data-revealed', 'true');
+            emitStoryEvent({ type: 'stamp', evidence: evidence.id, status: evidence.status });
+          },
+          undefined,
+          landed
+        );
+
+        if (evidence.status === 'record') {
+          // The seal presses in beside the stamp.
+          timeline.fromTo(
+            '[data-file="seal"]',
+            reduced ? { opacity: 0 } : { opacity: 0, scale: 1.1 },
+            { opacity: 1, scale: 1, duration: TIMING.seal },
+            landed
+          );
+        }
+
+        if (evidence.status === 'disputed') {
+          // The second sheet slides in askew, over the foot of the first.
+          timeline.fromTo(
+            '[data-file="sheet-two"]',
+            reduced ? { opacity: 0 } : { opacity: 0, x: 56, rotation: 5 },
+            { opacity: 1, x: 0, rotation: 0, duration: TIMING.sheet, ease: EASE.drawer },
+            landed + 0.15
+          );
+        }
+
+        if (evidence.status === 'legend') {
+          // Full motion: the ink swims into ghost ink out of a slight blur (≤2px), then rests crisp and readable.
           if (!reduced) {
             timeline.fromTo(
               '[data-file-ink]',
               { filter: 'blur(2px)' },
               // Not before the stamp lands: until then the text is plain and sharp.
               { filter: 'blur(0px)', duration: 0.7, clearProps: 'filter', immediateRender: false },
-              inkAt
+              landed
             );
           }
-        }
-        if (after.length > 0) {
+          // The slip slides out from under the sheet.
           timeline.fromTo(
-            after,
-            reduced ? { opacity: 0 } : { opacity: 0, y: 6 },
-            { opacity: 1, y: 0, duration: TIMING.after },
-            stampAt + TIMING.stamp + 0.1
+            '[data-file="slip"]',
+            reduced ? { opacity: 0 } : { opacity: 0, yPercent: -100 },
+            { opacity: 1, yPercent: 0, duration: TIMING.slip, ease: EASE.drawer },
+            landed + 0.5
           );
+          if (!reduced) {
+            // Then the ink drifts: words fade a little and return, in a few slow waves, and the text comes to rest
+            // at full strength. Opacity only. Started from the timeline, so it is added to this context.
+            const drift = context.add('drift', () => {
+              const paragraphs = gsap.utils.toArray<HTMLElement>('[data-file-ink]', rootRef.current);
+              split = SplitText.create(paragraphs, { type: 'words', tag: 'span', aria: 'none', wordsClass: 'ink-word' });
+              const words = split.words;
+              gsap.to(words, {
+                keyframes: { opacity: [1, DRIFT.dim, 1], easeEach: 'sine.inOut' },
+                duration: DRIFT.wave,
+                stagger: { each: DRIFT.each, repeat: DRIFT.waves - 1, repeatDelay: DRIFT.rest },
+                // At rest the words are whole again: put the text back as it was.
+                onComplete: () => split?.revert(),
+              });
+            });
+            timeline.call(() => drift(), undefined, landed + 1.2);
+          }
         }
+        return () => split?.revert();
       });
     },
     { scope: rootRef }
@@ -263,7 +320,6 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       aria-modal="true"
       aria-labelledby="file-title"
       data-page="case"
-      data-ink={openedBefore && isLegend ? 'ghost' : undefined}
       onKeyDown={trapFocus}
       className="fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-[calc(var(--case-header)+1.75rem)] pb-12 sm:px-6 lg:px-10 lg:pt-[calc(var(--case-header)+3rem)]"
     >
@@ -302,9 +358,10 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             </div>
           </div>
 
-          <div className="lg:[grid-area:1/1]">
-            <FileDocument evidence={evidence} number={number} headingRef={headingRef}>
-              <section aria-labelledby="pin-question" className="mt-8 border-t border-ink/15 pt-6">
+          {/* The back of the folder, manila: the document lies on it, clipped in place. */}
+          <div className="desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:rounded-[3px] lg:[grid-area:1/1]">
+            <FileDocument evidence={evidence} number={number} headingRef={headingRef} revealed={openedBefore}>
+              <section aria-labelledby="pin-question" className="mx-2.5 mt-8 border-t border-ink/20 pt-6 sm:mx-5">
                 <h3 id="pin-question" className="font-voice text-[1.0625rem] text-ink">
                   Which theory does this point to?
                 </h3>
@@ -344,7 +401,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
                 </div>
               </section>
 
-              <nav aria-label="Case files" className="mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+              <nav aria-label="Case files" className="mx-2.5 mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 sm:mx-5">
                 <Link
                   to={board}
                   onClick={() => recordFlight(evidence.id, 'out', folderRef.current)}

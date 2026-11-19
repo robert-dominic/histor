@@ -2,11 +2,12 @@
 // src/features/board/__tests__/Investigation.test.tsx
 // The investigation from the fork to the report (docs/briefs/board.md), rendered as the whole app at a URL,
 // the way a deep link or a refresh would open it. Titles and notes come from the case data.
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { STATUS_LABEL } from '@/lib/case-files';
+import { firstSentence } from '@/lib/desk';
 import { SMALL_PHONE_QUERY } from '@/lib/use-media-query';
 import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
@@ -346,27 +347,31 @@ describe('An opened file', () => {
     expect(reveal.textContent).toContain(evidence('e-lifeboat').reading.note);
   });
 
-  test('a disputed file shows the claim and the challenge', () => {
+  test('a disputed file shows the claim on sheet one and the challenge on sheet two', () => {
     renderAt(`${BASE}/files/e-sword`);
     const sword = evidence('e-sword');
     if (sword.status !== 'disputed') {
       throw new Error('Test setup: e-sword is disputed');
     }
 
-    expect(screen.getByText('The claim')).toBeDefined();
-    expect(screen.getByText(sword.dispute.claim)).toBeDefined();
-    expect(screen.getByText('The challenge')).toBeDefined();
-    expect(screen.getByText(sword.dispute.challenge)).toBeDefined();
+    const claim = screen.getByRole('region', { name: 'The claim' });
+    expect(claim.closest('[data-file="sheet"]')).not.toBeNull();
+    expect(within(claim).getByText(sword.dispute.claim)).toBeDefined();
+    const challenge = screen.getByRole('region', { name: 'The challenge' });
+    expect(challenge.closest('[data-file="sheet-two"]')).not.toBeNull();
+    expect(within(challenge).getByText(sword.dispute.challenge)).toBeDefined();
   });
 
-  test('a legend shows where it came from', () => {
+  test('a legend shows where it came from, on a slip', () => {
     renderAt(`${BASE}/files/e-legend-breakfast`);
     const breakfast = evidence('e-legend-breakfast');
     if (breakfast.status !== 'legend') {
       throw new Error('Test setup: e-legend-breakfast is a legend');
     }
 
-    expect(screen.getByText(breakfast.origin)).toBeDefined();
+    const slip = screen.getByRole('region', { name: 'Where this came from' });
+    expect(slip.getAttribute('data-file')).toBe('slip');
+    expect(within(slip).getByText(breakfast.origin)).toBeDefined();
     expect(document.querySelector('[data-stamp="legend"]')?.textContent).toBe(STATUS_LABEL.legend);
   });
 
@@ -492,6 +497,82 @@ describe('An opened file', () => {
     expect(screen.getByText('File not found')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Back to the board' }).getAttribute('href')).toBe(`${BASE}/files`);
     expect(saved()?.opened ?? []).toStrictEqual([]);
+  });
+});
+
+describe('The reveal', () => {
+  const sheet = () => document.querySelector<HTMLElement>('[data-file="sheet"]')!;
+  const stamp = () => document.querySelector<HTMLElement>('[data-file="stamp"]')!;
+
+  test.each([
+    ['record', 'e-lifeboat'],
+    ['disputed', 'e-sword'],
+    ['legend', 'e-legend-breakfast'],
+  ] as const)('a %s file starts as plain paper, and becomes its status once the stamp lands', async (status, id) => {
+    expect(evidence(id).status).toBe(status);
+    renderAt(`${BASE}/files/${id}`);
+
+    // Plain paper first: no status on the paper, and the stamp not yet down.
+    expect(sheet().getAttribute('data-revealed')).toBeNull();
+    expect(stamp().style.opacity).toBe('0');
+
+    await waitFor(() => expect(sheet().getAttribute('data-revealed')).toBe('true'), { timeout: 4000 });
+    expect(sheet().getAttribute('data-status')).toBe(status);
+    expect(stamp().style.opacity).toBe('1');
+    expect(stamp().textContent).toBe(STATUS_LABEL[status]);
+  });
+
+  test('a record carries an embossed seal beside its stamp', () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+
+    const seal = document.querySelector('[data-file="seal"]')!;
+    expect(seal.querySelector('svg.record-seal')).not.toBeNull();
+    expect(seal.previousElementSibling).toBe(stamp());
+    expect(document.querySelector('[data-file="claim-line"], [data-file="slip"]')).toBeNull();
+  });
+
+  test('a disputed claim is underlined, never struck through, with a "?" and a whole sentence in the margin', () => {
+    const challenge = 'The stains were tested. They were not blood. No one checked twice.';
+    const sword = evidence('e-sword');
+    if (sword.status !== 'disputed') {
+      throw new Error('Test setup: e-sword is disputed');
+    }
+    renderAt(`${BASE}/files/e-sword`);
+
+    const line = document.querySelector<HTMLElement>('[data-file="claim-line"]')!;
+    expect(line.className).toContain('claim-underline');
+    expect(line.dataset.text).toBe(sword.dispute.claim);
+    // Nothing in the file is struck through.
+    const file = screen.getByRole('dialog');
+    expect(file.querySelector('s, del, strike, [class*="line-through"]')).toBeNull();
+    expect(document.querySelector('[data-file="query"] path')).not.toBeNull();
+
+    const note = document.querySelector<HTMLElement>('[data-file="margin-note"]')!;
+    expect(note.textContent).toBe(firstSentence(sword.dispute.challenge));
+    expect(sword.dispute.challenge.startsWith(note.textContent ?? '')).toBe(true);
+    expect(note.textContent).toMatch(/[.!?]["”’)]?$/);
+    // The note is cut at a sentence's end, never in the middle of one.
+    expect(firstSentence(challenge)).toBe('The stains were tested.');
+  });
+
+  test('a file opened before is shown as its status at once', () => {
+    seed({ opened: ['e-legend-breakfast'], pins: {}, verdict: null });
+    renderAt(`${BASE}/files/e-legend-breakfast`);
+
+    expect(sheet().getAttribute('data-revealed')).toBe('true');
+    expect(stamp().style.opacity).toBe('');
+  });
+
+  test('with reduced motion, a legend reaches the same end state, with no drifting ink', async () => {
+    stubMatchMedia({ reducedMotion: true });
+    renderAt(`${BASE}/files/e-legend-breakfast`);
+
+    await waitFor(() => expect(sheet().getAttribute('data-revealed')).toBe('true'), { timeout: 4000 });
+    await waitFor(() => expect(document.querySelector<HTMLElement>('[data-file="slip"]')!.style.opacity).toBe('1'), {
+      timeout: 4000,
+    });
+    expect(document.querySelector('.ink-word')).toBeNull();
+    expect(document.querySelector<HTMLElement>('[data-file-ink]')!.style.filter).toBe('');
   });
 });
 
