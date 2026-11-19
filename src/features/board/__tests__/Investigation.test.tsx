@@ -179,16 +179,49 @@ describe('The board', () => {
     }
   });
 
-  test('an opened folder shows its status stamp and the theory it was pinned to; it hangs beneath that note', () => {
+  test('a pinned file leaves the pile and hangs beneath its note', () => {
     seed({ opened: ['e-sword'], pins: { 'e-sword': 't-mutiny' }, verdict: null });
     renderAt(`${BASE}/files`);
 
-    const folder = folderFor('e-sword');
-    expect(folder.querySelector('[data-stamp="disputed"]')?.textContent).toBe(STATUS_LABEL.disputed);
-    expect(folder.querySelector('[data-board="pinned-to"]')?.textContent).toContain(theory('t-mutiny').title);
-
+    expect(document.querySelector('[data-board="pile"] [data-evidence-id="e-sword"]')).toBeNull();
+    expect(folders()).toHaveLength(CASE.evidence.length - 1);
     const tabs = document.querySelector('[data-board="tabs"][data-theory-id="t-mutiny"]')!;
     expect([...tabs.querySelectorAll<HTMLElement>('[data-board="tab"]')].map(tab => tab.dataset.evidenceId)).toEqual(['e-sword']);
+  });
+
+  test('a file opened but not pinned goes back on top of the pile, with its status stamp', () => {
+    seed({ opened: ['e-sword'], pins: {}, verdict: null });
+    renderAt(`${BASE}/files`);
+
+    const pile = folders();
+    expect(pile).toHaveLength(CASE.evidence.length);
+    expect(pile[pile.length - 1].dataset.evidenceId).toBe('e-sword');
+    expect(folderFor('e-sword').dataset.opened).toBe('true');
+    expect(folderFor('e-sword').querySelector('[data-stamp="disputed"]')?.textContent).toBe(STATUS_LABEL.disputed);
+  });
+
+  test('the pile: 23 sealed manila folders, each with its number and a typed title, and no status', () => {
+    renderAt(`${BASE}/files`);
+
+    const pile = folders();
+    expect(pile).toHaveLength(23);
+    pile.forEach((folder, index) => {
+      expect(folder.closest('[data-board="pile"]')).not.toBeNull();
+      expect(folder.textContent).toContain(String(index + 1).padStart(2, '0'));
+      expect(folder.textContent).toContain(CASE.evidence[index].title);
+      expect(folder.querySelector('[data-stamp]')).toBeNull();
+      expect(folder.querySelector('a')?.getAttribute('href')).toBe(`${BASE}/files/${CASE.evidence[index].id}`);
+    });
+  });
+
+  test('a file set aside ("None of them") goes to the tray, not the board', () => {
+    seed({ opened: ['e-findings'], pins: { 'e-findings': 'none' }, verdict: null });
+    renderAt(`${BASE}/files`);
+
+    const tray = document.querySelector('[data-board="aside"]') as HTMLElement;
+    expect(within(tray).getByRole('link', { name: new RegExp(evidence('e-findings').title) })).toBeDefined();
+    expect(document.querySelector('[data-board="tabs"] [data-evidence-id="e-findings"]')).toBeNull();
+    expect(document.querySelector('[data-board="pile"] [data-evidence-id="e-findings"]')).toBeNull();
   });
 
   test('the board: five paper notes from the data, each pinned and tilted the same way every time', () => {

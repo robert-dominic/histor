@@ -1,6 +1,8 @@
 // src/features/board/Folder.tsx
-// One case file on the board, as a paper folder. Unopened, it shows only its number and title: its status is
-// earned by opening it. Opened, it carries its status stamp and, once pinned, the theory it points to.
+// One file in the pile: a manila folder with a tab (its number) and a typed title label.
+// Sealed, every folder looks the same outside: no status. A file that was opened but not pinned goes back on top
+// of the pile with its status stamp on the tab (D1).
+// The folder is a link, so Tab and Enter open it. Its place in the pile is set by Pile.tsx, from outside.
 
 import { Link } from 'react-router-dom';
 import Stamp from '@/components/Stamp';
@@ -12,37 +14,40 @@ interface FolderProps {
   /** e.g. "07". */
   number: string;
   href: string;
+  /** Opened before, but not pinned: its stamp shows. */
   opened: boolean;
-  /** The title of the theory it was pinned to, "None of them", or undefined when not pinned. */
-  pinnedTo?: string;
 }
 
-export default function Folder({ evidence, number, href, opened, pinnedTo }: FolderProps) {
+export default function Folder({ evidence, number, href, opened }: FolderProps) {
   return (
-    <li data-board="folder" data-evidence-id={evidence.id} data-opened={opened} className="relative pt-2">
-      {/* The folder's tab. */}
-      <span aria-hidden="true" className="absolute top-0 left-3 h-3 w-14 rounded-t-sm bg-paper/90" />
+    <li
+      data-board="folder"
+      data-evidence-id={evidence.id}
+      data-opened={opened}
+      data-flip-id={`file-${evidence.id}`}
+      // In the phone strip the folder in the middle lifts (data-centred, set by Pile.tsx). On a desktop GSAP places it.
+      className="desk-folder w-[10.5rem] shrink-0 motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-out data-[centred=true]:-translate-y-2.5 lg:w-[11.5rem]"
+    >
       <Link
         to={href}
-        className="relative flex min-h-[5.75rem] flex-col gap-1.5 rounded-sm rounded-tl-none bg-paper px-3.5 pt-3 pb-3 text-ink shadow-md shadow-night/50 transition-[translate,box-shadow] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brass/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97]"
+        className="group/folder relative block pt-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-brass"
       >
-        <span className="font-voice text-[0.75rem] tracking-[0.16em] text-ink/75 tabular-nums">
+        {/* The tab, with the file's number. */}
+        <span className="desk-manila absolute top-0 left-3 flex h-4 items-center rounded-t-[3px] px-2.5 font-voice text-[0.6875rem] tracking-[0.14em] text-ink/80 tabular-nums">
           <span className="sr-only">File </span>
           {number}
         </span>
-        <span className="font-record text-[1rem] leading-snug text-ink">{evidence.title}</span>
-        {opened && (
-          <span className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1">
-            <Stamp label={STATUS_LABEL[evidence.status]} tone={evidence.status} />
-            {pinnedTo !== undefined && (
-              <span data-board="pinned-to" className="font-voice text-[0.6875rem] tracking-[0.06em] text-ink/80">
-                <span aria-hidden="true">→ </span>
-                <span className="sr-only">Pinned to </span>
-                {pinnedTo}
-              </span>
-            )}
+        <span className="desk-manila relative flex min-h-[6.5rem] flex-col justify-between gap-2 rounded-[3px] rounded-tl-none px-3.5 pt-3 pb-3 shadow-[0_2px_6px] shadow-black/60">
+          {/* The typed title label. */}
+          <span className="self-start rounded-[1px] bg-paper/80 px-2 py-1 font-voice text-[0.8125rem] leading-snug text-ink">
+            {evidence.title}
           </span>
-        )}
+          {opened && (
+            <span className="self-end">
+              <Stamp label={STATUS_LABEL[evidence.status]} tone={evidence.status} />
+            </span>
+          )}
+        </span>
       </Link>
     </li>
   );

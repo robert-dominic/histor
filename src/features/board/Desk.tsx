@@ -9,10 +9,10 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
 import DeskSurface from '@/features/board/DeskSurface';
-import Folder from '@/features/board/Folder';
+import Pile from '@/features/board/Pile';
+import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
 import TheoryBoard from '@/features/board/TheoryBoard';
-import { fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { deskLayout } from '@/lib/desk';
 
@@ -37,7 +37,6 @@ export default function Desk() {
   const base = `/case/${caseData.id}`;
   // Where every file lies, worked out from the investigation, never stored.
   const layout = useMemo(() => deskLayout(caseData, state), [caseData, state]);
-  const opened = useMemo(() => new Set(state.opened), [state.opened]);
   const canClose = layout.canClose;
 
   useGSAP(
@@ -48,7 +47,8 @@ export default function Desk() {
       const mm = gsap.matchMedia();
       mm.add(MOTION_QUERIES, context => {
         const reduced = context.conditions?.reduced === true;
-        const parts = gsap.utils.toArray<HTMLElement>('[data-board="theory"], [data-board="folder"]');
+        // The notes settle onto the board. The pile places its own folders (Pile.tsx).
+        const parts = gsap.utils.toArray<HTMLElement>('[data-board="theory"]');
         gsap.fromTo(
           parts,
           reduced ? { opacity: 0 } : { opacity: 0, y: 10 },
@@ -71,16 +71,11 @@ export default function Desk() {
       <DeskSurface />
 
       <div className="mx-auto max-w-[90rem] px-4 pt-6 pb-16 lg:px-10 lg:pt-10">
-        {/* Above the lamp's shadow: the progress line and the way to close the case are always readable. */}
+        {/* Above the lamp's shadow: the way to close the case is always readable. */}
         <header className="relative z-[21] flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <div>
-            <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
-              The case files
-            </h2>
-            <p data-board="progress" className="mt-2 font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
-              {progressLine(state.opened.length, caseData.evidence.length, caseData.closeThreshold)}
-            </p>
-          </div>
+          <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
+            The case files
+          </h2>
           {canClose && (
             <Link
               to={`${base}/verdict`}
@@ -94,26 +89,17 @@ export default function Desk() {
         <div className="relative mt-6 lg:mt-10">
           <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} />
 
-          <section aria-labelledby="files-title" className="relative z-10 mt-6 lg:mt-24">
-            <h3 id="files-title" className="sr-only">
-              Files
-            </h3>
-            <ol className="flex flex-col gap-3 lg:grid lg:grid-cols-6 lg:gap-x-5 lg:gap-y-6">
-              {caseData.evidence.map((evidence, index) => {
-                const target = state.pins[evidence.id];
-                return (
-                  <Folder
-                    key={evidence.id}
-                    evidence={evidence}
-                    number={fileNumber(index)}
-                    href={`${base}/files/${evidence.id}`}
-                    opened={opened.has(evidence.id)}
-                    pinnedTo={opened.has(evidence.id) && target !== undefined ? pinTargetTitle(caseData, target) : undefined}
-                  />
-                );
-              })}
-            </ol>
-          </section>
+          {/* The lower desk: the pile on the left with the progress line, the tray on the right. */}
+          <div className="relative mt-6 grid gap-6 lg:mt-12 lg:grid-cols-[1fr_17rem] lg:items-start">
+            <div>
+              {/* Above the lamp's shadow, so it can always be read. */}
+              <p data-board="progress" className="relative z-[21] font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
+                {progressLine(layout.openedCount, caseData.evidence.length, caseData.closeThreshold)}
+              </p>
+              <Pile layout={layout} filesHref={`${base}/files`} />
+            </div>
+            <SetAsideTray layout={layout} filesHref={`${base}/files`} />
+          </div>
         </div>
       </div>
       <Lamp />
