@@ -96,3 +96,36 @@
   );
   mix-blend-mode: soft-light;
 }
+
+/* The board: near-black felt, slightly textured. */
+.desk-felt {
+  background-color: color-mix(in srgb, var(--color-night), black 35%);
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--color-night-ink) 5%, transparent) 0.6px, transparent 0.8px),
+    radial-gradient(color-mix(in srgb, black 30%, transparent) 0.6px, transparent 0.8px);
+  background-size:
+    4px 4px,
+    7px 7px;
+  background-position:
+    0 0,
+    2px 3px;
+  box-shadow: inset 0 0 40px color-mix(in srgb, black 60%, transparent);
+}
+
+/* A paper note: paper with a faint fold of light across it. */
+.desk-note {
+  background-color: var(--color-paper);
+  background-image: linear-gradient(170deg, color-mix(in srgb, white 18%, transparent), transparent 45%);
+}
+
+/* Brass pins: a domed head. */
+.desk-pin {
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--color-brass), white 45%), var(--color-brass) 45%, color-mix(in srgb, var(--color-brass), black 45%));
+  box-shadow: 0 1px 2px color-mix(in srgb, black 70%, transparent);
+}
+
+/* Manila: the folders. A warm buff that still holds ink at 4.5:1. */
+.desk-manila {
+  background-color: color-mix(in srgb, var(--color-paper), var(--color-brass) 22%);
+  background-image: linear-gradient(175deg, color-mix(in srgb, white 14%, transparent), transparent 55%);
+}

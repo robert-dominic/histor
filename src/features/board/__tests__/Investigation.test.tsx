@@ -130,6 +130,32 @@ describe('The board', () => {
     expect(document.querySelector('[data-board="claim"]')).toBeNull();
   });
 
+  test('on a small phone, tapping a theory also shows the files pinned to it', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query === SMALL_PHONE_QUERY,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }))
+    );
+    seed({ opened: ['e-lifeboat'], pins: { 'e-lifeboat': 't-sinking' }, verdict: null });
+    renderAt(`${BASE}/files`);
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(theory('t-sinking').title) }));
+
+    const claim = document.querySelector('[data-board="claim"]') as HTMLElement;
+    expect(claim.textContent).toContain(theory('t-sinking').claim);
+    expect(within(claim).getByRole('link', { name: new RegExp(evidence('e-lifeboat').title) }).getAttribute('href')).toBe(
+      `${BASE}/files/e-lifeboat`
+    );
+  });
+
   test('theory cards never show a standing', () => {
     renderAt(`${BASE}/files`);
 
@@ -153,7 +179,7 @@ describe('The board', () => {
     }
   });
 
-  test('an opened folder shows its status stamp and the theory it was pinned to; the card counts the pin', () => {
+  test('an opened folder shows its status stamp and the theory it was pinned to; it hangs beneath that note', () => {
     seed({ opened: ['e-sword'], pins: { 'e-sword': 't-mutiny' }, verdict: null });
     renderAt(`${BASE}/files`);
 
@@ -161,8 +187,45 @@ describe('The board', () => {
     expect(folder.querySelector('[data-stamp="disputed"]')?.textContent).toBe(STATUS_LABEL.disputed);
     expect(folder.querySelector('[data-board="pinned-to"]')?.textContent).toContain(theory('t-mutiny').title);
 
-    const card = document.querySelector('[data-board="theory"][data-theory-id="t-mutiny"]')!;
-    expect(card.querySelector('[data-board="pinned"]')?.textContent).toBe('1 file pinned');
+    const tabs = document.querySelector('[data-board="tabs"][data-theory-id="t-mutiny"]')!;
+    expect([...tabs.querySelectorAll<HTMLElement>('[data-board="tab"]')].map(tab => tab.dataset.evidenceId)).toEqual(['e-sword']);
+  });
+
+  test('the board: five paper notes from the data, each pinned and tilted the same way every time', () => {
+    renderAt(`${BASE}/files`);
+
+    const notes = [...document.querySelectorAll<HTMLElement>('[data-board="theory"]')];
+    expect(notes.map(note => note.dataset.theoryId)).toEqual(CASE.theories.map(item => item.id));
+    for (const note of notes) {
+      expect(note.querySelector('[data-board="pin"]')).not.toBeNull();
+      expect(note.querySelector('[data-board="anchor"]')).not.toBeNull();
+      expect(note.querySelector<HTMLElement>('[data-board="paper"]')?.style.rotate).toMatch(/deg$/);
+      expect(note.tabIndex).toBe(0);
+    }
+    const first = notes[0].querySelector<HTMLElement>('[data-board="paper"]')?.style.rotate;
+    cleanup();
+    renderAt(`${BASE}/files`);
+    expect(document.querySelector<HTMLElement>('[data-board="theory"] [data-board="paper"]')?.style.rotate).toBe(first);
+  });
+
+  test('files pinned to a theory hang beneath its note, in case order, each with a thread; unopened pins do not', () => {
+    seed({
+      opened: ['e-water', 'e-lifeboat', 'e-sword'],
+      pins: { 'e-water': 't-sinking', 'e-lifeboat': 't-sinking', 'e-sword': 't-mutiny', 'e-galley': 't-sinking' },
+      verdict: null,
+    });
+    renderAt(`${BASE}/files`);
+
+    const tabs = (id: string) =>
+      [...document.querySelectorAll<HTMLElement>(`[data-board="tabs"][data-theory-id="${id}"] [data-board="tab"]`)].map(
+        tab => tab.dataset.evidenceId
+      );
+    expect(tabs('t-sinking')).toEqual(['e-lifeboat', 'e-water']);
+    expect(tabs('t-mutiny')).toEqual(['e-sword']);
+    expect(tabs('t-fraud')).toEqual([]);
+    const threads = [...document.querySelectorAll<SVGPathElement>('[data-board="threads"] path')];
+    expect(threads.map(path => path.dataset.evidenceId).sort()).toEqual(['e-lifeboat', 'e-sword', 'e-water']);
+    expect(document.querySelector('[data-board="tab"] a')?.getAttribute('href')).toBe(`${BASE}/files/e-lifeboat`);
   });
 
   test('says how many files are open, and how many more it takes to close the case', () => {

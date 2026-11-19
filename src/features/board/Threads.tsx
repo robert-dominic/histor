@@ -1,17 +1,24 @@
 // src/features/board/Threads.tsx
-// Desktop only: a thin rust thread from each pinned folder up to the brass pin of its theory card.
-// Decorative (aria-hidden): the "→ theory" label on each folder carries the same information.
+// A thin rust-night thread from each theory note to every file that hangs beneath it, pinned at both ends: from the
+// brass pin at the foot of the note to the brass pin on the file's tab. Each thread sags a little, like real thread.
+// Decorative (aria-hidden): the tabs themselves sit under their note, and say so to screen readers.
 // The paths are measured from the page and written straight to the SVG, never through React state.
 
 import { useLayoutEffect, useRef } from 'react';
 
 interface ThreadsProps {
-  /** One thread per pin to a theory: evidence id → theory id. */
+  /** One thread per pinned file: evidence id → theory id. */
   threads: { evidenceId: string; theoryId: string }[];
 }
 
+/** The centre of an element, relative to the board. */
+function centreOf(element: Element, origin: DOMRect) {
+  const box = element.getBoundingClientRect();
+  return { x: box.left + box.width / 2 - origin.left, y: box.top + box.height / 2 - origin.top };
+}
+
 /**
- * Place it inside the element that holds both the theory cards and the folders: the SVG covers that element.
+ * Place it inside the element that holds both the theory notes and their tabs: the SVG covers that element.
  * It finds it as its own parent, not through a ref, because a parent's ref is not set yet when this
  * component's layout effect first runs.
  */
@@ -27,23 +34,22 @@ export default function Threads({ threads }: ThreadsProps) {
 
     const draw = () => {
       const origin = board.getBoundingClientRect();
-      svg.setAttribute('viewBox', `0 0 ${origin.width} ${origin.height}`);
+      svg.setAttribute('viewBox', `0 0 ${Math.max(1, origin.width)} ${Math.max(1, origin.height)}`);
       for (const path of svg.querySelectorAll<SVGPathElement>('path[data-evidence-id]')) {
-        const folder = board.querySelector(`[data-board="folder"][data-evidence-id="${path.dataset.evidenceId}"]`);
-        const pin = board.querySelector(`[data-board="theory"][data-theory-id="${path.dataset.theoryId}"] [data-board="pin"]`);
-        if (folder === null || pin === null) {
+        const tabPin = board.querySelector(`[data-board="tab"][data-evidence-id="${path.dataset.evidenceId}"] [data-board="tab-pin"]`);
+        const anchor = board.querySelector(`[data-board="theory"][data-theory-id="${path.dataset.theoryId}"] [data-board="anchor"]`);
+        if (tabPin === null || anchor === null) {
           path.removeAttribute('d');
           continue;
         }
-        const from = folder.getBoundingClientRect();
-        const to = pin.getBoundingClientRect();
-        const x1 = from.left + from.width / 2 - origin.left;
-        const y1 = from.top + 4 - origin.top;
-        const x2 = to.left + to.width / 2 - origin.left;
-        const y2 = to.top + to.height / 2 - origin.top;
-        // A slack curve, as if the thread hung between the two pins.
-        const sag = Math.min(80, Math.abs(y1 - y2) * 0.35);
-        path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${y1 - sag}, ${x2} ${y2 + sag * 1.6}, ${x2} ${y2}`);
+        const from = centreOf(anchor, origin);
+        const to = centreOf(tabPin, origin);
+        // A slight natural sag: the middle of the thread hangs a little below the straight line between its pins.
+        const length = Math.hypot(to.x - from.x, to.y - from.y);
+        const sag = Math.min(18, length * 0.12);
+        const midX = (from.x + to.x) / 2;
+        const midY = (from.y + to.y) / 2 + sag;
+        path.setAttribute('d', `M ${from.x} ${from.y} Q ${midX} ${midY} ${to.x} ${to.y}`);
       }
     };
 
@@ -63,7 +69,7 @@ export default function Threads({ threads }: ThreadsProps) {
       ref={svgRef}
       aria-hidden="true"
       data-board="threads"
-      className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
+      className="pointer-events-none absolute inset-0 z-[1] h-full w-full overflow-visible"
       fill="none"
     >
       {threads.map(thread => (
@@ -72,7 +78,7 @@ export default function Threads({ threads }: ThreadsProps) {
           data-evidence-id={thread.evidenceId}
           data-theory-id={thread.theoryId}
           stroke="var(--color-rust-night)"
-          strokeOpacity="0.75"
+          strokeOpacity="0.85"
           strokeWidth="1.25"
           strokeLinecap="round"
         />
