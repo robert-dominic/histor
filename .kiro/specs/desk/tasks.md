@@ -16,27 +16,27 @@ Rules for every task:
 
 ## Tasks
 
-- [ ] 1. Fix the flaky property test 8
+- [x] 1. Fix the flaky property test 8
   - In `src/lib/__tests__/validate-case.property.test.ts`, change the generator behind Property 8 so every generated id is unique within each case: sources, evidence, story sections and theories, each with `fc.uniqueArray(..., { selector: item => item.id, ... })` instead of `fc.array` (D8)
   - Change nothing Property 8 asserts, and nothing in `validateCase`
   - Confirm the fix: in a temporary run (not committed), pass `seed: -1131047925` to Property 8 and see it pass; then run the file at least 20 times in a row with no failure
   - Finish as described in the Overview; list the generator change, before and after
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Pure desk helpers: `src/lib/desk.ts`
+- [x] 2. Pure desk helpers: `src/lib/desk.ts`
   - `hashUnit(id, salt?)` (FNV-1a, 32-bit, to [0, 1)), `scatter(id, maxDegrees, maxOffset)`, `deskLayout(caseData, state)` and the `FolderPlace` / `DeskLayout` types, as in the design
   - `deskLayout`: Board only if opened and pinned to a known theory; aside tray only if opened and pinned to `"none"`; otherwise the Pile; unknown ids ignored; never throws
   - Unit tests in `src/lib/__tests__/desk.test.ts` against the Mary Celeste case
   - Property tests in `src/lib/__tests__/desk.property.test.ts`: design Properties 1–5, each its own `test`, tagged `// Feature: desk, Property N: ...`
   - _Requirements: 3.2, 4.1, 4.3, 4.6_
 
-- [ ] 3. Events and the hints flag
+- [x] 3. Events and the hints flag
   - Add the six desk events (`pile-hover`, `folder-open`, `flip`, `stamp`, `pin`, `seal`) to the union in `src/lib/story-events.ts`; no new module
   - Add `src/lib/desk-hints.ts` with `hasSeenDeskHints` / `markDeskHintsSeen`, key `histor:desk-hints:<caseId>`, both in try/catch
   - Unit tests: the hints flag round-trips, and works (does not throw) when `localStorage` throws
   - _Requirements: 8.2, 10.1, 10.2_
 
-- [ ] 4. Nest the file route under the desk
+- [x] 4. Nest the file route under the desk
   - In `src/App.tsx`, make `/case/:id/files/:evidenceId` a child of `/case/:id/files` (the URLs do not change)
   - Rename `Board.tsx` to `Desk.tsx` and render an `<Outlet />` for the open file; the existing board content and the existing opened file keep working inside it for now
   - Opening a file's URL directly shows the desk with that file open (D0)
@@ -44,7 +44,7 @@ Rules for every task:
   - Update the existing investigation tests only where the structure changed
   - _Requirements: 5.1, 12.1, and the brief's "keep the routes"_
 
-- [ ] 5. The desk surface and the lamp
+- [x] 5. The desk surface and the lamp
   - Desk surface: night-toned wood grain from CSS gradients and an SVG noise filter, the existing grain, a strong vignette; no image files
   - `Lamp.tsx`: one fixed overlay with a radial-gradient mask on `--lamp-x`, `--lamp-y`, `--lamp-r`, written by `gsap.quickSetter` in a `gsap.ticker` callback; desktop follows the mouse (radius about 420px); phones rest over the focused or last-tapped element; no React state
   - Reduced motion: a static soft light, centred, with no listeners and no ticker
@@ -52,7 +52,7 @@ Rules for every task:
   - Tests: reduced motion sets fixed lamp variables and attaches no pointer listener
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 11.2, 11.3, 12.6_
 
-- [ ] 6. The board of theories
+- [x] 6. The board of theories
   - `TheoryNote.tsx`: paper note, brass pin, deterministic tilt from `scatter`, title and claim, a drop target attribute, keyboard-reachable; never a standing
   - `HangingTab.tsx` and the updated `Threads.tsx`: pinned files hang beneath their note as small overlapping tabs; each thread sags slightly and has a pin head at both ends
   - Phones: keep the compact row (title and pin count); tapping a theory shows its claim and its pinned files (D3)
@@ -60,7 +60,7 @@ Rules for every task:
   - Tests: five notes from the data, no standing shown, pinned files listed under the right note
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 11.1, 11.4_
 
-- [ ] 7. The pile, the tray and the progress line
+- [x] 7. The pile, the tray and the progress line
   - `Pile.tsx` and the new `Folder.tsx`: sealed manila folders with a tab (number, typed title), deterministic offsets and rotations, all identical outside; each a link, so Tab and Enter open it
   - Desktop: the pile fans into an arc on hover and the folder under the pointer lifts (GSAP); emit `pile-hover`
   - Phones: a horizontal fanned strip with scroll-snap; the centred folder lifts
@@ -69,7 +69,7 @@ Rules for every task:
   - Tests: the pile renders 23 sealed folders with no status visible (12.2); the progress line; a "None of them" pin puts the file in the tray
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 10.1, 12.2_
 
-- [ ] 8. Opening a file: the folder, the flight and the flip
+- [x] 8. Opening a file: the folder, the flight and the flip
   - `OpenFile.tsx`, `InnerCover.tsx`, `FileDocument.tsx` replace `OpenedFile.tsx`: inner cover with the typed label "HISTOR · CASE FILE NN · TITLE" and the source index card; the document on paper with a paper clip; detail through `PortalText`
   - Flip flight from the pile to the centre (state captured on activation; a deep link scales and fades in instead), then the cover flips open (`rotateY` around the left edge, with perspective); dispatch `OPEN_EVIDENCE` as it opens; emit `flip` and `folder-open`
   - Phones: full screen, inner cover content above the document

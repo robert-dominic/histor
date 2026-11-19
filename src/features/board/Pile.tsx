@@ -38,11 +38,12 @@ function restingPlace(id: string, index: number): Place {
 
 /** Where folder `index` of `count` lies on the fanned arc, for a pile `width` wide. */
 function fannedPlace(index: number, count: number, width: number): Place {
-  const spread = Math.min(68, 10 + count * 2.6);
+  // A shallow arc: wide enough for every tab to show, flat enough that its ends stay on the desk.
+  const spread = Math.min(46, 8 + count * 1.8);
   const angle = count <= 1 ? 0 : -spread + (2 * spread * index) / (count - 1);
   const radians = (angle * Math.PI) / 180;
-  const radius = Math.min(460, Math.max(240, width * 0.5));
-  return { x: radius * Math.sin(radians), y: radius * (1 - Math.cos(radians)) - 70, rotation: angle * 0.8 };
+  const radius = Math.min(560, Math.max(260, width * 0.48));
+  return { x: radius * Math.sin(radians), y: radius * (1 - Math.cos(radians)) - 60, rotation: angle * 0.7 };
 }
 
 export default function Pile({ layout, filesHref }: PileProps) {

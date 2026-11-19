@@ -4,7 +4,7 @@
 
 import { Link, useParams } from 'react-router-dom';
 import { useInvestigation } from '@/app/InvestigationProvider';
-import OpenedFile from '@/features/board/OpenedFile';
+import OpenFile from '@/features/board/OpenFile';
 
 export default function CaseFile() {
   const { evidenceId } = useParams();
@@ -27,5 +27,5 @@ export default function CaseFile() {
   }
 
   // Keyed by file: moving to the next file starts it fresh, with its own stamp.
-  return <OpenedFile key={caseData.evidence[index].id} evidence={caseData.evidence[index]} index={index} />;
+  return <OpenFile key={caseData.evidence[index].id} evidence={caseData.evidence[index]} index={index} />;
 }

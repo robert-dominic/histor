@@ -3,7 +3,7 @@
 // Desktop draws a thread from each pinned folder to its theory; phones swipe the theories and list the folders.
 // Everything shown comes from the case data and the investigation.
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type MouseEvent } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -13,6 +13,7 @@ import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
 import TheoryBoard from '@/features/board/TheoryBoard';
+import { Flip, clearFlight, flightFor, recordFlight } from '@/features/board/flight';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { deskLayout } from '@/lib/desk';
 
@@ -32,7 +33,8 @@ function progressLine(opened: number, total: number, threshold: number): string 
 export default function Desk() {
   const { state, caseData } = useInvestigation();
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
-  const fileOpen = useParams().evidenceId !== undefined;
+  const openId = useParams().evidenceId;
+  const fileOpen = openId !== undefined;
   const rootRef = useRef<HTMLElement>(null);
   const base = `/case/${caseData.id}`;
   // Where every file lies, worked out from the investigation, never stored.
@@ -59,12 +61,55 @@ export default function Desk() {
     { scope: rootRef }
   );
 
+  // While a file is open, its folder has left the desk: the one on the desk is hidden. When the file closes,
+  // the folder comes back, flies home from where the open file was (desktop, full motion), and takes the focus.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (openId === undefined || root === null) {
+      return;
+    }
+    const selector = `[data-flip-id="file-${openId}"]`;
+    const away = root.querySelector<HTMLElement>(selector);
+    if (away !== null) {
+      away.style.visibility = 'hidden';
+    }
+    return () => {
+      if (away !== null) {
+        away.style.visibility = '';
+      }
+      // Only a file closed from inside comes home; moving on to the next file does not.
+      const flight = flightFor(openId, 'out');
+      if (flight === null) {
+        return;
+      }
+      clearFlight();
+      const home = root.querySelector<HTMLElement>(selector);
+      if (home === null) {
+        return;
+      }
+      home.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
+      if (flight.state !== null) {
+        Flip.from(flight.state, { targets: home, scale: true, duration: 0.35, ease: EASE.out, zIndex: 30 });
+      }
+    };
+  }, [openId]);
+
+  /** Opening a folder: remember where it lay, so the open file can fly from there. */
+  const handleClickCapture = (event: MouseEvent<HTMLElement>) => {
+    const folder = (event.target as Element).closest('a[href]')?.closest<HTMLElement>('[data-flip-id][data-evidence-id]');
+    const id = folder?.dataset.evidenceId;
+    if (folder != null && id !== undefined) {
+      recordFlight(id, 'in', folder);
+    }
+  };
+
   return (
     <>
     <main
       ref={rootRef}
       data-page="case"
       inert={fileOpen}
+      onClickCapture={handleClickCapture}
       aria-labelledby="board-title"
       className="relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink"
     >
@@ -91,7 +136,8 @@ export default function Desk() {
 
           {/* The lower desk: the pile on the left with the progress line, the tray on the right. */}
           <div className="relative mt-6 grid gap-6 lg:mt-12 lg:grid-cols-[1fr_17rem] lg:items-start">
-            <div>
+            {/* min-w-0: the phone strip scrolls inside its column instead of widening it. */}
+            <div className="min-w-0">
               {/* Above the lamp's shadow, so it can always be read. */}
               <p data-board="progress" className="relative z-[21] font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
                 {progressLine(layout.openedCount, caseData.evidence.length, caseData.closeThreshold)}

@@ -119,3 +119,8 @@ export function deskLayout(caseData: Case, state: InvestigationState): DeskLayou
 export function firstSentence(text: string): string {
   return splitIntoBeats(text)[0] ?? text.trim();
 }
+
+/** The typed label inside a folder's cover: "Histor · Case file 07 · The galley" (set in capitals by CSS). */
+export function coverLabel(number: string, title: string): string {
+  return `Histor · Case file ${number} · ${title}`;
+}

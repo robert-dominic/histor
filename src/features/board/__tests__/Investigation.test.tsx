@@ -402,6 +402,90 @@ describe('An opened file', () => {
     expect(document.querySelector('main[aria-labelledby="board-title"]')?.hasAttribute('inert')).toBe(true);
   });
 
+  test('inside the cover: the typed label and an index card of the sources, from the data', () => {
+    const lifeboat = evidence('e-lifeboat');
+    const number = String(CASE.evidence.indexOf(lifeboat) + 1).padStart(2, '0');
+    renderAt(`${BASE}/files/e-lifeboat`);
+
+    const label = document.querySelector<HTMLElement>('[data-file="label"]')!;
+    expect(label.textContent).toBe(`Histor · Case file ${number} · ${lifeboat.title}`);
+    expect(label.className).toContain('uppercase');
+
+    const card = document.querySelector<HTMLElement>('[data-file="index-card"]')!;
+    const titles = lifeboat.sources.map(id => CASE.sources.find(source => source.id === id)!.title);
+    expect(within(card).getAllByRole('listitem').map(item => item.textContent)).toStrictEqual(titles);
+    for (const id of lifeboat.sources) {
+      const source = CASE.sources.find(item => item.id === id)!;
+      if (source.url !== undefined && source.url.trim() !== '') {
+        expect(within(card).getByRole('link', { name: source.title }).getAttribute('href')).toBe(source.url);
+      }
+    }
+    // The document is held by a paper clip, and its detail goes through the portal renderer.
+    expect(document.querySelector('[data-file="sheet"] svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  test('Escape closes the file, and the focus goes back to its folder on the desk', () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+    expect(screen.getByRole('dialog', { name: evidence('e-lifeboat').title })).toBeDefined();
+    // While open, the folder on the desk is hidden: it is the one in the user's hands.
+    expect(folderFor('e-lifeboat').style.visibility).toBe('hidden');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(window.location.pathname).toBe(`${BASE}/files`);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.querySelector('main[aria-labelledby="board-title"]')?.hasAttribute('inert')).toBe(false);
+    expect(folderFor('e-lifeboat').style.visibility).toBe('');
+    expect(document.activeElement).toBe(folderFor('e-lifeboat').querySelector('a'));
+  });
+
+  test('"Back to the board" closes the file the same way', () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to the board' }));
+
+    expect(window.location.pathname).toBe(`${BASE}/files`);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(folderFor('e-lifeboat').querySelector('a'));
+  });
+
+  test('Tab stays inside the open file', () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+    const file = screen.getByRole('dialog', { name: evidence('e-lifeboat').title });
+    // In document order: jsdom does not return a selector list's matches that way.
+    const stops = [...file.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)')].sort((a, b) =>
+      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
+    );
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    first.focus();
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  test('with reduced motion, opening a file still marks it opened and shows it stamped', () => {
+    stubMatchMedia({ reducedMotion: true });
+    renderAt(`${BASE}/files/e-sword`);
+
+    expect(saved().opened).toStrictEqual(['e-sword']);
+    expect(document.querySelector('[data-stamp="disputed"]')?.textContent).toBe(STATUS_LABEL.disputed);
+  });
+
+  test('clicking a folder in the pile opens that file over the desk', () => {
+    renderAt(`${BASE}/files`);
+
+    fireEvent.click(folderFor('e-lifeboat').querySelector('a')!);
+
+    expect(window.location.pathname).toBe(`${BASE}/files/e-lifeboat`);
+    expect(screen.getByRole('dialog', { name: evidence('e-lifeboat').title })).toBeDefined();
+    expect(saved().opened).toStrictEqual(['e-lifeboat']);
+  });
+
   test('an unknown file id shows "File not found" with a link back to the board', () => {
     renderAt(`${BASE}/files/e-no-such-file`);
 
