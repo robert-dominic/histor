@@ -73,7 +73,7 @@ export const maryCeleste: Case = {
       body: [
         "On 24 November, near the {{ref:azores|Azores}}, a group of islands in the middle of the Atlantic, someone made the last entry in the ship's logbook.",
         'Weather records suggest the wind rose hard that night.',
-        'In the morning, someone wrote one more line on the {{ref:log-slate|log slate}}, the board for rough notes: {{ref:santa-maria|Santa Maria}} island, six miles away.',
+        'In the morning, someone wrote one more line on the {{ref:log-slate|log slate}}, the board for rough notes: "Eastern point of St. Mary\'s bore 6 miles SSW." St. Mary\'s was {{ref:santa-maria|Santa Maria}} island. Land was six miles away.',
       ],
       hook: 'Then the writing stops.',
     },
@@ -126,7 +126,7 @@ export const maryCeleste: Case = {
       heading: 'Murder?',
       body: [
         'Deveau and two sailors brought her 600 nautical miles to {{ref:gibraltar|Gibraltar}}, where a court spent more than two months on the case.',
-        "The Crown's lawyer, {{ref:solly-flood|Frederick Solly-Flood}}, believed there had been murder. He pointed to faint marks on the captain's sword, and cuts on the ship's bow.",
+        "The Crown's lawyer, {{ref:solly-flood|Frederick Solly-Flood}}, believed there had been murder. He pointed to faint marks on Captain Briggs's sword, and cuts on the ship's bow.",
         'Tests showed the marks were not blood. No proof of violence was ever found. Not one body was ever found.',
         "The court paid the Dei Gratia's crew for bringing her in, but only a small sum. Some writers read it as a sign that suspicion lingered.",
       ],

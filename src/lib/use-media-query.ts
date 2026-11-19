@@ -7,6 +7,9 @@ import { useCallback, useSyncExternalStore } from 'react';
 /** The width from which the desktop layout applies. The same value as Tailwind's `lg`. */
 export const DESKTOP_QUERY = '(min-width: 1024px)';
 
+/** Small phones: below Tailwind's `sm` (640px). */
+export const SMALL_PHONE_QUERY = '(max-width: 639.98px)';
+
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(
     (onChange: () => void) => {

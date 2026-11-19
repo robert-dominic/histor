@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { STATUS_LABEL } from '@/lib/case-files';
+import { SMALL_PHONE_QUERY } from '@/lib/use-media-query';
 import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { InvestigationState } from '@/types/case';
@@ -90,6 +91,43 @@ describe('The board', () => {
       expect(theories[index].textContent).toContain(item.title);
       expect(theories[index].textContent).toContain(item.claim);
     });
+  });
+
+  test('on a small phone, theory cards show only the title and pin count; a tap shows the claim', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query === SMALL_PHONE_QUERY || query.includes('prefers-reduced-motion: no-preference'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }))
+    );
+    renderAt(`${BASE}/files`);
+
+    const [first, second] = CASE.theories;
+    const cards = [...document.querySelectorAll<HTMLElement>('[data-board="theory"]')];
+    expect(cards).toHaveLength(CASE.theories.length);
+    for (const card of cards) {
+      expect(card.textContent).not.toContain(CASE.theories.find(item => item.id === card.dataset.theoryId)!.claim);
+    }
+    expect(document.querySelector('[data-board="claim"]')).toBeNull();
+
+    const firstButton = screen.getByRole('button', { name: new RegExp(first.title) });
+    fireEvent.click(firstButton);
+    expect(firstButton.getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelector('[data-board="claim"]')?.textContent).toContain(first.claim);
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(second.title) }));
+    expect(document.querySelector('[data-board="claim"]')?.textContent).toContain(second.claim);
+    expect(firstButton.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(second.title) }));
+    expect(document.querySelector('[data-board="claim"]')).toBeNull();
   });
 
   test('theory cards never show a standing', () => {

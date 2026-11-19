@@ -29,7 +29,8 @@ Light grey ash, not black. Most spooky entries are near-black; Histor starts in 
 | `rust` | #9e3326 | Stamps and warnings on light backgrounds |
 | `rust-night` | #d0574a | Stamps and warnings on dark backgrounds (rust is too low-contrast there) |
 | `record` | #2b4767 | Record status: official ink |
-| `ghost-day` | #8f9ea6 | Legend text and ghost ink in day |
+| `ghost-day` | #8f9ea6 | Ghost ink in day for decoration and large text (stamp borders, faded marks). Too faint for body text on paper (about 2:1) |
+| `ghost-ink` | #48545b | Legend body text on paper: faded blue-grey that still reaches 4.5:1 (4.7:1 on a legend's translucent paper, 5.7:1 on paper) |
 | `night` | #0d1317 | Night background |
 | `night-ink` | #e6e1d3 | Main text at night |
 | `ghost-night` | #a8c3d3 | Legend text and ghost ink at night |
@@ -52,7 +53,7 @@ The spooky effects encode trust. They are not decoration.
 | --- | --- | --- |
 | Record | Crisp `record`-blue ink on clean paper, sharp edges | Solid, official |
 | Disputed | Smudged areas, struck-through words, notes in the margin | Argued over |
-| Legend | Faded ghost ink (`ghost-day` / `ghost-night`), slight blur (≤2px), a faint flicker, translucent paper | Not quite real |
+| Legend | Faded ghost ink: `ghost-ink` for text on paper, `ghost-night` at night, `ghost-day` for decoration. A slight blur (≤2px) only as the ink appears, then crisp; a faint flicker that rests at full opacity; translucent paper. Text at rest reaches 4.5:1 | Not quite real |
 | Unexamined | Plain folder, status hidden | Unknown |
 
 ## Per-case themes

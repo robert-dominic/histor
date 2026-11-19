@@ -9,7 +9,8 @@
   --color-paper: #e2ddcf; /* evidence files, cards, raised surfaces in day */
   --color-ink: #23211d; /* main text in day */
   --color-muted: #6c6a62; /* secondary text in day */
-  --color-ghost-day: #8f9ea6; /* legend text and ghost ink in day */
+  --color-ghost-day: #8f9ea6; /* legend decoration and ghost ink in day; too faint for body text */
+  --color-ghost-ink: #48545b; /* legend body text on paper: 4.7:1 on the legend's translucent paper, 5.7:1 on paper */
   /* Night */
   --color-night: #0d1317; /* night background */
   --color-night-ink: #e6e1d3; /* main text at night */

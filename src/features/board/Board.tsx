@@ -3,7 +3,7 @@
 // Desktop draws a thread from each pinned folder to its theory; phones swipe the theories and list the folders.
 // Everything shown comes from the case data and the investigation.
 
-import { useMemo, useRef } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -13,7 +13,7 @@ import TheoryCard from '@/features/board/TheoryCard';
 import Threads from '@/features/board/Threads';
 import { fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
-import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
+import { DESKTOP_QUERY, SMALL_PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query';
 
 gsap.registerPlugin(useGSAP);
 
@@ -39,6 +39,11 @@ export default function Board() {
   const { state, caseData } = useInvestigation();
   const rootRef = useRef<HTMLElement>(null);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const isSmallPhone = useMediaQuery(SMALL_PHONE_QUERY);
+  // Small phones: the theory whose claim is shown under the row, or null.
+  const [shownClaim, setShownClaim] = useState<string | null>(null);
+  const claimId = useId();
+  const shownTheory = isSmallPhone ? caseData.theories.find(theory => theory.id === shownClaim) : undefined;
   const base = `/case/${caseData.id}`;
 
   const opened = useMemo(() => new Set(state.opened), [state.opened]);
@@ -116,12 +121,33 @@ export default function Board() {
             <h3 id="theories-title" className="sr-only">
               Theories
             </h3>
-            <div className="-mx-4 overflow-x-auto bg-night/92 px-4 py-3 backdrop-blur-sm lg:mx-0 lg:overflow-visible lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-              <div className="flex snap-x snap-mandatory gap-3 lg:grid lg:grid-cols-5 lg:gap-5">
-                {caseData.theories.map(theory => (
-                  <TheoryCard key={theory.id} theory={theory} pinnedCount={pinnedCount(theory.id)} />
-                ))}
+            <div className="-mx-4 bg-night/92 backdrop-blur-sm lg:mx-0 lg:bg-transparent lg:backdrop-blur-none">
+              <div className="overflow-x-auto px-4 py-3 lg:overflow-visible lg:p-0">
+                <div className="flex snap-x snap-mandatory gap-3 lg:grid lg:grid-cols-5 lg:gap-5">
+                  {caseData.theories.map(theory => (
+                    <TheoryCard
+                      key={theory.id}
+                      theory={theory}
+                      pinnedCount={pinnedCount(theory.id)}
+                      compact={isSmallPhone}
+                      expanded={shownClaim === theory.id}
+                      claimId={claimId}
+                      onToggle={() => setShownClaim(current => (current === theory.id ? null : theory.id))}
+                    />
+                  ))}
+                </div>
               </div>
+              {/* Small phones: the claim of the tapped card. Tapping the card again hides it. */}
+              {isSmallPhone && (
+                <div id={claimId} aria-live="polite">
+                  {shownTheory !== undefined && (
+                    <p data-board="claim" className="mx-4 mb-3 rounded-sm bg-paper px-3.5 py-2.5 font-record text-[0.9375rem] leading-snug text-ink">
+                      <span className="font-legend text-[1.0625rem] leading-none">{shownTheory.title}: </span>
+                      {shownTheory.claim}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 

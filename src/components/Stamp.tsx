@@ -10,7 +10,8 @@ export type StampTone = EvidenceStatus | TheoryStanding;
 const TONE_CLASSES: Record<StampTone, string> = {
   record: 'border-record text-record',
   disputed: 'stamp-smudged border-rust text-rust',
-  legend: 'border-ghost-day text-ghost-day',
+  // Faint border, readable lettering: ghost-ink reaches 4.5:1 on paper.
+  legend: 'border-ghost-day text-ghost-ink',
   leading: 'border-record text-record',
   considered: 'border-muted text-muted',
   rejected: 'border-rust text-rust',

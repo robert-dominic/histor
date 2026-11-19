@@ -96,8 +96,19 @@ export default function OpenedFile({ evidence, index }: OpenedFileProps) {
           TIMING.stampAt
         );
         // A legend's text turns to ghost ink the moment the stamp lands. Written to the element, not to state.
+        // Full motion: the ink swims in out of a slight blur (≤2px), then rests crisp and readable.
         if (isLegend) {
-          timeline.call(() => rootRef.current?.setAttribute('data-ink', 'ghost'), undefined, TIMING.stampAt + TIMING.stamp);
+          const inkAt = TIMING.stampAt + TIMING.stamp;
+          timeline.call(() => rootRef.current?.setAttribute('data-ink', 'ghost'), undefined, inkAt);
+          if (!reduced) {
+            timeline.fromTo(
+              '[data-file-ink]',
+              { filter: 'blur(2px)' },
+              // Not before the stamp lands: until then the text is plain and sharp.
+              { filter: 'blur(0px)', duration: 0.7, clearProps: 'filter', immediateRender: false },
+              inkAt
+            );
+          }
         }
         if (after.length > 0) {
           timeline.fromTo(

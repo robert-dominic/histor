@@ -8,11 +8,11 @@
   text-shadow: 0.08em 0.05em 0.12em currentColor;
 }
 
-/* Legend: once the stamp lands, the file's text turns to faded ghost ink, slightly blurred (≤2px), with a
-   faint flicker. Only opacity is animated; constant motion, so keyframes are fine (motion.md). */
+/* Legend: once the stamp lands, the file's text turns to faded ghost ink with a faint flicker.
+   At rest it is crisp and reaches 4.5:1 (the ghost-ink token). The blur plays only as the ink appears
+   (OpenedFile.tsx). Only opacity is animated here; constant motion, so keyframes are fine (motion.md). */
 [data-ink="ghost"] [data-file-ink] {
-  color: var(--color-ghost-day);
-  filter: blur(0.6px);
+  color: var(--color-ghost-ink);
   animation: ghost-flicker 5.5s steps(1, end) infinite;
 }
 
@@ -23,19 +23,20 @@
   }
 }
 
+/* Two brief dips, about 2% of the cycle in all. The text rests at full opacity. */
 @keyframes ghost-flicker {
   0%,
   100% {
     opacity: 1;
   }
   41% {
-    opacity: 0.86;
+    opacity: 0.9;
   }
   43% {
     opacity: 1;
   }
   77% {
-    opacity: 0.9;
+    opacity: 0.93;
   }
   78% {
     opacity: 1;
