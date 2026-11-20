@@ -1,6 +1,8 @@
 // src/features/board/Desk.tsx
 // The board: a night investigation desk under a brass lamp. Theories across the top, the case files below.
-// Desktop draws a thread from each pinned folder to its theory; phones swipe the theories and list the folders.
+// Desktop (1024px and up) is one fixed screen that never scrolls: a compact header, the board of theories on top
+// (about 55% of the height) and the floor below (about 45%), with a thread from each pinned folder to its theory.
+// Below that, the phone desk: the theories swipe, and the folders list.
 // Everything shown comes from the case data and the investigation.
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
@@ -20,6 +22,8 @@ import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import type { SlipReading } from '@/features/board/HangingTab';
 import { Flip, clearFlight, flightFor, recordFlight } from '@/features/board/flight';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
+import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
+import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { READING_LABEL } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { deskLayout } from '@/lib/desk';
@@ -56,6 +60,7 @@ export default function Desk() {
 
 function DeskScreen() {
   const { state, caseData } = useInvestigation();
+  const desktop = useMediaQuery(DESKTOP_QUERY);
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
   const openId = useParams().evidenceId;
   const fileOpen = openId !== undefined;
@@ -109,6 +114,20 @@ function DeskScreen() {
     };
   }, [openSlip, fileOpen, location.key]);
 
+  // The desktop desk never scrolls: the page's own scroll is off, and smooth scrolling steps aside, while it is here.
+  useEffect(() => {
+    if (!desktop) {
+      return;
+    }
+    const html = document.documentElement;
+    const before = html.style.overflow;
+    html.style.overflow = 'hidden';
+    pauseSmoothScroll();
+    return () => {
+      html.style.overflow = before;
+      resumeSmoothScroll();
+    };
+  }, [desktop]);
   useGSAP(
     () => {
       if (typeof window.matchMedia !== 'function') {
@@ -173,47 +192,81 @@ function DeskScreen() {
 
   return (
     <>
-    <main
-      ref={rootRef}
-      data-page="case"
-      inert={fileOpen}
-      onClickCapture={handleClickCapture}
-      aria-labelledby="board-title"
-      className="relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink"
-    >
-      <DeskSurface />
-
-      <div className="mx-auto max-w-[90rem] px-4 pt-6 pb-16 lg:px-10 lg:pt-10">
-        {/* Above the lamp's shadow: the way to close the case is always readable. */}
-        <header className="relative z-[21] flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
-            The case files
-          </h2>
-          {canClose && <WaxSeal to={`${base}/verdict`} />}
-        </header>
-
-        <div className="relative mt-6 lg:mt-10">
-          <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} slips={slips} />
-
-          {/* The lower desk: the pile on the left with the progress line, the tray on the right. */}
-          <div className="relative mt-6 grid gap-6 lg:mt-12 lg:grid-cols-[1fr_17rem] lg:items-start">
-            {/* min-w-0: the phone strip scrolls inside its column instead of widening it. */}
-            <div className="min-w-0">
-              {/* Above the lamp's shadow, so it can always be read. */}
-              <p data-board="progress" className="relative z-[21] font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
+      <main
+        ref={rootRef}
+        data-page="case"
+        data-desk={desktop ? 'fixed' : 'scrolling'}
+        inert={fileOpen}
+        onClickCapture={handleClickCapture}
+        aria-labelledby="board-title"
+        className={
+          desktop
+            ? 'relative isolate grid h-svh grid-rows-[auto_minmax(0,55fr)_minmax(0,45fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
+            : 'relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink'
+        }
+      >
+        <DeskSurface />
+        {desktop ? (
+          <>
+            {/* The compact header: the title, the progress line, the hints and the way to close the case. Above the
+                lamp's shadow, so all of it is always readable. */}
+            <header className="relative z-[21] flex items-center gap-x-6 px-8 pt-2 pb-1">
+              <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
+                The case files
+              </h2>
+              <p data-board="progress" className="font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
                 {progressLine(layout.openedCount, caseData.evidence.length, caseData.closeThreshold)}
               </p>
-              <DeskHints />
-              <Pile layout={layout} filesHref={`${base}/files`} />
+              <div className="min-w-0 flex-1 [&_[data-hint=desk]]:mt-0 [&_[data-hint=desk]]:min-h-6">
+                <DeskHints />
+              </div>
+              {canClose && <WaxSeal to={`${base}/verdict`} />}
+            </header>
+            {/* The board: above the floor, so a slip hanging below a tab can lie over it. */}
+            <div data-desk="board-row" className="relative z-[3] min-h-0 px-4 pb-2">
+              <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
             </div>
-            <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} />
+            {/* The floor, with the tray beside it. */}
+            <div data-desk="floor-row" className="relative min-h-0 px-4 pb-3">
+              <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_16rem] gap-4">
+                <div className="min-h-0 min-w-0 overflow-hidden">
+                  <Pile layout={layout} filesHref={`${base}/files`} />
+                </div>
+                <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="mx-auto max-w-[90rem] px-4 pt-6 pb-16 lg:px-10 lg:pt-10">
+            {/* Above the lamp's shadow: the way to close the case is always readable. */}
+            <header className="relative z-[21] flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+              <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
+                The case files
+              </h2>
+              {canClose && <WaxSeal to={`${base}/verdict`} />}
+            </header>
+            <div className="relative mt-6 lg:mt-10">
+              <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} slips={slips} />
+              {/* The lower desk: the pile with the progress line, then the tray. */}
+              <div className="relative mt-6 grid gap-6 lg:mt-12 lg:grid-cols-[1fr_17rem] lg:items-start">
+                {/* min-w-0: the phone strip scrolls inside its column instead of widening it. */}
+                <div className="min-w-0">
+                  {/* Above the lamp's shadow, so it can always be read. */}
+                  <p data-board="progress" className="relative z-[21] font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
+                    {progressLine(layout.openedCount, caseData.evidence.length, caseData.closeThreshold)}
+                  </p>
+                  <DeskHints />
+                  <Pile layout={layout} filesHref={`${base}/files`} />
+                </div>
+                <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <Lamp />
-    </main>
-    {!fileOpen && <DeskGuide threshold={caseData.closeThreshold} />}
-    <Outlet />
+        )}
+        <Lamp />
+      </main>
+      {!fileOpen && <DeskGuide threshold={caseData.closeThreshold} />}
+      <Outlet />
     </>
   );
 }

@@ -12,9 +12,11 @@ interface TheoryNoteProps {
   theory: Theory;
   /** Extra classes, e.g. for the verdict screen. */
   className?: string;
+  /** On the one-screen desk: the note's text and padding follow the screen's height, so the board fits. */
+  fitted?: boolean;
 }
 
-export default function TheoryNote({ theory, className = '' }: TheoryNoteProps) {
+export default function TheoryNote({ theory, className = '', fitted = false }: TheoryNoteProps) {
   const titleId = useId();
   const { rotate } = scatter(theory.id, 2.5, 0);
   return (
@@ -29,7 +31,9 @@ export default function TheoryNote({ theory, className = '' }: TheoryNoteProps) 
     >
       <div
         data-board="paper"
-        className="desk-note relative flex h-full flex-col gap-2 rounded-[2px] px-4 pt-6 pb-5 text-ink shadow-lg shadow-black/60"
+        className={`desk-note relative flex h-full flex-col rounded-[2px] px-4 text-ink shadow-lg shadow-black/60 ${
+          fitted ? 'gap-1 pt-5 pb-4' : 'gap-2 pt-6 pb-5'
+        }`}
         style={{ rotate: `${rotate}deg` }}
       >
         {/* The glow while a folder is held over the note: a layer whose opacity changes (no filter or shadow transition). */}
@@ -40,10 +44,16 @@ export default function TheoryNote({ theory, className = '' }: TheoryNoteProps) 
         />
         {/* The brass pin that holds the note. */}
         <span aria-hidden="true" data-board="pin" className="desk-pin absolute top-2 left-1/2 size-3 -translate-x-1/2 rounded-full" />
-        <h3 id={titleId} className="font-legend text-[1.375rem] leading-[1.05] text-ink">
+        <h3
+          id={titleId}
+          className={`font-legend leading-[1.05] text-ink ${fitted ? 'text-[clamp(1.0625rem,2.6svh,1.375rem)]' : 'text-[1.375rem]'}`}
+        >
           {theory.title}
         </h3>
-        <p data-board="claim" className="font-record text-[0.9375rem] leading-snug text-ink/85">
+        <p
+          data-board="claim"
+          className={`font-record leading-snug text-ink/85 ${fitted ? 'text-[clamp(0.8125rem,1.8svh,0.9375rem)]' : 'text-[0.9375rem]'}`}
+        >
           {theory.claim}
         </p>
         {/* A second pin at the foot of the note: the threads to its files hang from here. */}
