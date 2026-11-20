@@ -13,6 +13,7 @@ export type StoryDirection = 'forward' | 'backward';
 
 export type StoryEvent =
   | { type: 'chapter-enter'; chapter: string; direction: StoryDirection }
+  // A sentence of the text column starts to rise into view. `index` is its place in the chapter.
   | { type: 'beat'; chapter: string; index: number; direction: StoryDirection }
   | { type: 'hook'; chapter: string; direction: StoryDirection }
   | { type: 'roll-call-out'; chapter: string; name: string; direction: StoryDirection }

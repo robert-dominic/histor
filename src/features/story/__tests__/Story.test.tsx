@@ -9,8 +9,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
+import { pxPerSecond } from '@/features/story/use-story-player';
 import { parseRefs } from '@/lib/parse-refs';
 import { setLenis } from '@/lib/smooth-scroll';
+import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { splitIntoBeats } from '@/lib/story-beats';
 import { COLUMN, columnLines, columnPlan } from '@/lib/story-column';
 import { splitIntoPhrases } from '@/lib/phrases';
@@ -655,5 +657,139 @@ describe('Story: headings on their own timer', () => {
     const heading = container.querySelector('[data-story="heading"]') ?? container.querySelector('h2');
     expect(heading?.textContent).toContain('First test heading');
     expect(container.querySelectorAll('[data-story="quill"]')).toHaveLength(0);
+  });
+});
+
+describe('Story: the other parts, with the column', () => {
+  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+  const pinned = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!;
+
+  test('story events: each chapter is entered, each sentence rises, each hook comes, in order', () => {
+    renderStory(testCase);
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
+    try {
+      const timeline = stageTimeline();
+      timeline.time(timeline.duration(), false);
+    } finally {
+      stop();
+    }
+    expect(events.map(event => event.type)).toEqual([
+      'chapter-enter',
+      'beat',
+      'beat',
+      'beat',
+      'hook',
+      'chapter-enter',
+      'beat',
+    ]);
+    expect(events.filter(event => event.type === 'beat').map(event => (event as { index: number }).index)).toEqual([0, 1, 2, 0]);
+    expect(events.map(event => (event as { chapter?: string }).chapter)).toEqual([
+      's-one',
+      's-one',
+      's-one',
+      's-one',
+      's-one',
+      's-two',
+      's-two',
+    ]);
+  });
+
+  test('the hook: the column leaves first, then the hook has the screen, then stillness before the next scene', () => {
+    const { container } = renderStory(testCase);
+    const chapter = chapterOf(container, testCase.story[0]);
+    const timeline = stageTimeline();
+    const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
+    const hook = chapter.querySelector('[data-story="hook-moment"]') as HTMLElement;
+    const leave = gsap.getTweensOf(column)[0];
+    const arrive = gsap.getTweensOf(hook)[0];
+    const lastSentence = [...chapter.querySelectorAll('[data-story="sentence"]')].pop()!;
+    expect(leave.vars.ease).toBe('power2.in');
+    // The column leaves once its last sentence has had its time, and before the hook comes in.
+    expect(leave.startTime()).toBeGreaterThan(gsap.getTweensOf(lastSentence)[0].startTime());
+    expect(leave.startTime() + leave.duration()).toBeLessThanOrEqual(arrive.startTime());
+    // A beat of stillness: the next scene waits for the hook to hold.
+    expect(timeline.labels['chapter-1'] - arrive.startTime()).toBeGreaterThanOrEqual(arrive.duration() + 4);
+  });
+
+  test('a chapter without a hook keeps its column, and still pauses before the next scene', () => {
+    const { container } = renderStory(testCase);
+    const column = chapterOf(container, testCase.story[1]).querySelector('[data-story="column"]') as HTMLElement;
+    expect(gsap.getTweensOf(column)).toHaveLength(0);
+    expect(chapterOf(container, testCase.story[1]).querySelector('[data-story="hook-moment"]')).toBeNull();
+  });
+
+  test('the roll call comes in after the sentence that gives the number, and leaves before the hook', () => {
+    const { container } = renderStory();
+    const section = maryCeleste.story.find(candidate => candidate.rollCall !== undefined && candidate.rollCall.length > 0)!;
+    const chapter = chapterOf(container, section);
+    const names = [...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')];
+    const sentences = [...chapter.querySelectorAll<HTMLElement>('[data-story="sentence"]')];
+    expect(names).toHaveLength(section.rollCall!.length);
+    const nameIn = names.map(name => gsap.getTweensOf(name)[0].startTime());
+    expect(nameIn).toEqual([...nameIn].sort((a, b) => a - b));
+    // After the first sentence's slot has begun and before the hook.
+    expect(nameIn[0]).toBeGreaterThan(gsap.getTweensOf(sentences[0])[0].startTime());
+    const hook = chapter.querySelector('[data-story="hook-moment"]') as HTMLElement;
+    const hookAt = gsap.getTweensOf(hook)[0].startTime();
+    const nameOut = names.map(name => gsap.getTweensOf(name).at(-1)!.startTime());
+    expect(Math.max(...nameOut)).toBeLessThan(hookAt);
+    // The column is gone before the names go out.
+    const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
+    expect(gsap.getTweensOf(column)[0].startTime()).toBeLessThanOrEqual(Math.min(...nameOut));
+  });
+
+  test('the title leaves before the roll call comes in over the same part of the screen', () => {
+    const { container } = renderStory();
+    const section = maryCeleste.story.find(candidate => candidate.rollCall !== undefined && candidate.rollCall.length > 0)!;
+    const chapter = chapterOf(container, section);
+    const title = chapter.querySelector('[data-story="title"]') as HTMLElement;
+    const names = [...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')];
+    const leave = gsap.getTweensOf(title)[0];
+    expect(leave.startTime() + leave.duration()).toBeLessThanOrEqual(gsap.getTweensOf(names[0])[0].startTime() + 1e-6);
+  });
+
+  test('the voyage chart draws its route in order as the story goes', () => {
+    const { container } = renderStory();
+    const reveals = [...container.querySelectorAll<HTMLElement | SVGElement>('[data-chart="frame"][data-variant="live"] [data-chart="reveal"]')];
+    expect(reveals.length).toBeGreaterThan(0);
+    const starts = reveals.map(reveal => gsap.getTweensOf(reveal)[0].startTime());
+    expect(starts).toEqual([...starts].sort((a, b) => a - b));
+    const timeline = stageTimeline();
+    expect(starts.every(start => start >= 0 && start <= timeline.duration())).toBe(true);
+  });
+
+  test('day into night: the sky follows the timeline from the first scene to full night', () => {
+    const { container } = renderStory();
+    const root = container.querySelector('[data-story="root"]') as HTMLElement;
+    const timeline = stageTimeline();
+    const trigger = pinned();
+    timeline.time(0, false);
+    act(() => trigger.vars.onUpdate?.(trigger));
+    const morning = root.style.getPropertyValue('--story-sky');
+    timeline.time(timeline.duration(), false);
+    act(() => trigger.vars.onUpdate?.(trigger));
+    const night = root.style.getPropertyValue('--story-sky');
+    expect(morning).not.toBe('');
+    expect(night).not.toBe(morning);
+    expect(root.dataset.tone).toBe('night-ink');
+  });
+
+  test('on a phone-width screen the story still has its scenes and its column', () => {
+    const { innerWidth, innerHeight } = window;
+    Object.assign(window, { innerWidth: 375, innerHeight: 667 });
+    try {
+      const { container } = renderStory();
+      const scenes = container.querySelectorAll('[data-story="chapter"]');
+      expect(scenes).toHaveLength(maryCeleste.story.length);
+      for (const scene of scenes) {
+        const column = scene.querySelector('[data-story="column"]') as HTMLElement;
+        expect(column.className).toContain('w-[min(32ch,88vw)]');
+        expect(column.querySelectorAll('[data-story="sentence"]').length).toBeGreaterThan(0);
+      }
+      expect(pxPerSecond()).toBeGreaterThanOrEqual(80);
+    } finally {
+      Object.assign(window, { innerWidth, innerHeight });
+    }
   });
 });
