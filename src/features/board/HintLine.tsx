@@ -4,7 +4,7 @@
 import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 
 gsap.registerPlugin(useGSAP);
 
@@ -27,7 +27,7 @@ export default function HintLine({ text, tone }: HintLineProps) {
         gsap.fromTo(
           ref.current,
           reduced ? { opacity: 0 } : { opacity: 0, y: 6 },
-          { opacity: 1, y: 0, duration: 0.25, ease: EASE.out, clearProps: 'opacity,transform' }
+          { opacity: 1, y: 0, ...tween('paper.lift'), clearProps: 'opacity,transform' }
         );
       });
     },

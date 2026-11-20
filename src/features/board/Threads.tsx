@@ -6,7 +6,7 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 
 interface ThreadsProps {
   /** One thread per pinned file: evidence id → theory id. */
@@ -70,12 +70,12 @@ export default function Threads({ threads, fresh = null }: ThreadsProps) {
       drawnRef.current = fresh.token;
       const reduced = window.matchMedia(MOTION_QUERIES.reduced).matches;
       if (reduced) {
-        gsap.fromTo(freshPath, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EASE.out, clearProps: 'opacity' });
+        gsap.fromTo(freshPath, { opacity: 0 }, { opacity: 1, ...tween('paper.lift'), clearProps: 'opacity' });
       } else {
         gsap.fromTo(
           freshPath,
           { attr: { 'stroke-dashoffset': 1 } },
-          { attr: { 'stroke-dashoffset': 0 }, duration: 0.6, delay: 0.25, ease: EASE.inOut }
+          { attr: { 'stroke-dashoffset': 0 }, ...tween('layout'), delay: STEP.fast }
         );
       }
     }

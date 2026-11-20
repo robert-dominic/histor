@@ -24,7 +24,7 @@ import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
 import { READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { coverLabel } from '@/lib/desk';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION, MOTION_QUERIES, STEP, ghostDuration, stampHit, tween } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 import type { Evidence, PinTarget, Source } from '@/types/case';
@@ -33,23 +33,23 @@ gsap.registerPlugin(useGSAP, Flip, SplitText, Draggable);
 
 /** Seconds. Opening a file happens many times: the flight and the flip are quick, the stamp waits a short beat. */
 const TIMING = {
-  backdrop: 0.3,
-  flight: 0.5,
-  arrive: 0.35,
-  flip: 0.6,
-  enter: 0.25,
-  stampBeat: 0.3,
-  stamp: 0.18,
-  close: 0.35,
-  seal: 0.3,
-  sheet: 0.45,
-  slip: 0.5,
+  backdrop: MOTION['paper.lift'].duration,
+  flight: MOTION['paper.move'].duration,
+  arrive: MOTION['paper.lift'].duration,
+  flip: MOTION['paper.move'].duration,
+  enter: MOTION['paper.lift'].duration,
+  stampBeat: STEP.fast,
+  /** A stamp's press and settle (motion.ts `stampHit`). */
+  stamp: MOTION['stamp.hit'].duration + STEP.fast,
+  close: MOTION['paper.lift'].duration,
+  seal: MOTION['paper.lift'].duration,
+  sheet: MOTION['paper.lift'].duration,
+  slip: MOTION['paper.move'].duration,
 } as const;
 
 /** A legend's drifting ink: each word dims to `dim` and returns over `wave` seconds, in `waves` slow waves. */
 const DRIFT = {
   dim: 0.72,
-  wave: 2.6,
   each: 0.07,
   rest: 3.5,
   waves: 3,
@@ -150,7 +150,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         const desktop = context.conditions?.desktop === true;
         const folder = folderRef.current;
         const cover = '[data-file="cover"]';
-        const timeline = gsap.timeline({ defaults: { ease: EASE.out } });
+        const timeline = gsap.timeline({ defaults: { ease: MOTION['paper.lift'].ease } });
         let split: SplitText | null = null;
         timeline.fromTo('[data-file="backdrop"]', { opacity: 0 }, { opacity: 1, duration: TIMING.backdrop }, 0);
 
@@ -162,7 +162,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           let flipAt: number = TIMING.arrive;
           if (flight?.state != null && folder !== null) {
             timeline.add(
-              Flip.from(flight.state, { targets: folder, scale: true, duration: TIMING.flight, ease: EASE.drawer }),
+              Flip.from(flight.state, { targets: folder, scale: true, ...tween('paper.move') }),
               0
             );
             flipAt = TIMING.flight;
@@ -178,7 +178,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             undefined,
             flipAt
           );
-          timeline.to(cover, { rotationY: COVER_OPEN, duration: TIMING.flip, ease: EASE.inOut }, flipAt);
+          timeline.to(cover, { rotationY: COVER_OPEN, ...tween('paper.move') }, flipAt);
           revealAt = flipAt + TIMING.flip;
         } else {
           // No flight: the open folder fades in (and grows a touch, with full motion), already open.
@@ -202,12 +202,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         // uncovered (motion.md).
         const stampAt = revealAt + TIMING.stampBeat;
         const landed = stampAt + TIMING.stamp;
-        timeline.fromTo(
-          '[data-file="stamp"]',
-          reduced ? { opacity: 0 } : { opacity: 0, scale: 1.15, clipPath: 'inset(0% 50% 0% 50%)' },
-          { opacity: 1, scale: 1, clipPath: 'inset(0% 0% 0% 0%)', duration: TIMING.stamp },
-          stampAt
-        );
+        timeline.add(stampHit('[data-file="stamp"]', { reduced }), stampAt);
         // As it lands, the paper becomes its status. The end states live in effects.css, keyed on data-revealed;
         // written to the element, never to React state.
         timeline.call(
@@ -234,7 +229,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           timeline.fromTo(
             '[data-file="sheet-two"]',
             reduced ? { opacity: 0 } : { opacity: 0, x: 56, rotation: 5 },
-            { opacity: 1, x: 0, rotation: 0, duration: TIMING.sheet, ease: EASE.drawer },
+            { opacity: 1, x: 0, rotation: 0, ...tween('paper.lift') },
             landed + 0.15
           );
         }
@@ -246,7 +241,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
               '[data-file-ink]',
               { filter: 'blur(2px)' },
               // Not before the stamp lands: until then the text is plain and sharp.
-              { filter: 'blur(0px)', duration: 0.7, clearProps: 'filter', immediateRender: false },
+              { filter: 'blur(0px)', ...tween('ink.in'), clearProps: 'filter', immediateRender: false },
               landed
             );
           }
@@ -254,7 +249,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           timeline.fromTo(
             '[data-file="slip"]',
             reduced ? { opacity: 0 } : { opacity: 0, yPercent: -100 },
-            { opacity: 1, yPercent: 0, duration: TIMING.slip, ease: EASE.drawer },
+            { opacity: 1, yPercent: 0, ...tween('paper.move') },
             landed + 0.5
           );
           if (!reduced) {
@@ -265,8 +260,8 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
               split = SplitText.create(paragraphs, { type: 'words', tag: 'span', aria: 'none', wordsClass: 'ink-word' });
               const words = split.words;
               gsap.to(words, {
-                keyframes: { opacity: [1, DRIFT.dim, 1], easeEach: 'sine.inOut' },
-                duration: DRIFT.wave,
+                keyframes: { opacity: [1, DRIFT.dim, 1], easeEach: MOTION.ghost.ease },
+                duration: ghostDuration(evidence.id),
                 stagger: { each: DRIFT.each, repeat: DRIFT.waves - 1, repeatDelay: DRIFT.rest },
                 // At rest the words are whole again: put the text back as it was.
                 onComplete: () => split?.revert(),
@@ -354,9 +349,9 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           // The theories are at the top of the desk: bring them into view under the lifted folder.
           window.scrollTo({ top: 0, behavior: 'smooth' });
           emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'close' });
-          gsap.to(cover, { rotationY: 0, duration: TIMING.close, ease: EASE.inOut, overwrite: true });
-          gsap.to(folder, { scale: HELD_SCALE, duration: TIMING.close, ease: EASE.out, overwrite: 'auto' });
-          gsap.to(backdrop, { opacity: 0.2, duration: 0.25, ease: EASE.out, overwrite: true });
+          gsap.to(cover, { rotationY: 0, ...tween('paper.lift'), overwrite: true });
+          gsap.to(folder, { scale: HELD_SCALE, ...tween('paper.lift'), overwrite: 'auto' });
+          gsap.to(backdrop, { opacity: 0.2, ...tween('hover'), overwrite: true });
         },
         onDrag() {
           hot = markHotTarget(draggable, targets);
@@ -367,9 +362,9 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             // Back to the centre, open again, the desk dimmed again.
             delete root.dataset.dragging;
             emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
-            gsap.to(folder, { x: 0, y: 0, scale: 1, duration: TIMING.arrive, ease: EASE.out, overwrite: 'auto' });
-            gsap.to(cover, { rotationY: COVER_OPEN, duration: TIMING.flip, ease: EASE.inOut, delay: 0.1, overwrite: true });
-            gsap.to(backdrop, { opacity: 1, duration: 0.25, ease: EASE.out, overwrite: true });
+            gsap.to(folder, { x: 0, y: 0, scale: 1, ...tween('paper.lift'), overwrite: 'auto' });
+            gsap.to(cover, { rotationY: COVER_OPEN, ...tween('paper.move'), delay: STEP.fast / 2, overwrite: true });
+            gsap.to(backdrop, { opacity: 1, ...tween('hover'), overwrite: true });
           });
           hot = null;
         },
@@ -399,7 +394,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     }
     setPinning(true);
     emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'close' });
-    gsap.to(cover, { rotationY: 0, duration: TIMING.close, ease: EASE.inOut, overwrite: true, onComplete: finish });
+    gsap.to(cover, { rotationY: 0, ...tween('paper.lift'), overwrite: true, onComplete: finish });
   };
 
   return (

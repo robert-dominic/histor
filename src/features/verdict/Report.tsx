@@ -14,7 +14,7 @@ import Lamp from '@/features/board/Lamp';
 import ReportSection from '@/features/verdict/ReportSection';
 import { READING_LABEL, STANDING_LABEL, STATUS_LABEL, fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
 
 gsap.registerPlugin(useGSAP);
 
@@ -42,19 +42,14 @@ export default function Report() {
       const mm = gsap.matchMedia();
       mm.add(MOTION_QUERIES, context => {
         const reduced = context.conditions?.reduced === true;
-        const timeline = gsap.timeline({ defaults: { ease: EASE.out } });
+        const timeline = gsap.timeline({ defaults: { ease: MOTION['ink.in'].ease } });
         // The standing is revealed only now: it stamps onto the verdict after a beat.
-        timeline.fromTo(
-          '[data-report="standing"]',
-          reduced ? { opacity: 0 } : { opacity: 0, scale: 1.15, clipPath: 'inset(0% 50% 0% 50%)' },
-          { opacity: 1, scale: 1, clipPath: 'inset(0% 0% 0% 0%)', duration: reduced ? 0.3 : 0.18 },
-          0.6
-        );
+        timeline.add(stampHit('[data-report="standing"]', { reduced }), 0.6);
         timeline.fromTo(
           '[data-report="reason"]',
           { opacity: 0 },
-          { opacity: 1, duration: 0.4 },
-          '>+=0.15'
+          { opacity: 1, ...tween('paper.lift') },
+          `>+=${STEP.fast * 0.75}`
         );
       });
     },

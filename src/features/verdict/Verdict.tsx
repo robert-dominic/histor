@@ -13,7 +13,7 @@ import Lamp from '@/features/board/Lamp';
 import SealMark from '@/features/board/SealMark';
 import HoldToClose from '@/features/verdict/HoldToClose';
 import { scatter } from '@/lib/desk';
-import { EASE } from '@/lib/motion';
+import { tween } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 
@@ -56,7 +56,7 @@ export default function Verdict() {
       .fromTo(
         seal,
         { opacity: 0, scale: 1.4, rotation: -10 },
-        { opacity: 1, scale: 1, rotation: 0, duration: 0.3, ease: EASE.out }
+        { opacity: 1, scale: 1, rotation: 0, ...tween('paper.lift') }
       )
       .call(finish, undefined, `+=${SEAL_HOLD}`);
   };

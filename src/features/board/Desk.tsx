@@ -19,7 +19,7 @@ import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import type { SlipReading } from '@/features/board/HangingTab';
 import { Flip, clearFlight, flightFor, recordFlight } from '@/features/board/flight';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { READING_LABEL } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { deskLayout } from '@/lib/desk';
@@ -122,7 +122,7 @@ function DeskScreen() {
         gsap.fromTo(
           parts,
           reduced ? { opacity: 0 } : { opacity: 0, y: 10 },
-          { opacity: 1, y: 0, duration: 0.4, ease: EASE.out, stagger: 0.03, clearProps: 'opacity,transform' }
+          { opacity: 1, y: 0, ...tween('paper.lift'), stagger: 0.03, clearProps: 'opacity,transform' }
         );
       });
     },
@@ -157,7 +157,7 @@ function DeskScreen() {
       }
       home.querySelector<HTMLElement>('[data-focus-home]')?.focus({ preventScroll: true });
       if (flight.state !== null) {
-        Flip.from(flight.state, { targets: home, scale: true, duration: 0.35, ease: EASE.out, zIndex: 30 });
+        Flip.from(flight.state, { targets: home, scale: true, ...tween('paper.lift'), zIndex: 30 });
       }
     };
   }, [openId]);

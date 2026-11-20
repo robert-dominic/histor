@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { numberWord } from '@/features/board/hints';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 
 gsap.registerPlugin(useGSAP);
 
@@ -53,7 +53,7 @@ export default function DeskGuide({ threshold }: DeskGuideProps) {
         gsap.fromTo(
           panel,
           reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 },
-          { opacity: 1, scale: 1, duration: 0.2, ease: EASE.out }
+          { opacity: 1, scale: 1, ...tween('hover') }
         );
       });
     },

@@ -2,10 +2,7 @@
 // The one file of motion. Every GSAP tween takes its ease and duration from here (motion.md).
 // Tokens are named by what the thing does, not by how it looks.
 import gsap from 'gsap';
-import { CustomEase } from 'gsap/CustomEase';
 import { hashUnit } from '@/lib/desk';
-
-gsap.registerPlugin(CustomEase);
 
 /** The four duration steps, in seconds. The scale for delays, holds and staggers. */
 export const STEP = { fast: 0.2, base: 0.45, slow: 0.9, scene: 1.2 } as const;
@@ -95,17 +92,3 @@ export const MOTION_QUERIES = {
   full: '(prefers-reduced-motion: no-preference)',
   reduced: '(prefers-reduced-motion: reduce)',
 } as const;
-
-// The old custom eases. They go in task 4, once nothing imports them.
-/** GSAP ease names. Pass one as the `ease` of a tween. */
-export const EASE = {
-  /** For anything appearing or responding. */
-  out: 'histor-out',
-  /** For things moving across the screen. */
-  inOut: 'histor-in-out',
-  /** For panels and file screens sliding in. */
-  drawer: 'histor-drawer',
-} as const;
-CustomEase.create(EASE.out, '0.23, 1, 0.32, 1');
-CustomEase.create(EASE.inOut, '0.77, 0, 0.175, 1');
-CustomEase.create(EASE.drawer, '0.32, 0.72, 0, 1');

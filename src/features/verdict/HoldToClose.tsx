@@ -5,11 +5,10 @@
 
 import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import gsap from 'gsap';
-import { EASE } from '@/lib/motion';
+import { LINEAR, tween } from '@/lib/motion';
 
 /** Seconds. Slow when the user decides, fast when the app responds. */
 const HOLD = 1.5;
-const RELEASE = 0.2;
 
 const EMPTY = 'circle(0% at 50% 50%)';
 const FULL = 'circle(75% at 50% 50%)';
@@ -43,7 +42,7 @@ export default function HoldToClose({ disabled, onComplete }: HoldToCloseProps) 
     gsap.to(fillRef.current, {
       clipPath: FULL,
       duration: HOLD,
-      ease: 'none',
+      ease: LINEAR,
       overwrite: true,
       onComplete: () => {
         doneRef.current = true;
@@ -56,7 +55,7 @@ export default function HoldToClose({ disabled, onComplete }: HoldToCloseProps) 
     if (doneRef.current) {
       return;
     }
-    gsap.to(fillRef.current, { clipPath: EMPTY, duration: RELEASE, ease: EASE.out, overwrite: true });
+    gsap.to(fillRef.current, { clipPath: EMPTY, ...tween('hover'), overwrite: true });
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {

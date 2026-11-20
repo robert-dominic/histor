@@ -15,7 +15,7 @@ import Folder from '@/features/board/Folder';
 import { Draggable, canDrag } from '@/features/board/drag';
 import { recordFlight } from '@/features/board/flight';
 import { scatter, type DeskLayout } from '@/lib/desk';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 
@@ -97,8 +97,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
         folders.forEach((folder, index) =>
           folder !== dragging && gsap.to(folder, {
             ...(toOpen ? fanned[index] : resting[index]),
-            duration: toOpen ? 0.45 : 0.3,
-            ease: EASE.out,
+            ...tween(toOpen ? 'layout' : 'paper.lift'),
             delay: toOpen ? index * 0.012 : 0,
             overwrite: 'auto',
           })
@@ -109,7 +108,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
         if (index === -1 || !open || folder === dragging) {
           return;
         }
-        gsap.to(folder, { y: fanned[index].y - (up ? 16 : 0), duration: 0.16, ease: EASE.out, overwrite: 'auto' });
+        gsap.to(folder, { y: fanned[index].y - (up ? 16 : 0), ...tween('hover'), overwrite: 'auto' });
       };
 
       const onEnter = () => fan(true);
@@ -171,7 +170,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
                 navigate(`${filesHref}/${id}`);
                 return;
               }
-              gsap.to(folder, { ...home, duration: 0.3, ease: EASE.out, overwrite: 'auto', onComplete: () => gsap.set(folder, { zIndex: '' }) });
+              gsap.to(folder, { ...home, ...tween('paper.lift'), overwrite: 'auto', onComplete: () => gsap.set(folder, { zIndex: '' }) });
             },
           })
         : [];

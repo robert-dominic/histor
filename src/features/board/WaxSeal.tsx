@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import SealMark from '@/features/board/SealMark';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 
 gsap.registerPlugin(useGSAP);
@@ -29,7 +29,7 @@ export default function WaxSeal({ to }: WaxSealProps) {
         gsap.fromTo(
           '[data-seal="mark"]',
           reduced ? { opacity: 0 } : { opacity: 0, scale: 1.4, rotation: -8 },
-          { opacity: 1, scale: 1, rotation: 0, duration: reduced ? 0.3 : 0.4, ease: EASE.out }
+          { opacity: 1, scale: 1, rotation: 0, ...tween('paper.lift') }
         );
       });
     },
