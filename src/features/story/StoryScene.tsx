@@ -46,6 +46,8 @@ export default function StoryScene({ section, index, grade, beats, loadImage }: 
       data-story="chapter"
       data-chapter={section.id}
       data-index={index}
+      // Only the scene on screen takes clicks (effects.css); Story.tsx moves this as the story plays.
+      data-active={String(index === 0)}
       aria-labelledby={headingId}
       className="absolute inset-0 overflow-hidden"
       // Later scenes start hidden; the timeline dissolves each in over the one before.

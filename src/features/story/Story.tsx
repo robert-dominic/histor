@@ -15,6 +15,7 @@ import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import CentralQuestion from '@/features/story/CentralQuestion';
 import PlayControl from '@/features/story/PlayControl';
+import { activeSceneIndex } from '@/features/story/active-scene';
 import StoryChapter from '@/features/story/StoryChapter';
 import StoryScene from '@/features/story/StoryScene';
 import StoryStart from '@/features/story/StoryStart';
@@ -393,6 +394,19 @@ export default function Story({ story, centralQuestion, references, sources, voy
             });
           };
 
+          // Only the scene on screen takes clicks: the scenes lie on top of each other in one stage, and an invisible
+          // one above the visible one would swallow a tap meant for a portal name.
+          const startsOf = spans.map(span => span.start);
+          let activeScene = 0;
+          const syncActive = (time: number) => {
+            const next = activeSceneIndex(startsOf, time);
+            if (next !== activeScene) {
+              scenes[activeScene].dataset.active = 'false';
+              scenes[next].dataset.active = 'true';
+              activeScene = next;
+            }
+          };
+
           const mixAt = (time: number) => {
             let mix = steps[0]?.mix ?? 0;
             spans.forEach((span, index) => {
@@ -418,6 +432,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
               direction = self.direction < 0 ? 'backward' : 'forward';
               writeSky(mixAt(timeline.time()));
               syncWillChange(timeline.time());
+              syncActive(timeline.time());
             },
             onToggle: self => {
               if (chartFrame !== null) {
@@ -427,6 +442,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           });
 
           syncWillChange(0);
+          syncActive(0);
 
           // ---- Coming out of the legend's night, the start of the story eases into the first scene's sky.
           ScrollTrigger.create({
@@ -458,6 +474,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           });
           writeSky(1);
           cleanups.push(() => {
+            scenes.forEach((scene, index) => (scene.dataset.active = String(index === 0)));
             images.forEach(image => image !== null && (image.style.willChange = ''));
             splits.forEach(split => split.revert());
             if (chartFrame !== null) {

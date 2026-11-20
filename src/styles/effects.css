@@ -251,3 +251,10 @@
     0 4px 0 -2px color-mix(in srgb, var(--color-paper), black 28%),
     0 24px 60px color-mix(in srgb, black 70%, transparent);
 }
+
+/* ---- The story's scenes ----
+   The scenes lie on top of each other in one stage. Only the scene on screen takes clicks, so an invisible scene
+   above it cannot swallow a tap on a portal name (Story.tsx writes data-active). */
+[data-story="chapter"][data-active="false"] {
+  pointer-events: none;
+}

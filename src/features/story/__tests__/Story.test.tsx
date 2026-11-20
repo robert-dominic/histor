@@ -338,6 +338,25 @@ describe('Story: play the story', () => {
       setLenis(null);
     }
   });
+  test('only the scene on screen takes clicks: the first is active, the others are not', () => {
+    const { container } = renderStory();
+    const scenes = [...container.querySelectorAll<HTMLElement>('[data-story="chapter"]')];
+    expect(scenes.map(scene => scene.dataset.active)).toEqual(scenes.map((_, index) => String(index === 0)));
+  });
+  test('a tap on a portal name in the active scene opens its card and pauses playback', () => {
+    const { container } = renderStory();
+    const first = container.querySelector('[data-story="chapter"][data-active="true"]') as HTMLElement;
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    act(() => {
+      fireEvent.click(first.querySelector('[data-story="beats"] [data-portal-trigger]') as HTMLElement);
+    });
+    expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+  });
   test('opening a portal pauses playback', () => {
     const { container } = renderStory(testCase);
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
