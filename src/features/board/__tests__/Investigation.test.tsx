@@ -419,7 +419,10 @@ describe('An opened file', () => {
     expect(tab().querySelector('[data-board="slip"]')).not.toBeNull();
 
     // The next action, anywhere else on the desk, puts it away.
+    // A press alone does not put it away (that would shift the pile under a finger); the click does.
     fireEvent.pointerDown(document.querySelector('[data-board="progress"]')!);
+    expect(tab().querySelector('[data-board="slip"]')).not.toBeNull();
+    fireEvent.click(document.querySelector('[data-board="progress"]')!);
     expect(tab().querySelector('[data-board="slip"]')).toBeNull();
 
     // Tapping the tab shows it again; tapping it once more hides it.

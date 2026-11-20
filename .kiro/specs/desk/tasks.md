@@ -123,7 +123,7 @@ Rules for every task:
   - Reduced motion: the whole desk renders with no flip, no lamp movement, no drift and no Draggable (12.6)
   - _Requirements: 10.1, 11.3, 11.4, 12.6_
 
-- [ ] 15. Final checkpoint
+- [x] 15. Final checkpoint
   - Run `npm test`, `npm run build` and `npm run lint`
   - Run `git diff --stat <commit before task 1> -- src/types/case.ts src/lib/case-report.ts src/cases/ src/app/InvestigationProvider.tsx` and confirm no changes
   - Chrome at 375px and 1440px, against the preview build: a full investigation to the report by drag, and one by buttons; check the lamp, the fan, the flip, the three reveals, the slip, the seal, contrast on lit text, no overflow, no console errors

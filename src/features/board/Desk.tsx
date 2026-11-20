@@ -86,7 +86,9 @@ function DeskScreen() {
     fresh: justPinned === null ? null : { evidenceId: justPinned, token: location.key },
   };
 
-  // An open slip stays until the user's next action anywhere else on the desk.
+  // An open slip stays until the user's next action anywhere else on the desk. A press is not that action yet:
+  // putting the slip away on pointerdown shifts the pile under the finger before the tap completes (seen on a
+  // phone), so the tap is lost. The click is the action; a key press counts at once.
   useEffect(() => {
     if (openSlip === null || fileOpen) {
       return;
@@ -99,10 +101,10 @@ function DeskScreen() {
       }
       setTapped({ key, id: null });
     };
-    window.addEventListener('pointerdown', handleAction, true);
+    window.addEventListener('click', handleAction, true);
     window.addEventListener('keydown', handleAction, true);
     return () => {
-      window.removeEventListener('pointerdown', handleAction, true);
+      window.removeEventListener('click', handleAction, true);
       window.removeEventListener('keydown', handleAction, true);
     };
   }, [openSlip, fileOpen, location.key]);
