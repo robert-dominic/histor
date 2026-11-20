@@ -10,6 +10,7 @@ import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import PortalText from '@/features/portals/PortalText';
 import type { ImageGrade } from '@/lib/day-night';
+import { imageSources } from '@/lib/image-sources';
 import type { StorySection } from '@/types/case';
 
 interface StorySceneProps {
@@ -38,6 +39,7 @@ function beatSizeClass(beat: string): string {
 export default function StoryScene({ section, index, grade, beats, loadImage }: StorySceneProps) {
   const headingId = `story-${section.id}`;
   const { image, rollCall } = section;
+  const sources = image === undefined ? null : imageSources(image.src);
 
   return (
     <article
@@ -54,6 +56,8 @@ export default function StoryScene({ section, index, grade, beats, loadImage }: 
           <img
             data-story="image"
             src={loadImage ? image.src : undefined}
+            srcSet={loadImage ? sources?.srcSet : undefined}
+            sizes={sources?.srcSet === undefined ? undefined : sources.sizes}
             alt={image.alt}
             decoding="async"
             draggable={false}

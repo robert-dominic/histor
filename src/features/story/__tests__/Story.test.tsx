@@ -420,3 +420,15 @@ describe('Story: will-change only while a scene moves', () => {
     expect(images.slice(1).every(image => image.style.willChange === '')).toBe(true);
   });
 });
+
+describe('Story: sized images', () => {
+  test('every scene image has a srcset with sizes', () => {
+    const { container } = renderStory();
+    const images = [...container.querySelectorAll<HTMLImageElement>('[data-story="image"]')];
+    // Images load a chapter ahead of the reader, so only the first one is loaded before any scrolling.
+    expect(images.length).toBe(maryCeleste.story.length);
+    expect(images[0].getAttribute('srcset')).toMatch(/ 828w, .+ \d+w$/);
+    expect(images[0].getAttribute('sizes')).toBe('100vw');
+    expect(images[1].getAttribute('srcset')).toBeNull();
+  });
+});

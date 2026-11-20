@@ -51,6 +51,7 @@ Rules for every task:
 
 - [ ] 6. Sized story images
   - From the originals in `~/histor-media/`, with the local Pillow (or ffmpeg for the `s-aboard` still), make WebP versions at about 828w and the largest the original allows up to 1920w, each under 300 KB; nothing downloaded
+  - New files only, in the case's `assets/images/` folder, named by width (`s-voyage-828.webp`); no case data or type changes. `src/lib/image-sources.ts` finds them from the image's `src` (a Vite glob), so the case data stays as it is. A width that cannot fit under 300 KB at good quality is skipped for the next file down (`s-inquiry` uses 1600w)
   - Scenes (and the opening scene later) use `srcset` and `sizes`; the credits and labels are unchanged
   - Tests: every scene image has a `srcset` with both widths
   - _Requirements: 3.4_
@@ -187,7 +188,7 @@ Rules for every task:
 
 - [ ] 28. Final checkpoint
   - Run `npm test`, `npm run build` and `npm run lint`
-  - Run `git diff --stat <commit before task 1> -- src/types/case.ts src/lib/case-report.ts src/cases/` and confirm no changes; confirm `InvestigationProvider.tsx` changed only for unpin
+  - Run `git diff --stat <commit before task 1> -- src/types/case.ts src/lib/case-report.ts src/cases/` and confirm no changes other than the new sized image files from task 6 (no `.ts` file under `src/cases/` changed); confirm `InvestigationProvider.tsx` changed only for unpin
   - The one browser run, against `npm run preview`, with the Chrome flags of Requirement 21.4 (plus the pointer `--blink-settings` for the desktop run), DOM measurements first, at most 6 screenshots:
     - 1440×900 (and 1366×768 with DOM measurements only, no screenshots: the desk's scroll height, the Board and Floor in view, no covered label): the story opening and the play card; the text column scrolling down and back; Portal_Names opening their cards; the desk with no page scroll; a full investigation by drag only (floor → theory, board → another theory, board → floor, board → tray); the writing reveal and skipping it; a long document scrolling inside the paper; the Pin menu not moving the file; no console errors
     - 375×667: the phone gate

@@ -8,6 +8,7 @@ import CreditInfo from '@/components/CreditInfo';
 import PortalText from '@/features/portals/PortalText';
 import VoyageChart from '@/features/story/VoyageChart';
 import type { DayNightStep, ImageGrade } from '@/lib/day-night';
+import { imageSources } from '@/lib/image-sources';
 import type { ChartRoute } from '@/lib/voyage-chart';
 import type { StorySection } from '@/types/case';
 
@@ -38,6 +39,8 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
             <img
               data-story="image"
               src={image.src}
+              srcSet={imageSources(image.src).srcSet}
+              sizes={imageSources(image.src).srcSet === undefined ? undefined : imageSources(image.src).sizes}
               alt={image.alt}
               loading={index === 0 ? 'eager' : 'lazy'}
               decoding="async"
