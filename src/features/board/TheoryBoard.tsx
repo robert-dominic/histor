@@ -5,7 +5,7 @@
 // Where every file hangs comes from deskLayout(); nothing here is stored.
 
 import { useId, useState } from 'react';
-import HangingTab from '@/features/board/HangingTab';
+import HangingTab, { type SlipReading } from '@/features/board/HangingTab';
 import TheoryCard from '@/features/board/TheoryCard';
 import TheoryNote from '@/features/board/TheoryNote';
 import Threads from '@/features/board/Threads';
@@ -13,16 +13,31 @@ import type { DeskLayout } from '@/lib/desk';
 import { SMALL_PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Case } from '@/types/case';
 
+/** The historians' slips on the desk's tabs: what each says, which one is open, and how to open another. */
+export interface DeskSlips {
+  readings: Map<string, SlipReading>;
+  open: string | null;
+  onToggle: (evidenceId: string) => void;
+  /** The thread of the file just pinned draws in. `token` changes with every pin, so a re-pin draws again. */
+  fresh: { evidenceId: string; token: string } | null;
+}
+
 interface TheoryBoardProps {
   caseData: Case;
   layout: DeskLayout;
   /** e.g. "/case/mary-celeste/files". */
   filesHref: string;
+  slips: DeskSlips;
 }
 
-export default function TheoryBoard({ caseData, layout, filesHref }: TheoryBoardProps) {
+export default function TheoryBoard({ caseData, layout, filesHref, slips }: TheoryBoardProps) {
   const isSmallPhone = useMediaQuery(SMALL_PHONE_QUERY);
-  const [shown, setShown] = useState<string | null>(null);
+  // Small phones: the theory whose claim and files are shown. Until the user taps one, the theory of an open
+  // slip is shown, so the slip of a file just pinned can be seen.
+  const [chosen, setChosen] = useState<string | null | undefined>(undefined);
+  const slipPlace = layout.folders.find(folder => folder.evidence.id === slips.open)?.place;
+  const shown = chosen !== undefined ? chosen : slipPlace?.kind === 'board' ? slipPlace.theoryId : null;
+  const setShown = (update: (current: string | null) => string | null) => setChosen(update(shown));
   const claimId = useId();
   const numberOf = new Map(layout.folders.map(folder => [folder.evidence.id, folder.number]));
   const threads = caseData.theories.flatMap(theory =>
@@ -39,6 +54,9 @@ export default function TheoryBoard({ caseData, layout, filesHref }: TheoryBoard
             evidence={evidence}
             number={numberOf.get(evidence.id) ?? ''}
             href={`${filesHref}/${evidence.id}`}
+            reading={slips.readings.get(evidence.id)}
+            slipOpen={slips.open === evidence.id}
+            onToggleSlip={slips.onToggle}
           />
         ))}
       </ul>
@@ -91,7 +109,7 @@ export default function TheoryBoard({ caseData, layout, filesHref }: TheoryBoard
         Theories
       </h3>
       {/* The threads run behind the paper, so they show in the gaps between a note and its files. */}
-      <Threads threads={threads} />
+      <Threads threads={threads} fresh={slips.fresh} />
       <div className="relative flex snap-x gap-5 overflow-x-auto pb-2 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0">
         {caseData.theories.map(theory => (
           <div key={theory.id} data-board="column" className="w-[15rem] shrink-0 snap-start lg:w-auto">

@@ -136,9 +136,9 @@ Sequence on open (full motion):
 3. The cover (`transform-origin: left center`, parent `perspective: 1600px`, `backface-visibility: hidden` on both faces) rotates `rotateY 0 → -165deg` over 0.6s. Emits `flip`.
 4. `OPEN_EVIDENCE` is dispatched when the cover opens (5.7). Emits `folder-open`.
 5. The document shows as plain paper; after 0.6s the stamp presses in (motion.md stamp rule: `scale 1.15 → 1`, clip-path reveal) and the status treatment plays (Requirement 6). Emits `stamp`.
-6. The question appears; after a short beat the cover closes again (reverse flip) and the folder is In_Hand (7.1), with the Pin_Menu and, on Desktop, the drag affordance.
+6. The question "Which theory does this point to?" and the Pin_Menu sit below the document, on the folder's manila back. The file stays open, so the user can read it, until the user pins it (7.1, D9). On Desktop the manila edge around the document is the drag handle (7.2).
 
-A file that was opened before skips steps 2–5: it opens straight to its stamped state, In_Hand, with its choice and slip shown (7.8).
+A file that was opened before skips steps 2–5: it opens straight to its stamped state, open, with its choice and slip shown (7.8).
 
 **Inner cover (5.3):** typed label `HISTOR · CASE FILE {number} · {TITLE IN CAPITALS}`, built from the case data (`fileNumber`, `evidence.title`); an index card listing `evidence.sources` by title, as links where there is a URL.
 
@@ -156,15 +156,15 @@ A file that was opened before skips steps 2–5: it opens straight to its stampe
 
 ### Pinning (`PinMenu.tsx`, drag in `OpenFile.tsx`)
 
-- `pin(target)`: captures `Flip.getState` of the in-hand folder, dispatches `PIN_EVIDENCE`, emits `pin`, navigates to `/files`. The desk re-renders the folder in its new place (`deskLayout`), and `Flip.from` flies it there; the thread to it draws in; its Historians_Slip opens (7.3, 7.6).
-- **Pin_Menu (7.5, 11.4):** a "Pin to…" button with `aria-haspopup="menu"`; the menu is a `role="menu"` list of six `role="menuitemradio"` items (the current pin checked). Arrow keys move, Home/End jump, Enter or Space chooses, Escape closes the menu and returns focus to the button. Always rendered, every screen size.
-- **Drag (7.2–7.4):** on Desktop with a fine pointer and full motion, `Draggable.create(folder, { type: 'x,y', onDrag, onRelease })`. `onDrag` tests every `[data-drop-target]` with `this.hitTest(el, '40%')` and sets `data-drop-hot` on the hit one (CSS brightens it and the lamp's pool widens over it). `onRelease` pins to the hot target, or `"none"` on the tray, or tweens the folder back to centre.
+- `pin(target)`, from the Pin_Menu: on Desktop with full motion, the cover closes first (reverse flip, `rotateY -165deg → 0`, 0.35s, emits `flip` with `direction: 'close'`), so the folder is In_Hand; then it records the folder's Flip state, dispatches `PIN_EVIDENCE`, emits `pin`, and navigates to `/files`. The desk re-renders the folder in its new place (`deskLayout`), and `Flip.from` flies it there; the thread to it draws in; its Historians_Slip opens (7.1, 7.3, 7.6). On a Phone, or with reduced motion, there is no reverse flip: the same dispatch and navigation, and the folder simply appears in its place.
+- **Pin_Menu (7.5, 11.4):** a "Pin to…" button with `aria-haspopup="menu"`, below the document; the menu is a `role="menu"` list of six `role="menuitemradio"` items (the current pin checked). Arrow keys move, Home/End jump, Enter or Space chooses, Escape closes the menu and returns focus to the button. Always rendered, every screen size.
+- **Drag (7.2–7.4, D9):** on Desktop with a fine pointer and full motion, `Draggable.create(folder, { type: 'x,y', trigger: '[data-file="grip"]', onPress, onDrag, onRelease })`. The trigger is the manila edge around the document (the folder's back), so the paper's text can still be selected and its links used. As the drag starts the cover closes in the hand (the reverse flip) and the folder shrinks to a held size (`scale 0.42`), and the backdrop fades so the desk shows. `onDrag` tests every `[data-drop-target]` with `this.hitTest(el, '40%')` and sets `data-drop-hot` on the hit one (CSS brightens it). `onRelease` pins to the hot target, or `"none"` on the tray; with no target, the folder tweens back to the centre, opens again, and the backdrop returns.
 - **Historians_Slip:** reads `buildCaseReport(caseData, state).pins.find(p => p.evidenceId === id)`; shows the reading label (from `READING_LABEL`) and `note`. On the open file it is clipped to the folder (7.7); on the board it hangs from the latest tab.
 
 ### Teaching (`DeskHints.tsx`, `DeskGuide.tsx`, `src/lib/desk-hints.ts`)
 
 - `desk-hints.ts`: `hasSeenDeskHints(caseId)` and `markDeskHintsSeen(caseId)`, key `histor:desk-hints:<caseId>`, each in try/catch (8.2), like `intro-seen.ts`.
-- Hint 1 shows next to the Pile when the desk first loads; hint 2 next to the In_Hand folder the first time one is in hand; hint 3 next to the progress line after the first pin.
+- Hint 1 shows next to the Pile when the desk first loads; hint 2 next to the Pin_Menu, below the document, the first time a file's question appears (D9); hint 3 next to the progress line after the first pin.
 - Hint 2's wording (D5): "Drag it…" when the device has a fine pointer (`(hover: hover) and (pointer: fine)`) and the last input was the pointer; "Pin it…" on touch, or after the last input was a key press. The last input is tracked with `pointerdown` / `keydown` listeners in `DeskHints`. Each hint is a small typed label with `role="status"`. The hints are marked seen once hint 3 has shown (8.3). If storage fails, they show once per page load.
 - `DeskGuide`: the **?** button opens a dialog panel listing the same three steps; focus trapped, Escape closes (8.4).
 
@@ -240,4 +240,4 @@ Vitest 5.1.0 and fast-check 4.10.2; Context7 checked again in each task that wri
 
 ## Decisions
 
-The review answered every open question; see D0–D8 in `requirements.md`. The design above follows them.
+The review answered every open question; see D0–D9 in `requirements.md`. The design above follows them. D9 was decided at task 10: the file stays open until it is pinned.

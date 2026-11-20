@@ -3,8 +3,8 @@
 // Desktop draws a thread from each pinned folder to its theory; phones swipe the theories and list the folders.
 // Everything shown comes from the case data and the investigation.
 
-import { useEffect, useMemo, useRef, type MouseEvent } from 'react';
-import { Link, Outlet, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { Link, Outlet, useLocation, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
@@ -12,9 +12,12 @@ import DeskSurface from '@/features/board/DeskSurface';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
-import TheoryBoard from '@/features/board/TheoryBoard';
+import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
+import type { SlipReading } from '@/features/board/HangingTab';
 import { Flip, clearFlight, flightFor, recordFlight } from '@/features/board/flight';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { READING_LABEL } from '@/lib/case-files';
+import { buildCaseReport } from '@/lib/case-report';
 import { deskLayout } from '@/lib/desk';
 
 gsap.registerPlugin(useGSAP);
@@ -29,6 +32,15 @@ function progressLine(opened: number, total: number, threshold: number): string 
   return `${count} You can close the case.`;
 }
 
+/** What the open file passes back to the desk when it pins: which file was just pinned. */
+export interface PinnedState {
+  pinned: string;
+}
+
+function pinnedFrom(state: unknown): string | null {
+  const pinned = (state as Partial<PinnedState> | null)?.pinned;
+  return typeof pinned === 'string' ? pinned : null;
+}
 
 export default function Desk() {
   const { state, caseData } = useInvestigation();
@@ -40,6 +52,48 @@ export default function Desk() {
   // Where every file lies, worked out from the investigation, never stored.
   const layout = useMemo(() => deskLayout(caseData, state), [caseData, state]);
   const canClose = layout.canClose;
+
+  // The historians' slips. Their words come from the case report, so the desk and the report always agree.
+  const readings = useMemo(() => {
+    const map = new Map<string, SlipReading>();
+    for (const pin of buildCaseReport(caseData, state).pins) {
+      map.set(pin.evidenceId, { label: READING_LABEL[pin.reading], reading: pin.reading, note: pin.note });
+    }
+    return map;
+  }, [caseData, state]);
+  // Which slip is open: the one the user tapped on this visit to the desk, or else the file just pinned (D2).
+  // Kept per visit (the location's key), so coming back from a pin opens that file's slip.
+  const location = useLocation();
+  const justPinned = fileOpen ? null : pinnedFrom(location.state);
+  const [tapped, setTapped] = useState<{ key: string; id: string | null } | null>(null);
+  const openSlip = tapped?.key === location.key ? tapped.id : justPinned;
+  const slips: DeskSlips = {
+    readings,
+    open: openSlip,
+    onToggle: id => setTapped({ key: location.key, id: openSlip === id ? null : id }),
+    fresh: justPinned === null ? null : { evidenceId: justPinned, token: location.key },
+  };
+
+  // An open slip stays until the user's next action anywhere else on the desk.
+  useEffect(() => {
+    if (openSlip === null || fileOpen) {
+      return;
+    }
+    const key = location.key;
+    const handleAction = (event: Event) => {
+      const tab = (event.target as Element | null)?.closest?.('[data-board="tab"]');
+      if (tab instanceof HTMLElement && tab.dataset.evidenceId === openSlip) {
+        return;
+      }
+      setTapped({ key, id: null });
+    };
+    window.addEventListener('pointerdown', handleAction, true);
+    window.addEventListener('keydown', handleAction, true);
+    return () => {
+      window.removeEventListener('pointerdown', handleAction, true);
+      window.removeEventListener('keydown', handleAction, true);
+    };
+  }, [openSlip, fileOpen, location.key]);
 
   useGSAP(
     () => {
@@ -87,7 +141,7 @@ export default function Desk() {
       if (home === null) {
         return;
       }
-      home.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
+      home.querySelector<HTMLElement>('[data-focus-home]')?.focus({ preventScroll: true });
       if (flight.state !== null) {
         Flip.from(flight.state, { targets: home, scale: true, duration: 0.35, ease: EASE.out, zIndex: 30 });
       }
@@ -132,7 +186,7 @@ export default function Desk() {
         </header>
 
         <div className="relative mt-6 lg:mt-10">
-          <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} />
+          <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} slips={slips} />
 
           {/* The lower desk: the pile on the left with the progress line, the tray on the right. */}
           <div className="relative mt-6 grid gap-6 lg:mt-12 lg:grid-cols-[1fr_17rem] lg:items-start">
@@ -144,7 +198,7 @@ export default function Desk() {
               </p>
               <Pile layout={layout} filesHref={`${base}/files`} />
             </div>
-            <SetAsideTray layout={layout} filesHref={`${base}/files`} />
+            <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} />
           </div>
         </div>
       </div>

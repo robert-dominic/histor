@@ -3,14 +3,16 @@
 // folder in hand (dropping it here means "None of them").
 
 import HangingTab from '@/features/board/HangingTab';
+import type { DeskSlips } from '@/features/board/TheoryBoard';
 import type { DeskLayout } from '@/lib/desk';
 
 interface SetAsideTrayProps {
   layout: DeskLayout;
   filesHref: string;
+  slips: DeskSlips;
 }
 
-export default function SetAsideTray({ layout, filesHref }: SetAsideTrayProps) {
+export default function SetAsideTray({ layout, filesHref, slips }: SetAsideTrayProps) {
   const numberOf = new Map(layout.folders.map(folder => [folder.evidence.id, folder.number]));
   return (
     <section
@@ -32,6 +34,9 @@ export default function SetAsideTray({ layout, filesHref }: SetAsideTrayProps) {
               evidence={evidence}
               number={numberOf.get(evidence.id) ?? ''}
               href={`${filesHref}/${evidence.id}`}
+              reading={slips.readings.get(evidence.id)}
+              slipOpen={slips.open === evidence.id}
+              onToggleSlip={slips.onToggle}
             />
           ))}
         </ul>

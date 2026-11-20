@@ -15,8 +15,10 @@ import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
 import FileDocument from '@/features/board/FileDocument';
 import InnerCover from '@/features/board/InnerCover';
-import { Flip, flightFor, recordFlight } from '@/features/board/flight';
-import { NO_THEORY, READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
+import PinMenu from '@/features/board/PinMenu';
+import type { PinnedState } from '@/features/board/Desk';
+import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
+import { READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { coverLabel } from '@/lib/desk';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
@@ -35,6 +37,7 @@ const TIMING = {
   enter: 0.25,
   stampBeat: 0.3,
   stamp: 0.18,
+  close: 0.35,
   seal: 0.3,
   sheet: 0.45,
   slip: 0.5,
@@ -52,8 +55,8 @@ const DRIFT = {
 /** How far the cover swings open: almost flat, still lifted a little off the desk. */
 const COVER_OPEN = -165;
 
-const BUTTON_CLASSES =
-  'min-h-11 rounded-sm border px-4 py-2 text-left font-voice text-sm leading-snug transition-[scale,background-color,color,border-color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97]';
+/** What Tab can reach inside the open file. Menu items are reached with the arrow keys instead. */
+const TAB_STOPS = 'a[href]:not([tabindex="-1"]), button:not(:disabled):not([tabindex="-1"])';
 
 const LINK_CLASSES =
   'inline-flex min-h-11 items-center font-voice text-sm tracking-[0.1em] uppercase underline-offset-4 transition-[color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass';
@@ -69,7 +72,8 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const folderRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const revealRef = useRef<HTMLDivElement>(null);
+  /** Set while a pin is being carried out (the cover closing), so a second choice does nothing. */
+  const [pinning, setPinning] = useState(false);
   /** Set once the file has been marked opened, so a re-run of the animation never says so twice. */
   const markedRef = useRef(false);
   // Only the value when the file is first shown counts: a file opened before is shown stamped at once.
@@ -263,25 +267,6 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     { scope: rootRef }
   );
 
-  // The reveal fades in each time the answer changes.
-  useGSAP(
-    () => {
-      if (target === undefined || typeof window.matchMedia !== 'function') {
-        return;
-      }
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_QUERIES, context => {
-        const reduced = context.conditions?.reduced === true;
-        gsap.fromTo(
-          revealRef.current,
-          reduced ? { opacity: 0 } : { opacity: 0, y: 6 },
-          { opacity: 1, y: 0, duration: 0.25, ease: EASE.out }
-        );
-      });
-    },
-    { scope: rootRef, dependencies: [target], revertOnUpdate: true }
-  );
-
   /** Tab stays inside the open file. */
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     const root = event.currentTarget;
@@ -289,7 +274,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       return;
     }
     // Sorted into document order by hand: not every DOM returns a selector list's matches that way.
-    const stops = [...root.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)')].sort((a, b) =>
+    const stops = [...root.querySelectorAll<HTMLElement>(TAB_STOPS)].filter(stop => !stop.closest('[hidden]')).sort((a, b) =>
       a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
     );
     if (stops.length === 0) {
@@ -307,11 +292,31 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     }
   };
 
-  const pin = (choice: PinTarget) => dispatch({ type: 'PIN_EVIDENCE', evidenceId: evidence.id, target: choice });
-  const choices: { id: PinTarget; label: string }[] = [
-    ...caseData.theories.map(theory => ({ id: theory.id, label: theory.title })),
-    { id: 'none', label: NO_THEORY },
-  ];
+  /**
+   * Pins the file. On a desktop with full motion the cover closes first (the reverse flip), so the folder is in the
+   * hand; then the desk flies it to its place under the note or into the tray, draws its thread and opens its
+   * historians' slip. Elsewhere it goes straight back to the desk, the folder already in its new place.
+   */
+  const pin = (choice: PinTarget) => {
+    if (pinning) {
+      return;
+    }
+    const finish = () => {
+      recordFlight(evidence.id, 'out', folderRef.current);
+      dispatch({ type: 'PIN_EVIDENCE', evidenceId: evidence.id, target: choice });
+      emitStoryEvent({ type: 'pin', evidence: evidence.id, target: choice });
+      const pinned: PinnedState = { pinned: evidence.id };
+      navigate(board, { state: pinned });
+    };
+    const cover = rootRef.current?.querySelector('[data-file="cover"]');
+    if (!canFly() || cover == null) {
+      finish();
+      return;
+    }
+    setPinning(true);
+    emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'close' });
+    gsap.to(cover, { rotationY: 0, duration: TIMING.close, ease: EASE.inOut, overwrite: true, onComplete: finish });
+  };
 
   return (
     <div
@@ -365,40 +370,27 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
                 <h3 id="pin-question" className="font-voice text-[1.0625rem] text-ink">
                   Which theory does this point to?
                 </h3>
-                <div role="group" aria-labelledby="pin-question" className="mt-3 flex flex-wrap gap-2">
-                  {choices.map(choice => {
-                    const chosen = target === choice.id;
-                    return (
-                      <button
-                        key={choice.id}
-                        type="button"
-                        aria-pressed={chosen}
-                        onClick={() => pin(choice.id)}
-                        className={`${BUTTON_CLASSES} ${
-                          chosen
-                            ? 'border-ink bg-ink text-paper'
-                            : 'border-ink/30 text-ink hover:border-ink hover:bg-ink/5'
-                        }`}
-                      >
-                        {choice.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div aria-live="polite">
-                  {pinReading !== undefined && (
-                    <div ref={revealRef} data-file="reveal" className="mt-5 rounded-sm bg-ink/[0.06] px-4 py-3.5">
-                      <p className="font-voice text-[0.9375rem] text-ink">
-                        <span data-file="reading" data-reading={pinReading.reading}>
-                          {READING_LABEL[pinReading.reading]}
-                        </span>
-                        <span className="text-ink/75"> · you chose {pinTargetTitle(caseData, pinReading.target)}</span>
-                      </p>
-                      <p className="mt-1.5 font-record text-[1.0625rem] leading-normal">{pinReading.note}</p>
-                    </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <PinMenu theories={caseData.theories} current={target} onPin={pin} busy={pinning} />
+                  {target !== undefined && (
+                    <p data-file="pinned-to" className="font-voice text-sm text-ink/80">
+                      Pinned to {pinTargetTitle(caseData, target)}
+                    </p>
                   )}
                 </div>
+
+                {/* A file pinned before: the historians' slip stays clipped to it. */}
+                {pinReading !== undefined && (
+                  <div data-file="reveal" className="desk-slip mt-5 max-w-xl -rotate-[0.6deg] rounded-[2px] px-4 py-3.5 shadow-md shadow-black/30">
+                    <p className="font-voice text-[0.9375rem] text-ink">
+                      <span data-file="reading" data-reading={pinReading.reading}>
+                        {READING_LABEL[pinReading.reading]}
+                      </span>
+                      <span className="text-ink/75"> · you chose {pinTargetTitle(caseData, pinReading.target)}</span>
+                    </p>
+                    <p className="mt-1.5 font-record text-[1.0625rem] leading-normal">{pinReading.note}</p>
+                  </div>
+                )}
               </section>
 
               <nav aria-label="Case files" className="mx-2.5 mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 sm:mx-5">

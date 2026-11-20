@@ -5,10 +5,14 @@
 // The paths are measured from the page and written straight to the SVG, never through React state.
 
 import { useLayoutEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { EASE, MOTION_QUERIES } from '@/lib/motion';
 
 interface ThreadsProps {
   /** One thread per pinned file: evidence id → theory id. */
   threads: { evidenceId: string; theoryId: string }[];
+  /** The file just pinned: its thread draws in from the note to the tab, once per `token`. */
+  fresh?: { evidenceId: string; token: string } | null;
 }
 
 /** The centre of an element, relative to the board. */
@@ -22,8 +26,10 @@ function centreOf(element: Element, origin: DOMRect) {
  * It finds it as its own parent, not through a ref, because a parent's ref is not set yet when this
  * component's layout effect first runs.
  */
-export default function Threads({ threads }: ThreadsProps) {
+export default function Threads({ threads, fresh = null }: ThreadsProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  /** The last pin whose thread was drawn in: the board re-renders often, and it draws in only once. */
+  const drawnRef = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     const svg = svgRef.current;
@@ -54,6 +60,26 @@ export default function Threads({ threads }: ThreadsProps) {
     };
 
     draw();
+
+    // The thread of the file just pinned draws in from the note (stroke uncovered), or fades in with reduced motion.
+    const freshPath =
+      fresh !== null && drawnRef.current !== fresh.token
+        ? svg.querySelector<SVGPathElement>(`path[data-evidence-id="${fresh.evidenceId}"]`)
+        : null;
+    if (fresh !== null && freshPath !== null && freshPath.hasAttribute('d') && typeof window.matchMedia === 'function') {
+      drawnRef.current = fresh.token;
+      const reduced = window.matchMedia(MOTION_QUERIES.reduced).matches;
+      if (reduced) {
+        gsap.fromTo(freshPath, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EASE.out, clearProps: 'opacity' });
+      } else {
+        gsap.fromTo(
+          freshPath,
+          { attr: { 'stroke-dashoffset': 1 } },
+          { attr: { 'stroke-dashoffset': 0 }, duration: 0.6, delay: 0.25, ease: EASE.inOut }
+        );
+      }
+    }
+
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(draw) : null;
     observer?.observe(board);
     window.addEventListener('resize', draw);
@@ -62,7 +88,7 @@ export default function Threads({ threads }: ThreadsProps) {
       observer?.disconnect();
       window.removeEventListener('resize', draw);
     };
-  }, [threads]);
+  }, [threads, fresh]);
 
   return (
     <svg
@@ -81,6 +107,8 @@ export default function Threads({ threads }: ThreadsProps) {
           strokeOpacity="0.85"
           strokeWidth="1.25"
           strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray="1"
         />
       ))}
     </svg>

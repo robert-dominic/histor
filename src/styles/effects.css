@@ -235,3 +235,9 @@
     0 1.95rem;
   background-repeat: no-repeat;
 }
+
+/* The historians' slip: a small typed slip of thin paper, clipped beneath a pinned tab. */
+.desk-slip {
+  background-color: color-mix(in srgb, var(--color-paper), white 35%);
+  background-image: linear-gradient(to bottom, color-mix(in srgb, var(--color-ink) 6%, transparent), transparent 0.6rem);
+}

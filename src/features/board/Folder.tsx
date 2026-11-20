@@ -30,6 +30,7 @@ export default function Folder({ evidence, number, href, opened }: FolderProps) 
     >
       <Link
         to={href}
+        data-focus-home
         className="group/folder relative block pt-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-brass"
       >
         {/* The tab, with the file's number. */}

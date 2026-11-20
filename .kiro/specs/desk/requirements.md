@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This spec turns `docs/briefs/desk.md` into requirements. The brief is the source of truth: nothing here adds to it or drops from it, except Requirement 1, which fixes a flaky test before the work starts, and the review decisions listed under "Decisions" at the end (D1–D8), which settle what the brief left open and change one thing in it (D7).
+This spec turns `docs/briefs/desk.md` into requirements. The brief is the source of truth: nothing here adds to it or drops from it, except Requirement 1, which fixes a flaky test before the work starts, and the review decisions listed under "Decisions" at the end (D0–D9), which settle what the brief left open and change two things in it (D7, D9).
 
 The desk redesigns how the investigation *looks and feels*: a night desk under one lamp, a pile of sealed files, a dark board of theories, and files you physically open, read and pin.
 
@@ -28,7 +28,7 @@ Out of scope: sound (only events are emitted), and any change to the story, the 
 - **Thread**: the `rust-night` SVG line from a Theory_Note to a Hanging_Tab.
 - **Set_Aside_Tray**: the tray on the Desk for files pinned to "None of them".
 - **Open_File**: the opened case folder shown at `/case/:id/files/:evidenceId`.
-- **In_Hand**: an Open_File closed back into its cover after its reveal, waiting to be pinned.
+- **In_Hand**: an Open_File closed back into its cover and held: while it is being pinned from the Pin_Menu, or lifted by its manila edge and dragged on Desktop (D9).
 - **Pin_Menu**: the "Pin to…" button and the menu of the five theories plus "None of them".
 - **Historians_Slip**: the small typed slip that shows how historians read a pin (`agree`, `disagree` or `no-link`, plus `reading.note`), from `buildCaseReport`.
 - **Wax_Seal**: the rust-night seal with a brass-pressed "H" on the Desk at the close threshold.
@@ -125,8 +125,8 @@ Out of scope: sound (only events are emitted), and any change to the story, the 
 
 #### Acceptance Criteria
 
-1. AFTER the stamp, THE app SHALL ask in its voice, "Which theory does this point to?", and the Open_File SHALL close back into its cover (a reverse flip) and stay In_Hand in the centre.
-2. ON Desktop, THE user SHALL be able to drag the In_Hand Folder (GSAP Draggable) onto a Theory_Note. While dragging, valid drop targets SHALL brighten under the Lamp.
+1. AFTER the stamp, THE app SHALL ask in its voice, "Which theory does this point to?", below the document, with the Pin_Menu. THE Open_File SHALL stay open, so the user can read it, until the user pins it (D9). WHEN the user chooses from the Pin_Menu, THE Open_File SHALL close back into its cover (a reverse flip), then the Folder SHALL fly to its place under the note or into the Set_Aside_Tray. ON a Phone there is no cover: the Pin_Menu SHALL sit under the document, and choosing SHALL return to the Desk with the Folder in its new place.
+2. ON Desktop, THE user SHALL be able to grab the Open_File by its manila edge and drag it (GSAP Draggable): it SHALL close into its cover in the hand as it lifts (In_Hand), and SHALL be dropped onto a Theory_Note. While dragging, valid drop targets SHALL brighten under the Lamp.
 3. WHEN the Folder is dropped on a Theory_Note, THE Thread SHALL animate from the note to the Folder, the Folder SHALL snap beneath the note, and THE Desk SHALL dispatch `PIN_EVIDENCE` with that theory.
 4. WHEN the Folder is dropped on the Set_Aside_Tray, THE Desk SHALL dispatch `PIN_EVIDENCE` with `"none"`.
 5. THE Pin_Menu SHALL always be available, listing the 5 theories plus "None of them", and it SHALL be the only way to pin on a Phone or with a keyboard. Dragging SHALL be an enhancement, never required.
@@ -208,3 +208,4 @@ Out of scope: sound (only events are emitted), and any change to the story, the 
 - **D6. The disputed margin note:** the first full sentence of `dispute.challenge`. Never cut mid-sentence.
 - **D7. Change from the brief:** do not strike through the disputed claim; disputed is not false. Give the claim line a wavy `rust` underline and a hand-drawn "?" in the margin. (A drawn SVG mark, since design.md has no handwriting face in V1.)
 - **D8. Beyond the brief:** Task 1 makes every generated id unique (sources, evidence, story, theories), and runs the file 20 times.
+- **D9. Change from the brief and the first draft of 7.1, decided at task 10:** the Open_File stays open until the user pins it, because a cover that closes by itself a beat after the stamp leaves no time to read. "Which theory does this point to?" and the Pin_Menu sit below the document; choosing plays the reverse flip, then the Folder flies to its note or the tray. On Desktop, grabbing the folder by its manila edge starts a drag, and it closes in the hand as it lifts. Phones have no cover, so the Pin_Menu sits under the document.

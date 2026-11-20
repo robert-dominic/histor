@@ -87,8 +87,8 @@ Rules for every task:
   - Tests: the status shows after the stamp for each of the three statuses; the disputed claim is underlined, not struck through, and its margin note is a whole sentence; under reduced motion the end state is shown with no drift
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 11.3, 12.3_
 
-- [ ] 10. Pinning with the Pin_Menu, and the historians' slip
-  - After the stamp, "Which theory does this point to?"; the cover closes again (reverse flip) and the folder is in hand
+- [x] 10. Pinning with the Pin_Menu, and the historians' slip
+  - After the stamp, "Which theory does this point to?" and the Pin_Menu below the document; the file stays open until the user pins it (D9). Choosing plays the reverse flip (desktop, full motion), then the folder flies to its place
   - `PinMenu.tsx`: "Pin to…" with a `role="menu"` of the five theories plus "None of them"; arrows, Home/End, Enter/Space, Escape; always rendered
   - `pin(target)`: dispatch `PIN_EVIDENCE`, emit `pin`, return to `/files`; the folder flies to its place under the note or into the tray, the thread draws in, and the historians' slip (from `buildCaseReport`) opens under the theory on the folder just pinned until the next action; tapping a pinned folder shows it again (D2)
   - Reopening a pinned file shows the choice and the slip, and allows re-pinning
@@ -96,14 +96,14 @@ Rules for every task:
   - _Requirements: 7.1, 7.5, 7.6, 7.7, 7.8, 10.1, 11.4, 12.4_
 
 - [ ] 11. Dragging, as an enhancement
-  - Desktop with a fine pointer and full motion only: `Draggable` on the in-hand folder; `onDrag` tests each `[data-drop-target]` with `hitTest(el, '40%')` and brightens the hit one under the lamp; `onRelease` pins to it, to `"none"` on the tray, or returns the folder to the centre
+  - Desktop with a fine pointer and full motion only: `Draggable` on the open folder, grabbed by its manila edge; it closes into its cover in the hand as it lifts (D9); `onDrag` tests each `[data-drop-target]` with `hitTest(el, '40%')` and brightens the hit one under the lamp; `onRelease` pins to it, to `"none"` on the tray, or returns the folder to the centre and opens it again
   - Dragging a folder out of the pile onto the desk opens it
   - Not created on touch, coarse pointers or reduced motion; the Pin_Menu always remains
   - Tests: no Draggable under reduced motion or a coarse pointer; a drop handler call with a theory target pins it (handler tested directly)
   - _Requirements: 5.1, 7.2, 7.3, 7.4, 7.5, 11.3_
 
 - [ ] 12. Teaching itself
-  - `DeskHints.tsx`: on the first visit only, three hints in the app's voice, one at a time, next to the pile, the in-hand folder and the progress line; mark them seen after the third
+  - `DeskHints.tsx`: on the first visit only, three hints in the app's voice, one at a time, next to the pile, the Pin_Menu and the progress line; mark them seen after the third
   - Hint 2 reads "Drag it to the theory you think it points to." on fine-pointer devices, and "Pin it to the theory you think it points to." on touch and when using the keyboard (D5)
   - `DeskGuide.tsx`: a small **?** button in a corner opens a three-step guide panel (dialog, focus trapped, Escape closes)
   - Tests: hints appear once and not again with the stored flag (12.5); hint 2's two wordings; the guide opens and closes

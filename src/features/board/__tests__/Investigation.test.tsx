@@ -152,7 +152,9 @@ describe('The board', () => {
 
     const claim = document.querySelector('[data-board="claim"]') as HTMLElement;
     expect(claim.textContent).toContain(theory('t-sinking').claim);
-    expect(within(claim).getByRole('link', { name: new RegExp(evidence('e-lifeboat').title) }).getAttribute('href')).toBe(
+    // Tapping the pinned file shows its historians' slip, with the way back into the file.
+    fireEvent.click(within(claim).getByRole('button', { name: new RegExp(evidence('e-lifeboat').title) }));
+    expect(within(claim).getByRole('link', { name: new RegExp(`Open the file: ${evidence('e-lifeboat').title}`) }).getAttribute('href')).toBe(
       `${BASE}/files/e-lifeboat`
     );
   });
@@ -220,7 +222,7 @@ describe('The board', () => {
     renderAt(`${BASE}/files`);
 
     const tray = document.querySelector('[data-board="aside"]') as HTMLElement;
-    expect(within(tray).getByRole('link', { name: new RegExp(evidence('e-findings').title) })).toBeDefined();
+    expect(within(tray).getByRole('button', { name: new RegExp(evidence('e-findings').title) })).toBeDefined();
     expect(document.querySelector('[data-board="tabs"] [data-evidence-id="e-findings"]')).toBeNull();
     expect(document.querySelector('[data-board="pile"] [data-evidence-id="e-findings"]')).toBeNull();
   });
@@ -259,7 +261,8 @@ describe('The board', () => {
     expect(tabs('t-fraud')).toEqual([]);
     const threads = [...document.querySelectorAll<SVGPathElement>('[data-board="threads"] path')];
     expect(threads.map(path => path.dataset.evidenceId).sort()).toEqual(['e-lifeboat', 'e-sword', 'e-water']);
-    expect(document.querySelector('[data-board="tab"] a')?.getAttribute('href')).toBe(`${BASE}/files/e-lifeboat`);
+    fireEvent.click(document.querySelector<HTMLElement>('[data-board="tab"] button')!);
+    expect(document.querySelector('[data-board="tab"] [data-board="slip"] a')?.getAttribute('href')).toBe(`${BASE}/files/e-lifeboat`);
   });
 
   test('says how many files are open, and how many more it takes to close the case', () => {
@@ -330,21 +333,97 @@ describe('An opened file', () => {
     expect(saved().opened).toStrictEqual(['e-lifeboat']);
   });
 
-  test('choosing a theory pins it and shows how historians read the file', () => {
+  test('"Pin to…" lists the theories and "None of them"; choosing one pins the file and returns to the desk', async () => {
     renderAt(`${BASE}/files/e-lifeboat`);
 
-    const question = screen.getByRole('group', { name: 'Which theory does this point to?' });
-    const buttons = within(question).getAllByRole('button');
-    expect(buttons.map(button => button.textContent)).toStrictEqual([...CASE.theories.map(item => item.title), 'None of them']);
-    expect(document.querySelector('[data-file="reveal"]')).toBeNull();
+    const button = screen.getByRole('button', { name: 'Pin to…' });
+    expect(button.getAttribute('aria-haspopup')).toBe('menu');
+    fireEvent.click(button);
+    const menu = screen.getByRole('menu', { name: 'Pin to…' });
+    const items = within(menu).getAllByRole('menuitemradio');
+    expect(items.map(item => item.textContent)).toStrictEqual([...CASE.theories.map(item => item.title), 'None of them']);
+    expect(items.every(item => item.getAttribute('aria-checked') === 'false')).toBe(true);
 
-    fireEvent.click(within(question).getByRole('button', { name: theory('t-sinking').title }));
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: theory('t-sinking').title }));
 
     expect(saved().pins).toStrictEqual({ 'e-lifeboat': 't-sinking' });
-    expect(within(question).getByRole('button', { name: theory('t-sinking').title }).getAttribute('aria-pressed')).toBe('true');
-    const reveal = document.querySelector<HTMLElement>('[data-file="reveal"]')!;
-    expect(reveal.querySelector('[data-file="reading"]')?.textContent).toBe('Historians agree');
-    expect(reveal.textContent).toContain(evidence('e-lifeboat').reading.note);
+    expect(window.location.pathname).toBe(`${BASE}/files`);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // The folder now hangs beneath its note, its thread drawn, and its historians' slip open.
+    const tab = document.querySelector<HTMLElement>('[data-board="tabs"][data-theory-id="t-sinking"] [data-board="tab"]')!;
+    expect(tab.dataset.evidenceId).toBe('e-lifeboat');
+    expect(document.querySelector('[data-board="threads"] path[data-evidence-id="e-lifeboat"]')).not.toBeNull();
+    const slip = tab.querySelector<HTMLElement>('[data-board="slip"]')!;
+    expect(slip.querySelector('[data-board="reading"]')?.textContent).toBe('Historians agree');
+    expect(slip.textContent).toContain(evidence('e-lifeboat').reading.note);
+    await waitFor(() => expect(document.activeElement).toBe(tab.querySelector('button')));
+  });
+
+  test('the slip of the file just pinned stays until the next action; tapping a pinned tab shows it again', () => {
+    renderAt(`${BASE}/files/e-sword`);
+    fireEvent.click(screen.getByRole('button', { name: 'Pin to…' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: theory('t-mutiny').title }));
+
+    const tab = () => document.querySelector<HTMLElement>('[data-board="tab"][data-evidence-id="e-sword"]')!;
+    expect(tab().querySelector('[data-board="slip"]')).not.toBeNull();
+
+    // The next action, anywhere else on the desk, puts it away.
+    fireEvent.pointerDown(document.querySelector('[data-board="progress"]')!);
+    expect(tab().querySelector('[data-board="slip"]')).toBeNull();
+
+    // Tapping the tab shows it again; tapping it once more hides it.
+    fireEvent.click(tab().querySelector('button')!);
+    expect(tab().querySelector('[data-board="reading"]')?.textContent).toBe('Historians disagree');
+    expect(tab().querySelector('button')?.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(tab().querySelector('button')!);
+    expect(tab().querySelector('[data-board="slip"]')).toBeNull();
+  });
+
+  test('"None of them" sets the file aside: it goes to the tray, with its slip', () => {
+    renderAt(`${BASE}/files/e-findings`);
+    fireEvent.click(screen.getByRole('button', { name: 'Pin to…' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'None of them' }));
+
+    expect(saved().pins).toStrictEqual({ 'e-findings': 'none' });
+    const tray = document.querySelector<HTMLElement>('[data-board="aside"]')!;
+    const tab = tray.querySelector<HTMLElement>('[data-board="tab"][data-evidence-id="e-findings"]')!;
+    expect(tab).not.toBeNull();
+    expect(tab.querySelector('[data-board="slip"]')).not.toBeNull();
+    expect(document.querySelector('[data-board="tabs"] [data-evidence-id="e-findings"]')).toBeNull();
+  });
+
+  test('the Pin menu works with the keyboard', async () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+    const button = screen.getByRole('button', { name: 'Pin to…' });
+
+    fireEvent.keyDown(button, { key: 'ArrowDown' });
+    const menu = screen.getByRole('menu', { name: 'Pin to…' });
+    const items = within(menu).getAllByRole('menuitemradio');
+    await waitFor(() => expect(document.activeElement).toBe(items[0]));
+
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(document.activeElement).toBe(items[items.length - 1]);
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[items.length - 1]);
+    fireEvent.keyDown(menu, { key: 'Home' });
+    expect(document.activeElement).toBe(items[0]);
+
+    // Escape closes only the menu, and the button has the focus again; the file stays open.
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(menu.hidden).toBe(true);
+    expect(document.activeElement).toBe(button);
+    expect(screen.getByRole('dialog')).toBeDefined();
+
+    // Enter on an item chooses it (a button: Enter clicks it).
+    fireEvent.keyDown(button, { key: 'ArrowUp' });
+    await waitFor(() => expect(document.activeElement).toBe(items[items.length - 1]));
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    fireEvent.click(document.activeElement!);
+    expect(saved().pins).toStrictEqual({ 'e-lifeboat': CASE.theories[CASE.theories.length - 1].id });
   });
 
   test('a disputed file shows the claim on sheet one and the challenge on sheet two', () => {
@@ -375,18 +454,21 @@ describe('An opened file', () => {
     expect(document.querySelector('[data-stamp="legend"]')?.textContent).toBe(STATUS_LABEL.legend);
   });
 
-  test('coming back to a pinned file shows the choice and the reveal, and the pin can be changed', () => {
+  test('coming back to a pinned file shows the choice and its slip, and the pin can be changed', () => {
     seed({ opened: ['e-sword'], pins: { 'e-sword': 't-mutiny' }, verdict: null });
     renderAt(`${BASE}/files/e-sword`);
 
-    const question = screen.getByRole('group', { name: 'Which theory does this point to?' });
-    expect(within(question).getByRole('button', { name: theory('t-mutiny').title }).getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('[data-file="pinned-to"]')?.textContent).toBe(`Pinned to ${theory('t-mutiny').title}`);
     expect(document.querySelector('[data-file="reading"]')?.textContent).toBe('Historians disagree');
+    fireEvent.click(screen.getByRole('button', { name: 'Pin to…' }));
+    expect(screen.getByRole('menuitemradio', { name: theory('t-mutiny').title }).getAttribute('aria-checked')).toBe('true');
 
-    fireEvent.click(within(question).getByRole('button', { name: 'None of them' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'None of them' }));
 
     expect(saved().pins).toStrictEqual({ 'e-sword': 'none' });
-    expect(document.querySelector('[data-file="reading"]')?.textContent).toBe('Historians agree');
+    const tab = document.querySelector<HTMLElement>('[data-board="aside"] [data-board="tab"][data-evidence-id="e-sword"]')!;
+    expect(tab.querySelector('[data-board="reading"]')?.textContent).toBe('Historians agree');
+    expect(document.querySelector('[data-board="tabs"][data-theory-id="t-mutiny"]')).toBeNull();
   });
 
   test('"Next file" goes to the next unopened file, and "Back to the board" goes back', () => {
@@ -458,7 +540,9 @@ describe('An opened file', () => {
     renderAt(`${BASE}/files/e-lifeboat`);
     const file = screen.getByRole('dialog', { name: evidence('e-lifeboat').title });
     // In document order: jsdom does not return a selector list's matches that way.
-    const stops = [...file.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)')].sort((a, b) =>
+    const stops = [...file.querySelectorAll<HTMLElement>('a[href]:not([tabindex="-1"]), button:not(:disabled):not([tabindex="-1"])')]
+      .filter(stop => !stop.closest('[hidden]'))
+      .sort((a, b) =>
       a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1
     );
     const first = stops[0];
