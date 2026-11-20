@@ -281,6 +281,7 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
         data-portal="card"
         data-more="false"
         onKeyDown={handleKeyDown}
+        data-lenis-prevent
         className="group/card fixed inset-x-0 bottom-0 z-40 max-h-[85svh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-ink/15 bg-paper text-ink shadow-2xl shadow-night/60 outline-none lg:absolute lg:inset-x-auto lg:bottom-auto lg:max-h-[70vh] lg:w-[23rem] lg:rounded-sm lg:border"
       >
         <div

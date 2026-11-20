@@ -23,6 +23,7 @@ import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { LINEAR, MOTION_QUERIES, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
+import { scrollToY } from '@/lib/smooth-scroll';
 import { beatSeconds, rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
@@ -120,7 +121,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
       return;
     }
     const y = stage.getBoundingClientRect().top + window.scrollY;
-    gsap.to(window, { scrollTo: { y, autoKill: true }, ...tween('paper.move') });
+    scrollToY(y);
   }, []);
 
   useGSAP(

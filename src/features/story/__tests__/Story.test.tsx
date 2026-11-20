@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
 import { parseRefs } from '@/lib/parse-refs';
+import { setLenis } from '@/lib/smooth-scroll';
 import { splitIntoBeats } from '@/lib/story-beats';
 import { splitIntoPhrases } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
@@ -317,6 +318,26 @@ describe('Story: play the story', () => {
     expect(control.getAttribute('aria-pressed')).toBe('false');
   });
 
+  test('smooth scrolling steps aside while the story plays and comes back when it pauses', () => {
+    const fake = { stop: vi.fn(), start: vi.fn() };
+    setLenis(fake as never);
+    try {
+      const { container } = renderStory();
+      const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+      act(() => {
+        fireEvent.click(control);
+      });
+      expect(fake.stop).toHaveBeenCalledTimes(1);
+      expect(control.getAttribute('aria-pressed')).toBe('true');
+      act(() => {
+        fireEvent.click(control);
+      });
+      expect(fake.start).toHaveBeenCalled();
+      expect(control.getAttribute('aria-pressed')).toBe('false');
+    } finally {
+      setLenis(null);
+    }
+  });
   test('opening a portal pauses playback', () => {
     const { container } = renderStory(testCase);
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;

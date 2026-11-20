@@ -405,6 +405,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       aria-labelledby="file-title"
       data-page="case"
       onKeyDown={trapFocus}
+      data-lenis-prevent
       className="fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-[calc(var(--case-header)+1.75rem)] pb-12 sm:px-6 lg:px-10 lg:pt-[calc(var(--case-header)+3rem)]"
     >
       {/* The desk dims behind the open file. */}

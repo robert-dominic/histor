@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { LINEAR } from '@/lib/motion';
+import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 
 gsap.registerPlugin(ScrollToPlugin);
 
@@ -48,6 +49,7 @@ export function useStoryPlayer(enabled: boolean): StoryPlayer {
   const pause = useCallback(() => {
     tweenRef.current?.kill();
     tweenRef.current = null;
+    resumeSmoothScroll();
     setPlaying(false);
   }, []);
 
@@ -63,6 +65,8 @@ export function useStoryPlayer(enabled: boolean): StoryPlayer {
       setPlaying(false);
       return;
     }
+    // Smooth scrolling steps aside while the story scrolls itself; the reader's first input gives it back.
+    pauseSmoothScroll();
     tweenRef.current = gsap.to(window, {
       // autoKill: a scroll that did not come from this tween (the scrollbar, say) stops it.
       scrollTo: { y: to, autoKill: true, onAutoKill: pause },
@@ -70,6 +74,7 @@ export function useStoryPlayer(enabled: boolean): StoryPlayer {
       ease: LINEAR,
       onComplete: () => {
         tweenRef.current = null;
+        resumeSmoothScroll();
         setPlaying(false);
       },
     });
@@ -119,6 +124,7 @@ export function useStoryPlayer(enabled: boolean): StoryPlayer {
   useEffect(
     () => () => {
       tweenRef.current?.kill();
+      resumeSmoothScroll();
     },
     []
   );
