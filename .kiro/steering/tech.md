@@ -20,7 +20,7 @@ inclusion: always
 2. **State:** React context + `useReducer` for the investigation. No external state library.
 3. **Persistence:** localStorage, one key per case (`histor:case:<caseId>`), always wrapped in try/catch. The app must work if storage is unavailable.
 4. **Animation values never go in React state.** Animate with GSAP or CSS, writing to the element directly.
-5. **Only animate `transform`, `opacity`, `filter` and `clip-path`.** Never animate width, height, top, left, margin or padding.
+5. **Animate only `transform` and `opacity`.** Exceptions: `filter: blur()` on text lines during a file's writing reveal, `stroke-dashoffset` for drawn lines, and the short, small effects listed in `motion.md` (stamp and hold `clip-path`, the quill's letter blur). Never animate width, height, top, left, margin or padding, and never blur a large image or full-screen layer. Eases and durations come from `src/lib/motion.ts`.
 6. **Reduced motion:** every animation has a reduced version via `gsap.matchMedia()` or `@media (prefers-reduced-motion: reduce)`. Reduced means gentler, not none: keep fades, remove movement.
 7. **Phones work, desktop first.** Test every feature at 375px and 1440px wide.
 8. **Hover effects only behind** `@media (hover: hover) and (pointer: fine)`.
