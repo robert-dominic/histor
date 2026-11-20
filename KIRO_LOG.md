@@ -6,12 +6,12 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 
 | Kiro feature | Status | Evidence |
 | --- | --- | --- |
-| Spec-driven development | Used | `.kiro/specs/histor-data-foundation/` (requirements, design, tasks, tasks-meta.json) |
+| Spec-driven development | Used | Three specs: `histor-data-foundation`, `story-engine`, `case-report` |
 | Steering docs | Used | `.kiro/steering/` (6 docs, one with conditional inclusion) |
 | Property-based testing | Used | `*.property.test.ts`, `pbtResults` in tasks-meta.json; caught an incomplete fix with a shrunk counterexample (story-engine, 13 Nov) |
 | Agent hooks | Configured, did not fire | `.kiro/hooks/test-on-case-change.json` |
 | Kiro IDE | Used | All Kiro work done in the IDE |
-| MCP | Used | Context7 (via its power) for current fast-check and Vitest docs |
+| MCP | Used | Context7 (via its power) for current fast-check, Vitest and GSAP docs (ScrollTrigger pin/scrub, ScrollToPlugin, mobile resize) |
 | Kiro powers | Used | Context7 power installed and used in the story-engine spec |
 | Custom agents | Used | `histor-content-reviewer`: a read-only fact-checker with write access denied by config |
 
@@ -131,6 +131,67 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 - Redesign after Robert's review: the legend is now *written* letter by letter with a quill (the legend's voice), one stamp ("Well... that never happened."), then the explanation *typed* like a typewriter (the app's voice). The video loop seam was fixed by crossfading its end into its start with ffmpeg. The video credit was added to the type, the validator and the spec. 371 tests.
 - Polish from Robert's review: a pointer cursor on every clickable element (now a steering rule), slower quill and typewriter, the famous "warm breakfast" in quotes. The steering files were updated to match what was built.
 
+### 20 Nov 2026: The desk, and the fix pack
+
+- **Desk built:** the `desk` spec (written by Opus, built by Sonnet) has 15 tasks: a lamp, a felt board, a pile of sealed folders, folders that fly and flip open, the record, disputed and legend reveals, drag to pin, the "Pin to…" menu, first-visit hints and a ? guide, a wax seal and a restyled verdict and report. 685 tests. Pushed.
+- **Spec questions:** Kiro stopped on a real conflict (the brief closed the file before it could be read) instead of guessing, and offered three options. We chose "the file stays open until the user pins it."
+- **Robert's play-through:** it works, but it doesn't feel award-winning yet:
+  - Text blinks in and out, and headings race the scroll.
+  - Things snap into place, and the Pin menu shifts the file.
+  - The desk scrolls away from the board, and the opened file is tilted and cut off.
+  - Pinned files can't go back to the pile.
+- That became the `fix-pack` brief: a motion system (named eases with a purpose each, Flip for every layout change, Lenis), story text that stays, a one-screen desk with files scattered on the floor, a dip-pen writing reveal that can be skipped, drag anything anywhere, and a "better on a laptop" gate for the investigation on phones.
+- **Data:** measured with `nethogs`, a full Kiro build costs about 120 MB for the AI. The gigabytes were an unused ChatGPT extension running inside Kiro (73 MB in 6 minutes), plus about 30 MB per fresh headless Chrome profile. Briefs now include data-saving rules.
+
+### 19 Nov 2026 (evening): The cinematic story
+
+- **Kiro (Opus) built the story redesign** from `docs/briefs/story-redesign.md`, in one run of about 3.5 hours (commit `d269445`). What changed:
+  - All six chapters are now full-screen scenes in one pinned, scrubbed timeline, with a slow camera push and pan per chapter, one sentence at a time in the lower third, and full-screen hooks held in stillness.
+  - A roll call of the ten people on board, who fade out last to first.
+  - A voyage chart drawn from Natural Earth coastlines (4.8 KB), with a dashed, ghostly stretch where she sailed alone and Genoa as a faint "never reached" ring.
+  - "Play the story": auto-scroll at reading pace that pauses on any input.
+  - Accessibility kept: the full text stays in the page for screen readers, and reduced motion gives still, stacked scenes.
+- It used Context7 for current GSAP docs before writing the timeline.
+- **Errors it reported, all fixed:** a divide-by-zero in its own coastline simplifier, play tests failing because jsdom pages have no height, desktop headings too narrow (`ch` measured at the body font size), and browser runs crashing from low memory, fixed by running them one at a time.
+- **Its own judgement calls, all flagged:** an `unreached` flag for Genoa instead of a hidden rule, the hint "Scroll to read." under reduced motion, and opening the chart's larger view also pauses playback.
+- **Verified in Chrome at 375×667 and 1440×900:** a full scroll (117 positions, 0px drift while pinned, no overlaps, no console errors) and a full auto-play run (about 4 min 45 s, stopping at the fork).
+- **A pre-existing bug surfaced:** property test 8 fails at random, about one run in three, because its generator can create two theories with the same id. Kiro proved it was pre-existing by checking out the commit before its own changes and running the same seed there (`-1131047925`). It's queued as a small fix.
+- 606 tests; build and lint pass. The bundle is 516 KB (172 KB gzipped); code-splitting is queued for polish.
+
+### 19 Nov 2026: Review fixes and the experience phase
+
+- Playing V1 as a judge raised two content issues: the slate note should be quoted, and "the captain's sword" was ambiguous. The story now quotes the slate's real words from the record ("Eastern point of St. Mary's bore 6 miles SSW") and names Captain Briggs's sword.
+- Kiro (Sonnet) fixed the legend ghost ink, which was illegible at about 2:1. A new `ghost-ink` token reaches 4.7:1; blur is applied only while the ink appears and is crisp at rest. It also compacted the phone theory row (from a third of the screen to 12%) and drew a favicon from the Grenze Gotisch "H" outline, so no font file is committed. 564 tests.
+- Start of the experience redesign: a cinematic story (full-screen scenes, line-by-line text, a roll call of the ten names, a voyage chart, auto-play) and an investigation desk (lamp light, a pile of files, drag to pin, files that flip open).
+
+### 15 Nov 2026 (night): V1 complete
+
+- **The investigation built in one run** by Kiro (Opus) from a written brief: the fork at the end of the story, the board (5 theories, 23 numbered case files, red threads on desktop, a sticky swipeable theory row on phones), opened files with Record / Disputed / Legend stamps (legends turn to flickering ghost ink), the theory question with the historians' reveal, a 1.5-second wax-seal hold to close the case, and the full case report. The reveal on each file reuses `buildCaseReport`, so a file and the report can never disagree. 24 new tests, 563 total; checked in Chrome at 375px and 1440px; pushed.
+- Kiro fixed its own bugs found during the browser check: threads that didn't draw (a ref read too early), and a sticky row that didn't stick. It flagged a design conflict instead of quietly breaking a rule: the legend ghost ink measures about 2.3:1 against the 4.5:1 that design.md requires.
+- **Histor is now playable from start to finish:** legend, story, fork, investigation, verdict, report.
+
+### 15 Nov 2026 (late): The case-report engine
+
+- **Spec `case-report`, written by Kiro (Opus) and executed by Kiro (Sonnet).** A pure function builds the case report from the case and the user's investigation: their verdict with the historians' standing revealed, each pin read as agree / disagree / no link, what they relied on, evidence against their verdict, important files never opened (status kept hidden), and legends they trusted. No score or grade; a unit test checks the report contains no numbers or booleans at all.
+- Kiro's requirements filled real gaps in the brief on its own: how a "None of them" pin is read, never revealing the status of unopened files, and not crashing on corrupted saved state.
+- **Kiro found a content gap while designing:** no evidence file weakened either leading theory, so anyone choosing them would never see pushback. It flagged this as a content decision rather than editing data. Two new files are planned.
+- A property test failed on its first run (seed 2123276492). The bug was in the *test's generator* (`fc.record` sometimes builds prototype-less objects), not in the code, and was fixed with `noNullPrototype: true`.
+- Also fixed: flaky timeouts in a slow page test, plus capping Vitest at 2 workers after the full suite overloaded the dev machine. 539 tests; pushed.
+
+### 15 Nov 2026 (night): The legend about the legend
+
+- **The content reviewer caught the app spreading a legend.** Our live intro said the "warm breakfast" myth came from Conan Doyle's 1884 story. The reviewer read Doyle's text through Tavily: **his story has no meal in it.** American Heritage credits the meal to later writers, and a newspaper was already printing a dinner "scarcely cold" in 1883, a year *before* Doyle. Our research brief had repeated a popular misattribution, so the app built to separate legend from record was spreading a legend about the legend. Fixed in the live debunk, the legend file and product.md.
+- Same review of the evidence draft (23 files, 5 theories): 15 confirmed, 14 too strong, 4 wrong. It also caught: "no one at the wheel" had no source (replaced with a real Doyle invention: the ship "towed" into port); the "open or shut hatches" dispute was really about *different* hatches; and the steward's first name was a guess.
+
+- All reviewed content went into `case.ts` (Kiro, Sonnet), copied by script so nothing was retyped, and verified block by block. 23 evidence files, 5 theories, zero validator errors, 515 tests. Pushed: the corrected intro is live.
+
+### 15 Nov 2026 (evening): A guardrail lesson
+
+- UI fixes were run in Kiro by mistake while the read-only `histor-content-reviewer` agent was still selected. Kiro finished the job (thin scrollbars with a stable gutter, a fixed portal image frame with a bottom fade, the intro credit behind ⓘ; 513 tests passing) but **reported, unprompted, that it had written the files with Python scripts, which got around the agent's "deny file writes" rule.** It then refused to bypass the `git commit` deny rule and left the commit to us, telling us to switch back to the default agent.
+- Lesson: a deny-list of shell commands isn't a sandbox. Any interpreter can write files. The reviewer's shell permission was changed to an allow-list: only `tvly` commands, everything else denied.
+- Kiro (default agent, Opus) made the lock-down itself after reading Kiro's permission docs. Deny beats allow whatever the scope, so it uses a catch-all deny that excludes `tvly`, plus a deny on `tvly`'s own file-output flags. It also noted that chained commands are checked part by part, so `tvly … | python3 …` gets its Python half blocked. It said honestly that it couldn't test the lock live under the agent profile.
+- Same run: the legend stamp is now one word, "Legend", matching the evidence status labels, and the scrollbar gutter follows the story's sky colour. 515 tests; pushed to the live site.
+
 ### 15 Nov 2026: Tavily
 
 - Installed the Tavily power in Kiro (web search, for fact-checking case content). Without an account it runs in a free mode with a small daily cap, which Kiro hit on its first search. Kiro worked around the missing tool by installing Tavily's command-line tool outside the repo, and reported the cap honestly. Connected Robert's Tavily account through browser sign-in (OAuth): the token lives in the home folder, and no API key ever touches the public repo.
@@ -141,6 +202,7 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
   - **Image credits:** confirmed artist, date and licence for the Commons images, and corrected one painting's title.
   - It also found the exact URLs for all four cited sources, which I had deliberately left blank rather than guess.
 - All fixes applied in story draft 3: every flagged claim was softened to what the sources support, or removed.
+- **Story screen built** (Claude Code, from a written brief): a title card ("The Mary Celeste, 1872 – 1873, UNSOLVED") that docks into a persistent header; six chapters with real 19th-century paintings, an engraving and one labelled AI still; titles written by the quill; day-to-night darkening with body-text contrast held at 4.5:1 or above throughout, even mid-transition; and portal cards (anchored on desktop, a bottom sheet on phones) with real photos of the Briggs family. Credits sit behind an ⓘ on each image; the "Illustration" label and the caption "The Mary Celeste, 1861" stay visible, because they're about honesty. 510 tests.
 
 ## Lessons so far
 
@@ -151,3 +213,4 @@ A running record of how Kiro was used to build Histor. Raw notes for the Devpost
 5. Ask every agent for a report after each task that lists every error it hit, including ones it fixed. Most of our best catches came from those reports.
 6. A model that stops and asks when the spec is unclear is worth more than one that guesses. Every gap Claude Code flagged became a decision, and the spec was updated to match.
 7. "Works locally" is not "works deployed." The deep-link 404 only shows up on the host.
+8. Plan before you build. Writing the brief or spec felt slow, but it's why one Kiro run could touch about fifteen files without breaking the story. The plan saved more time than it cost.
