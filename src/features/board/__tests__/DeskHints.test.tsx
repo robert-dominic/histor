@@ -3,6 +3,7 @@
 // Teaching the desk to a first-time user: three hints, one at a time, once only; and the "?" guide any time.
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { FINE_POINTER_QUERY } from '@/features/board/drag';
@@ -56,12 +57,15 @@ const pinFirstFile = (id: string, themeTitle: string) => {
 };
 
 beforeEach(() => {
+  // These tests are about the desk, not the phone gate (which has its own tests): go past it.
+  continuePastGate();
   localStorage.clear();
   forgetShownThisLoad();
   stubMatchMedia();
 });
 
 afterEach(() => {
+  resetPhoneGate();
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();

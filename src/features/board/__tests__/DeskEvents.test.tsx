@@ -5,6 +5,7 @@
 // (The two `seal` events are tested with the wax seal and the verdict in Investigation.test.tsx.)
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { Draggable, FINE_POINTER_QUERY } from '@/features/board/drag';
@@ -60,6 +61,8 @@ function listen() {
 const folders = () => [...document.querySelectorAll<HTMLElement>('[data-board="folder"]')];
 
 beforeEach(() => {
+  // These tests are about the desk, not the phone gate (which has its own tests): go past it.
+  continuePastGate();
   localStorage.clear();
   // The hints are not what these tests are about.
   localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1');
@@ -68,6 +71,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  resetPhoneGate();
   cleanup();
   vi.unstubAllGlobals();
   window.history.pushState({}, '', '/');

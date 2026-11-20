@@ -4,6 +4,7 @@
 // the way a deep link or a refresh would open it. Titles and notes come from the case data.
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { STATUS_LABEL } from '@/lib/case-files';
@@ -43,11 +44,14 @@ const folders = () => [...document.querySelectorAll<HTMLElement>('[data-board="f
 const folderFor = (id: string) => document.querySelector<HTMLElement>(`[data-board="folder"][data-evidence-id="${id}"]`)!;
 
 beforeEach(() => {
+  // These tests are about the desk, not the phone gate (which has its own tests): go past it.
+  continuePastGate();
   localStorage.clear();
   stubMatchMedia();
 });
 
 afterEach(() => {
+  resetPhoneGate();
   cleanup();
   vi.unstubAllGlobals();
   window.history.pushState({}, '', '/');
