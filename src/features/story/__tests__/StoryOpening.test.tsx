@@ -1,0 +1,190 @@
+// @vitest-environment jsdom
+// src/features/story/__tests__/StoryOpening.test.tsx
+// The opening scene shows the case's title, years, UNSOLVED stamp and teaser from its data, over the first
+// chapter's image; the title docks into the case header once, when the reader scrolls.
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import gsap from 'gsap';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import CaseHeader from '@/components/CaseHeader';
+import { DOCK_AT, dockTitle, watchForDock } from '@/features/story/dock-title';
+import StoryOpening from '@/features/story/StoryOpening';
+import { imageGrade } from '@/lib/day-night';
+import { stubMatchMedia } from '@/test/match-media';
+import type { ImageAsset } from '@/types/case';
+
+/** Test data, not history. */
+const card = { title: 'Test Case', years: '1900 – 1901', unsolved: true, teaser: 'A test teaser.' };
+const image: ImageAsset = {
+  src: '/one.webp',
+  alt: 'Test alt.',
+  credit: 'Test credit.',
+  caption: 'A test caption',
+  isIllustration: true,
+};
+
+const one = (container: HTMLElement, name: string) =>
+  container.querySelector(`[data-opening="${name}"]`) as HTMLElement;
+
+function renderOpening(props: Partial<Parameters<typeof StoryOpening>[0]> = {}) {
+  return render(<StoryOpening card={card} image={image} grade={imageGrade(0, 6)} {...props} />);
+}
+
+beforeEach(() => stubMatchMedia());
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  document.body.innerHTML = '';
+});
+
+describe('StoryOpening: content', () => {
+  test('shows the title, the years, the UNSOLVED stamp and the teaser from its data', () => {
+    const { container } = renderOpening();
+    expect(one(container, 'title').textContent).toBe(card.title);
+    expect(one(container, 'years').textContent).toBe(card.years);
+    expect(one(container, 'stamp').textContent).toBe('Unsolved');
+    expect(one(container, 'stamp').className).toContain('uppercase');
+    expect(one(container, 'teaser').textContent).toBe(card.teaser);
+  });
+
+  test('has no stamp for a case that is not marked unsolved', () => {
+    const { container } = renderOpening({ card: { ...card, unsolved: false } });
+    expect(container.querySelector('[data-opening="stamp"]')).toBeNull();
+  });
+
+  test('is a full screen, with the first chapter image and its labels and credit', () => {
+    const { container } = renderOpening();
+    const section = container.querySelector('[data-story="opening"]') as HTMLElement;
+    expect(section.className).toContain('h-svh');
+    expect(one(container, 'image').getAttribute('alt')).toBe(image.alt);
+    expect(one(container, 'illustration').textContent).toBe('Illustration');
+    expect(one(container, 'caption').textContent).toBe('A test caption');
+    // The credit is behind the small ⓘ, never printed over the image.
+    expect(screen.getByRole('button', { name: /credit/i })).toBeDefined();
+  });
+
+  test('the title, years and stamp are decoration: the case header is the page heading', () => {
+    const { container } = renderOpening();
+    expect(one(container, 'title').closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(one(container, 'teaser').closest('[aria-hidden="true"]')).toBeNull();
+  });
+
+  test('the title is split into letters for the quill, and the stamp starts hidden', () => {
+    const { container } = renderOpening();
+    const letters = [...one(container, 'title').querySelectorAll<HTMLElement>('*')].filter(el => el.children.length === 0);
+    expect(letters.map(letter => letter.textContent).join('')).toBe(card.title.replace(/\s/g, ''));
+    expect(one(container, 'stamp').style.opacity).toBe('0');
+  });
+
+  test('reduced motion: the title is not split, and there is no camera', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    const { container } = renderOpening();
+    expect(one(container, 'title').children).toHaveLength(0);
+    expect(one(container, 'title').style.opacity).toBe('0');
+    expect(one(container, 'image').style.transform).toBe('');
+    expect(one(container, 'image').style.willChange).toBe('');
+  });
+
+  test('without matchMedia everything is simply shown', () => {
+    vi.unstubAllGlobals();
+    const { container } = renderOpening();
+    expect(one(container, 'title').style.opacity).toBe('');
+    expect(one(container, 'teaser').style.opacity).toBe('');
+  });
+});
+
+describe('watchForDock', () => {
+  /** An opening scene `height` tall whose top is at `top` in the viewport. */
+  function sceneAt(top: number, height = 800): HTMLElement {
+    const element = document.createElement('section');
+    element.getBoundingClientRect = () => ({ top, height, bottom: top + height }) as DOMRect;
+    return element;
+  }
+
+  test('calls onDock once, when the scene has scrolled 15% out of view', () => {
+    const scene = sceneAt(0);
+    const onDock = vi.fn();
+    const stop = watchForDock(scene, onDock);
+    expect(onDock).not.toHaveBeenCalled();
+    scene.getBoundingClientRect = () => ({ top: -(800 * DOCK_AT) + 20, height: 800 }) as DOMRect;
+    fireEvent.scroll(window);
+    expect(onDock).not.toHaveBeenCalled();
+    scene.getBoundingClientRect = () => ({ top: -(800 * DOCK_AT), height: 800 }) as DOMRect;
+    fireEvent.scroll(window);
+    fireEvent.scroll(window);
+    fireEvent.scroll(window);
+    expect(onDock).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  test('docks at once when the page opens already scrolled past the scene', () => {
+    const onDock = vi.fn();
+    watchForDock(sceneAt(-800), onDock)();
+    expect(onDock).toHaveBeenCalledTimes(1);
+  });
+
+  test('stops listening when asked', () => {
+    const scene = sceneAt(0);
+    const onDock = vi.fn();
+    watchForDock(scene, onDock)();
+    scene.getBoundingClientRect = () => ({ top: -800, height: 800 }) as DOMRect;
+    fireEvent.scroll(window);
+    expect(onDock).not.toHaveBeenCalled();
+  });
+});
+
+describe('StoryOpening: docking', () => {
+  test('docks the title into the header once, when the reader scrolls', () => {
+    const { container } = render(
+      <>
+        <CaseHeader title={card.title} years={card.years} unsolved startHidden />
+        <StoryOpening card={card} image={image} grade={imageGrade(0, 6)} />
+      </>
+    );
+    const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
+    const opening = container.querySelector('[data-story="opening"]') as HTMLElement;
+    expect(bar.style.opacity).toBe('0');
+    opening.getBoundingClientRect = () => ({ top: -400, height: 800, left: 0, width: 0 }) as DOMRect;
+    expect(gsap.getTweensOf(bar)).toHaveLength(0);
+    fireEvent.scroll(window);
+    fireEvent.scroll(window);
+    // No layout in jsdom (zero width): the title does not fly, the header fades in, and only once.
+    expect(document.querySelectorAll('body > [aria-hidden="true"]').length).toBe(0);
+    expect(gsap.getTweensOf(bar)).toHaveLength(1);
+  });
+
+  test('dockTitle under reduced motion fades the header in and moves nothing', () => {
+    const { container } = render(
+      <>
+        <CaseHeader title={card.title} years={card.years} startHidden />
+        <span id="big">{card.title}</span>
+      </>
+    );
+    const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
+    const big = container.querySelector('#big') as HTMLElement;
+    dockTitle(big, { reduced: true });
+    expect(document.body.querySelectorAll('[style*="position: fixed"]')).toHaveLength(0);
+    expect(big.style.opacity).toBe('');
+    expect(bar).toBeDefined();
+  });
+
+  test('dockTitle with layout flies a fixed copy and hides the big title', () => {
+    const { container } = render(
+      <>
+        <CaseHeader title={card.title} years={card.years} startHidden />
+        <span id="big">{card.title}</span>
+      </>
+    );
+    const big = container.querySelector('#big') as HTMLElement;
+    const target = container.querySelector('[data-case-header="title"]') as HTMLElement;
+    big.getBoundingClientRect = () => ({ left: 100, top: 300, width: 400, height: 60 }) as DOMRect;
+    target.getBoundingClientRect = () => ({ left: 16, top: 6, width: 100, height: 20 }) as DOMRect;
+    dockTitle(big, { reduced: false });
+    const copy = document.body.querySelector('body > span[aria-hidden="true"]') as HTMLElement;
+    expect(copy).not.toBeNull();
+    expect(copy.style.position).toBe('fixed');
+    expect(copy.style.left).toBe('100px');
+    expect(copy.style.top).toBe('300px');
+    expect(big.style.opacity).toBe('0');
+  });
+});

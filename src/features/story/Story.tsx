@@ -17,6 +17,7 @@ import CentralQuestion from '@/features/story/CentralQuestion';
 import PlayControl from '@/features/story/PlayControl';
 import { activeSceneIndex } from '@/features/story/active-scene';
 import StoryChapter from '@/features/story/StoryChapter';
+import StoryOpening, { type OpeningCard } from '@/features/story/StoryOpening';
 import StoryScene from '@/features/story/StoryScene';
 import StoryStart from '@/features/story/StoryStart';
 import VoyageChart from '@/features/story/VoyageChart';
@@ -97,9 +98,11 @@ interface StoryProps {
   sources: Source[];
   /** The voyage, drawn on the chart as the story goes. */
   voyage?: Voyage;
+  /** The case's title, years and teaser, for the opening scene before the first chapter. */
+  opening?: OpeningCard;
 }
 
-export default function Story({ story, centralQuestion, references, sources, voyage }: StoryProps) {
+export default function Story({ story, centralQuestion, references, sources, voyage, opening }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
   const reducedMotion = useReducedMotion();
@@ -538,6 +541,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
         className="group/sky relative bg-[var(--story-sky)]"
         style={{ '--story-sky': 'var(--color-night)' } as React.CSSProperties}
       >
+        {opening !== undefined && <StoryOpening card={opening} image={story[0]?.image} grade={grades[0]} />}
         <StoryStart player={cinematic ? player : null} onRead={goToFirstScene} />
 
         {cinematic ? (

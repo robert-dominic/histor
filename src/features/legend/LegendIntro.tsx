@@ -1,7 +1,6 @@
 // src/features/legend/LegendIntro.tsx
-// The legend intro: a title card, then a quill writes the famous myth, a stamp lands on it, and a typewriter
-// answers. It ends on a scroll cue that leads into the story.
-// When the page has a case header (components/CaseHeader.tsx), the title card's title shrinks and docks into it.
+// The legend intro: a quill writes the famous myth, a stamp lands on it, and a typewriter answers. It ends on a
+// scroll cue that leads into the story, which opens on the case's title (features/story/StoryOpening.tsx).
 // The quill is the legend's voice; the typewriter is the app's voice.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 
@@ -11,7 +10,7 @@ import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
-import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
+import { MOTION, MOTION_QUERIES, STEP, stampHit } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import type { CaseTheme, LegendIntro as LegendIntroData } from '@/types/case';
@@ -52,44 +51,9 @@ const REDUCED = {
 /** How far the myth dims once the stamp has landed on it. At 50% the lines still reach 3:1 on night. */
 const DIMMED_OPACITY = 0.5;
 
-/** The title card, the first beat: about three seconds, then it gives way to the myth. Seconds. */
-const TITLE = {
-  start: 0.4,
-  pauseBeforeYears: 0.15,
-  yearsDuration: STEP.base,
-  pauseBeforeStamp: 0.35,
-  stampDuration: STAMP_SECONDS,
-  /** When the card starts to leave, counted from the start of the intro. */
-  leaveAt: 3,
-  leaveDuration: STEP.base,
-  /** The title's flight up into the case header, and the crossfade once it has landed. */
-  dockDuration: MOTION['paper.move'].duration,
-  landDuration: STEP.fast,
-} as const;
-
-const TITLE_REDUCED = {
-  start: 0.2,
-  titleDuration: STEP.base,
-  yearsAt: 0.7,
-  stampAt: 1.2,
-  leaveAt: 2.8,
-  leaveDuration: STEP.base,
-} as const;
-
-/** What the title card shows. The page builds it from the case data. */
-export interface TitleCard {
-  title: string;
-  /** e.g. "1872 – 1873". */
-  years: string;
-  /** Shows the UNSOLVED stamp. */
-  unsolved: boolean;
-}
-
 interface LegendIntroProps {
   /** The myth, the stamp text and the debunk, from the case data. */
   legendIntro: LegendIntroData;
-  /** Optional first beat: the case title, its years and the UNSOLVED stamp. Skip covers it too. */
-  titleCard?: TitleCard;
   /** Optional illustration video behind the text. */
   video?: CaseTheme['legendVideo'];
   /** True for a visitor who has seen this intro before: open at the end state, with no animation. */
@@ -102,7 +66,6 @@ interface LegendIntroProps {
 
 export default function LegendIntro({
   legendIntro,
-  titleCard,
   video,
   startAtEnd = false,
   onEnded,
@@ -159,38 +122,13 @@ export default function LegendIntro({
         const stamp = select('stamp');
         const debunk = select('debunk');
         const next = select('continue');
-        const card = select('title-card');
-        const title = select('title');
-        const years = select('years');
-        const unsolved = select('unsolved');
-        const hasTitleCard = card.length > 0;
-        // The case header is outside this component, fixed to the top of the page. Hidden until the title docks.
-        const headerBar = document.querySelector<HTMLElement>('[data-case-header="bar"]');
-        const headerTitle = document.querySelector<HTMLElement>('[data-case-header="title"]');
-        const docks = hasTitleCard && headerBar !== null && headerTitle !== null;
-        if (docks) {
-          gsap.set(headerBar, { opacity: 0 });
-        }
-
         const timeline = gsap.timeline({ defaults: { ease: MOTION['ink.in'].ease }, onComplete: markEnded });
         const splits: SplitText[] = [];
 
         if (reduced) {
-          // 0. The title card: the title, the years and the stamp fade in, then the card fades away.
-          let mythStart: number = REDUCED.start;
-          if (hasTitleCard) {
-            timeline.fromTo(title, { opacity: 0 }, { opacity: 1, duration: TITLE_REDUCED.titleDuration }, TITLE_REDUCED.start);
-            timeline.fromTo(years, { opacity: 0 }, { opacity: 1, duration: STEP.base }, TITLE_REDUCED.yearsAt);
-            timeline.fromTo(unsolved, { opacity: 0 }, { opacity: 1, duration: STEP.fast }, TITLE_REDUCED.stampAt);
-            timeline.to(card, { opacity: 0, duration: TITLE_REDUCED.leaveDuration }, TITLE_REDUCED.leaveAt);
-            // No flight: the card fades away and the header fades in.
-            if (docks) {
-              timeline.to(headerBar, { opacity: 1, duration: TITLE_REDUCED.leaveDuration }, TITLE_REDUCED.leaveAt);
-            }
-            mythStart = TITLE_REDUCED.leaveAt + TITLE_REDUCED.leaveDuration + REDUCED.start;
-          }
+          // The myth: whole lines fade in, one after another.
+          const mythStart: number = REDUCED.start;
 
-          // Whole lines fade in, one after another.
           lines.forEach((line, index) => {
             timeline.fromTo(
               line,
@@ -221,52 +159,7 @@ export default function LegendIntro({
           const caret = select('caret')[0];
           const quill = createQuillWriter(select('quill')[0], select('quill-body')[0]);
 
-          // 0. The title card: the quill writes the title, the years follow, the stamp lands,
-          // and the card gives way to the myth.
           let cursor: number = FULL.start;
-          if (hasTitleCard) {
-            let at: number = TITLE.start;
-            title.forEach(block => {
-              const split = splitForQuill(block);
-              splits.push(split);
-              at += quill.write(timeline, split.chars as HTMLElement[], at);
-            });
-            at += TITLE.pauseBeforeYears;
-            timeline.fromTo(years, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: TITLE.yearsDuration }, at);
-            at += TITLE.yearsDuration + TITLE.pauseBeforeStamp;
-            timeline.add(stampHit(unsolved), at);
-            // A long title is still given time to be read before the card leaves.
-            const leaveAt = Math.max(TITLE.leaveAt, at + TITLE.stampDuration + 0.8);
-            if (docks && title.length > 0) {
-              // The title shrinks and flies up to where the header's title is. The years and the stamp stay behind
-              // and fade. Once it has landed, the header fades in over it and the card goes: the two titles are
-              // then the same size in the same place, so the swap cannot be seen.
-              const big = title[0];
-              const flight = () => {
-                const from = big.getBoundingClientRect();
-                const to = headerTitle.getBoundingClientRect();
-                return { x: to.left - from.left, y: to.top - from.top, scale: from.width > 0 ? to.width / from.width : 1 };
-              };
-              timeline.to([...years, ...unsolved], { opacity: 0, duration: STEP.fast }, leaveAt);
-              timeline.to(
-                big,
-                {
-                  x: () => flight().x,
-                  y: () => flight().y,
-                  scale: () => flight().scale,
-                  ...tween('paper.move'),
-                },
-                leaveAt
-              );
-              const landAt = leaveAt + TITLE.dockDuration;
-              timeline.to(headerBar, { opacity: 1, duration: TITLE.landDuration }, landAt);
-              timeline.to(card, { opacity: 0, duration: TITLE.landDuration }, landAt);
-              cursor = landAt + TITLE.landDuration + 0.3;
-            } else {
-              timeline.to(card, { opacity: 0, duration: TITLE.leaveDuration }, leaveAt);
-              cursor = leaveAt + TITLE.leaveDuration + FULL.start;
-            }
-          }
 
           // 1. The myth, written letter by letter.
           lines.forEach(line => {
@@ -334,7 +227,7 @@ export default function LegendIntro({
         };
       });
     },
-    { scope: rootRef, dependencies: [legendIntro, titleCard?.title, titleCard?.years, titleCard?.unsolved, markEnded] }
+    { scope: rootRef, dependencies: [legendIntro, markEnded] }
   );
 
   /** Skip: jump straight to the end state, so everything can still be read. */
@@ -406,36 +299,6 @@ export default function LegendIntro({
 
         {/* The quill. Its point is moved to the letter being written. */}
         <Quill attribute="data-legend" />
-
-        {/* The title card: the first beat. It lies over the empty page, then gives way to the myth: its title docks
-            into the case header, which is the page's real heading, so the card itself is hidden from screen readers. */}
-        {titleCard !== undefined && (
-          <div
-            data-legend="title-card"
-            aria-hidden="true"
-            className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 sm:gap-4 ${ended ? 'opacity-0' : ''}`}
-          >
-            <p className="font-legend text-[clamp(2.75rem,1.6rem+5.6vw,6rem)] leading-none whitespace-nowrap text-night-ink">
-              <span data-legend="title" className="inline-block origin-top-left">
-                {titleCard.title}
-              </span>
-            </p>
-            <p
-              data-legend="years"
-              className="font-voice text-[clamp(0.875rem,0.8rem+0.4vw,1.125rem)] tracking-[0.22em] text-ghost-night tabular-nums"
-            >
-              {titleCard.years}
-            </p>
-            {titleCard.unsolved && (
-              <p
-                data-legend="unsolved"
-                className="mt-1 -rotate-3 rounded-[0.14em] border-[0.14em] border-rust-night px-[0.6em] pt-[0.45em] pb-[0.3em] font-voice text-[clamp(0.75rem,0.7rem+0.3vw,0.9375rem)] leading-none tracking-[0.2em] text-rust-night uppercase"
-              >
-                Unsolved
-              </p>
-            )}
-          </div>
-        )}
 
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <p

@@ -1,6 +1,7 @@
 // src/pages/Case.tsx
-// One case, looked up from the route. An open case starts with its title card and legend intro.
-// Once the intro has reached its end, the story follows below it: the reader scrolls on, or presses the scroll cue.
+// One case, looked up from the route. An open case starts with its legend intro. Once the intro has reached its
+// end, the story follows below it: the reader scrolls on, or presses the scroll cue. The story opens on the case's
+// title (features/story/StoryOpening.tsx), which docks into the case header as the reader scrolls.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -8,7 +9,8 @@ import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader from '@/components/CaseHeader';
 import { getCaseById } from '@/cases';
 import Fork from '@/features/fork/Fork';
-import LegendIntro, { type TitleCard } from '@/features/legend/LegendIntro';
+import LegendIntro from '@/features/legend/LegendIntro';
+import type { OpeningCard } from '@/features/story/StoryOpening';
 import Story from '@/features/story/Story';
 import { formatCaseYears } from '@/lib/case-years';
 import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
@@ -31,12 +33,13 @@ export default function Case() {
   const year = caseData?.year;
   const yearEnd = caseData?.yearEnd;
   const unsolved = caseData?.unsolved === true;
-  const titleCard = useMemo<TitleCard | undefined>(
+  const teaser = caseData?.teaser;
+  const openingCard = useMemo<OpeningCard | undefined>(
     () =>
-      title === undefined || year === undefined
+      title === undefined || year === undefined || teaser === undefined
         ? undefined
-        : { title, years: formatCaseYears(year, yearEnd), unsolved },
-    [title, year, yearEnd, unsolved]
+        : { title, years: formatCaseYears(year, yearEnd), unsolved, teaser },
+    [title, year, yearEnd, unsolved, teaser]
   );
 
   // In development, check the case content and report every problem in the console.
@@ -89,16 +92,15 @@ export default function Case() {
   return (
     // The key gives every case its own provider, so one case never starts with another case's investigation.
     <InvestigationProvider key={caseData.id} caseData={caseData}>
-      {/* The title stays at the top for the whole page. The intro's title card docks into it. */}
-      {titleCard !== undefined && (
-        <CaseHeader title={titleCard.title} years={titleCard.years} unsolved={titleCard.unsolved} />
+      {/* The title stays at the top for the whole page. It is hidden until the opening scene docks its title. */}
+      {openingCard !== undefined && (
+        <CaseHeader title={openingCard.title} years={openingCard.years} unsolved={openingCard.unsolved} startHidden />
       )}
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
         <LegendIntro
           key={caseData.id}
           legendIntro={caseData.legendIntro}
-          titleCard={titleCard}
           video={caseData.theme.legendVideo}
           startAtEnd={introSeenBefore}
           onEnded={() => {
@@ -108,8 +110,8 @@ export default function Case() {
           onDone={scrollToStory}
         />
         {showStory && (
-          // The scroll cue stops with the story's top just below the header.
-          <div ref={storyRef} className="scroll-mt-[var(--case-header)]">
+          // The scroll cue stops with the opening scene filling the screen.
+          <div ref={storyRef}>
             <Story
               key={caseData.id}
               story={caseData.story}
@@ -117,6 +119,7 @@ export default function Case() {
               references={caseData.references}
               sources={caseData.sources}
               voyage={caseData.voyage}
+              opening={openingCard}
             />
             {/* After the central question: stop here, or open the case files. */}
             <Fork

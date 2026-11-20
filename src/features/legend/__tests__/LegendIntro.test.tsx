@@ -18,7 +18,6 @@ const legendIntro: LegendIntroData = {
 /** The scroll cue at the end of the intro. */
 const CUE = 'See what really happened';
 
-const titleCard = { title: 'Test Case', years: '1900 – 1901', unsolved: true };
 
 const video = { src: '/test-video.mp4', poster: '/test-poster.webp', credit: 'Test credit (not real)' };
 
@@ -390,136 +389,32 @@ describe('LegendIntro: without matchMedia', () => {
   });
 });
 
-describe('LegendIntro: the title card', () => {
-  test('without a title card there is none', () => {
+describe('LegendIntro: no title card', () => {
+  // The case title now opens the story (StoryOpening.tsx); the legend intro starts straight on the myth.
+  test('the intro has no title card, title, years or UNSOLVED stamp', () => {
     const { container } = renderIntro();
-
     expect(container.querySelector('[data-legend="title-card"]')).toBeNull();
-  });
-
-  test('shows the title, the years and the UNSOLVED stamp', () => {
-    const { container } = renderIntro({ titleCard });
-
-    expect(one(container, 'title').textContent).toBe(titleCard.title);
-    expect(one(container, 'years').textContent).toBe(titleCard.years);
-    expect(one(container, 'unsolved').textContent).toBe('Unsolved');
-    expect(one(container, 'unsolved').className).toContain('uppercase');
-  });
-
-  test('has no stamp for a case that is not marked unsolved', () => {
-    const { container } = renderIntro({ titleCard: { ...titleCard, unsolved: false } });
-
+    expect(container.querySelector('[data-legend="title"]')).toBeNull();
+    expect(container.querySelector('[data-legend="years"]')).toBeNull();
     expect(container.querySelector('[data-legend="unsolved"]')).toBeNull();
   });
 
-  test('the title is split into letters for the quill, and starts hidden with the years and the stamp', () => {
-    const { container } = renderIntro({ titleCard });
-
-    const letters = lettersOf(one(container, 'title'));
-    expect(letters.map(letter => letter.textContent).join('')).toBe(withoutSpaces(titleCard.title));
-    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
-    expect(one(container, 'years').style.opacity).toBe('0');
-    expect(one(container, 'unsolved').style.opacity).toBe('0');
-  });
-
-  test('the card is decoration: the case header is the page heading, so the card is hidden from screen readers', () => {
-    const { container } = renderIntro({ titleCard });
-
-    expect(one(container, 'title-card').getAttribute('aria-hidden')).toBe('true');
-    expect(screen.queryByRole('heading')).toBeNull();
-  });
-
-  test('Skip covers the title card too: it is gone in the end state, and the myth is shown', () => {
-    const { container } = renderIntro({ titleCard });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-
-    expect(one(container, 'title-card').style.opacity).toBe('0');
-    for (const letter of all(container, 'line').flatMap(lettersOf)) {
-      expect(letter.style.opacity).toBe('1');
-    }
-  });
-
-  test('a returning visitor does not see the title card again', () => {
-    const { container } = renderIntro({ titleCard, startAtEnd: true });
-
-    expect(one(container, 'title-card').style.opacity).toBe('0');
-  });
-
-  test('reduced motion: the title is not split, and it fades in whole', () => {
-    vi.unstubAllGlobals();
-    stubMatchMedia({ reducedMotion: true });
-    const { container } = renderIntro({ titleCard });
-
-    expect(one(container, 'title').children).toHaveLength(0);
-    expect(one(container, 'title').style.opacity).toBe('0');
-    expect(one(container, 'title').style.transform).toBe('');
-  });
-
-  test('without matchMedia the title card is hidden, so it never covers the myth', () => {
-    vi.unstubAllGlobals();
-    const { container } = renderIntro({ titleCard });
-
-    expect(one(container, 'title-card').className).toContain('opacity-0');
-  });
-});
-
-describe('LegendIntro: docking the title into the case header', () => {
-  /** The page's case header, as the case page renders it next to the intro. */
-  function renderWithHeader(props: Partial<Parameters<typeof LegendIntro>[0]> = {}) {
-    return render(
+  test('it does not touch the case header: the header is not its business any more', () => {
+    const { container } = render(
       <>
-        <CaseHeader title={titleCard.title} years={titleCard.years} unsolved />
-        <LegendIntro legendIntro={legendIntro} titleCard={titleCard} onDone={vi.fn()} {...props} />
+        <CaseHeader title="Test Case" years="1900 – 1901" unsolved startHidden />
+        <LegendIntro legendIntro={legendIntro} onDone={vi.fn()} />
       </>
     );
-  }
-  const bar = (container: HTMLElement) => container.querySelector('[data-case-header="bar"]') as HTMLElement;
-
-  test('the header is hidden while the title card shows the title large', () => {
-    const { container } = renderWithHeader();
-
-    expect(bar(container).style.opacity).toBe('0');
-    expect(one(container, 'title-card').style.opacity).not.toBe('0');
-  });
-
-  test('the header is still the page heading for screen readers while it is hidden', () => {
-    renderWithHeader();
-
-    expect(screen.getByRole('heading', { level: 1, name: titleCard.title })).toBeDefined();
-  });
-
-  test('Skip docks the title: the header is shown and the card is gone', () => {
-    const { container } = renderWithHeader();
-
+    const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-
-    expect(bar(container).style.opacity).toBe('1');
-    expect(one(container, 'title-card').style.opacity).toBe('0');
+    // Still hidden: only the opening scene docks the title and shows the header.
+    expect(bar.style.opacity).toBe('0');
   });
 
-  test('a returning visitor gets the header at once', () => {
-    const { container } = renderWithHeader({ startAtEnd: true });
-
-    expect(bar(container).style.opacity).toBe('1');
-  });
-
-  test('reduced motion: the title does not fly, the header fades in', () => {
-    vi.unstubAllGlobals();
-    stubMatchMedia({ reducedMotion: true });
-    const { container } = renderWithHeader();
-
-    expect(bar(container).style.opacity).toBe('0');
-    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-
-    expect(bar(container).style.opacity).toBe('1');
-    expect(one(container, 'title').style.transform).toBe('');
-  });
-
-  test('without matchMedia the header is simply there', () => {
-    vi.unstubAllGlobals();
-    const { container } = renderWithHeader();
-
-    expect(bar(container).style.opacity).toBe('');
+  test('the myth starts at once: the first line is hidden for the quill, the stamp is waiting', () => {
+    const { container } = renderIntro();
+    expect(lettersOf(one(container, 'line')).length).toBeGreaterThan(0);
+    expect(one(container, 'stamp').style.opacity).toBe('0');
   });
 });
