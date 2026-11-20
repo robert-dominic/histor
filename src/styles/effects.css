@@ -272,3 +272,9 @@
     opacity: 1;
   }
 }
+
+/* ---- A thin scrollbar for the paper that scrolls inside an open file (the page itself never scrolls) ---- */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-ink) 45%, transparent) transparent;
+}

@@ -177,7 +177,17 @@ function DeskScreen() {
       }
       home.querySelector<HTMLElement>('[data-focus-home]')?.focus({ preventScroll: true });
       if (flight.state !== null) {
-        Flip.from(flight.state, { targets: home, scale: true, ...tween('paper.lift'), zIndex: 30 });
+        // It flies back to its floor place or its tab (paper.move), then settles there with a small overshoot (paper.land).
+        Flip.from(flight.state, {
+          targets: home,
+          scale: true,
+          ...tween('paper.move'),
+          zIndex: 30,
+          onComplete: () => {
+            const scale = Number(gsap.getProperty(home, 'scale')) || 1;
+            gsap.fromTo(home, { scale: scale * 1.05 }, { scale, ...tween('paper.land') });
+          },
+        });
       }
     };
   }, [openId]);

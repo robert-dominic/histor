@@ -7,7 +7,7 @@
 // it fades in, with no flight and no flip. A file opened before is shown at once, stamped, with the user's choice.
 // Escape and "Back to the board" close it; the desk flies the folder home and gives it the focus back.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
@@ -155,8 +155,10 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         timeline.fromTo('[data-file="backdrop"]', { opacity: 0 }, { opacity: 1, duration: TIMING.backdrop }, 0);
 
         let revealAt: number = TIMING.enter;
-        if (desktop && !reduced && !openedBefore) {
-          // The folder arrives closed: flown from where it lay, or, from a link, grown in where it lands.
+        if (desktop && !reduced) {
+          // Every opening on a desktop is the full one, a file read before as well: the folder rises from where it lay
+          // (a floor place or a tab), straightens as it flies, and lands closed; then its cover swings open. A file
+          // reached by a link, with nowhere to fly from, grows in where it lands.
           gsap.set(cover, { rotationY: 0 });
           const flight = flightFor(evidence.id, 'in');
           let flipAt: number = TIMING.arrive;
@@ -169,7 +171,8 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           } else {
             timeline.fromTo(folder, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: TIMING.arrive }, 0);
           }
-          // Then the cover swings open around its left edge.
+          // Then the cover swings open around its left edge. A file read before then shows itself at once, already
+          // stamped; the writing reveal below is for a first opening only.
           timeline.call(
             () => {
               emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
@@ -276,6 +279,13 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     { scope: rootRef }
   );
 
+  /** A click outside the folder (on the dimmed desk) closes the file, like Escape. */
+  const closeOnOutsideClick = (event: MouseEvent<HTMLDivElement>) => {
+    // A portal card opened inside the file is not "outside" it (its clicks bubble through React).
+    if ((event.target as Element).closest('[data-file="folder"], [data-portal="root"]') === null) {
+      close();
+    }
+  };
   /** Tab stays inside the open file. */
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     const root = event.currentTarget;
@@ -346,8 +356,6 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         onDragStart() {
           targets = [...document.querySelectorAll('main [data-drop-target]')];
           root.dataset.dragging = 'true';
-          // The theories are at the top of the desk: bring them into view under the lifted folder.
-          window.scrollTo({ top: 0, behavior: 'smooth' });
           emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'close' });
           gsap.to(cover, { rotationY: 0, ...tween('paper.lift'), overwrite: true });
           gsap.to(folder, { scale: HELD_SCALE, ...tween('paper.lift'), overwrite: 'auto' });
@@ -406,23 +414,26 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       data-page="case"
       onKeyDown={trapFocus}
       data-lenis-prevent
-      className="fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-[calc(var(--case-header)+1.75rem)] pb-12 sm:px-6 lg:px-10 lg:pt-[calc(var(--case-header)+3rem)]"
+      onClick={closeOnOutsideClick}
+      // On a desktop the open file fits the screen and the page never scrolls behind it: the document scrolls
+      // inside its paper. On a phone the whole file scrolls.
+      className="fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-[calc(var(--case-header)+1.75rem)] pb-12 sm:px-6 lg:grid lg:place-items-center lg:overflow-hidden lg:px-10 lg:pt-[var(--case-header)] lg:pb-6"
     >
       {/* The desk dims behind the open file. */}
       <div data-file="backdrop" aria-hidden="true" className="fixed inset-0 bg-night/90" />
 
       {/* Desktop: two halves, the cover swings open into the left one. */}
-      <div className="relative mx-auto max-w-3xl lg:grid lg:max-w-6xl lg:grid-cols-2">
+      <div className="relative mx-auto max-w-3xl lg:grid lg:w-full lg:max-w-6xl lg:grid-cols-2">
         <div
           ref={folderRef}
           data-file="folder"
           data-flip-id={`file-${evidence.id}`}
-          className="lg:col-start-2 lg:grid lg:[perspective-origin:0%_50%] lg:[perspective:1800px]"
+          className="lg:col-start-2 lg:grid lg:max-h-[86svh] lg:grid-rows-[minmax(0,1fr)] lg:[perspective-origin:0%_50%] lg:[perspective:1800px]"
         >
           {/* The front cover. Its outside shows only while it is closed; its inside is the inner cover. */}
           <div
             data-file="cover"
-            className="relative z-10 lg:origin-left lg:[grid-area:1/1] lg:[transform-style:preserve-3d]"
+            className="relative z-10 lg:min-h-0 lg:origin-left lg:[grid-area:1/1] lg:[transform-style:preserve-3d]"
           >
             <div
               aria-hidden="true"
@@ -437,7 +448,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             </div>
             <div
               data-file="cover-inside"
-              className="desk-manila rounded-t-[3px] lg:h-full lg:rounded-[3px] lg:shadow-[0_8px_30px] lg:shadow-black/50 lg:[backface-visibility:hidden] lg:[transform:rotateY(180deg)]"
+              className="desk-manila rounded-t-[3px] lg:h-full lg:overflow-hidden lg:rounded-[3px] lg:shadow-[0_8px_30px] lg:shadow-black/50 lg:[backface-visibility:hidden] lg:[transform:rotateY(180deg)]"
             >
               <InnerCover label={coverLabel(number, evidence.title)} sources={sources} />
             </div>
@@ -445,7 +456,12 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
 
           {/* The back of the folder, manila: the document lies on it, clipped in place. On a desktop its edge is
               where the folder is grabbed to drag it (data-file="grip"). */}
-          <div data-file="grip" className="desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:rounded-[3px] lg:[grid-area:1/1]">
+          {/* The document scrolls inside its paper (a thin scrollbar), while the folder stays still. */}
+          <div
+            data-file="grip"
+            data-lenis-prevent
+            className="thin-scroll desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:rounded-[3px] lg:[grid-area:1/1]"
+          >
             <FileDocument evidence={evidence} number={number} headingRef={headingRef} revealed={openedBefore}>
               <section aria-labelledby="pin-question" className="mx-2.5 mt-8 border-t border-ink/20 pt-6 sm:mx-5">
                 <h3 id="pin-question" className="font-voice text-[1.0625rem] text-ink">
