@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This spec turns `docs/briefs/fix-pack.md` into requirements. The brief is the source of truth: nothing here adds to it or drops from it. Where the brief says "approved" (Lenis in 1.4, the unpin action in 3.7), the change is agreed. Where the brief leaves a choice open, the requirement states the working assumption and marks it **(assumption, Q*n*)**; the questions are listed under "Open questions" at the end and must be answered before the task that depends on them.
+This spec turns `docs/briefs/fix-pack.md` into requirements. The brief is the source of truth: nothing here adds to it or drops from it. Where the brief says "approved" (Lenis in 1.4, the unpin action in 3.7), the change is agreed. Where the brief leaves a choice open, the requirement states the working assumption and marks it **(assumption, Q*n*)**; the questions are listed under "Questions and answers" at the end. All nine are now answered, and the requirements below follow the answers.
 
 The pack fixes the feel of the story and the desk: text that blinks, things that snap into place, a desk that scrolls away from you, and an opened file that is tilted and cut off. It is mostly motion and layout, not new features.
 
@@ -74,7 +74,7 @@ These stay unchanged (brief, introduction):
 
 #### Acceptance Criteria
 
-1. Animations SHALL change only `transform` and `opacity`, with two exceptions: `filter: blur()` on text lines during a file's Writing_Reveal (never on whole images, and never during scroll), and `stroke-dashoffset` for drawn lines. How this applies to existing effects that break it is open (Q3).
+1. Animations SHALL change only `transform` and `opacity`, with two exceptions: `filter: blur()` on text lines during a file's Writing_Reveal (never on whole images, and never during scroll), and `stroke-dashoffset` for drawn lines. Existing effects that break it follow the answer to Q3: the stamps' `clip-path`, the quill's letter blur and the hold-to-close fill stay as short, small effects; hover glows and shadows become a layer that fades with `opacity`; the legend paper's `filter` is converted only if it animates; the lamp is unchanged.
 2. No large image or full-screen layer SHALL be blurred.
 3. `will-change` SHALL be set only while an element animates, and removed afterwards.
 4. THE story images SHALL have properly sized WebP versions, so that the camera moves do not stutter.
@@ -104,7 +104,7 @@ These stay unchanged (brief, introduction):
 
 #### Acceptance Criteria
 
-1. THE Opening_Scene SHALL replace the current title section and the "Play the story / Read at my pace" section. Where it sits relative to the legend intro is open (Q1).
+1. THE Opening_Scene SHALL replace the current title section and the "Play the story / Read at my pace" section. It sits after the legend intro and before chapter 1 (Q1).
 2. THE Opening_Scene SHALL be full screen: the case's first chapter image under a slow camera push, darkened at the bottom.
 3. THE quill SHALL write the case title large, THE years SHALL be typed under it, and THE UNSOLVED stamp SHALL land (`stamp.hit`).
 4. THE case teaser SHALL sit under the title, then a quiet scroll cue.
@@ -219,7 +219,7 @@ These stay unchanged (brief, introduction):
 
 1. "Pin to…" SHALL open a floating menu over the file, anchored to its button. It SHALL take no layout space, so nothing shifts.
 2. THE menu SHALL open and close with an animation (`layout` and `hover`).
-3. THE menu SHALL list every theory, plus "Set aside", plus "Back to the floor" when the file is pinned or set aside, so that a keyboard user can do everything a drag can. How "Set aside" relates to today's "None of them" is open (Q5).
+3. THE menu SHALL list every theory, plus "None of them", plus "Back to the floor" when the file is pinned or set aside, so that a keyboard user can do everything a drag can. On Desktop the option reads "None of them", as in the report (Q5).
 
 ### Requirement 17: Drag anything anywhere
 
@@ -230,12 +230,12 @@ These stay unchanged (brief, introduction):
 1. A Sealed Folder on the Floor SHALL be draggable.
 2. WHEN a Sealed Folder from the Floor is dropped on a theory note, THE file SHALL be pinned to that theory, but the reveal SHALL play first: it opens, the stamp lands, then it flies to the note.
 3. WHEN a Folder from the Floor is dropped on the Board outside any note, THE file SHALL open for reading.
-4. WHEN a Folder from the Floor is dropped back on the Floor, it SHALL settle where it was dropped. How long that position is kept is open (Q7).
+4. WHEN a Folder from the Floor is dropped back on the Floor, it SHALL settle where it was dropped. That position is kept for the visit only (Q7).
 5. A pinned file SHALL be draggable straight from its note, without opening it: to another theory (re-pin), to the Set_Aside_Tray, or back to the Floor (Unpin).
 6. A file in the Set_Aside_Tray SHALL be draggable in the same way as one from the Board.
 7. WHILE a dragged Folder is over a theory note, THE Folder SHALL shrink to about 55% and fade slightly so the note's title stays readable, and THE note SHALL light up.
 8. WHEN pins change, THE threads SHALL redraw smoothly (`layout`).
-9. Drops the brief does not name (a Sealed Folder on the Set_Aside_Tray; an opened, unpinned Folder on a theory) are open (Q6).
+9. Drops the brief does not name (a Sealed Folder on the Set_Aside_Tray; an opened, unpinned Folder on a theory) follow Q6.
 
 ### Requirement 18: Returning a file to the floor (approved state change)
 
@@ -243,7 +243,7 @@ These stay unchanged (brief, introduction):
 
 #### Acceptance Criteria
 
-1. THE investigation state does not support unpinning today (`InvestigationProvider` has `OPEN_EVIDENCE`, `PIN_EVIDENCE`, `CLOSE_CASE` and `REOPEN_CASE`). THE app SHALL add one action, `unpin(evidenceId)`, as approved. Where its type lives is open (Q4).
+1. THE investigation state does not support unpinning today (`InvestigationProvider` has `OPEN_EVIDENCE`, `PIN_EVIDENCE`, `CLOSE_CASE` and `REOPEN_CASE`). THE app SHALL add one action, `unpin(evidenceId)`, as approved. Its type lives in the provider, not in `src/types/case.ts` (Q4).
 2. `unpin(evidenceId)` SHALL remove the file's pin or set-aside entry. THE file SHALL stay opened.
 3. In storage, "unpinned" SHALL mean there is no pin entry, so no migration is needed.
 4. Tests SHALL cover the action, and this requirement is its spec line. `buildCaseReport` SHALL be unchanged.
@@ -263,7 +263,7 @@ These stay unchanged (brief, introduction):
 
 #### Acceptance Criteria
 
-1. ON a screen narrower than 1024px, THE investigation (the fork's investigate link and every desk URL) SHALL show the Phone_Gate instead. Whether the verdict and report URLs count as desk URLs is open (Q8).
+1. ON a screen narrower than 1024px, THE investigation (the fork's investigate link and every desk URL) SHALL show the Phone_Gate instead. The verdict and report URLs count as desk URLs (Q8).
 2. THE Phone_Gate SHALL be one on-theme screen: "This case is too big for a small screen." and "Open Histor on a laptop to investigate.", with a "Continue anyway" link under it.
 3. "Continue anyway" SHALL be remembered for the session.
 4. AFTER "Continue anyway", THE existing phone desk SHALL show, unchanged. Mobile polish comes later.
@@ -278,7 +278,7 @@ These stay unchanged (brief, introduction):
 2. Context7 SHALL be used only for an API not already checked in the same session.
 3. Browser checks SHALL happen once, at the final task.
 4. Every browser run SHALL use one Chrome profile with: `--user-data-dir=/tmp/histor-chrome --no-first-run --disable-component-update --disable-background-networking --disable-sync --disable-features=OptimizationGuideModelDownloading,OptimizationHints`.
-5. Desktop SHALL be checked at 1440×900, and the Phone_Gate only at 375×667.
+5. Desktop SHALL be checked at 1440×900 and, with DOM measurements only and no screenshots, at 1366×768. THE Phone_Gate SHALL be checked only at 375×667.
 6. DOM measurements SHALL be preferred to screenshots. At most 6 screenshots SHALL be taken in total, and only to confirm something visual.
 7. THE build SHALL run in its own session, separate from the spec session.
 
@@ -289,21 +289,23 @@ These stay unchanged (brief, introduction):
 #### Acceptance Criteria
 
 1. `npm test`, `npm run build` and `npm run lint` SHALL all pass.
-2. THE final browser check SHALL cover: the story opening and the Play_Card; the Text_Column, scrolling down and back; Portal_Names opening their cards; the Desk fitting the screen with no page scroll at 1440×900; a full investigation done by drag only (Floor → theory, Board → another theory, Board → Floor, Board → tray); the Writing_Reveal and skipping it; a long document scrolling inside the paper; the Pin_Menu not moving the file; the Phone_Gate.
+2. THE final browser check SHALL cover: the story opening and the Play_Card; the Text_Column, scrolling down and back; Portal_Names opening their cards; the Desk fitting the screen with no page scroll at 1440×900 and at 1366×768 (DOM measurements only); a full investigation done by drag only (Floor → theory, Board → another theory, Board → Floor, Board → tray); the Writing_Reveal and skipping it; a long document scrolling inside the paper; the Pin_Menu not moving the file; the Phone_Gate.
 3. THE browser SHALL show no console errors.
 4. THE steering docs and `docs/content/mary-celeste-scenes.md` SHALL match what was built.
 5. Each task SHALL end with a `[kiro]` commit. THE final task SHALL push, and send one final report in the usual format, listing every error hit, including those fixed.
 
-## Open questions
-
-Each question has a working assumption. The design and tasks follow the assumption until it is answered.
-
-- **Q1. Where the opening scene sits.** Today the page runs: title card (inside the legend intro), legend intro, the "Play the story / Read at my pace" section, then chapter 1. *Assumption:* the legend intro stays first, without its title card, as a cold open; the Opening_Scene sits where the play section was, just before chapter 1. This puts the first chapter's daylight image right before chapter 1, and the Play_Card after it. The case header stays hidden during the legend intro until the title docks.
-- **Q2. Token durations and the steps.** Several starting values (0.35, 0.6, 0.5, 0.16) are not steps. *Assumption:* the tokens keep the brief's starting values; the steps are the scale for every other timing (delays, holds, staggers).
-- **Q3. Existing effects outside the performance rule.** These animate other properties today: the stamps' `clip-path` reveal, the hold-to-close `clip-path` fill, the lamp's mask (CSS variables written every frame), the quill's 1px letter blur, the legend paper's `filter`, and hover transitions on `filter` and `box-shadow`. *Assumption:* convert them to `transform` and `opacity` (stamps by `stamp.hit` scale; the hold's fill as a scaled disc; glows and shadows as layers whose opacity changes; the quill without blur), except the lamp, which Requirement 19 keeps unchanged.
-- **Q4. The unpin action and `src/types/case.ts`.** `InvestigationAction` is declared in `src/types/case.ts`, which must not change. *Assumption:* the provider declares a wider action type, `InvestigationAction | { type: 'UNPIN_EVIDENCE'; evidenceId: string }`, and `case.ts` stays as it is.
-- **Q5. Wording.** The menu's "Set aside" versus today's "None of them" (which the report also uses, and whose wording must not change); and hint 1 ("Open a file from the pile.") and the ? guide, which mention the pile. *Assumption:* on Desktop the menu says "Set aside"; the report keeps "None of them"; the hint and the guide say "floor" on Desktop and keep "pile" on the phone desk.
-- **Q6. Drops the brief does not name.** *Assumption:* a Sealed Folder dropped on the Set_Aside_Tray plays the reveal, then goes to the tray (status is earned by opening). An opened, unpinned Folder dropped on a theory is pinned straight away, because its status is already revealed.
-- **Q7. Where a dropped position is kept.** *Assumption:* for the visit only, in memory. A reload puts every Folder back at its Floor_Layout place. Nothing new is stored.
-- **Q8. Phone gate scope.** *Assumption:* the gate covers every investigation URL: `/files`, `/files/:evidenceId`, `/verdict` and `/report`.
-- **Q9. CSS hover transitions.** Requirement 1 governs GSAP tweens. *Assumption:* CSS hover and focus transitions use matching CSS variables for the `hover` token; other CSS transitions are converted only where Requirement 3 needs it.
+## Questions and answers
+All nine questions are answered. Where an answer differs from the working assumption, the requirements, the design and the tasks above follow the answer.
+- **Q1. Where the opening scene sits.** *Answer:* the legend intro first, then the Opening_Scene, then the Play_Card as chapter 1 begins. The legend intro loses its title card. The case header stays hidden during the legend intro until the title docks.
+- **Q2. Token durations and the steps.** *Answer:* agreed. The tokens keep the brief's starting values; the steps are the scale for every other timing (delays, holds, staggers).
+- **Q3. Existing effects outside the performance rule.** *Answer:* do not convert everything.
+  - Keep the stamps' `clip-path` reveal, the quill's letter blur and the hold-to-close `clip-path` fill. They are short and small.
+  - Convert hover `filter` and `box-shadow` to a shadow layer that fades with `opacity`.
+  - Convert the legend paper's `filter` only if it animates.
+  - The lamp is unchanged.
+- **Q4. The unpin action and `src/types/case.ts`.** *Answer:* agreed. The provider declares `InvestigationAction | { type: 'UNPIN_EVIDENCE'; evidenceId: string }`; `case.ts` stays as it is.
+- **Q5. Wording.** *Answer:* keep "None of them" wherever it means "this file points to no theory": the Pin_Menu option and the Set_Aside_Tray label, matching the report. "Set aside" is not used as a label. The first-visit hint and the ? guide say "floor" on Desktop and keep "pile" on the phone desk.
+- **Q6. Drops the brief does not name.** *Answer:* agreed. A Sealed Folder dropped on the Set_Aside_Tray plays the reveal, then goes to the tray. An opened, unpinned Folder dropped on a theory is pinned straight away.
+- **Q7. Where a dropped position is kept.** *Answer:* agreed. For the visit only, in memory. Nothing new is stored.
+- **Q8. Phone gate scope.** *Answer:* agreed. The gate covers `/files`, `/files/:evidenceId`, `/verdict` and `/report`.
+- **Q9. CSS hover transitions.** *Answer:* agreed. CSS hover and focus transitions use matching CSS variables for the `hover` token; other CSS transitions are converted only where Requirement 3 needs it.

@@ -20,7 +20,7 @@ Rules for every task:
 ## Tasks
 
 - [ ] 1. Motion tokens
-  - Rewrite `src/lib/motion.ts`: `STEP`, `MOTION` (the ten Motion_Tokens with the brief's starting values, per Q2), `tween(name)`, `ghostDuration(key)`, `stampHit(target, options)`; register any custom ease once with `CustomEase` (check with Context7); keep `MOTION_QUERIES`; keep the old `EASE` exports for now (removed in task 4)
+  - Rewrite `src/lib/motion.ts`: `STEP`, `MOTION` (the ten Motion_Tokens with the brief's starting values, per Q2), `tween(name)`, `ghostDuration(key)`, `stampHit(target, options)` (the stamp keeps its `clip-path` reveal, per Q3); register any custom ease once with `CustomEase` (check with Context7); keep `MOTION_QUERIES`; keep the old `EASE` exports for now (removed in task 4)
   - Add `--motion-hover-ease` and `--motion-hover-duration` to the `@theme` block of `src/index.css` (Q9)
   - Unit tests: every token present; durations positive; `ink.out` quicker than `ink.in`; `ghostDuration` within 2–4s and deterministic; `stampHit` builds a press then a settle
   - _Requirements: 1.1, 1.2, 1.4, 1.5_
@@ -43,10 +43,10 @@ Rules for every task:
   - _Requirements: 1.3_
 
 - [ ] 5. Performance rules
-  - Per Q3: convert the stamps' `clip-path` reveal (`stampHit`, scale and opacity), the hold-to-close fill (a scaled disc), hover glows and shadows (a layer whose opacity changes), the legend paper's `filter` change and the quill's letter blur to `transform` and `opacity`; leave the lamp as it is
+  - Per Q3: keep the stamps' `clip-path` reveal, the quill's letter blur and the hold-to-close `clip-path` fill (short, small effects); convert hover `filter` and `box-shadow` to a shadow layer that fades with `opacity`; convert the legend paper's `filter` only if it animates; leave the lamp as it is
   - Blur only on file text lines during the reveal, and never on images or full-screen layers
   - `will-change` only while animating: remove the story image's permanent `will-change-transform`; set and clear it around tweens
-  - Tests: the stamp and the hold still reach their end states (existing tests); no permanent `will-change` class on scene images
+  - Tests: the stamp and the hold still reach their end states (existing tests); hover shadows sit on a layer whose `opacity` changes; no permanent `will-change` class on scene images
   - _Requirements: 3.1, 3.2, 3.3_
 
 - [ ] 6. Sized story images
@@ -126,6 +126,7 @@ Rules for every task:
 
 - [ ] 18. One fixed desk screen
   - Desktop composition in `Desk.tsx`: `h-svh` grid, compact header row (title, progress line, hints, wax seal), Board about 55%, Floor about 45%, tray beside the floor; `overflow: hidden` on `html` while mounted on Desktop; Lenis stopped while mounted
+  - The tray label reads "None of them" (Q5)
   - Hanging tabs and tray tabs compress to fit their row (a CSS variable from one measurement per layout change)
   - Below 1024px: today's phone desk, unchanged
   - Update the desk tests to the new structure
@@ -152,7 +153,7 @@ Rules for every task:
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
 - [ ] 22. The Pin menu as a popover
-  - Desktop: an absolutely placed menu anchored to "Pin to…", opening down or up as room allows, with `layout` and `hover`, quicker to close; items: the theories, "Set aside", "Back to the floor" when pinned or set aside (Q5)
+  - Desktop: an absolutely placed menu anchored to "Pin to…", opening down or up as room allows, with `layout` and `hover`, quicker to close; items: the theories, "None of them", "Back to the floor" when pinned or set aside (Q5)
   - Phone desk: today's inline menu, unchanged
   - Tests: the menu takes no layout space (the button's container keeps its height when it opens); the items, including "Back to the floor" only when pinned; "Back to the floor" unpins and the file lies on the floor; keyboard behaviour as before
   - _Requirements: 16.1, 16.2, 16.3_
@@ -188,7 +189,7 @@ Rules for every task:
   - Run `npm test`, `npm run build` and `npm run lint`
   - Run `git diff --stat <commit before task 1> -- src/types/case.ts src/lib/case-report.ts src/cases/` and confirm no changes; confirm `InvestigationProvider.tsx` changed only for unpin
   - The one browser run, against `npm run preview`, with the Chrome flags of Requirement 21.4 (plus the pointer `--blink-settings` for the desktop run), DOM measurements first, at most 6 screenshots:
-    - 1440×900: the story opening and the play card; the text column scrolling down and back; Portal_Names opening their cards; the desk with no page scroll; a full investigation by drag only (floor → theory, board → another theory, board → floor, board → tray); the writing reveal and skipping it; a long document scrolling inside the paper; the Pin menu not moving the file; no console errors
+    - 1440×900 (and 1366×768 with DOM measurements only, no screenshots: the desk's scroll height, the Board and Floor in view, no covered label): the story opening and the play card; the text column scrolling down and back; Portal_Names opening their cards; the desk with no page scroll; a full investigation by drag only (floor → theory, board → another theory, board → floor, board → tray); the writing reveal and skipping it; a long document scrolling inside the paper; the Pin menu not moving the file; no console errors
     - 375×667: the phone gate
   - Write the final report in the usual format, listing every error hit across the build (including fixed ones); commit with `[kiro]`; push
   - _Requirements: 21.3, 21.4, 21.5, 21.6, 22.1, 22.2, 22.3, 22.5_
@@ -196,7 +197,8 @@ Rules for every task:
 ## Notes
 
 - All tasks are required. Run them one at a time, in order.
-- The open questions Q1–Q9 are at the end of `requirements.md`. Tasks 1, 5, 9, 15, 16, 22, 23, 24 and 26 depend on them.
+- Run plan: tasks 1–14 run in order in one build pass, without stopping unless something is unclear. The push happens after task 14, followed by a short report. Tasks 15–28 follow in a later pass, and the final browser check (task 28) is still to come.
+- The questions Q1–Q9 and their answers are at the end of `requirements.md`; all are answered. Tasks 1, 5, 9, 15, 16, 22, 23, 24 and 26 depend on them.
 - Tasks 3 and 4 change curves and lengths only, so the app looks the same between tasks apart from timing.
 
 ## Task Dependency Graph
