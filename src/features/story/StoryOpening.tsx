@@ -13,7 +13,7 @@ import Quill from '@/components/Quill';
 import { dockTitle, watchForDock } from '@/features/story/dock-title';
 import type { ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
-import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
+import { INK_RISE, MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import type { ImageAsset } from '@/types/case';
@@ -155,7 +155,7 @@ export default function StoryOpening({ card, image, grade }: StoryOpeningProps) 
           at += MOTION['stamp.hit'].duration + STEP.fast;
         }
         at += TIMING.pauseBeforeTeaser;
-        timeline.fromTo(teaser, { opacity: 0, y: MOTION['ink.in'].y }, { opacity: 1, y: 0, ...tween('ink.in') }, at);
+        timeline.fromTo(teaser, { opacity: 0, y: INK_RISE }, { opacity: 1, y: 0, ...tween('ink.in') }, at);
         at += MOTION['ink.in'].duration + TIMING.pauseBeforeCue;
         timeline.fromTo(cue, { opacity: 0 }, { opacity: 1, ...tween('ink.in') }, at);
 

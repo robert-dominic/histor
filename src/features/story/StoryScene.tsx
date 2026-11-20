@@ -1,42 +1,49 @@
 // src/features/story/StoryScene.tsx
 // One chapter as a full-screen cinematic scene: the image fills the screen, the quill writes the heading over it,
-// then the text arrives one beat (sentence) at a time in the lower third, and the hook takes the whole screen.
+// then the text column rises in the lower part: the chapter's sentences, stacked in order, moving up as the
+// reader scrolls, and the hook takes the whole screen.
 // The scenes lie on top of each other in one pinned stage; Story.tsx scrubs a timeline that plays them in turn.
 //
 // Screen readers and search engines get the full text: every paragraph is in the DOM, whole, in `data-story="text"`,
-// which is visually hidden until a keyboard user tabs into one of its portals. The beats are for the eyes only.
+// which is visually hidden until a keyboard user tabs into one of its portals. The column is for the eyes only.
 
 import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import PortalText from '@/features/portals/PortalText';
 import type { ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
+import { columnLines } from '@/lib/story-column';
 import type { StorySection } from '@/types/case';
 
 interface StorySceneProps {
   section: StorySection;
   index: number;
   grade: ImageGrade;
-  /** The chapter's text split into beats, in order. */
-  beats: string[];
+  /** The chapter's text split into sentences, in order. */
+  sentences: string[];
   loadImage: boolean;
 }
 
 const LABEL_CLASSES =
   'bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase lg:text-[0.6875rem]';
 
-/** Long beats get a smaller size on phones, so the longest sentence still fits a 375×667 screen. */
-function beatSizeClass(beat: string): string {
-  if (beat.length > 150) {
+/** The column's own text size. Sentences are set in this size, or a little smaller when they are long. */
+const COLUMN_TEXT = 'text-[1.375rem] sm:text-[1.875rem] lg:text-[2.5rem]';
+/** Line height of the column, in em. The column's height is set in lines of it. */
+const LINE_HEIGHT = 1.35;
+
+/** Long sentences get a smaller size, so the longest still fits a 375×667 screen. */
+function sentenceSizeClass(sentence: string): string {
+  if (sentence.length > 150) {
     return 'text-[1.0625rem] sm:text-[1.5rem] lg:text-[1.875rem]';
   }
-  if (beat.length > 90) {
+  if (sentence.length > 90) {
     return 'text-[1.1875rem] sm:text-[1.625rem] lg:text-[2.125rem]';
   }
-  return 'text-[1.375rem] sm:text-[1.875rem] lg:text-[2.5rem]';
+  return '';
 }
 
-export default function StoryScene({ section, index, grade, beats, loadImage }: StorySceneProps) {
+export default function StoryScene({ section, index, grade, sentences, loadImage }: StorySceneProps) {
   const headingId = `story-${section.id}`;
   const { image, rollCall } = section;
   const sources = image === undefined ? null : imageSources(image.src);
@@ -70,7 +77,7 @@ export default function StoryScene({ section, index, grade, beats, loadImage }: 
         </figure>
       )}
 
-      {/* Readability: dark over the bottom 45%, where the beats are. */}
+      {/* Readability: dark over the bottom 45%, where the text column is. */}
       <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[45%] bg-linear-to-t from-night/95 via-night/75 to-transparent" />
       {/* Dims the whole image: a little for the roll call, almost to black for the hook. */}
       <div aria-hidden="true" data-story="dim" className="absolute inset-0 bg-night" style={{ opacity: 0 }} />
@@ -147,21 +154,29 @@ export default function StoryScene({ section, index, grade, beats, loadImage }: 
         </ul>
       )}
 
-      {/* The beats, for the eyes only. Their portals stay tappable but out of the Tab order: the full text below
-          has the same portals for keyboard and screen-reader users. */}
-      <div aria-hidden="true" data-story="beats" className="absolute inset-x-0 top-[50%] bottom-[13%]">
-        {beats.map((beat, beatIndex) => (
-          <p
-            key={beatIndex}
-            data-story="beat"
-            className={`absolute inset-x-0 bottom-0 mx-auto max-w-[min(32ch,88vw)] px-1 text-center font-record leading-[1.35] text-pretty text-night-ink sm:max-w-[30ch] ${beatSizeClass(beat)}`}
-            style={{ opacity: 0 }}
-          >
-            <PortalText text={beat} tabbable={false} />
-          </p>
-        ))}
+      {/* The text column, for the eyes only: the chapter's sentences stacked in order. Story.tsx moves the list up as
+          the reader scrolls; the sentences that pass the top fade out under a static mask, so they never blink. Their
+          portals stay tappable but out of the Tab order: the full text below has the same portals for keyboard and
+          screen-reader users. The list starts just below the column and is clipped by it. */}
+      <div
+        aria-hidden="true"
+        data-story="column"
+        className={`absolute inset-x-0 bottom-[16%] mx-auto w-[min(32ch,88vw)] overflow-hidden px-1 text-center font-record text-night-ink [mask-image:linear-gradient(to_bottom,transparent,black_24%)] sm:w-[30ch] lg:bottom-[13%] ${COLUMN_TEXT}`}
+        style={{ height: `${columnLines(sentences) * LINE_HEIGHT}em`, lineHeight: LINE_HEIGHT }}
+      >
+        <div data-story="sentences" className="absolute inset-x-0 top-full">
+          {sentences.map((sentence, sentenceIndex) => (
+            <p
+              key={sentenceIndex}
+              data-story="sentence"
+              className={`pt-[0.45em] text-pretty ${sentenceSizeClass(sentence)}`}
+              style={{ opacity: 0 }}
+            >
+              <PortalText text={sentence} tabbable={false} />
+            </p>
+          ))}
+        </div>
       </div>
-
       {section.hook !== undefined && (
         <p
           aria-hidden="true"
@@ -173,7 +188,7 @@ export default function StoryScene({ section, index, grade, beats, loadImage }: 
         </p>
       )}
 
-      {/* The full text. Hidden while the beats tell it; shown as a readable panel when it holds the focus. */}
+      {/* The full text. Hidden while the column tells it; shown as a readable panel when it holds the focus. */}
       <div
         data-story="text"
         data-lenis-prevent

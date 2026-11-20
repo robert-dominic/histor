@@ -1,16 +1,18 @@
 // @vitest-environment jsdom
 // src/features/story/__tests__/Story.test.tsx
-// The cinematic story (docs/briefs/story-redesign.md): every chapter's full text is in the DOM, the beats are for
+// The cinematic story (docs/briefs/story-redesign.md): every chapter's full text is in the DOM, the text column is for
 // the eyes only, the roll call and the chart come from the data, playing can be paused, and reduced motion gives
 // plain stacked sections.
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
 import { parseRefs } from '@/lib/parse-refs';
 import { setLenis } from '@/lib/smooth-scroll';
 import { splitIntoBeats } from '@/lib/story-beats';
+import { COLUMN, columnLines, columnPlan } from '@/lib/story-column';
 import { splitIntoPhrases } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case, StorySection } from '@/types/case';
@@ -57,6 +59,7 @@ function finishTweens(element: Element | null) {
   }
 }
 
+const texts = (section: StorySection) => section.body.flatMap(splitIntoBeats);
 const chapterOf = (container: HTMLElement, section: StorySection) =>
   container.querySelector(`[data-story="chapter"][data-chapter="${section.id}"]`) as HTMLElement;
 
@@ -111,14 +114,13 @@ describe('Story: the full text is in the DOM', () => {
     }
   );
 
-  test('the beats, one sentence each, are for the eyes only', () => {
+  test('the text column holds every sentence of the chapter in order, for the eyes only', () => {
     const { container } = renderStory();
-
     for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
-      const beats = chapter.querySelector('[data-story="beats"]') as HTMLElement;
-      expect(beats.getAttribute('aria-hidden')).toBe('true');
-      expect([...beats.querySelectorAll('[data-story="beat"]')].map(beat => beat.textContent)).toEqual(
+      const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
+      expect(column.getAttribute('aria-hidden')).toBe('true');
+      expect([...column.querySelectorAll('[data-story="sentence"]')].map(sentence => sentence.textContent)).toEqual(
         section.body.flatMap(splitIntoBeats).map(plainText)
       );
       if (section.hook !== undefined) {
@@ -126,28 +128,78 @@ describe('Story: the full text is in the DOM', () => {
       }
     }
   });
-
-  test('portals in the beats stay tappable but out of the Tab order; the full text has them for the keyboard', () => {
+  test('the column is about 3 to 4 lines tall and has a static mask at the top', () => {
+    const { container } = renderStory();
+    for (const section of maryCeleste.story) {
+      const column = chapterOf(container, section).querySelector('[data-story="column"]') as HTMLElement;
+      // Height in lines of its own text: the visible band, one line for the mask, and more for a very long sentence.
+      const lines = Number.parseFloat(column.style.height) / Number.parseFloat(column.style.lineHeight);
+      expect(lines).toBe(columnLines(section.body.flatMap(splitIntoBeats)));
+      expect(lines).toBeGreaterThanOrEqual(COLUMN.visibleLines + 1);
+      expect(column.className).toContain('overflow-hidden');
+      expect(column.className).toContain('mask-image');
+    }
+  });
+  test('the column sits in the lower part of the scene, and the sentences start out hidden below it', () => {
+    const { container } = renderStory();
+    const column = container.querySelector('[data-story="column"]') as HTMLElement;
+    expect(column.className).toMatch(/bottom-\[1[36]%\]/);
+    const list = column.querySelector('[data-story="sentences"]') as HTMLElement;
+    expect(list.className).toContain('top-full');
+    for (const sentence of column.querySelectorAll<HTMLElement>('[data-story="sentence"]')) {
+      expect(sentence.style.opacity).toBe('0');
+    }
+  });
+  test('portals in the column stay tappable but out of the Tab order; the full text has them for the keyboard', () => {
     const { container } = renderStory();
 
-    const inBeats = [...container.querySelectorAll<HTMLElement>('[data-story="beats"] [data-portal-trigger]')];
+    const inColumn = [...container.querySelectorAll<HTMLElement>('[data-story="column"] [data-portal-trigger]')];
     const inText = [...container.querySelectorAll<HTMLElement>('[data-story="text"] [data-portal-trigger]')];
-    expect(inBeats.length).toBeGreaterThan(0);
-    expect(inBeats.every(trigger => trigger.tabIndex === -1)).toBe(true);
+    expect(inColumn.length).toBeGreaterThan(0);
+    expect(inColumn.every(trigger => trigger.tabIndex === -1)).toBe(true);
     expect(inText.length).toBeGreaterThan(0);
     expect(inText.every(trigger => trigger.tabIndex === 0)).toBe(true);
     const ids = new Set(maryCeleste.references.map(reference => reference.id));
     expect(inText.every(trigger => ids.has(trigger.dataset.portalTrigger ?? ''))).toBe(true);
   });
 
-  test('tapping a portal in a beat opens its card', () => {
+  test('tapping a portal in the column opens its card', () => {
     const { container } = renderStory(testCase);
 
-    fireEvent.click(container.querySelector('[data-story="beats"] [data-portal-trigger="thing"]') as HTMLElement);
+    fireEvent.click(container.querySelector('[data-story="column"] [data-portal-trigger="thing"]') as HTMLElement);
 
     expect(screen.getByRole('dialog', { name: 'The thing' })).toBeDefined();
   });
 
+  test('each sentence starts where the one before ends, by its reading time (columnPlan)', () => {
+    const { container } = renderStory(testCase);
+    const chapter = chapterOf(container, testCase.story[0]);
+    const texts = testCase.story[0].body.flatMap(splitIntoBeats);
+    const plan = columnPlan(texts);
+    const starts = [...chapter.querySelectorAll('[data-story="sentence"]')].map(
+      sentence => gsap.getTweensOf(sentence)[0].startTime()
+    );
+    expect(starts).toHaveLength(texts.length);
+    for (let index = 1; index < starts.length; index += 1) {
+      expect(starts[index] - starts[index - 1]).toBeCloseTo(plan[index - 1].seconds, 6);
+    }
+  });
+  test('the sentences ease in, and the list moves up over the same stretch', () => {
+    const { container } = renderStory(testCase);
+    const chapter = chapterOf(container, testCase.story[0]);
+    const sentence = chapter.querySelector('[data-story="sentence"]') as HTMLElement;
+    const list = chapter.querySelector('[data-story="sentences"]') as HTMLElement;
+    const fade = gsap.getTweensOf(sentence)[0];
+    expect(fade.vars.ease).toBe('power3.out');
+    const moves = gsap.getTweensOf(list);
+    expect(moves).toHaveLength(texts(testCase.story[0]).length);
+    expect(moves[0].startTime()).toBeCloseTo(fade.startTime(), 6);
+  });
+  test('the scroll is scrubbed with smoothing, so the text glides', () => {
+    renderStory(testCase);
+    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin !== undefined && trigger.pin !== null);
+    expect(pinned?.vars.scrub).toBe(COLUMN.scrub);
+  });
   test('ends on the central question, whole for screen readers and in phrases for the eyes', () => {
     const { container } = renderStory();
 
@@ -401,7 +453,7 @@ describe('Story: play the story', () => {
     });
     expect(control.getAttribute('aria-pressed')).toBe('true');
     act(() => {
-      fireEvent.click(first.querySelector('[data-story="beats"] [data-portal-trigger]') as HTMLElement);
+      fireEvent.click(first.querySelector('[data-story="column"] [data-portal-trigger]') as HTMLElement);
     });
     expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
     expect(control.getAttribute('aria-pressed')).toBe('false');
@@ -414,7 +466,7 @@ describe('Story: play the story', () => {
       fireEvent.click(control);
     });
     act(() => {
-      fireEvent.click(container.querySelector('[data-story="beats"] [data-portal-trigger="thing"]') as HTMLElement);
+      fireEvent.click(container.querySelector('[data-story="column"] [data-portal-trigger="thing"]') as HTMLElement);
     });
 
     expect(control.getAttribute('aria-pressed')).toBe('false');
@@ -442,13 +494,13 @@ describe('Story: reduced motion', () => {
     vi.stubGlobal('scrollTo', vi.fn());
   });
 
-  test('plain stacked scenes: no stage, no beats, still images, the full text shown', () => {
+  test('plain stacked scenes: no stage, no column, still images, the full text shown', () => {
     const { container } = renderStory();
 
     const root = container.querySelector('[data-story="root"]') as HTMLElement;
     expect(root.dataset.mode).toBe('stacked');
     expect(container.querySelector('[data-story="stage"]')).toBeNull();
-    expect(container.querySelector('[data-story="beats"]')).toBeNull();
+    expect(container.querySelector('[data-story="column"]')).toBeNull();
     const chapters = [...container.querySelectorAll('[data-story="chapter"]')];
     expect(chapters).toHaveLength(maryCeleste.story.length);
     for (const chapter of chapters) {

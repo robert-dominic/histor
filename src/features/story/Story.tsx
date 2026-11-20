@@ -1,7 +1,7 @@
 // src/features/story/Story.tsx
 // The real story, told like a documentary (docs/briefs/story-redesign.md). Every chapter is a full-screen scene:
-// the image fills the screen under a slow camera, the quill writes the heading, the text arrives one sentence
-// at a time, and the hook takes the whole screen before the next scene dissolves in. The scenes lie on top of
+// the image fills the screen under a slow camera, the quill writes the heading, the chapter's sentences rise in
+// a text column as the reader scrolls, and the hook takes the whole screen before the next scene dissolves in. The scenes lie on top of
 // each other in one pinned stage, and one timeline, scrubbed by the scroll, plays them in turn.
 // A small chart in the corner draws the voyage as it goes. The reader can scroll, or let the story play itself.
 // Under reduced motion the chapters are plain stacked sections with still images, and the text only fades in.
@@ -23,10 +23,11 @@ import StoryScene from '@/features/story/StoryScene';
 import VoyageChart from '@/features/story/VoyageChart';
 import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
-import { LINEAR, MOTION_QUERIES, tween } from '@/lib/motion';
+import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { scrollToY } from '@/lib/smooth-scroll';
-import { beatSeconds, rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
+import { rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
+import { COLUMN, columnPlan } from '@/lib/story-column';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
@@ -47,9 +48,10 @@ const SCENE = {
   headingAt: 0.7,
   titleHold: 1.2,
   titleOut: 0.6,
-  beatIn: 0.6,
-  beatOut: 0.45,
-  beatGap: 0.15,
+  /** The share of a sentence's time spent moving it into place; the rest it holds still, to be read. */
+  columnMove: 0.4,
+  /** The column leaves before the hook takes the screen. */
+  columnOut: 0.45,
   nameEvery: 0.32,
   nameIn: 0.45,
   rollCallDim: 0.55,
@@ -115,7 +117,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
   const steps = useMemo(() => story.map((_, index) => dayNightStep(index, count)), [story, count]);
   const grades = useMemo(() => story.map((_, index) => imageGrade(index, count)), [story, count]);
-  const beats = useMemo(() => story.map(section => section.body.flatMap(splitIntoBeats)), [story]);
+  const sentences = useMemo(() => story.map(section => section.body.flatMap(splitIntoBeats)), [story]);
   const route = useMemo(() => buildRoute(voyage, story), [voyage, story]);
 
   /** "Read at my pace": a short glide to the first scene. */
@@ -208,7 +210,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
           interface Span {
             start: number;
-            /** When the beats begin and end: the chart draws its route in between. */
+            /** When the text column begins and ends: the chart draws its route in between. */
             textFrom: number;
             textTo: number;
             end: number;
@@ -262,29 +264,42 @@ export default function Story({ story, centralQuestion, references, sources, voy
             t += SCENE.titleOut;
             const textFrom = t;
 
-            // The beats, one at a time in the lower third.
-            const beatTexts = beats[index] ?? [];
+            // The text column: the sentences stacked in order. The list moves up as the reader scrolls, one sentence
+            // at a time, over the scroll distance of its reading time (columnPlan). A sentence eases in as it
+            // comes into view and stays. The sentences that pass the top are faded by the column's static mask.
+            const sentenceTexts = sentences[index] ?? [];
+            const plan = columnPlan(sentenceTexts);
             const names = quote('[data-story="name"]');
-            const rollAfter = names.length > 0 ? rollCallBeatIndex(beatTexts, names.length) : -1;
-            quote('[data-story="beat"]').forEach((beat, beatIndex) => {
+            const rollAfter = names.length > 0 ? rollCallBeatIndex(sentenceTexts, names.length) : -1;
+            const column = one('[data-story="column"]', scene);
+            const list = one('[data-story="sentences"]', scene);
+            const lines = quote('[data-story="sentence"]');
+            // Where each sentence's top lies in the list, and where the list ends: measured again on every refresh.
+            const topOf = (sentenceIndex: number) =>
+              sentenceIndex < lines.length ? lines[sentenceIndex].offsetTop : (list?.offsetHeight ?? 0);
+            lines.forEach((line, lineIndex) => {
+              const seconds = plan[lineIndex]?.seconds ?? COLUMN.minSeconds;
+              const move = seconds * SCENE.columnMove;
               timeline.fromTo(
-                beat,
-                { opacity: 0, y: 20 },
-                { opacity: 1, y: 0, duration: SCENE.beatIn, immediateRender: false },
+                line,
+                { opacity: 0, y: INK_RISE },
+                { opacity: 1, y: 0, duration: move, ease: MOTION['ink.in'].ease, immediateRender: false },
                 t
               );
-              emitAt(t, () => ({ type: 'beat', chapter: section.id, index: beatIndex, direction }));
-              t += SCENE.beatIn + beatSeconds(beatTexts[beatIndex] ?? '');
-              timeline.fromTo(
-                beat,
-                { opacity: 1, y: 0 },
-                { opacity: 0, y: -10, duration: SCENE.beatOut, immediateRender: false },
-                t
-              );
-              t += SCENE.beatOut + SCENE.beatGap;
+              if (list !== null) {
+                // The sentence's bottom comes to rest at the bottom of the column; the next one starts from there.
+                timeline.fromTo(
+                  list,
+                  { y: () => -topOf(lineIndex) },
+                  { y: () => -topOf(lineIndex + 1), duration: move, ease: MOTION.scene.ease, immediateRender: false },
+                  t
+                );
+              }
+              emitAt(t, () => ({ type: 'beat', chapter: section.id, index: lineIndex, direction }));
+              t += seconds;
 
-              // The roll call: after the beat that gives their number, the names appear one by one, and stay.
-              if (beatIndex === rollAfter) {
+              // The roll call: after the sentence that gives their number, the names appear one by one, and stay.
+              if (lineIndex === rollAfter) {
                 dimTo(SCENE.rollCallDim, t, SCENE.rollCallDimIn);
                 names.forEach((name, nameIndex) => {
                   timeline.fromTo(
@@ -303,6 +318,14 @@ export default function Story({ story, centralQuestion, references, sources, voy
             // takes the screen; then stillness.
             const hook = one('[data-story="hook-moment"]', scene);
             if (hook !== null) {
+              // The column leaves first, so the hook has the whole screen.
+              timeline.fromTo(
+                column,
+                { opacity: 1 },
+                { opacity: 0, duration: SCENE.columnOut, ease: MOTION['ink.out'].ease, immediateRender: false },
+                t
+              );
+              t += SCENE.columnOut;
               [...names].reverse().forEach(name => {
                 timeline.fromTo(
                   name,
@@ -427,7 +450,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
             start: 'top top',
             end: () => `+=${Math.round(timeline.duration() * pxPerSecond())}`,
             pin: true,
-            scrub: 0.6,
+            scrub: COLUMN.scrub,
             anticipatePin: 1,
             animation: timeline,
             invalidateOnRefresh: true,
@@ -527,7 +550,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
         };
       });
     },
-    { scope: rootRef, dependencies: [story, centralQuestion, cinematic, beats, route, steps, count, canAnimate], revertOnUpdate: true }
+    { scope: rootRef, dependencies: [story, centralQuestion, cinematic, sentences, route, steps, count, canAnimate], revertOnUpdate: true }
   );
 
   return (
@@ -551,7 +574,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 section={section}
                 index={index}
                 grade={grades[index]}
-                beats={beats[index]}
+                sentences={sentences[index]}
                 loadImage={index <= loadedThrough}
               />
             ))}

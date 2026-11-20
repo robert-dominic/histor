@@ -1,7 +1,7 @@
 // src/lib/__tests__/story-column.test.ts
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { COLUMN, columnPlan, columnSeconds, sentenceSeconds } from '@/lib/story-column';
+import { COLUMN, columnLines, columnPlan, columnSeconds, sentenceSeconds } from '@/lib/story-column';
 import { splitIntoBeats } from '@/lib/story-beats';
 
 const words = (count: number) => Array.from({ length: count }, (_, index) => `word${index}`).join(' ') + '.';
@@ -58,5 +58,22 @@ describe('columnPlan', () => {
         expect(slot.seconds).toBeGreaterThanOrEqual(COLUMN.minSeconds);
       });
     }
+  });
+});
+
+describe('columnLines', () => {
+  test('the visible band plus one line for the mask', () => {
+    expect(columnLines(['One.', 'Two.'])).toBe(COLUMN.visibleLines + 1);
+    expect(columnLines([])).toBe(COLUMN.visibleLines + 1);
+  });
+
+  test('a very long sentence makes the column two lines taller, so it can be read whole', () => {
+    expect(columnLines(['Short.', 'x'.repeat(151)])).toBe(COLUMN.visibleLines + 3);
+    expect(columnLines(['x'.repeat(150)])).toBe(COLUMN.visibleLines + 1);
+  });
+
+  test('a reference counts as its label', () => {
+    const marked = `{{ref:briggs|the captain}} ${'x'.repeat(100)}`;
+    expect(columnLines([marked])).toBe(COLUMN.visibleLines + 1);
   });
 });
