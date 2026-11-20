@@ -228,6 +228,49 @@ describe('investigationReducer: PIN_EVIDENCE', () => {
   });
 });
 
+describe('investigationReducer: UNPIN_EVIDENCE', () => {
+  const pinned = (): InvestigationState => ({
+    opened: ['e-1', 'e-2'],
+    pins: { 'e-1': 't-one', 'e-2': 'none' },
+    verdict: null,
+  });
+
+  test('removes the pin and keeps the file opened', () => {
+    const next = investigationReducer(pinned(), { type: 'UNPIN_EVIDENCE', evidenceId: 'e-1' }, testCase);
+    expect(next.pins).toEqual({ 'e-2': 'none' });
+    expect(next.opened).toEqual(['e-1', 'e-2']);
+  });
+
+  test('removes a set-aside entry too', () => {
+    const next = investigationReducer(pinned(), { type: 'UNPIN_EVIDENCE', evidenceId: 'e-2' }, testCase);
+    expect(next.pins).toEqual({ 'e-1': 't-one' });
+  });
+
+  test('a file with no pin returns the same state object', () => {
+    const state = pinned();
+    expect(investigationReducer(state, { type: 'UNPIN_EVIDENCE', evidenceId: 'e-3' }, testCase)).toBe(state);
+    expect(investigationReducer(state, { type: 'UNPIN_EVIDENCE', evidenceId: 'x-unknown' }, testCase)).toBe(state);
+  });
+
+  test('never mutates the state it is given', () => {
+    const state = pinned();
+    investigationReducer(state, { type: 'UNPIN_EVIDENCE', evidenceId: 'e-1' }, testCase);
+    expect(state.pins).toEqual({ 'e-1': 't-one', 'e-2': 'none' });
+  });
+
+  test('leaves the verdict alone', () => {
+    const state: InvestigationState = { ...pinned(), verdict: 't-one' };
+    expect(investigationReducer(state, { type: 'UNPIN_EVIDENCE', evidenceId: 'e-1' }, testCase).verdict).toBe('t-one');
+  });
+
+  test('a pin followed by an unpin gives back the pins it started with', () => {
+    const start: InvestigationState = { opened: ['e-1'], pins: {}, verdict: null };
+    const pinnedState = investigationReducer(start, { type: 'PIN_EVIDENCE', evidenceId: 'e-1', target: 't-one' }, testCase);
+    const back = investigationReducer(pinnedState, { type: 'UNPIN_EVIDENCE', evidenceId: 'e-1' }, testCase);
+    expect(back.pins).toEqual({});
+  });
+});
+
 describe('investigationReducer: CLOSE_CASE', () => {
   test('records the verdict for a valid theory when enough evidence has been opened', () => {
     const state: InvestigationState = { opened: ['e-1', 'e-2'], pins: {}, verdict: null };

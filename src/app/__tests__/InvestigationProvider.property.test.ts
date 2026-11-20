@@ -3,6 +3,7 @@
 import { describe, expect, test } from 'vitest';
 import * as fc from 'fast-check';
 import { createEmptyInvestigationState, investigationReducer } from '@/app/InvestigationProvider';
+import type { CaseAction } from '@/app/InvestigationProvider';
 import type { Case, InvestigationAction, InvestigationState, PinTarget } from '@/types/case';
 
 // ---------- Arbitraries ----------
@@ -337,6 +338,62 @@ describe('Investigation actions - Property Tests', () => {
         }
       ),
       { numRuns: 100 }
+    );
+  });
+});
+
+describe('Property 6: Unpin removes only the pin', () => {
+  test('Feature: fix-pack, Property 6: Unpin removes only the pin. Validates: Requirements 18.2, 18.3', () => {
+    fc.assert(
+      fc.property(
+        withCase(caseData =>
+          fc.record({
+            state: validStateArbitrary(caseData),
+            evidenceId: fc.oneof(fc.constantFrom(...evidenceIdsOf(caseData)), unknownEvidenceIdArbitrary),
+          })
+        ),
+        ({ caseData, state, evidenceId }) => {
+          const action: CaseAction = { type: 'UNPIN_EVIDENCE', evidenceId };
+          const next = investigationReducer(state, action, caseData);
+          // opened and verdict never change.
+          expect(next.opened).toEqual(state.opened);
+          expect(next.verdict).toBe(state.verdict);
+          if (Object.hasOwn(state.pins, evidenceId)) {
+            // Exactly that id leaves the pins.
+            const rest = { ...state.pins };
+            delete rest[evidenceId];
+            expect(next.pins).toEqual(rest);
+            expect(Object.hasOwn(next.pins, evidenceId)).toBe(false);
+          } else {
+            // Nothing to remove: the same state object.
+            expect(next).toBe(state);
+          }
+        }
+      ),
+      { numRuns: 200 }
+    );
+  });
+
+  test('Feature: fix-pack, Property 6: a pin followed by an unpin gives back the original pins', () => {
+    fc.assert(
+      fc.property(
+        withCase(caseData =>
+          fc.record({
+            state: validStateArbitrary(caseData),
+            evidenceId: fc.constantFrom(...evidenceIdsOf(caseData)),
+            target: validTargetArbitrary(caseData),
+          })
+        ),
+        ({ caseData, state, evidenceId, target }) => {
+          // Only for a file that was not pinned: unpinning a file that was pinned before loses its old pin.
+          fc.pre(!Object.hasOwn(state.pins, evidenceId));
+          const pinned = investigationReducer(state, { type: 'PIN_EVIDENCE', evidenceId, target }, caseData);
+          const back = investigationReducer(pinned, { type: 'UNPIN_EVIDENCE', evidenceId }, caseData);
+          expect(back.pins).toEqual(state.pins);
+          expect(back.opened).toEqual(state.opened);
+        }
+      ),
+      { numRuns: 200 }
     );
   });
 });

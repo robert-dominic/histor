@@ -13,6 +13,12 @@ export const MAX_OPENED = 100;
 /** Most entries kept in `pins`. */
 export const MAX_PINS = 100;
 
+/**
+ * Every action the investigation understands: those in `src/types/case.ts`, plus unpinning (fix-pack, approved).
+ * Unpinning removes a file's pin or set-aside entry so the file goes back to the floor, still opened. It lives here
+ * and not in `case.ts`, which stays as it is.
+ */
+export type CaseAction = InvestigationAction | { type: 'UNPIN_EVIDENCE'; evidenceId: string };
 /** A fresh, empty investigation. */
 export function createEmptyInvestigationState(): InvestigationState {
   return { opened: [], pins: {}, verdict: null };
@@ -28,7 +34,7 @@ export function createEmptyInvestigationState(): InvestigationState {
  */
 export function investigationReducer(
   state: InvestigationState,
-  action: InvestigationAction,
+  action: CaseAction,
   caseData: Case
 ): InvestigationState {
   switch (action.type) {
@@ -68,6 +74,15 @@ export function investigationReducer(
       return { ...state, pins: { ...state.pins, [action.evidenceId]: action.target } };
     }
 
+    case 'UNPIN_EVIDENCE': {
+      // "Unpinned" means no entry in `pins`, so nothing else changes: the file stays opened.
+      if (!Object.hasOwn(state.pins, action.evidenceId)) {
+        return state;
+      }
+      const pins = { ...state.pins };
+      delete pins[action.evidenceId];
+      return { ...state, pins };
+    }
     case 'CLOSE_CASE': {
       const theoryExists = caseData.theories.some(theory => theory.id === action.theoryId);
       if (!theoryExists) {
@@ -89,7 +104,7 @@ export function investigationReducer(
 
 export interface InvestigationContextValue {
   state: InvestigationState;
-  dispatch: Dispatch<InvestigationAction>;
+  dispatch: Dispatch<CaseAction>;
   caseData: Case;
 }
 
@@ -107,7 +122,7 @@ export function InvestigationProvider({
   children: ReactNode;
 }): ReactElement {
   const [state, dispatch] = useReducer(
-    (current: InvestigationState, action: InvestigationAction) =>
+    (current: InvestigationState, action: CaseAction) =>
       investigationReducer(current, action, caseData),
     caseData,
     initialCase => loadInvestigationState(initialCase.id, initialCase)
