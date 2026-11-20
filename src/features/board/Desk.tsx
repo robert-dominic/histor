@@ -4,7 +4,7 @@
 // Everything shown comes from the case data and the investigation.
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { Link, Outlet, useLocation, useParams } from 'react-router-dom';
+import { Outlet, useLocation, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
@@ -15,6 +15,7 @@ import DeskSurface from '@/features/board/DeskSurface';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
+import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import type { SlipReading } from '@/features/board/HangingTab';
 import { Flip, clearFlight, flightFor, recordFlight } from '@/features/board/flight';
@@ -186,14 +187,7 @@ function DeskScreen() {
           <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
             The case files
           </h2>
-          {canClose && (
-            <Link
-              to={`${base}/verdict`}
-              className="inline-flex min-h-11 items-center rounded-sm border border-brass px-5 font-voice text-sm tracking-[0.14em] text-brass uppercase transition-[scale,background-color,color] duration-150 ease-out hover:bg-brass hover:text-night focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97]"
-            >
-              Close the case
-            </Link>
-          )}
+          {canClose && <WaxSeal to={`${base}/verdict`} />}
         </header>
 
         <div className="relative mt-6 lg:mt-10">

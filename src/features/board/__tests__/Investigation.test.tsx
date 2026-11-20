@@ -10,6 +10,7 @@ import { STATUS_LABEL } from '@/lib/case-files';
 import { firstSentence } from '@/lib/desk';
 import { Draggable, FINE_POINTER_QUERY } from '@/features/board/drag';
 import { DESKTOP_QUERY, SMALL_PHONE_QUERY } from '@/lib/use-media-query';
+import { onStoryEvent } from '@/lib/story-events';
 import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { InvestigationState } from '@/types/case';
@@ -323,6 +324,55 @@ describe('Closing the case', () => {
 
     expect(screen.getByRole('button', { name: 'Hold to close the case' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Close the case' })).toBeNull();
+  });
+
+  test('the wax seal on the desk is a link to the verdict, and sounds `seal` when used', () => {
+    seed({ opened: firstFiles(CASE.closeThreshold), pins: {}, verdict: null });
+    renderAt(`${BASE}/files`);
+    const seal = document.querySelector<HTMLAnchorElement>('[data-seal="desk"]')!;
+    expect(seal.getAttribute('href')).toBe(`${BASE}/verdict`);
+    expect(seal.textContent).toBe('Close the case');
+    expect(seal.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    const heard = vi.fn();
+    const stop = onStoryEvent(heard);
+    fireEvent.click(seal);
+    stop();
+    expect(heard.mock.calls.map(([event]) => event)).toStrictEqual([{ type: 'seal', where: 'desk' }]);
+  });
+
+  test('there is no seal below the threshold', () => {
+    seed({ opened: firstFiles(CASE.closeThreshold - 1), pins: {}, verdict: null });
+    renderAt(`${BASE}/files`);
+    expect(document.querySelector('[data-seal="desk"]')).toBeNull();
+  });
+
+  test('the verdict lies on the desk: five theory notes under a still lamp', () => {
+    seed({ opened: firstFiles(CASE.closeThreshold), pins: {}, verdict: null });
+    renderAt(`${BASE}/verdict`);
+    const notes = [...document.querySelectorAll<HTMLElement>('[data-verdict="note"]')];
+    expect(notes.map(note => note.dataset.theoryId)).toStrictEqual(CASE.theories.map(item => item.id));
+    expect(document.querySelector('[data-desk="surface"]')).not.toBeNull();
+    expect(document.querySelector('[data-desk="lamp"]')?.getAttribute('data-lamp')).toBe('still');
+    // No standing is shown before the report.
+    expect(document.body.textContent).not.toContain('Leading');
+  });
+
+  test('holding to close presses a wax seal onto the chosen note, then opens the report', async () => {
+    seed({ opened: firstFiles(CASE.closeThreshold), pins: {}, verdict: null });
+    renderAt(`${BASE}/verdict`);
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(theory('t-explosion').title) }));
+    const chosen = document.querySelector<HTMLElement>('[data-verdict="note"][data-theory-id="t-explosion"]')!;
+    expect(chosen.querySelector('[data-verdict="seal"]')).not.toBeNull();
+    expect(document.querySelectorAll('[data-verdict="seal"]')).toHaveLength(1);
+    const heard = vi.fn();
+    const stop = onStoryEvent(heard);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Hold to close the case' }));
+
+    await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/report`), { timeout: 6000 });
+    stop();
+    expect(saved().verdict).toBe('t-explosion');
+    expect(heard.mock.calls.map(([event]) => event)).toStrictEqual([{ type: 'seal', where: 'verdict' }]);
   });
 });
 
@@ -720,6 +770,14 @@ describe('The case report', () => {
     },
     verdict: 't-sinking',
   };
+
+  test('lies on the desk as typed paper under a still lamp', () => {
+    seed(fixed);
+    renderAt(`${BASE}/report`);
+    expect(document.querySelector('[data-desk="surface"]')).not.toBeNull();
+    expect(document.querySelector('[data-desk="lamp"]')?.getAttribute('data-lamp')).toBe('still');
+    expect(document.querySelector('article.desk-typed-paper')).not.toBeNull();
+  });
 
   test('renders every section, in order, from the investigation', () => {
     seed(fixed);

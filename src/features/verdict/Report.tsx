@@ -1,6 +1,7 @@
 // src/features/verdict/Report.tsx
 // The case report. Built entirely from buildCaseReport (src/lib/case-report.ts): it mirrors the user's
 // reasoning, section by section, and never scores it. Without a verdict, this page sends the user to the board.
+// It lies on the desk as typed paper under a still lamp; the paper sits above the lamp's shadow, fully readable.
 
 import { useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -8,6 +9,8 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
 import Stamp from '@/components/Stamp';
+import DeskSurface from '@/features/board/DeskSurface';
+import Lamp from '@/features/board/Lamp';
 import ReportSection from '@/features/verdict/ReportSection';
 import { READING_LABEL, STANDING_LABEL, STATUS_LABEL, fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
@@ -74,9 +77,10 @@ export default function Report() {
       ref={rootRef}
       data-page="case"
       aria-labelledby="report-title"
-      className="min-h-svh bg-night px-3 pt-[calc(var(--case-header)+1.25rem)] pb-16 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
+      className="relative isolate min-h-svh bg-night px-3 pt-[calc(var(--case-header)+1.25rem)] pb-16 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
     >
-      <article className="mx-auto flex max-w-3xl flex-col gap-8 rounded-sm bg-paper px-5 pt-8 pb-8 text-ink shadow-2xl shadow-black/60 sm:px-10 sm:pt-10">
+      <DeskSurface />
+      <article className="desk-typed-paper relative z-[21] mx-auto flex max-w-3xl flex-col gap-8 rounded-[2px] px-5 pt-8 pb-8 text-ink sm:px-10 sm:pt-10">
         <h2 id="report-title" className="font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-none">
           Case report
         </h2>
@@ -268,6 +272,7 @@ export default function Report() {
           </Link>
         </nav>
       </article>
+      <Lamp still />
     </main>
   );
 }

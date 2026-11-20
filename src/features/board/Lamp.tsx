@@ -16,7 +16,12 @@ const RADIUS = { fine: 420, touch: 260, still: 640 } as const;
 
 const FINE_POINTER = '(hover: hover) and (pointer: fine)';
 
-export default function Lamp() {
+interface LampProps {
+  /** A static light, as under reduced motion: for the verdict and the report, where the paper is the focus. */
+  still?: boolean;
+}
+
+export default function Lamp({ still = false }: LampProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,7 +30,7 @@ export default function Lamp() {
       return;
     }
     const canQuery = typeof window.matchMedia === 'function';
-    const reduced = !canQuery || window.matchMedia(MOTION_QUERIES.reduced).matches;
+    const reduced = still || !canQuery || window.matchMedia(MOTION_QUERIES.reduced).matches;
     const fine = canQuery && window.matchMedia(FINE_POINTER).matches;
 
     if (reduced) {
@@ -89,7 +94,7 @@ export default function Lamp() {
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('focusin', onFocusIn);
     };
-  }, []);
+  }, [still]);
 
   return (
     <div ref={rootRef} aria-hidden="true" data-desk="lamp" className="desk-lamp pointer-events-none fixed inset-0 z-20">

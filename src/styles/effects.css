@@ -241,3 +241,13 @@
   background-color: color-mix(in srgb, var(--color-paper), white 35%);
   background-image: linear-gradient(to bottom, color-mix(in srgb, var(--color-ink) 6%, transparent), transparent 0.6rem);
 }
+/* Typed paper: the case report. Paper with a faint fold of light, a soft edge, and the weight of a few sheets. */
+.desk-typed-paper {
+  background-color: var(--color-paper);
+  background-image: linear-gradient(172deg, color-mix(in srgb, white 20%, transparent), transparent 38%);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 35%, transparent) inset,
+    0 2px 0 -1px color-mix(in srgb, var(--color-paper), black 18%),
+    0 4px 0 -2px color-mix(in srgb, var(--color-paper), black 28%),
+    0 24px 60px color-mix(in srgb, black 70%, transparent);
+}

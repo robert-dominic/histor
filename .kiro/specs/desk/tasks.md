@@ -109,7 +109,7 @@ Rules for every task:
   - Tests: hints appear once and not again with the stored flag (12.5); hint 2's two wordings; the guide opens and closes
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 12.5_
 
-- [ ] 13. The wax seal, the verdict and the report
+- [x] 13. The wax seal, the verdict and the report
   - `WaxSeal.tsx` on the desk at the threshold: rust-night wax, brass "H", "Close the case", a link to `/verdict`; emit `seal`
   - Verdict: the five theory notes on the desk under a static lamp; the existing 1.5s hold presses a wax seal onto the chosen note; same logic; reduced motion keeps the plain confirm
   - Report: typed paper under the lamp; the same seven sections, logic and wording; a stamp for each standing; "Reopen the case" with its inline confirm and "Back to all cases"
