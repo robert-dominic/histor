@@ -88,10 +88,17 @@ export default function Verdict() {
                 data-theory-id={theory.id}
                 onClick={() => setChoice(theory.id)}
                 style={{ rotate: `${rotate}deg` }}
-                className={`desk-note relative flex flex-col gap-2 rounded-[2px] px-4 pt-6 pb-4 text-left text-ink shadow-lg shadow-black/60 outline-offset-4 transition-[scale,box-shadow,opacity] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-brass active:scale-[0.97] ${
-                  chosen ? 'ring-4 ring-brass' : choice === null ? '' : 'opacity-70 hover:opacity-100'
+                className={`desk-note relative flex flex-col gap-2 rounded-[2px] px-4 pt-6 pb-4 text-left text-ink shadow-lg shadow-black/60 outline-offset-4 transition-[scale,opacity] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-brass active:scale-[0.97] ${
+                  chosen || choice === null ? '' : 'opacity-70 hover:opacity-100'
                 }`}
               >
+                {/* The brass ring of the chosen note: a layer whose opacity changes. */}
+                <span
+                  aria-hidden="true"
+                  data-verdict="ring"
+                  data-on={chosen}
+                  className="pointer-events-none absolute inset-0 rounded-[2px] ring-4 ring-brass opacity-0 transition-opacity duration-(--motion-hover-duration) ease-(--motion-hover-ease) data-[on=true]:opacity-100"
+                />
                 <span aria-hidden="true" className="desk-pin absolute top-2 left-1/2 size-3 -translate-x-1/2 rounded-full" />
                 <span className="font-legend text-[1.375rem] leading-[1.05]">{theory.title}</span>
                 <span className="font-record text-[0.9375rem] leading-snug text-ink/85">{theory.claim}</span>

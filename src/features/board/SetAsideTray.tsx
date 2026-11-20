@@ -19,8 +19,14 @@ export default function SetAsideTray({ layout, filesHref, slips }: SetAsideTrayP
       aria-labelledby="aside-title"
       data-board="aside"
       data-drop-target="none"
-      className="desk-tray group/tray relative rounded-sm px-4 pt-3 pb-4 transition-[filter] duration-150 ease-out data-[drop-hot=true]:z-[22] data-[drop-hot=true]:brightness-150"
+      className="desk-tray group/tray relative rounded-sm px-4 pt-3 pb-4 data-[drop-hot=true]:z-[22]"
     >
+      {/* The glow while a folder is held over the tray: a layer whose opacity changes. */}
+      <span
+        aria-hidden="true"
+        data-board="glow"
+        className="pointer-events-none absolute inset-0 rounded-sm bg-brass/20 opacity-0 transition-opacity duration-(--motion-hover-duration) ease-(--motion-hover-ease) group-data-[drop-hot=true]/tray:opacity-100"
+      />
       <h3 id="aside-title" className="font-voice text-[0.75rem] tracking-[0.2em] text-night-ink uppercase">
         Set aside
       </h3>

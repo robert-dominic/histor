@@ -29,9 +29,15 @@ export default function TheoryNote({ theory, className = '' }: TheoryNoteProps) 
     >
       <div
         data-board="paper"
-        className="desk-note relative flex h-full flex-col gap-2 rounded-[2px] px-4 pt-6 pb-5 text-ink shadow-lg shadow-black/60 transition-[filter] duration-150 ease-out group-data-[drop-hot=true]/note:shadow-brass/50 group-data-[drop-hot=true]/note:brightness-125 group-data-[drop-hot=true]/note:shadow-[0_0_0_3px]"
+        className="desk-note relative flex h-full flex-col gap-2 rounded-[2px] px-4 pt-6 pb-5 text-ink shadow-lg shadow-black/60"
         style={{ rotate: `${rotate}deg` }}
       >
+        {/* The glow while a folder is held over the note: a layer whose opacity changes (no filter or shadow transition). */}
+        <span
+          aria-hidden="true"
+          data-board="glow"
+          className="pointer-events-none absolute inset-0 rounded-[2px] bg-white/15 opacity-0 shadow-[0_0_0_3px] shadow-brass/50 transition-opacity duration-(--motion-hover-duration) ease-(--motion-hover-ease) group-data-[drop-hot=true]/note:opacity-100"
+        />
         {/* The brass pin that holds the note. */}
         <span aria-hidden="true" data-board="pin" className="desk-pin absolute top-2 left-1/2 size-3 -translate-x-1/2 rounded-full" />
         <h3 id={titleId} className="font-legend text-[1.375rem] leading-[1.05] text-ink">

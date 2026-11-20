@@ -55,10 +55,15 @@ export default function TheoryCard({ theory, pinnedCount, compact = false, expan
           aria-expanded={expanded}
           aria-controls={claimId}
           onClick={onToggle}
-          className={`flex h-full flex-col gap-1.5 rounded-sm px-3.5 pt-4 pb-2.5 text-left transition-[scale,box-shadow] duration-150 ease-out focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brass active:scale-[0.97] ${
-            expanded ? 'shadow-[inset_0_-3px_0] shadow-brass' : ''
-          }`}
+          className="relative flex h-full flex-col gap-1.5 rounded-sm px-3.5 pt-4 pb-2.5 text-left transition-[scale] duration-150 ease-out focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brass active:scale-[0.97]"
         >
+          {/* The brass underline of an open claim: a layer whose opacity changes. */}
+          <span
+            aria-hidden="true"
+            data-board="expanded-mark"
+            data-on={expanded}
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-brass opacity-0 transition-opacity duration-(--motion-hover-duration) ease-(--motion-hover-ease) data-[on=true]:opacity-100"
+          />
           <span className="font-legend text-[1.1875rem] leading-[1.05] text-ink">{theory.title}</span>
           {pinned}
         </button>

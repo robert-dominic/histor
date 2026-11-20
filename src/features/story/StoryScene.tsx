@@ -57,7 +57,7 @@ export default function StoryScene({ section, index, grade, beats, loadImage }: 
             alt={image.alt}
             decoding="async"
             draggable={false}
-            className="h-full w-full origin-center object-cover will-change-transform"
+            className="h-full w-full origin-center object-cover"
             style={{ filter: grade.filter }}
           />
           <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />

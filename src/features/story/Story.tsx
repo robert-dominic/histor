@@ -264,16 +264,16 @@ export default function Story({ story, centralQuestion, references, sources, voy
             quote('[data-story="beat"]').forEach((beat, beatIndex) => {
               timeline.fromTo(
                 beat,
-                { opacity: 0, y: 20, filter: 'blur(2px)' },
-                { opacity: 1, y: 0, filter: 'blur(0px)', duration: SCENE.beatIn, immediateRender: false },
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: SCENE.beatIn, immediateRender: false },
                 t
               );
               emitAt(t, () => ({ type: 'beat', chapter: section.id, index: beatIndex, direction }));
               t += SCENE.beatIn + beatSeconds(beatTexts[beatIndex] ?? '');
               timeline.fromTo(
                 beat,
-                { opacity: 1, y: 0, filter: 'blur(0px)' },
-                { opacity: 0, y: -10, filter: 'blur(2px)', duration: SCENE.beatOut, immediateRender: false },
+                { opacity: 1, y: 0 },
+                { opacity: 0, y: -10, duration: SCENE.beatOut, immediateRender: false },
                 t
               );
               t += SCENE.beatOut + SCENE.beatGap;
@@ -315,8 +315,8 @@ export default function Story({ story, centralQuestion, references, sources, voy
               dimTo(SCENE.hookDim, t, SCENE.hookDimIn);
               timeline.fromTo(
                 hook,
-                { opacity: 0, y: 12, filter: 'blur(2px)' },
-                { opacity: 1, y: 0, filter: 'blur(0px)', duration: SCENE.hookIn, immediateRender: false },
+                { opacity: 0, y: 12 },
+                { opacity: 1, y: 0, duration: SCENE.hookIn, immediateRender: false },
                 t + 0.35
               );
               emitAt(t + 0.35, () => ({ type: 'hook', chapter: section.id, direction }));
@@ -378,6 +378,20 @@ export default function Story({ story, centralQuestion, references, sources, voy
           }
 
           // ---- The sky over the scenes: each chapter's step, eased across the dissolve between two.
+          // The camera pushes only the image of the scene on screen: will-change is set while a scene is within
+          // its span (and its dissolve), and cleared afterwards. Written only when it changes.
+          const images = scenes.map(scene => one('[data-story="image"]', scene));
+          const cameraOn = images.map(() => false);
+          const syncWillChange = (time: number) => {
+            spans.forEach((span, index) => {
+              const on = time >= span.start - SCENE.dissolve && time <= span.end + SCENE.dissolve;
+              if (on !== cameraOn[index] && images[index] !== null) {
+                cameraOn[index] = on;
+                images[index].style.willChange = on ? 'transform' : '';
+              }
+            });
+          };
+
           const mixAt = (time: number) => {
             let mix = steps[0]?.mix ?? 0;
             spans.forEach((span, index) => {
@@ -402,6 +416,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
             onUpdate: self => {
               direction = self.direction < 0 ? 'backward' : 'forward';
               writeSky(mixAt(timeline.time()));
+              syncWillChange(timeline.time());
             },
             onToggle: self => {
               if (chartFrame !== null) {
@@ -409,6 +424,8 @@ export default function Story({ story, centralQuestion, references, sources, voy
               }
             },
           });
+
+          syncWillChange(0);
 
           // ---- Coming out of the legend's night, the start of the story eases into the first scene's sky.
           ScrollTrigger.create({
@@ -440,6 +457,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           });
           writeSky(1);
           cleanups.push(() => {
+            images.forEach(image => image !== null && (image.style.willChange = ''));
             splits.forEach(split => split.revert());
             if (chartFrame !== null) {
               chartFrame.dataset.visible = 'false';

@@ -407,3 +407,16 @@ describe('Story: without matchMedia', () => {
     expect(screen.getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
   });
 });
+
+describe('Story: will-change only while a scene moves', () => {
+  test('no scene image carries a permanent will-change', () => {
+    const { container } = renderStory();
+    const images = [...container.querySelectorAll<HTMLElement>('[data-story="image"]')];
+    expect(images.length).toBeGreaterThan(0);
+    for (const image of images) {
+      expect(image.className).not.toContain('will-change');
+    }
+    // Before any scrolling, only the first scene could be about to move; the rest are clear.
+    expect(images.slice(1).every(image => image.style.willChange === '')).toBe(true);
+  });
+});
