@@ -11,12 +11,15 @@ import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import type { CaseTheme, LegendIntro as LegendIntroData } from '@/types/case';
 
 gsap.registerPlugin(useGSAP, SplitText);
+
+/** A stamp's press and settle (motion.ts `stampHit`): the press, then STEP.fast. */
+const STAMP_SECONDS = MOTION['stamp.hit'].duration + STEP.fast;
 
 /** Timings in seconds for the full version. */
 const FULL = {
@@ -24,26 +27,26 @@ const FULL = {
   pauseBetweenLines: 0.6,
   /** Time to finish reading the last line before the stamp. */
   holdBeforeStamp: 1.5,
-  stampDuration: 0.18,
+  stampDuration: STAMP_SECONDS,
   pauseBeforeTyping: 0.8,
   /** Letters the typewriter types per second. */
   typeRate: 30,
   caretLinger: 0.6,
   pauseBeforeContinue: 0.3,
-  continueDuration: 0.4,
+  continueDuration: STEP.base,
 } as const;
 
 /** Reduced motion: the same order and beats, with whole lines fading in. No quill, no typing, no movement. */
 const REDUCED = {
   start: 0.2,
   lineGap: 0.8,
-  lineDuration: 0.5,
+  lineDuration: STEP.base,
   pauseBeforeStamp: 0.5,
-  stampDuration: 0.2,
+  stampDuration: STEP.fast,
   pauseBeforeDebunk: 0.6,
-  debunkDuration: 0.5,
+  debunkDuration: STEP.base,
   pauseBeforeContinue: 0.4,
-  continueDuration: 0.3,
+  continueDuration: STEP.base,
 } as const;
 
 /** How far the myth dims once the stamp has landed on it. At 50% the lines still reach 3:1 on night. */
@@ -53,24 +56,24 @@ const DIMMED_OPACITY = 0.5;
 const TITLE = {
   start: 0.4,
   pauseBeforeYears: 0.15,
-  yearsDuration: 0.4,
+  yearsDuration: STEP.base,
   pauseBeforeStamp: 0.35,
-  stampDuration: 0.18,
+  stampDuration: STAMP_SECONDS,
   /** When the card starts to leave, counted from the start of the intro. */
   leaveAt: 3,
-  leaveDuration: 0.4,
+  leaveDuration: STEP.base,
   /** The title's flight up into the case header, and the crossfade once it has landed. */
-  dockDuration: 0.65,
-  landDuration: 0.25,
+  dockDuration: MOTION['paper.move'].duration,
+  landDuration: STEP.fast,
 } as const;
 
 const TITLE_REDUCED = {
   start: 0.2,
-  titleDuration: 0.5,
+  titleDuration: STEP.base,
   yearsAt: 0.7,
   stampAt: 1.2,
   leaveAt: 2.8,
-  leaveDuration: 0.4,
+  leaveDuration: STEP.base,
 } as const;
 
 /** What the title card shows. The page builds it from the case data. */
@@ -169,7 +172,7 @@ export default function LegendIntro({
           gsap.set(headerBar, { opacity: 0 });
         }
 
-        const timeline = gsap.timeline({ defaults: { ease: EASE.out }, onComplete: markEnded });
+        const timeline = gsap.timeline({ defaults: { ease: MOTION['ink.in'].ease }, onComplete: markEnded });
         const splits: SplitText[] = [];
 
         if (reduced) {
@@ -177,8 +180,8 @@ export default function LegendIntro({
           let mythStart: number = REDUCED.start;
           if (hasTitleCard) {
             timeline.fromTo(title, { opacity: 0 }, { opacity: 1, duration: TITLE_REDUCED.titleDuration }, TITLE_REDUCED.start);
-            timeline.fromTo(years, { opacity: 0 }, { opacity: 1, duration: 0.4 }, TITLE_REDUCED.yearsAt);
-            timeline.fromTo(unsolved, { opacity: 0 }, { opacity: 1, duration: 0.2 }, TITLE_REDUCED.stampAt);
+            timeline.fromTo(years, { opacity: 0 }, { opacity: 1, duration: STEP.base }, TITLE_REDUCED.yearsAt);
+            timeline.fromTo(unsolved, { opacity: 0 }, { opacity: 1, duration: STEP.fast }, TITLE_REDUCED.stampAt);
             timeline.to(card, { opacity: 0, duration: TITLE_REDUCED.leaveDuration }, TITLE_REDUCED.leaveAt);
             // No flight: the card fades away and the header fades in.
             if (docks) {
@@ -199,7 +202,7 @@ export default function LegendIntro({
 
           timeline.addLabel('stamp', `>+=${REDUCED.pauseBeforeStamp}`);
           timeline.fromTo(stamp, { opacity: 0 }, { opacity: 1, duration: REDUCED.stampDuration }, 'stamp');
-          timeline.to(myth, { opacity: DIMMED_OPACITY, duration: 0.3 }, 'stamp');
+          timeline.to(myth, { opacity: DIMMED_OPACITY, duration: STEP.base }, 'stamp');
 
           timeline.fromTo(
             debunk,
@@ -231,12 +234,7 @@ export default function LegendIntro({
             at += TITLE.pauseBeforeYears;
             timeline.fromTo(years, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: TITLE.yearsDuration }, at);
             at += TITLE.yearsDuration + TITLE.pauseBeforeStamp;
-            timeline.fromTo(
-              unsolved,
-              { opacity: 0, scale: 1.15 },
-              { opacity: 1, scale: 1, duration: TITLE.stampDuration },
-              at
-            );
+            timeline.add(stampHit(unsolved), at);
             // A long title is still given time to be read before the card leaves.
             const leaveAt = Math.max(TITLE.leaveAt, at + TITLE.stampDuration + 0.8);
             if (docks && title.length > 0) {
@@ -249,15 +247,14 @@ export default function LegendIntro({
                 const to = headerTitle.getBoundingClientRect();
                 return { x: to.left - from.left, y: to.top - from.top, scale: from.width > 0 ? to.width / from.width : 1 };
               };
-              timeline.to([...years, ...unsolved], { opacity: 0, duration: 0.25 }, leaveAt);
+              timeline.to([...years, ...unsolved], { opacity: 0, duration: STEP.fast }, leaveAt);
               timeline.to(
                 big,
                 {
                   x: () => flight().x,
                   y: () => flight().y,
                   scale: () => flight().scale,
-                  duration: TITLE.dockDuration,
-                  ease: EASE.inOut,
+                  ...tween('paper.move'),
                 },
                 leaveAt
               );
@@ -281,13 +278,8 @@ export default function LegendIntro({
 
           // 2. The stamp lands, fast, and the myth dims behind it.
           const stampAt = cursor - FULL.pauseBetweenLines + FULL.holdBeforeStamp;
-          timeline.fromTo(
-            stamp,
-            { opacity: 0, scale: 1.15 },
-            { opacity: 1, scale: 1, duration: FULL.stampDuration },
-            stampAt
-          );
-          timeline.to(myth, { opacity: DIMMED_OPACITY, duration: 0.3 }, stampAt);
+          timeline.add(stampHit(stamp), stampAt);
+          timeline.to(myth, { opacity: DIMMED_OPACITY, duration: STEP.base }, stampAt);
 
           // 3. The debunk, typed. Letters appear whole, one at a time, with a caret after the last one.
           debunk.forEach(block => {

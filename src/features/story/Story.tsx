@@ -21,7 +21,7 @@ import StoryStart from '@/features/story/StoryStart';
 import VoyageChart from '@/features/story/VoyageChart';
 import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { LINEAR, MOTION_QUERIES, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { beatSeconds, rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
@@ -61,6 +61,17 @@ const SCENE = {
   restWithoutHook: 1,
   /** The camera's slow push in. */
   zoomTo: 1.12,
+  /** The dimming for the roll call and the hook, and a point on the route fading in. */
+  rollCallDimIn: 0.6,
+  hookDimIn: 0.9,
+  dotIn: 0.3,
+  /** A name going out like a candle: [opacity, seconds] steps. */
+  candle: [
+    [0.35, 0.07],
+    [0.9, 0.07],
+    [0.5, 0.05],
+    [0, 0.17],
+  ],
 } as const;
 
 /** Each chapter's camera pans its own way, as a share of the image (xPercent, yPercent). */
@@ -109,7 +120,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
       return;
     }
     const y = stage.getBoundingClientRect().top + window.scrollY;
-    gsap.to(window, { scrollTo: { y, autoKill: true }, duration: 0.8, ease: EASE.inOut });
+    gsap.to(window, { scrollTo: { y, autoKill: true }, ...tween('paper.move') });
   }, []);
 
   useGSAP(
@@ -158,7 +169,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           ScrollTrigger.batch(fading, {
             start: 'top 88%',
             once: true,
-            onEnter: targets => gsap.to(targets, { opacity: 1, duration: 0.6, ease: EASE.out, stagger: 0.08 }),
+            onEnter: targets => gsap.to(targets, { opacity: 1, ...tween('ink.in'), stagger: 0.08 }),
           });
           // The sky follows the chapter on screen.
           all('[data-story="chapter"]').forEach((chapter, index) => {
@@ -185,7 +196,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           const chartFrame = one('[data-chart="frame"][data-variant="live"]');
           const playControl = one('[data-story="play-control"]');
           const splits: ReturnType<typeof splitForQuill>[] = [];
-          const timeline = gsap.timeline({ defaults: { ease: 'none' } });
+          const timeline = gsap.timeline({ defaults: { ease: LINEAR } });
           let direction: StoryDirection = 'forward';
           const emitAt = (at: number, make: () => Parameters<typeof emitStoryEvent>[0]) =>
             timeline.call(() => emitStoryEvent(make()), undefined, at);
@@ -269,7 +280,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
               // The roll call: after the beat that gives their number, the names appear one by one, and stay.
               if (beatIndex === rollAfter) {
-                dimTo(SCENE.rollCallDim, t, 0.6);
+                dimTo(SCENE.rollCallDim, t, SCENE.rollCallDimIn);
                 names.forEach((name, nameIndex) => {
                   timeline.fromTo(
                     name,
@@ -292,12 +303,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
                   name,
                   { opacity: 1 },
                   {
-                    keyframes: [
-                      { opacity: 0.35, duration: 0.07 },
-                      { opacity: 0.9, duration: 0.07 },
-                      { opacity: 0.5, duration: 0.05 },
-                      { opacity: 0, duration: 0.17 },
-                    ],
+                    keyframes: SCENE.candle.map(([opacity, seconds]) => ({ opacity, duration: seconds })),
                     immediateRender: false,
                   },
                   t
@@ -306,7 +312,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 emitAt(t, () => ({ type: 'roll-call-out', chapter: section.id, name: label, direction }));
                 t += SCENE.nameOut;
               });
-              dimTo(SCENE.hookDim, t, 0.9);
+              dimTo(SCENE.hookDim, t, SCENE.hookDimIn);
               timeline.fromTo(
                 hook,
                 { opacity: 0, y: 12, filter: 'blur(2px)' },
@@ -366,7 +372,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
               );
               const dot = dots.get(segment.to.id);
               if (dot !== undefined) {
-                timeline.fromTo(dot, { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, at + duration);
+                timeline.fromTo(dot, { opacity: 0 }, { opacity: 1, duration: SCENE.dotIn, immediateRender: false }, at + duration);
               }
             });
           }
@@ -452,7 +458,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
             writing = gsap.fromTo(
               phrases,
               { opacity: 0 },
-              { opacity: 1, duration: 1.2, ease: 'sine.out', stagger: reduced ? 0.4 : 0.8 }
+              { opacity: 1, ...tween('scene'), stagger: reduced ? 0.4 : 0.8 }
             );
           };
           ScrollTrigger.create({ trigger: question, start: 'top 35%', onEnter: write, onEnterBack: write });

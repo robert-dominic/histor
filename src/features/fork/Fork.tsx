@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import type { Fork as ForkData } from '@/types/case';
 
 gsap.registerPlugin(useGSAP, SplitText);
@@ -46,11 +46,11 @@ export default function Fork({ fork, historiansSummary, filesHref }: ForkProps) 
         const reduced = context.conditions?.reduced === true;
         const prompt = gsap.utils.toArray<HTMLElement>('[data-fork="prompt"]')[0];
         const choices = '[data-fork="choices"]';
-        const timeline = gsap.timeline({ paused: true, defaults: { ease: EASE.out } });
+        const timeline = gsap.timeline({ paused: true, defaults: tween('ink.in') });
         let split: SplitText | null = null;
 
         if (reduced) {
-          timeline.fromTo(prompt, { opacity: 0 }, { opacity: 1, duration: 0.5 });
+          timeline.fromTo(prompt, { opacity: 0 }, { opacity: 1, duration: STEP.base });
         } else {
           split = SplitText.create(prompt, { type: 'words,chars', aria: 'none' });
           const letters = split.chars as HTMLElement[];
@@ -61,7 +61,7 @@ export default function Fork({ fork, historiansSummary, filesHref }: ForkProps) 
         timeline.fromTo(
           choices,
           reduced ? { autoAlpha: 0 } : { autoAlpha: 0, y: 8 },
-          { autoAlpha: 1, y: 0, duration: 0.4 },
+          { autoAlpha: 1, y: 0, ...tween('paper.lift') },
           '>+=0.3'
         );
 
@@ -102,7 +102,7 @@ export default function Fork({ fork, historiansSummary, filesHref }: ForkProps) 
         gsap.fromTo(
           closeRef.current,
           reduced ? { opacity: 0 } : { opacity: 0, y: 8 },
-          { opacity: 1, y: 0, duration: 0.5, ease: EASE.out }
+          { opacity: 1, y: 0, ...tween('paper.lift') }
         );
       });
     },

@@ -87,6 +87,9 @@ export function stampHit(
     .to(target, { scale: 1, ease: 'power2.out', duration: STEP.fast });
 }
 
+/** Linear: only for constant motion and scroll-scrubbed timelines (motion.md). */
+export const LINEAR = 'none';
+
 /** Media queries for gsap.matchMedia(): every animation gets a full and a reduced version. */
 export const MOTION_QUERIES = {
   full: '(prefers-reduced-motion: no-preference)',

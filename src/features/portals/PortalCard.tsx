@@ -8,7 +8,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import CreditInfo from '@/components/CreditInfo';
 import PortalText from '@/features/portals/PortalText';
-import { EASE, MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Reference, ReferenceKind, Source } from '@/types/case';
 
@@ -25,8 +25,6 @@ const LABEL_CLASSES =
   'bg-night/75 px-1.5 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase';
 
 /** Seconds. Opening a portal happens many times, so it is fast; closing is faster. */
-const OPEN_DURATION = 0.22;
-const CLOSE_DURATION = 0.14;
 
 /** Desktop: the gap between the word and the card, and the least distance to the edge of the screen. Pixels. */
 const GAP = 10;
@@ -139,11 +137,11 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
       const mm = gsap.matchMedia();
       mm.add(MOTION_QUERIES, context => {
         const reduced = context.conditions?.reduced === true;
-        gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: OPEN_DURATION, ease: EASE.out });
+        gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, ...tween('paper.lift') });
         gsap.fromTo(
           cardRef.current,
           reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 },
-          { opacity: 1, scale: 1, duration: OPEN_DURATION, ease: EASE.out }
+          { opacity: 1, scale: 1, ...tween('paper.lift') }
         );
       });
     },
@@ -173,15 +171,14 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
       return;
     }
     const reduced = window.matchMedia(MOTION_QUERIES.reduced).matches;
-    gsap.to(backdropRef.current, { opacity: 0, duration: CLOSE_DURATION, ease: EASE.out, overwrite: true });
+    gsap.to(backdropRef.current, { opacity: 0, ...tween('hover'), overwrite: true });
     if (slide && !reduced) {
-      gsap.to(card, { y: card.offsetHeight, duration: 0.2, ease: EASE.out, overwrite: true, onComplete: onClosed });
+      gsap.to(card, { y: card.offsetHeight, ...tween('hover'), overwrite: true, onComplete: onClosed });
     } else {
       gsap.to(card, {
         opacity: 0,
         scale: reduced ? 1 : 0.97,
-        duration: CLOSE_DURATION,
-        ease: EASE.out,
+        ...tween('hover'),
         overwrite: true,
         onComplete: onClosed,
       });
@@ -260,7 +257,7 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
     if (drag.offset > SWIPE_DISTANCE || (drag.offset > 8 && velocity > SWIPE_VELOCITY)) {
       close(true);
     } else {
-      gsap.to(cardRef.current, { y: 0, duration: 0.2, ease: EASE.out });
+      gsap.to(cardRef.current, { y: 0, ...tween('hover') });
     }
   };
 

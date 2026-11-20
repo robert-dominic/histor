@@ -5,6 +5,7 @@
 
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
+import { LINEAR, MOTION, STEP, tween } from '@/lib/motion';
 
 gsap.registerPlugin(SplitText);
 
@@ -45,8 +46,8 @@ export interface QuillWriter {
  */
 export function createQuillWriter(point: HTMLElement, body: HTMLElement): QuillWriter {
   // The quill follows the last written letter. quickTo smooths the hop from one letter to the next.
-  const quillX = gsap.quickTo(point, 'x', { duration: 0.09, ease: 'power2.out' });
-  const quillY = gsap.quickTo(point, 'y', { duration: 0.09, ease: 'power2.out' });
+  const quillX = gsap.quickTo(point, 'x', { duration: STEP.fast / 2, ease: MOTION.hover.ease });
+  const quillY = gsap.quickTo(point, 'y', { duration: STEP.fast / 2, ease: MOTION.hover.ease });
 
   const moveQuill = (letter: HTMLElement, jump: boolean) => {
     const stage = point.parentElement;
@@ -77,7 +78,7 @@ export function createQuillWriter(point: HTMLElement, body: HTMLElement): QuillW
             opacity: 1,
             filter: 'blur(0px)',
             duration: QUILL.inkDuration,
-            ease: 'none',
+            ease: LINEAR,
             clearProps: 'filter',
             immediateRender: false,
           },
@@ -87,16 +88,16 @@ export function createQuillWriter(point: HTMLElement, body: HTMLElement): QuillW
 
       // The quill comes down, tilts a little as it writes, and lifts away at the end of the line.
       const sways = Math.max(1, Math.floor(duration / QUILL.sway));
-      timeline.fromTo(body, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.2 }, at);
+      timeline.fromTo(body, { opacity: 0, y: -10 }, { opacity: 1, y: 0, ...tween('paper.lift') }, at);
       timeline.fromTo(
         body,
         { rotation: -3 },
-        { rotation: 5, duration: QUILL.sway, ease: 'sine.inOut', repeat: sways - 1, yoyo: true },
+        { rotation: 5, duration: QUILL.sway, ease: MOTION.scene.ease, repeat: sways - 1, yoyo: true },
         at
       );
       timeline.to(
         body,
-        { opacity: 0, y: -18, rotation: -12, duration: 0.3 },
+        { opacity: 0, y: -18, rotation: -12, ...tween('ink.out') },
         at + Math.max(duration, sways * QUILL.sway) + 0.05
       );
 

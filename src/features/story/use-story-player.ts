@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+import { LINEAR } from '@/lib/motion';
 
 gsap.registerPlugin(ScrollToPlugin);
 
@@ -66,7 +67,7 @@ export function useStoryPlayer(enabled: boolean): StoryPlayer {
       // autoKill: a scroll that did not come from this tween (the scrollbar, say) stops it.
       scrollTo: { y: to, autoKill: true, onAutoKill: pause },
       duration: (to - from) / pxPerSecond(),
-      ease: 'none',
+      ease: LINEAR,
       onComplete: () => {
         tweenRef.current = null;
         setPlaying(false);
