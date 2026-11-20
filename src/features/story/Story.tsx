@@ -14,12 +14,12 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import CentralQuestion from '@/features/story/CentralQuestion';
+import PlayCard from '@/features/story/PlayCard';
 import PlayControl from '@/features/story/PlayControl';
 import { activeSceneIndex } from '@/features/story/active-scene';
 import StoryChapter from '@/features/story/StoryChapter';
 import StoryOpening, { type OpeningCard } from '@/features/story/StoryOpening';
 import StoryScene from '@/features/story/StoryScene';
-import StoryStart from '@/features/story/StoryStart';
 import VoyageChart from '@/features/story/VoyageChart';
 import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
@@ -449,7 +449,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
           // ---- Coming out of the legend's night, the start of the story eases into the first scene's sky.
           ScrollTrigger.create({
-            trigger: one('[data-story="start"]'),
+            trigger: one('[data-story="opening"]') ?? stage,
             start: 'top bottom',
             end: 'bottom bottom',
             onUpdate: self => {
@@ -542,7 +542,6 @@ export default function Story({ story, centralQuestion, references, sources, voy
         style={{ '--story-sky': 'var(--color-night)' } as React.CSSProperties}
       >
         {opening !== undefined && <StoryOpening card={opening} image={story[0]?.image} grade={grades[0]} />}
-        <StoryStart player={cinematic ? player : null} onRead={goToFirstScene} />
 
         {cinematic ? (
           <div data-story="stage" className="relative h-svh overflow-hidden bg-[var(--story-sky)]">
@@ -574,6 +573,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
         {cinematic && <VoyageChart route={route} variant="live" onExpand={player.pause} />}
         {cinematic && <PlayControl player={player} />}
+        <PlayCard player={cinematic ? player : null} onRead={goToFirstScene} storyRef={rootRef} />
       </section>
     </PortalProvider>
   );

@@ -83,6 +83,7 @@ describe('StoryOpening: content', () => {
     expect(one(container, 'title').style.opacity).toBe('0');
     expect(one(container, 'image').style.transform).toBe('');
     expect(one(container, 'image').style.willChange).toBe('');
+    expect(one(container, 'cue').textContent).toContain('Scroll to read');
   });
 
   test('without matchMedia everything is simply shown', () => {

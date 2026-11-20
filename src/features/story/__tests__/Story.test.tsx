@@ -4,6 +4,7 @@
 // the eyes only, the roll call and the chart come from the data, playing can be paused, and reduced motion gives
 // plain stacked sections.
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
@@ -25,7 +26,8 @@ const plainText = (text: string) =>
 
 type StoryData = Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources' | 'voyage'>;
 
-function renderStory(caseData: StoryData = maryCeleste) {
+const openingCard = { title: 'Test Case', years: '1900 – 1901', unsolved: true, teaser: 'A test teaser.' };
+function renderStory(caseData: StoryData = maryCeleste, withOpening = false) {
   return render(
     <Story
       story={caseData.story}
@@ -33,8 +35,26 @@ function renderStory(caseData: StoryData = maryCeleste) {
       references={caseData.references}
       sources={caseData.sources}
       voyage={caseData.voyage}
+      opening={withOpening ? openingCard : undefined}
     />
   );
+}
+/** Scrolls past the opening scene (jsdom has no layout, so the rectangles are set by hand) and lets tweens finish. */
+function scrollPastOpening(container: HTMLElement, { storyBottom = 5000 }: { storyBottom?: number } = {}) {
+  const opening = container.querySelector('[data-story="opening"]') as HTMLElement;
+  opening.getBoundingClientRect = () => ({ top: -900, bottom: -100, height: 800 }) as DOMRect;
+  const root = container.querySelector('[data-story="root"]') as HTMLElement;
+  root.getBoundingClientRect = () => ({ top: -900, bottom: storyBottom, height: storyBottom + 900 }) as DOMRect;
+  act(() => {
+    fireEvent.scroll(window);
+  });
+  finishTweens(container.querySelector('[data-story="play-card"]'));
+}
+/** Runs the tweens of an element to their end, as the ticker would. */
+function finishTweens(element: Element | null) {
+  if (element !== null) {
+    gsap.getTweensOf(element).forEach(tween => tween.progress(1));
+  }
 }
 
 const chapterOf = (container: HTMLElement, section: StorySection) =>
@@ -267,57 +287,86 @@ describe('Story: play the story', () => {
     expect(control.getAttribute('aria-pressed')).toBe('false');
   });
 
-  test('starts with the hint, "Play the story" and "Read at my pace"', () => {
-    const { container } = renderStory();
-    const start = container.querySelector('[data-story="start"]') as HTMLElement;
-
-    expect(start.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll, or press play.');
-    expect(within(start).getByRole('button', { name: 'Play the story' })).toBeDefined();
-    expect(within(start).getByRole('button', { name: 'Read at my pace' })).toBeDefined();
+  test('the play card is hidden until the reader has scrolled past the opening', () => {
+    const { container } = renderStory(maryCeleste, true);
+    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
+    expect(card.style.visibility).toBe('hidden');
+    expect(card.style.opacity).toBe('0');
+    scrollPastOpening(container);
+    expect(card.style.visibility).not.toBe('hidden');
+    expect(card.style.opacity).toBe('1');
   });
-
-  test('play and pause toggle, from the start and from the floating control', () => {
-    const { container } = renderStory();
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    expect(control.getAttribute('aria-label')).toBe('Play the story');
-
-    act(() => {
-      fireEvent.click(within(container.querySelector('[data-story="start"]') as HTMLElement).getByRole('button', { name: 'Play the story' }));
-    });
-    expect(control.getAttribute('aria-label')).toBe('Pause the story');
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    expect((container.querySelector('[data-story="hint"]') as HTMLElement).dataset.gone).toBe('true');
-
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-label')).toBe('Play the story');
-
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-label')).toBe('Pause the story');
+  test('the card has the hint, "Play the story" and "Read at my pace", and does not block the page', () => {
+    const { container } = renderStory(maryCeleste, true);
+    scrollPastOpening(container);
+    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
+    expect(card.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll, or press play.');
+    expect(within(card).getByRole('button', { name: 'Play the story' })).toBeDefined();
+    expect(within(card).getByRole('button', { name: 'Read at my pace' })).toBeDefined();
+    // Not a dialog, not modal; fixed to the screen, so it takes no layout space; nothing locks the scroll.
+    expect(card.getAttribute('role')).toBe('group');
+    expect(card.getAttribute('aria-modal')).toBeNull();
+    expect(card.className).toContain('fixed');
+    expect(document.documentElement.style.overflow).toBe('');
+    expect(document.body.style.overflow).toBe('');
+    // The page's other controls stay reachable.
+    expect(container.querySelector('[data-story="play-control"]')?.closest('[inert]')).toBeNull();
   });
-
-  test.each([
-    ['a wheel', () => fireEvent.wheel(window, { deltaY: 40 })],
-    ['a touch', () => fireEvent.touchStart(window)],
-    ['a key', () => fireEvent.keyDown(document.body, { key: 'ArrowDown' })],
-  ])('%s pauses playback at once', (_label, input) => {
-    const { container } = renderStory();
+  test('the card goes away once the story is behind the reader, so it never sits over the fork', () => {
+    const { container } = renderStory(maryCeleste, true);
+    scrollPastOpening(container);
+    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
+    expect(card.style.opacity).toBe('1');
+    scrollPastOpening(container, { storyBottom: 100 });
+    expect(card.style.opacity).toBe('0');
+  });
+  test('"Play the story" on the card plays, and the card leaves and does not come back', () => {
+    const { container } = renderStory(maryCeleste, true);
+    scrollPastOpening(container);
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-
+    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
     act(() => {
-      fireEvent.click(control);
+      fireEvent.click(within(card).getByRole('button', { name: 'Play the story' }));
     });
     expect(control.getAttribute('aria-pressed')).toBe('true');
-
+    // It leaves with a tween, then it is gone.
+    expect(gsap.getTweensOf(card).length).toBeGreaterThan(0);
+    act(() => finishTweens(card));
+    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
+    // Once chosen it is not shown again this visit.
+    scrollPastOpening(container);
+    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
+  });
+  test('"Read at my pace" sends the card away without playing', () => {
+    const { container } = renderStory(maryCeleste, true);
+    scrollPastOpening(container);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
     act(() => {
-      input();
+      fireEvent.click(within(card).getByRole('button', { name: 'Read at my pace' }));
     });
+    act(() => finishTweens(card));
+    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
     expect(control.getAttribute('aria-pressed')).toBe('false');
   });
-
+  test('play and pause toggle from the floating control, which the card leaves as it is', () => {
+    const { container } = renderStory();
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    expect(control.getAttribute('aria-label')).toBe('Play the story');
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-label')).toBe('Pause the story');
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-label')).toBe('Play the story');
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-label')).toBe('Pause the story');
+  });
   test('smooth scrolling steps aside while the story plays and comes back when it pauses', () => {
     const fake = { stop: vi.fn(), start: vi.fn() };
     setLenis(fake as never);
@@ -415,7 +464,7 @@ describe('Story: reduced motion', () => {
 
     expect(screen.queryByRole('button', { name: 'Play the story' })).toBeNull();
     expect(document.querySelector('[data-story="play-control"]')).toBeNull();
-    expect(document.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll to read.');
+    expect(document.querySelector('[data-story="play-card"]')).toBeNull();
   });
 
   test('the text only fades: it starts hidden and is never moved', () => {
