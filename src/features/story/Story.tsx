@@ -43,11 +43,12 @@ gsap.registerPlugin(useGSAP, ScrollToPlugin);
 const SCENE = {
   /** The next image cross-dissolves in over the old one. */
   dissolve: 1.4,
-  kickerAt: 0.3,
-  kicker: 0.6,
-  headingAt: 0.7,
-  titleHold: 1.2,
+  /** Scroll that passes before the first sentence of a chapter starts to rise: the heading has the screen first. */
+  columnLead: 1,
+  /** The title (kicker and heading) leaves, in scroll seconds, once its sentences are under way. */
   titleOut: 0.6,
+  /** How many of a chapter's first sentences the title stays for. */
+  titleStaysFor: 2,
   /** The share of a sentence's time spent moving it into place; the rest it holds still, to be read. */
   columnMove: 0.4,
   /** The column leaves before the hook takes the screen. */
@@ -77,6 +78,17 @@ const SCENE = {
     [0.5, 0.05],
     [0, 0.17],
   ],
+} as const;
+
+/**
+ * The heading is written on a timer, not by the scroll: the quill takes about 2 seconds, whatever the scroll speed.
+ * Seconds of real time.
+ */
+const HEADING = {
+  /** The kicker fades in first; the quill starts a moment later. */
+  quillAt: 0.3,
+  /** How long the quill takes to write the letters. */
+  writing: 1.8,
 } as const;
 
 /** Each chapter's camera pans its own way, as a share of the image (xPercent, yPercent). */
@@ -217,6 +229,15 @@ export default function Story({ story, centralQuestion, references, sources, voy
           }
           const spans: Span[] = [];
           let t = 0;
+          // One timer-driven heading per scene (see HEADING), and the timelines to clean up.
+          // Which way the playhead is moving: the scrub brings it to the scroll, so it can trail the scroll's direction.
+          let lastTime = 0;
+          timeline.eventCallback('onUpdate', () => {
+            lastTime = timeline.time();
+          });
+          const playheadForward = () => timeline.time() >= lastTime;
+          const headings: { enter: () => void; leave: () => void }[] = [];
+          const headingTimelines: gsap.core.Timeline[] = [];
 
           scenes.forEach((scene, index) => {
             const section = story[index];
@@ -239,29 +260,58 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 // Load this chapter's image, and the next one ahead of the reader.
                 setLoadedThrough(loaded => Math.max(loaded, index + 1));
                 emitStoryEvent({ type: 'chapter-enter', chapter: section.id, direction });
+                // Forward over the start of the scene, the heading is written; back over it, the heading fades.
+                if (index > 0) {
+                  (playheadForward() ? headings[index].enter : headings[index].leave)();
+                }
               },
               undefined,
               start + 0.01
             );
 
-            // The opening: the kicker, then the quill writes the heading.
+            // The heading: the kicker, then the quill writes the heading. Not scrubbed: when the scene starts, a timer
+            // of about 2 seconds writes it, whatever the scroll speed. Scrolling back above the scene fades it out.
             const kicker = one('[data-story="kicker"]', scene);
             const title = one('[data-story="title"]', scene);
             const heading = one('[data-story="heading"]', scene);
             const point = one('[data-story="quill"]', scene);
             const body = one('[data-story="quill-body"]', scene);
+            const writing = gsap.timeline({ paused: true });
+            let letters: HTMLElement[] = [];
             if (kicker !== null) {
-              timeline.fromTo(kicker, { opacity: 0 }, { opacity: 1, duration: SCENE.kicker, immediateRender: false }, t + SCENE.kickerAt);
+              writing.fromTo(kicker, { opacity: 0 }, { opacity: 1, ...tween('ink.in') }, 0);
             }
-            let written = 0.8;
             if (heading !== null && point !== null && body !== null) {
               const split = splitForQuill(heading);
               splits.push(split);
-              written = createQuillWriter(point, body).write(timeline, split.chars as HTMLElement[], t + SCENE.headingAt);
+              letters = split.chars as HTMLElement[];
+              createQuillWriter(point, body).write(writing, letters, HEADING.quillAt, letters.length / HEADING.writing);
             }
-            t += SCENE.headingAt + written + SCENE.titleHold;
-            timeline.fromTo(title, { opacity: 1, y: 0 }, { opacity: 0, y: -14, duration: SCENE.titleOut, immediateRender: false }, t);
-            t += SCENE.titleOut;
+            headingTimelines.push(writing);
+            const written = [kicker, ...letters].filter((element): element is HTMLElement => element !== null);
+            let fadeOut: gsap.core.Tween | null = null;
+            headings.push({
+              enter: () => {
+                fadeOut?.kill();
+                fadeOut = null;
+                writing.restart();
+              },
+              leave: () => {
+                // Stop writing, fade what is written quickly, then put the heading back to unwritten.
+                writing.pause();
+                fadeOut?.kill();
+                fadeOut = gsap.to(written, {
+                  opacity: 0,
+                  ...tween('ink.out'),
+                  onComplete: () => {
+                    fadeOut = null;
+                    writing.pause(0);
+                  },
+                });
+              },
+            });
+            // A new scene starts after the dissolve; the first sentence rises a little after the heading appears.
+            t += SCENE.columnLead;
             const textFrom = t;
 
             // The text column: the sentences stacked in order. The list moves up as the reader scrolls, one sentence
@@ -274,6 +324,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
             const column = one('[data-story="column"]', scene);
             const list = one('[data-story="sentences"]', scene);
             const lines = quote('[data-story="sentence"]');
+            let rollStart = Infinity;
             // Where each sentence's top lies in the list, and where the list ends: measured again on every refresh.
             const topOf = (sentenceIndex: number) =>
               sentenceIndex < lines.length ? lines[sentenceIndex].offsetTop : (list?.offsetHeight ?? 0);
@@ -300,6 +351,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
               // The roll call: after the sentence that gives their number, the names appear one by one, and stay.
               if (lineIndex === rollAfter) {
+                rollStart = t;
                 dimTo(SCENE.rollCallDim, t, SCENE.rollCallDimIn);
                 names.forEach((name, nameIndex) => {
                   timeline.fromTo(
@@ -312,6 +364,18 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 t += 0.3 + names.length * SCENE.nameEvery + SCENE.nameIn;
               }
             });
+            // The title (the heading's wrapper) leaves with the scroll once the first sentences are under way, and
+            // always before the roll call comes in over the same part of the screen.
+            const stays = plan.slice(0, SCENE.titleStaysFor).reduce((total, slot) => total + slot.seconds, 0);
+            const titleGone = Math.min(textFrom + stays, rollStart);
+            if (title !== null) {
+              timeline.fromTo(
+                title,
+                { opacity: 1, y: 0 },
+                { opacity: 0, y: -14, duration: SCENE.titleOut, immediateRender: false },
+                Math.max(textFrom, titleGone - SCENE.titleOut)
+              );
+            }
             const textTo = t;
 
             // The hook: the names go out like candles, last to first; the image dims almost to black; the line
@@ -465,6 +529,9 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 chartFrame.dataset.visible = String(self.isActive);
               }
             },
+            // The first scene has no dissolve to start it: its heading is written as the stage comes up.
+            onEnter: () => headings[0]?.enter(),
+            onLeaveBack: () => headings[0]?.leave(),
           });
 
           syncWillChange(0);
@@ -500,6 +567,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           });
           writeSky(1);
           cleanups.push(() => {
+            headingTimelines.forEach(heading => heading.kill());
             scenes.forEach((scene, index) => (scene.dataset.active = String(index === 0)));
             images.forEach(image => image !== null && (image.style.willChange = ''));
             splits.forEach(split => split.revert());

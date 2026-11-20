@@ -573,3 +573,87 @@ describe('Story: sized images', () => {
     expect(images[1].getAttribute('srcset')).toBeNull();
   });
 });
+
+describe('Story: headings on their own timer', () => {
+  /** The scrubbed timeline of the pinned stage. */
+  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+  /** The letters the quill writes for a chapter's heading. */
+  const lettersOf = (container: HTMLElement, section: StorySection) =>
+    [...chapterOf(container, section).querySelectorAll<HTMLElement>('[data-story="heading"] *')].filter(
+      element => element.children.length === 0
+    );
+  const writingOf = (letter: HTMLElement) => gsap.getTweensOf(letter)[0].parent as gsap.core.Timeline;
+
+  test('the heading is not part of the scrubbed timeline: its own timeline writes it, paused until the scene starts', () => {
+    const { container } = renderStory(testCase);
+    const letters = lettersOf(container, testCase.story[1]);
+    expect(letters.length).toBeGreaterThan(0);
+    const writing = writingOf(letters[0]);
+    expect(writing).not.toBe(stageTimeline());
+    expect(writing.paused()).toBe(true);
+    // Nothing the scroll scrubs touches the letters.
+    expect(stageTimeline().getTweensOf(letters[0])).toHaveLength(0);
+  });
+
+  test('the quill takes about 2 seconds to write a heading, whatever the scroll speed', () => {
+    const { container } = renderStory(testCase);
+    const letters = lettersOf(container, testCase.story[1]);
+    const last = gsap.getTweensOf(letters[letters.length - 1])[0];
+    const end = last.startTime() + last.duration();
+    expect(end).toBeGreaterThanOrEqual(2);
+    expect(end).toBeLessThanOrEqual(2.5);
+  });
+
+  test('entering the scene starts the writing, once the scroll crosses its start', () => {
+    const { container } = renderStory(testCase);
+    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
+    const timeline = stageTimeline();
+    expect(writing.paused()).toBe(true);
+    timeline.time(timeline.labels['chapter-1'] + 0.5, false);
+    expect(writing.paused()).toBe(false);
+    expect(writing.time()).toBeLessThan(1);
+  });
+
+  test('scrolling back above the scene fades the heading out, and it unwrites', () => {
+    const { container } = renderStory(testCase);
+    const letters = lettersOf(container, testCase.story[1]);
+    const writing = writingOf(letters[0]);
+    const timeline = stageTimeline();
+    timeline.time(timeline.labels['chapter-1'] + 0.5, false);
+    writing.progress(1);
+    expect(letters.every(letter => letter.style.opacity === '1')).toBe(true);
+    timeline.time(timeline.labels['chapter-1'] - 1, false);
+    expect(writing.paused()).toBe(true);
+    const fades = letters.map(letter => gsap.getTweensOf(letter).find(tween => tween.vars.opacity === 0));
+    expect(fades.every(tween => tween !== undefined)).toBe(true);
+    expect(fades[0]!.vars.ease).toBe('power2.in');
+    fades.forEach(tween => tween!.progress(1));
+    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
+    expect(writing.time()).toBe(0);
+  });
+
+  test('the first scene is written as the stage comes up, and fades when the reader goes back above it', () => {
+    const { container } = renderStory(testCase);
+    const letters = lettersOf(container, testCase.story[0]);
+    const writing = writingOf(letters[0]);
+    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
+    // jsdom has no layout, so the stage starts at the top of the page and has already been entered.
+    act(() => pinned.vars.onLeaveBack?.(pinned));
+    expect(writing.paused()).toBe(true);
+    act(() => pinned.vars.onEnter?.(pinned));
+    expect(writing.paused()).toBe(false);
+    expect(writing.time()).toBeLessThan(1);
+    act(() => pinned.vars.onLeaveBack?.(pinned));
+    expect(writing.paused()).toBe(true);
+  });
+
+  test('reduced motion: plain stacked chapters show the heading whole and still', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    vi.stubGlobal('scrollTo', vi.fn());
+    const { container } = renderStory(testCase);
+    const heading = container.querySelector('[data-story="heading"]') ?? container.querySelector('h2');
+    expect(heading?.textContent).toContain('First test heading');
+    expect(container.querySelectorAll('[data-story="quill"]')).toHaveLength(0);
+  });
+});
