@@ -14,6 +14,7 @@ import DeskGuide from '@/features/board/DeskGuide';
 import DeskHints from '@/features/board/DeskHints';
 import DeskHintsProvider from '@/features/board/DeskHintsProvider';
 import DeskSurface from '@/features/board/DeskSurface';
+import Floor from '@/features/board/Floor';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
@@ -229,8 +230,8 @@ function DeskScreen() {
             {/* The floor, with the tray beside it. */}
             <div data-desk="floor-row" className="relative min-h-0 px-4 pb-3">
               <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_16rem] gap-4">
-                <div className="min-h-0 min-w-0 overflow-hidden">
-                  <Pile layout={layout} filesHref={`${base}/files`} />
+                <div className="min-h-0 min-w-0">
+                  <Floor layout={layout} filesHref={`${base}/files`} />
                 </div>
                 <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
               </div>

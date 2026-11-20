@@ -78,18 +78,14 @@ afterEach(() => {
 });
 
 describe('Desk events', () => {
-  test('pile-hover: once when the pile fans open, not again while it stays open', () => {
+  test('pile-hover: once each time the pointer comes onto the floor', () => {
     stubDesktop({ reducedMotion: false });
     renderAt(`${BASE}/files`);
     const { events, stop } = listen();
-    const pile = document.querySelector<HTMLElement>('[data-board="pile"]')!;
-
-    fireEvent.pointerEnter(pile);
-    fireEvent.pointerEnter(pile);
+    const floor = document.querySelector<HTMLElement>('[data-board="floor"]')!;
+    fireEvent.pointerEnter(floor);
     stop();
-
     expect(events).toStrictEqual([{ type: 'pile-hover' }]);
-    expect(pile.dataset.fanned).toBe('true');
   });
 
   test('folder-open, flip and stamp: each once, at its moment, in that order', async () => {
@@ -190,14 +186,14 @@ describe('The keyboard', () => {
 });
 
 describe('Reduced motion', () => {
-  test('the whole desk renders with no flip, a still lamp, a fanned pile and nothing to drag', async () => {
+  test('the whole desk renders with no flip, a still lamp, files on the floor and nothing to drag', async () => {
     stubDesktop({ reducedMotion: true });
     localStorage.setItem(KEY, JSON.stringify({ opened: ['e-lifeboat'], pins: { 'e-lifeboat': CASE.theories[0].id }, verdict: null }));
     const { events, stop } = listen();
     renderAt(`${BASE}/files`);
 
     expect(document.querySelector('[data-desk="lamp"]')?.getAttribute('data-lamp')).toBe('still');
-    expect(document.querySelector<HTMLElement>('[data-board="pile"]')?.dataset.fanned).toBe('true');
+    expect(document.querySelector('[data-board="floor"]')).not.toBeNull();
     expect(folders().length).toBeGreaterThan(0);
     for (const folder of folders()) {
       expect(Draggable.get(folder)).toBeUndefined();

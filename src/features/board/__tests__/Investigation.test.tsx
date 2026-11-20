@@ -679,16 +679,14 @@ describe('Dragging, as an extra', () => {
     expect(screen.getByRole('button', { name: 'Pin to…' })).toBeDefined();
   });
 
-  test('on a desktop with a mouse, the open folder and the pile can be dragged, and the Pin menu stays', () => {
+  test('on a desktop with a mouse, the open folder can be dragged, and the Pin menu stays', () => {
     stubDesktop({ finePointer: true, reducedMotion: false });
     renderAt(`${BASE}/files/e-lifeboat`);
 
     expect(Draggable.get(openFolder())).toBeDefined();
-    expect(Draggable.get(folders()[0])).toBeDefined();
     expect(screen.getByRole('button', { name: 'Pin to…' })).toBeDefined();
   });
 });
-
 describe('The reveal', () => {
   const sheet = () => document.querySelector<HTMLElement>('[data-file="sheet"]')!;
   const stamp = () => document.querySelector<HTMLElement>('[data-file="stamp"]')!;

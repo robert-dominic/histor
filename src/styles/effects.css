@@ -258,3 +258,17 @@
 [data-story="chapter"][data-active="false"] {
   pointer-events: none;
 }
+
+/* ---- Folders on the desk ----
+   The shadow of a folder that lifts under the pointer is its own layer; only its opacity changes (motion.md).
+   Behind the hover media query: a mouse or trackpad. */
+[data-folder="lift"] {
+  opacity: 0;
+  transition: opacity var(--motion-hover-duration) var(--motion-hover-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .desk-folder-link:hover [data-folder="lift"],
+  .desk-folder-link:focus-visible [data-folder="lift"] {
+    opacity: 1;
+  }
+}
