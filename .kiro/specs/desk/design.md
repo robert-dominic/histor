@@ -210,13 +210,38 @@ No new types in `src/types/case.ts`. New module types (`FolderPlace`, `DeskLayou
 
 ## Correctness Properties
 
-Property tests in `src/lib/__tests__/desk.property.test.ts`, with generators like the case-report ones:
+The property tests live in `src/lib/__tests__/desk.property.test.ts`, with generators like the case-report ones:
 
-1. **Every file has exactly one place.** For any case and state, each evidence id appears exactly once across `pile`, `aside` and the `byTheory` lists. *(4.6)*
-2. **Places follow the state.** A file is on the Board under theory T if and only if it is opened and pinned to T; in the aside tray if and only if opened and pinned to `"none"`; in the Pile otherwise. *(4.6)*
-3. **Sealed files are in the Pile.** No unopened file is on the Board or in the tray. *(4.3, 4.6)*
-4. **Scatter is deterministic and bounded.** `scatter(id, d, o)` returns the same value on every call, with `|rotate| ≤ d` and `|x|, |y| ≤ o`. *(3.2, 4.1)*
-5. **`deskLayout` never throws** on garbage state, and ignores unknown ids. *(as `buildCaseReport`)*
+### Property 1: Every file has exactly one place
+
+For any case and state, each evidence id appears exactly once across `pile`, `aside` and the `byTheory` lists.
+
+**Validates: Requirements 4.6**
+
+### Property 2: Places follow the state
+
+A file is on the Board under theory T if and only if it is opened and pinned to T; in the aside tray if and only if opened and pinned to `"none"`; in the Pile otherwise.
+
+**Validates: Requirements 4.6**
+
+### Property 3: Sealed files are in the Pile
+
+No unopened file is on the Board or in the tray.
+
+**Validates: Requirements 4.3, 4.6**
+
+### Property 4: Scatter is deterministic and bounded
+
+`scatter(id, d, o)` returns the same value on every call, with `|rotate| ≤ d` and `|x|, |y| ≤ o`.
+
+**Validates: Requirements 3.2, 4.1**
+
+### Property 5: `deskLayout` never throws
+
+Given garbage state it still returns a layout, and it ignores unknown ids, as `buildCaseReport` does.
+
+**Validates: Requirements 4.6**
+
 
 ## Error Handling
 
