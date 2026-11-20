@@ -117,7 +117,7 @@ Rules for every task:
   - Tests: the seal is hidden below the threshold and links to `/verdict` at it; the verdict and report tests pass unchanged in what they assert
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 10.1, 12.1_
 
-- [ ] 14. Events and the remaining keyboard and reduced-motion checks
+- [x] 14. Events and the remaining keyboard and reduced-motion checks
   - Tests with `onStoryEvent`: pile hover, folder open, flip, stamp, pin and seal are each emitted once at their moment
   - Keyboard: Tab reaches every folder, note and button with a visible focus ring; Enter opens; Escape closes
   - Reduced motion: the whole desk renders with no flip, no lamp movement, no drift and no Draggable (12.6)
