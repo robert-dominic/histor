@@ -19,7 +19,7 @@ export default function SetAsideTray({ layout, filesHref, slips }: SetAsideTrayP
       aria-labelledby="aside-title"
       data-board="aside"
       data-drop-target="none"
-      className="desk-tray group/tray relative rounded-sm px-4 pt-3 pb-4 transition-[filter] duration-150 ease-out data-[drop-hot=true]:brightness-125"
+      className="desk-tray group/tray relative rounded-sm px-4 pt-3 pb-4 transition-[filter] duration-150 ease-out data-[drop-hot=true]:z-[22] data-[drop-hot=true]:brightness-150"
     >
       <h3 id="aside-title" className="font-voice text-[0.75rem] tracking-[0.2em] text-night-ink uppercase">
         Set aside

@@ -95,7 +95,7 @@ Rules for every task:
   - Tests: the Pin_Menu pins, and the file moves under the right theory; "None of them" moves it to the tray (12.4); the menu works with the keyboard; the slip shows the historians' reading; re-pin
   - _Requirements: 7.1, 7.5, 7.6, 7.7, 7.8, 10.1, 11.4, 12.4_
 
-- [ ] 11. Dragging, as an enhancement
+- [x] 11. Dragging, as an enhancement
   - Desktop with a fine pointer and full motion only: `Draggable` on the open folder, grabbed by its manila edge; it closes into its cover in the hand as it lifts (D9); `onDrag` tests each `[data-drop-target]` with `hitTest(el, '40%')` and brightens the hit one under the lamp; `onRelease` pins to it, to `"none"` on the tray, or returns the folder to the centre and opens it again
   - Dragging a folder out of the pile onto the desk opens it
   - Not created on touch, coarse pointers or reduced motion; the Pin_Menu always remains

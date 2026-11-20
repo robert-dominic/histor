@@ -8,15 +8,21 @@
 // Positions are written to the folders by GSAP, never through React state.
 
 import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import Folder from '@/features/board/Folder';
+import { Draggable, canDrag } from '@/features/board/drag';
+import { recordFlight } from '@/features/board/flight';
 import { scatter, type DeskLayout } from '@/lib/desk';
 import { EASE, MOTION_QUERIES } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 
-gsap.registerPlugin(useGSAP);
+gsap.registerPlugin(useGSAP, Draggable);
+
+/** How far past the pile's edge a dragged folder must be let go for it to open. */
+const OPEN_DISTANCE = 60;
 
 interface PileProps {
   layout: DeskLayout;
@@ -49,6 +55,7 @@ function fannedPlace(index: number, count: number, width: number): Place {
 export default function Pile({ layout, filesHref }: PileProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const navigate = useNavigate();
   const files = layout.pile;
   const openedIds = new Set(layout.folders.filter(f => f.place.kind === 'pile' && f.place.opened).map(f => f.evidence.id));
   const numberOf = new Map(layout.folders.map(folder => [folder.evidence.id, folder.number]));
@@ -76,6 +83,8 @@ export default function Pile({ layout, filesHref }: PileProps) {
 
       folders.forEach((folder, index) => gsap.set(folder, { ...resting[index], xPercent: -50, yPercent: -50 }));
       let open = false;
+      /** The folder being dragged out of the pile, if any: the fan leaves it alone. */
+      let dragging: HTMLElement | null = null;
       const fan = (toOpen: boolean) => {
         if (open === toOpen) {
           return;
@@ -86,7 +95,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
           emitStoryEvent({ type: 'pile-hover' });
         }
         folders.forEach((folder, index) =>
-          gsap.to(folder, {
+          folder !== dragging && gsap.to(folder, {
             ...(toOpen ? fanned[index] : resting[index]),
             duration: toOpen ? 0.45 : 0.3,
             ease: EASE.out,
@@ -97,7 +106,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
       };
       const lift = (folder: HTMLElement, up: boolean) => {
         const index = folders.indexOf(folder);
-        if (index === -1 || !open) {
+        if (index === -1 || !open || folder === dragging) {
           return;
         }
         gsap.to(folder, { y: fanned[index].y - (up ? 16 : 0), duration: 0.16, ease: EASE.out, overwrite: 'auto' });
@@ -128,6 +137,45 @@ export default function Pile({ layout, filesHref }: PileProps) {
           lift(folder, false);
         }
       };
+      // Desktop, fine pointer: a folder can also be dragged out of the pile; let go clear of it, and it opens.
+      const draggables = canDrag()
+        ? Draggable.create(folders, {
+            type: 'x,y',
+            // The folders are links: dragging them is the point. A plain click still opens the file.
+            dragClickables: true,
+            minimumMovement: 6,
+            zIndexBoost: false,
+            onDragStart() {
+              dragging = this.target as HTMLElement;
+              gsap.set(dragging, { zIndex: 50 });
+            },
+            onDragEnd() {
+              const folder = this.target as HTMLElement;
+              const index = folders.indexOf(folder);
+              const pile = root.getBoundingClientRect();
+              const box = folder.getBoundingClientRect();
+              const x = box.left + box.width / 2;
+              const y = box.top + box.height / 2;
+              const clear =
+                y < pile.top - OPEN_DISTANCE ||
+                y > pile.bottom + OPEN_DISTANCE ||
+                x < pile.left - OPEN_DISTANCE ||
+                x > pile.right + OPEN_DISTANCE;
+              dragging = null;
+              const home = open ? fanned[index] : resting[index];
+              const id = folder.dataset.evidenceId;
+              if (clear && id !== undefined) {
+                // It opens from where it was let go; its place in the pile is ready for when it comes back.
+                recordFlight(id, 'in', folder);
+                gsap.set(folder, { ...home, zIndex: '' });
+                navigate(`${filesHref}/${id}`);
+                return;
+              }
+              gsap.to(folder, { ...home, duration: 0.3, ease: EASE.out, overwrite: 'auto', onComplete: () => gsap.set(folder, { zIndex: '' }) });
+            },
+          })
+        : [];
+
       root.addEventListener('pointerenter', onEnter);
       root.addEventListener('pointerleave', onLeave);
       root.addEventListener('focusin', onFocusIn);
@@ -135,6 +183,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
       root.addEventListener('pointerover', onOver);
       root.addEventListener('pointerout', onOut);
       return () => {
+        draggables.forEach(draggable => draggable.kill());
         root.removeEventListener('pointerenter', onEnter);
         root.removeEventListener('pointerleave', onLeave);
         root.removeEventListener('focusin', onFocusIn);
@@ -143,7 +192,7 @@ export default function Pile({ layout, filesHref }: PileProps) {
         root.removeEventListener('pointerout', onOut);
       };
     },
-    { scope: rootRef, dependencies: [isDesktop, order], revertOnUpdate: true }
+    { scope: rootRef, dependencies: [isDesktop, order, filesHref, navigate], revertOnUpdate: true }
   );
 
   // Phones: the folder in the middle of the strip lifts. Written to the element as an attribute.

@@ -8,7 +8,8 @@ import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { STATUS_LABEL } from '@/lib/case-files';
 import { firstSentence } from '@/lib/desk';
-import { SMALL_PHONE_QUERY } from '@/lib/use-media-query';
+import { Draggable, FINE_POINTER_QUERY } from '@/features/board/drag';
+import { DESKTOP_QUERY, SMALL_PHONE_QUERY } from '@/lib/use-media-query';
 import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { InvestigationState } from '@/types/case';
@@ -581,6 +582,53 @@ describe('An opened file', () => {
     expect(screen.getByText('File not found')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Back to the board' }).getAttribute('href')).toBe(`${BASE}/files`);
     expect(saved()?.opened ?? []).toStrictEqual([]);
+  });
+});
+
+describe('Dragging, as an extra', () => {
+  /** A matchMedia for a desktop, with or without a fine pointer and full motion. */
+  function stubDesktop({ finePointer, reducedMotion }: { finePointer: boolean; reducedMotion: boolean }) {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches:
+          query === DESKTOP_QUERY ||
+          (query === FINE_POINTER_QUERY && finePointer) ||
+          (query.includes('prefers-reduced-motion: reduce') && reducedMotion) ||
+          (query.includes('prefers-reduced-motion: no-preference') && !reducedMotion),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }))
+    );
+  }
+  const openFolder = () => document.querySelector<HTMLElement>('[data-file="folder"]')!;
+
+  test.each([
+    ['reduced motion', { finePointer: true, reducedMotion: true }],
+    ['a coarse pointer', { finePointer: false, reducedMotion: false }],
+  ])('with %s, no folder can be dragged, and the Pin menu is there', (_, media) => {
+    stubDesktop(media);
+    renderAt(`${BASE}/files/e-lifeboat`);
+
+    expect(Draggable.get(openFolder())).toBeUndefined();
+    for (const folder of folders()) {
+      expect(Draggable.get(folder)).toBeUndefined();
+    }
+    expect(screen.getByRole('button', { name: 'Pin to…' })).toBeDefined();
+  });
+
+  test('on a desktop with a mouse, the open folder and the pile can be dragged, and the Pin menu stays', () => {
+    stubDesktop({ finePointer: true, reducedMotion: false });
+    renderAt(`${BASE}/files/e-lifeboat`);
+
+    expect(Draggable.get(openFolder())).toBeDefined();
+    expect(Draggable.get(folders()[0])).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Pin to…' })).toBeDefined();
   });
 });
 

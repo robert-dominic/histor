@@ -17,6 +17,7 @@ import FileDocument from '@/features/board/FileDocument';
 import InnerCover from '@/features/board/InnerCover';
 import PinMenu from '@/features/board/PinMenu';
 import type { PinnedState } from '@/features/board/Desk';
+import { Draggable, canDrag, clearHotTargets, dropOnto, markHotTarget } from '@/features/board/drag';
 import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
 import { READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
@@ -26,7 +27,7 @@ import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 import type { Evidence, PinTarget, Source } from '@/types/case';
 
-gsap.registerPlugin(useGSAP, Flip, SplitText);
+gsap.registerPlugin(useGSAP, Flip, SplitText, Draggable);
 
 /** Seconds. Opening a file happens many times: the flight and the flip are quick, the stamp waits a short beat. */
 const TIMING = {
@@ -54,6 +55,13 @@ const DRIFT = {
 
 /** How far the cover swings open: almost flat, still lifted a little off the desk. */
 const COVER_OPEN = -165;
+
+/** The size of a folder in the hand, while it is dragged across the desk. */
+const HELD_SCALE = 0.42;
+
+/** Where a press never starts a drag: the paper, its links and buttons, and the menu. */
+const NOT_A_HANDLE =
+  'a, button, input, [role="menu"], [data-file="sheet"], [data-file="sheet-two"], [data-file="slip"], [data-file="reveal"], [data-file="index-card"], [data-file="label"], [data-file="pinned-to"], h3';
 
 /** What Tab can reach inside the open file. Menu items are reached with the arrow keys instead. */
 const TAB_STOPS = 'a[href]:not([tabindex="-1"]), button:not(:disabled):not([tabindex="-1"])';
@@ -292,6 +300,82 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     }
   };
 
+  /** The pin itself: the desk takes over from here, flying the folder to its place. */
+  const finishPin = useCallback(
+    (choice: PinTarget) => {
+      recordFlight(evidence.id, 'out', folderRef.current);
+      dispatch({ type: 'PIN_EVIDENCE', evidenceId: evidence.id, target: choice });
+      emitStoryEvent({ type: 'pin', evidence: evidence.id, target: choice });
+      const pinned: PinnedState = { pinned: evidence.id };
+      navigate(board, { state: pinned });
+    },
+    [board, dispatch, evidence.id, navigate]
+  );
+
+  // Desktop, fine pointer, full motion: the folder can be grabbed by its manila edge (or the inside of its cover)
+  // and dragged onto a theory note or the tray. It closes in the hand as it lifts, and shrinks to a held size;
+  // the desk shows through. Dropped on nothing, it goes back to the centre and opens again. Never required:
+  // the Pin menu does the same.
+  useGSAP(
+    () => {
+      const root = rootRef.current;
+      const folder = folderRef.current;
+      if (root === null || folder === null || !canDrag()) {
+        return;
+      }
+      const cover = root.querySelector('[data-file="cover"]');
+      const backdrop = root.querySelector('[data-file="backdrop"]');
+      const triggers = [...root.querySelectorAll('[data-file="grip"], [data-file="cover-inside"]')];
+      let targets: Element[] = [];
+      let hot: Element | null = null;
+
+      const [draggable] = Draggable.create(folder, {
+        type: 'x,y',
+        trigger: triggers,
+        minimumMovement: 6,
+        zIndexBoost: false,
+        // The paper and everything on it stay readable, selectable and usable: only the manila is a handle.
+        clickableTest: (element: Element) =>
+          element instanceof Element && element.closest(NOT_A_HANDLE) !== null,
+        onPress(event: PointerEvent) {
+          // The folder shrinks around the point where it was grabbed, so that point stays under the pointer.
+          const box = folder.getBoundingClientRect();
+          gsap.set(folder, { transformOrigin: `${event.clientX - box.left}px ${event.clientY - box.top}px` });
+        },
+        onDragStart() {
+          targets = [...document.querySelectorAll('main [data-drop-target]')];
+          root.dataset.dragging = 'true';
+          // The theories are at the top of the desk: bring them into view under the lifted folder.
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'close' });
+          gsap.to(cover, { rotationY: 0, duration: TIMING.close, ease: EASE.inOut, overwrite: true });
+          gsap.to(folder, { scale: HELD_SCALE, duration: TIMING.close, ease: EASE.out, overwrite: 'auto' });
+          gsap.to(backdrop, { opacity: 0.2, duration: 0.25, ease: EASE.out, overwrite: true });
+        },
+        onDrag() {
+          hot = markHotTarget(draggable, targets);
+        },
+        onDragEnd() {
+          clearHotTargets(targets);
+          dropOnto(hot, caseData.theories, finishPin, () => {
+            // Back to the centre, open again, the desk dimmed again.
+            delete root.dataset.dragging;
+            emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
+            gsap.to(folder, { x: 0, y: 0, scale: 1, duration: TIMING.arrive, ease: EASE.out, overwrite: 'auto' });
+            gsap.to(cover, { rotationY: COVER_OPEN, duration: TIMING.flip, ease: EASE.inOut, delay: 0.1, overwrite: true });
+            gsap.to(backdrop, { opacity: 1, duration: 0.25, ease: EASE.out, overwrite: true });
+          });
+          hot = null;
+        },
+      });
+      return () => {
+        clearHotTargets(targets);
+        draggable.kill();
+      };
+    },
+    { scope: rootRef }
+  );
+
   /**
    * Pins the file. On a desktop with full motion the cover closes first (the reverse flip), so the folder is in the
    * hand; then the desk flies it to its place under the note or into the tray, draws its thread and opens its
@@ -301,13 +385,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     if (pinning) {
       return;
     }
-    const finish = () => {
-      recordFlight(evidence.id, 'out', folderRef.current);
-      dispatch({ type: 'PIN_EVIDENCE', evidenceId: evidence.id, target: choice });
-      emitStoryEvent({ type: 'pin', evidence: evidence.id, target: choice });
-      const pinned: PinnedState = { pinned: evidence.id };
-      navigate(board, { state: pinned });
-    };
+    const finish = () => finishPin(choice);
     const cover = rootRef.current?.querySelector('[data-file="cover"]');
     if (!canFly() || cover == null) {
       finish();
@@ -363,8 +441,9 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             </div>
           </div>
 
-          {/* The back of the folder, manila: the document lies on it, clipped in place. */}
-          <div className="desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:rounded-[3px] lg:[grid-area:1/1]">
+          {/* The back of the folder, manila: the document lies on it, clipped in place. On a desktop its edge is
+              where the folder is grabbed to drag it (data-file="grip"). */}
+          <div data-file="grip" className="desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:rounded-[3px] lg:[grid-area:1/1]">
             <FileDocument evidence={evidence} number={number} headingRef={headingRef} revealed={openedBefore}>
               <section aria-labelledby="pin-question" className="mx-2.5 mt-8 border-t border-ink/20 pt-6 sm:mx-5">
                 <h3 id="pin-question" className="font-voice text-[1.0625rem] text-ink">

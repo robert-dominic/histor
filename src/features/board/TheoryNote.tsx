@@ -24,11 +24,12 @@ export default function TheoryNote({ theory, className = '' }: TheoryNoteProps) 
       data-drop-target={theory.id}
       tabIndex={0}
       aria-labelledby={titleId}
-      className={`group/note rounded-[2px] outline-offset-4 focus-visible:outline-2 focus-visible:outline-brass ${className}`}
+      // While a folder is dragged over it, the note lights up above the lamp's shadow.
+      className={`group/note rounded-[2px] outline-offset-4 focus-visible:outline-2 focus-visible:outline-brass ${className} data-[drop-hot=true]:z-[22]`}
     >
       <div
         data-board="paper"
-        className="desk-note relative flex h-full flex-col gap-2 rounded-[2px] px-4 pt-6 pb-5 text-ink shadow-lg shadow-black/60 transition-[filter,box-shadow] duration-150 ease-out group-data-[drop-hot=true]/note:shadow-brass/50 group-data-[drop-hot=true]/note:brightness-110"
+        className="desk-note relative flex h-full flex-col gap-2 rounded-[2px] px-4 pt-6 pb-5 text-ink shadow-lg shadow-black/60 transition-[filter] duration-150 ease-out group-data-[drop-hot=true]/note:shadow-brass/50 group-data-[drop-hot=true]/note:brightness-125 group-data-[drop-hot=true]/note:shadow-[0_0_0_3px]"
         style={{ rotate: `${rotate}deg` }}
       >
         {/* The brass pin that holds the note. */}
