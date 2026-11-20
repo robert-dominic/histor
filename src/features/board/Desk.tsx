@@ -8,6 +8,9 @@ import { Link, Outlet, useLocation, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
+import DeskGuide from '@/features/board/DeskGuide';
+import DeskHints from '@/features/board/DeskHints';
+import DeskHintsProvider from '@/features/board/DeskHintsProvider';
 import DeskSurface from '@/features/board/DeskSurface';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
@@ -43,6 +46,14 @@ function pinnedFrom(state: unknown): string | null {
 }
 
 export default function Desk() {
+  return (
+    <DeskHintsProvider>
+      <DeskScreen />
+    </DeskHintsProvider>
+  );
+}
+
+function DeskScreen() {
   const { state, caseData } = useInvestigation();
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
   const openId = useParams().evidenceId;
@@ -196,6 +207,7 @@ export default function Desk() {
               <p data-board="progress" className="relative z-[21] font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
                 {progressLine(layout.openedCount, caseData.evidence.length, caseData.closeThreshold)}
               </p>
+              <DeskHints />
               <Pile layout={layout} filesHref={`${base}/files`} />
             </div>
             <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} />
@@ -204,6 +216,7 @@ export default function Desk() {
       </div>
       <Lamp />
     </main>
+    {!fileOpen && <DeskGuide threshold={caseData.closeThreshold} />}
     <Outlet />
     </>
   );

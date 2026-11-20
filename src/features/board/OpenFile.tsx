@@ -15,7 +15,9 @@ import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
 import FileDocument from '@/features/board/FileDocument';
 import InnerCover from '@/features/board/InnerCover';
+import PinHint from '@/features/board/PinHint';
 import PinMenu from '@/features/board/PinMenu';
+import { useDeskHints } from '@/features/board/hints';
 import type { PinnedState } from '@/features/board/Desk';
 import { Draggable, canDrag, clearHotTargets, dropOnto, markHotTarget } from '@/features/board/drag';
 import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
@@ -118,6 +120,10 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [close]);
 
+  // The first visit's hints: a file is open, so the Pin menu's hint is next.
+  const hints = useDeskHints();
+  const reachPinMenu = hints?.reachPinMenu;
+  useEffect(() => reachPinMenu?.(), [reachPinMenu]);
   // A file is a new screen: the focus starts on its title.
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
@@ -449,6 +455,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
                 <h3 id="pin-question" className="font-voice text-[1.0625rem] text-ink">
                   Which theory does this point to?
                 </h3>
+                <PinHint />
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                   <PinMenu theories={caseData.theories} current={target} onPin={pin} busy={pinning} />
                   {target !== undefined && (

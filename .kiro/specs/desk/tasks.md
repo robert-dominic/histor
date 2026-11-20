@@ -102,7 +102,7 @@ Rules for every task:
   - Tests: no Draggable under reduced motion or a coarse pointer; a drop handler call with a theory target pins it (handler tested directly)
   - _Requirements: 5.1, 7.2, 7.3, 7.4, 7.5, 11.3_
 
-- [ ] 12. Teaching itself
+- [x] 12. Teaching itself
   - `DeskHints.tsx`: on the first visit only, three hints in the app's voice, one at a time, next to the pile, the Pin_Menu and the progress line; mark them seen after the third
   - Hint 2 reads "Drag it to the theory you think it points to." on fine-pointer devices, and "Pin it to the theory you think it points to." on touch and when using the keyboard (D5)
   - `DeskGuide.tsx`: a small **?** button in a corner opens a three-step guide panel (dialog, focus trapped, Escape closes)
