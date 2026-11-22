@@ -27,7 +27,7 @@ import { coverLabel } from '@/lib/desk';
 import { INK_RISE, MOTION, MOTION_QUERIES, STEP, ghostDuration, stampHit, tween } from '@/lib/motion';
 import { createQuillWriter } from '@/lib/quill-writing';
 import { emitStoryEvent } from '@/lib/story-events';
-import { DESKTOP_QUERY } from '@/lib/use-media-query';
+import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Evidence, PinTarget, Source } from '@/types/case';
 
 gsap.registerPlugin(useGSAP, Flip, SplitText, Draggable);
@@ -87,6 +87,7 @@ interface OpenFileProps {
 export default function OpenFile({ evidence, index }: OpenFileProps) {
   const { state, dispatch, caseData } = useInvestigation();
   const navigate = useNavigate();
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
   const rootRef = useRef<HTMLDivElement>(null);
   const folderRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -340,6 +341,8 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       close();
     }
   };
+  /** "Back to the floor": the file comes off the board (or the tray) and goes back to the floor, still opened. */
+  const unpin = () => dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: evidence.id });
   /** Tab stays inside the open file. */
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     const root = event.currentTarget;
@@ -524,7 +527,13 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
                 </h3>
                 <PinHint />
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <PinMenu theories={caseData.theories} current={target} onPin={pin} busy={pinning} />
+                  <PinMenu
+                    theories={caseData.theories}
+                    current={target}
+                    onPin={pin}
+                    onUnpin={isDesktop ? unpin : undefined}
+                    busy={pinning}
+                  />
                   {target !== undefined && (
                     <p data-file="pinned-to" className="font-voice text-sm text-ink/80">
                       Pinned to {pinTargetTitle(caseData, target)}

@@ -4,9 +4,14 @@
 // Dragging the folder (desktop) is an extra, never required.
 // Keyboard: Enter, Space or ArrowDown opens it on the current choice (ArrowUp on the last item); ArrowUp and
 // ArrowDown move, Home and End jump, Enter or Space chooses, Escape closes it and gives the button the focus back.
+// The menu is a popover: it floats over the file, anchored to its button, and takes no layout space, so nothing
+// shifts when it opens. It opens downward, or upward when there is no room below inside the folder. It opens and
+// closes with an animation (closing is the quicker); with reduced motion it fades.
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import gsap from 'gsap';
 import { NO_THEORY } from '@/lib/case-files';
+import { MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import type { PinTarget, Theory } from '@/types/case';
 
 interface PinMenuProps {
@@ -14,19 +19,28 @@ interface PinMenuProps {
   /** The current pin, if the file has one: its item is checked. */
   current: PinTarget | undefined;
   onPin: (target: PinTarget) => void;
+  /** Desktop: takes the file off the board and back to the floor. When given, a pinned file's menu lists it. */
+  onUnpin?: () => void;
   /** True while a pin is being carried out: the button does nothing more. */
   busy?: boolean;
 }
 
-export default function PinMenu({ theories, current, onPin, busy = false }: PinMenuProps) {
+/** The menu's last item, for a file that is pinned or set aside. */
+export const BACK_TO_FLOOR = 'Back to the floor';
+
+const FLOOR_ITEM = 'back-to-floor';
+type MenuItemId = PinTarget | typeof FLOOR_ITEM;
+
+export default function PinMenu({ theories, current, onPin, onUnpin, busy = false }: PinMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const menuId = useId();
-  const items: { id: PinTarget; label: string }[] = [
+  const items: { id: MenuItemId; label: string }[] = [
     ...theories.map(theory => ({ id: theory.id, label: theory.title })),
     { id: 'none', label: NO_THEORY },
+    ...(current !== undefined && onUnpin !== undefined ? [{ id: FLOOR_ITEM as MenuItemId, label: BACK_TO_FLOOR }] : []),
   ];
 
   const itemElements = () => [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
@@ -39,7 +53,6 @@ export default function PinMenu({ theories, current, onPin, busy = false }: PinM
     requestAnimationFrame(() => {
       const elements = itemElements();
       elements[Math.min(start, elements.length - 1)]?.focus();
-      menuRef.current?.scrollIntoView?.({ block: 'nearest' });
     });
   };
 
@@ -110,10 +123,73 @@ export default function PinMenu({ theories, current, onPin, busy = false }: PinM
     }
   };
 
-  const choose = (target: PinTarget) => {
+  const choose = (target: MenuItemId) => {
     setOpen(false);
-    onPin(target);
+    if (target === FLOOR_ITEM) {
+      onUnpin?.();
+    } else {
+      onPin(target);
+    }
   };
+
+  // Opening and closing, written to the menu itself. `hidden` is not a React prop: the menu is shown while it opens
+  // and until its closing animation is done.
+  useEffect(() => {
+    const menu = menuRef.current;
+    const root = rootRef.current;
+    if (menu === null || root === null) {
+      return;
+    }
+    const canQuery = typeof window.matchMedia === 'function';
+    const reduced = canQuery && window.matchMedia(MOTION_QUERIES.reduced).matches;
+    const items = itemElements();
+    gsap.killTweensOf([menu, ...items]);
+    if (open) {
+      menu.hidden = false;
+      // Down, unless there is no room below inside the folder and more above.
+      const frame = root.closest('[data-file="grip"]')?.getBoundingClientRect();
+      const button = root.getBoundingClientRect();
+      const below = (frame?.bottom ?? window.innerHeight) - button.bottom;
+      const above = button.top - (frame?.top ?? 0);
+      const up = menu.offsetHeight + 8 > below && above > below;
+      menu.dataset.placement = up ? 'up' : 'down';
+      if (!canQuery) {
+        return;
+      }
+      if (reduced) {
+        gsap.fromTo(menu, { opacity: 0 }, { opacity: 1, ...tween('hover'), clearProps: 'opacity' });
+      } else {
+        gsap.fromTo(menu, { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, ...tween('hover'), clearProps: 'opacity,transform' });
+        gsap.fromTo(
+          items,
+          { opacity: 0, y: up ? 4 : -4 },
+          { opacity: 1, y: 0, ...tween('hover'), stagger: STEP.fast / 10, clearProps: 'opacity,transform' }
+        );
+      }
+      return;
+    }
+    if (menu.hidden) {
+      return;
+    }
+    if (!canQuery) {
+      menu.hidden = true;
+      return;
+    }
+    // Closing is quicker than opening.
+    gsap.to(menu, {
+      opacity: 0,
+      scale: reduced ? 1 : 0.96,
+      ease: MOTION['ink.out'].ease,
+      duration: STEP.fast / 2,
+      onComplete: () => {
+        menu.hidden = true;
+        gsap.set(menu, { clearProps: 'opacity,transform' });
+      },
+    });
+    return () => {
+      gsap.killTweensOf(menu);
+    };
+  }, [open]);
 
   return (
     <div ref={rootRef} data-file="pin-menu" className="relative inline-block">
@@ -138,12 +214,13 @@ export default function PinMenu({ theories, current, onPin, busy = false }: PinM
         id={menuId}
         role="menu"
         aria-label="Pin to…"
-        hidden={!open}
+        hidden
+        data-placement="down"
         onKeyDown={handleMenuKeyDown}
-        className="absolute top-full left-0 z-30 mt-2 w-[min(18rem,calc(100vw-3rem))] rounded-sm bg-paper py-1.5 text-ink shadow-xl shadow-black/50 ring-1 ring-ink/15"
+        className="absolute top-full left-0 z-30 mt-2 w-[min(18rem,calc(100vw-3rem))] origin-top-left data-[placement=up]:top-auto data-[placement=up]:bottom-full data-[placement=up]:mt-0 data-[placement=up]:mb-2 data-[placement=up]:origin-bottom-left rounded-sm bg-paper py-1.5 text-ink shadow-xl shadow-black/50 ring-1 ring-ink/15"
       >
         {items.map(item => {
-          const checked = item.id === current;
+          const checked = item.id === current && item.id !== FLOOR_ITEM;
           return (
             <li key={item.id} role="none">
               <button
@@ -153,7 +230,7 @@ export default function PinMenu({ theories, current, onPin, busy = false }: PinM
                 tabIndex={-1}
                 onClick={() => choose(item.id)}
                 className={`flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left font-voice text-sm leading-snug transition-[background-color] duration-100 ease-out hover:bg-ink/[0.07] focus-visible:bg-ink/[0.09] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brass ${
-                  item.id === 'none' ? 'mt-1 border-t border-ink/15' : ''
+                  item.id === 'none' || item.id === FLOOR_ITEM ? 'mt-1 border-t border-ink/15' : ''
                 }`}
               >
                 <span aria-hidden="true" className="w-3 text-record">

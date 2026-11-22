@@ -472,7 +472,8 @@ describe('An opened file', () => {
 
     // Escape closes only the menu, and the button has the focus again; the file stays open.
     fireEvent.keyDown(menu, { key: 'Escape' });
-    expect(menu.hidden).toBe(true);
+    // It closes with a short animation, then it is hidden.
+    await waitFor(() => expect(menu.hidden).toBe(true));
     expect(document.activeElement).toBe(button);
     expect(screen.getByRole('dialog')).toBeDefined();
 
