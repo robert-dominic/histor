@@ -94,7 +94,13 @@ function DeskScreen() {
   const slips: DeskSlips = {
     readings,
     open: openSlip,
-    onToggle: id => setTapped({ key: location.key, id: openSlip === id ? null : id }),
+    onToggle: id => {
+      // The tabs below a slip move down or up smoothly (Flip), so record where they are before it opens or closes.
+      if (rootRef.current !== null) {
+        recordTabs(rootRef.current);
+      }
+      setTapped({ key: location.key, id: openSlip === id ? null : id });
+    },
     fresh: justPinned === null ? null : { evidenceId: justPinned, token: location.key },
   };
 
@@ -110,6 +116,9 @@ function DeskScreen() {
       const tab = (event.target as Element | null)?.closest?.('[data-board="tab"]');
       if (tab instanceof HTMLElement && tab.dataset.evidenceId === openSlip) {
         return;
+      }
+      if (rootRef.current !== null) {
+        recordTabs(rootRef.current);
       }
       setTapped({ key, id: null });
     };
@@ -198,6 +207,16 @@ function DeskScreen() {
     };
   }, [openId]);
 
+  // The tabs under a slip that opened or closed move to their new places with Flip (`layout`): nothing is pushed out
+  // of the way in one step.
+  useEffect(() => {
+    const root = rootRef.current;
+    const before = takeTabs();
+    if (before === null || root === null || pendingFlight('out') !== null) {
+      return;
+    }
+    Flip.from(before, { targets: root.querySelectorAll('[data-board="tab"]'), ...tween('layout') });
+  }, [openSlip]);
   // A file pinned straight from the desk (dragged onto a note while already opened) has no open file to fly home
   // from: its folder was recorded as it was let go, and flies to its tab (or the tray) as soon as it is there.
   // A flight recorded before this desk was drawn belongs to some earlier screen, not to a drop here.

@@ -4,9 +4,11 @@
 // Tapping the tab shows the historians' slip clipped beneath it: how historians read this pin, and a link that
 // opens the file again (D2). The desk opens the slip of the file just pinned by itself, until the next action.
 
-import { useId } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
 import { Link } from 'react-router-dom';
 import { scatter } from '@/lib/desk';
+import { QUICK_OUT, MOTION_QUERIES, tween } from '@/lib/motion';
 import type { Evidence } from '@/types/case';
 
 /** How historians read the user's pin of this file, in words ready to show. */
@@ -30,6 +32,32 @@ interface HangingTabProps {
 export default function HangingTab({ evidence, number, href, reading, slipOpen, onToggleSlip }: HangingTabProps) {
   const { rotate } = scatter(evidence.id, 3, 0);
   const slipId = useId();
+  // The slip is drawn while it is open and until it has finished leaving: it slides out from under its tab and slides
+  // back, never snapping. Without a way to honour reduced motion it is simply shown and hidden.
+  const canAnimate = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const [drawn, setDrawn] = useState(slipOpen);
+  if (slipOpen && !drawn) {
+    setDrawn(true);
+  }
+  const showSlip = canAnimate ? drawn || slipOpen : slipOpen;
+  const slipRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const slip = slipRef.current;
+    if (slip === null || !canAnimate) {
+      return;
+    }
+    const reduced = window.matchMedia(MOTION_QUERIES.reduced).matches;
+    gsap.killTweensOf(slip);
+    if (slipOpen) {
+      gsap.fromTo(
+        slip,
+        reduced ? { opacity: 0 } : { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, ...tween('paper.lift'), clearProps: 'opacity,transform' }
+      );
+    } else {
+      gsap.to(slip, { opacity: 0, y: reduced ? 0 : -8, ...QUICK_OUT, onComplete: () => setDrawn(false) });
+    }
+  }, [slipOpen, canAnimate, showSlip]);
   return (
     <li
       data-board="tab"
@@ -55,8 +83,9 @@ export default function HangingTab({ evidence, number, href, reading, slipOpen, 
         <span className="truncate font-voice text-[0.8125rem] text-ink">{evidence.title}</span>
       </button>
       <div id={slipId} aria-live="polite">
-        {slipOpen && (
+        {showSlip && (
           <div
+            ref={slipRef}
             data-board="slip"
             className="desk-slip relative mx-1.5 -mt-px rounded-b-[2px] px-3 pt-2.5 pb-3 text-ink shadow-lg shadow-black/50"
           >

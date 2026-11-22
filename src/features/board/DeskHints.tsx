@@ -5,14 +5,16 @@
 // hint comes or goes (a shift between pressing a folder and releasing it could miss the click).
 import HintLine from '@/features/board/HintLine';
 import { hintText, useDeskHints } from '@/features/board/hints';
+import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 
 export default function DeskHints() {
   const hints = useDeskHints();
+  const desktop = useMediaQuery(DESKTOP_QUERY);
   if (hints === null || !hints.active) {
     return null;
   }
   const text =
-    hints.step === 1 || hints.step === 3 ? hintText(hints.step, { threshold: hints.threshold, drag: false }) : null;
+    hints.step === 1 || hints.step === 3 ? hintText(hints.step, { threshold: hints.threshold, drag: false, floor: desktop }) : null;
   return (
     // Above the lamp's shadow, like the progress line: a hint must always be readable.
     <div role="status" data-hint="desk" className="relative z-[21] mt-2 min-h-8">

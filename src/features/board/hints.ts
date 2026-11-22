@@ -1,6 +1,6 @@
 // src/features/board/hints.ts
 // The desk's first-visit hints: which one is showing, and what each says. The steps run in order:
-// 1 the pile, 2 the Pin menu, 3 the progress line; 4 means all three have been shown.
+// 1 the pile (the floor, on a desktop), 2 the Pin menu, 3 the progress line; 4 means all three have been shown.
 import { createContext, useContext } from 'react';
 
 export type HintStep = 1 | 2 | 3 | 4;
@@ -32,11 +32,17 @@ export function numberWord(value: number): string {
   return NUMBER_WORDS[value] ?? String(value);
 }
 
-/** What a hint says, in the app's voice (D5 for the second). */
-export function hintText(step: 1 | 2 | 3, options: { threshold: number; drag: boolean }): string {
+/**
+ * What a hint says, in the app's voice (D5 for the second). On a desktop the files lie on the floor; on a phone they
+ * are still a pile.
+ */
+export function hintText(
+  step: 1 | 2 | 3,
+  options: { threshold: number; drag: boolean; floor?: boolean }
+): string {
   switch (step) {
     case 1:
-      return 'Open a file from the pile.';
+      return options.floor === true ? 'Open a file from the floor.' : 'Open a file from the pile.';
     case 2:
       return options.drag
         ? 'Drag it to the theory you think it points to.'

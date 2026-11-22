@@ -54,6 +54,9 @@ export const MOTION: Record<TokenName, MotionToken> = {
 /** How far text rises, in px, while it fades in (`ink.in`). */
 export const INK_RISE = MOTION['ink.in'].y ?? 0;
 
+/** A quick exit for small things (a menu, a slip, a panel): the `ink.out` ease over half a fast step. */
+export const QUICK_OUT = { ease: MOTION['ink.out'].ease, duration: STEP.fast / 2 } as const;
+
 /** The ease and duration of a token, to spread into a tween: `gsap.to(el, { ...tween('hover'), opacity: 1 })`. */
 export function tween(name: TokenName): { ease: string; duration: number } {
   const { ease, duration } = MOTION[name];

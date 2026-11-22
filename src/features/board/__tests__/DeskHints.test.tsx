@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/features/board/__tests__/DeskHints.test.tsx
 // Teaching the desk to a first-time user: three hints, one at a time, once only; and the "?" guide any time.
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import App from '@/App';
@@ -179,7 +179,7 @@ describe('Hint 2 wording', () => {
 });
 
 describe('The guide', () => {
-  test('the "?" opens a three-step guide, and Escape closes it and gives the focus back', () => {
+  test('the "?" opens a three-step guide, and Escape closes it and gives the focus back', async () => {
     localStorage.setItem(FLAG, '1');
     renderAt(`${BASE}/files`);
     const button = screen.getByRole('button', { name: 'How the desk works' });
@@ -195,17 +195,18 @@ describe('The guide', () => {
     expect(document.activeElement).toBe(within(guide).getByRole('button', { name: 'Close' }));
 
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
-    expect(screen.queryByRole('dialog')).toBeNull();
+    // The focus is back at once; the guide fades out (quickly), then it is gone.
     expect(document.activeElement).toBe(button);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  test('the Close button closes it too', () => {
+  test('the Close button closes it too', async () => {
     localStorage.setItem(FLAG, '1');
     renderAt(`${BASE}/files`);
 
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

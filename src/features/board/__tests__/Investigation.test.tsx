@@ -414,7 +414,7 @@ describe('An opened file', () => {
     await waitFor(() => expect(document.activeElement).toBe(tab.querySelector('button')));
   });
 
-  test('the slip of the file just pinned stays until the next action; tapping a pinned tab shows it again', () => {
+  test('the slip of the file just pinned stays until the next action; tapping a pinned tab shows it again', async () => {
     renderAt(`${BASE}/files/e-sword`);
     fireEvent.click(screen.getByRole('button', { name: 'Pin to…' }));
     fireEvent.click(screen.getByRole('menuitemradio', { name: theory('t-mutiny').title }));
@@ -427,14 +427,15 @@ describe('An opened file', () => {
     fireEvent.pointerDown(document.querySelector('[data-board="progress"]')!);
     expect(tab().querySelector('[data-board="slip"]')).not.toBeNull();
     fireEvent.click(document.querySelector('[data-board="progress"]')!);
-    expect(tab().querySelector('[data-board="slip"]')).toBeNull();
+    // It slides away (quickly), then it is gone.
+    await waitFor(() => expect(tab().querySelector('[data-board="slip"]')).toBeNull());
 
     // Tapping the tab shows it again; tapping it once more hides it.
     fireEvent.click(tab().querySelector('button')!);
     expect(tab().querySelector('[data-board="reading"]')?.textContent).toBe('Historians disagree');
     expect(tab().querySelector('button')?.getAttribute('aria-expanded')).toBe('true');
     fireEvent.click(tab().querySelector('button')!);
-    expect(tab().querySelector('[data-board="slip"]')).toBeNull();
+    await waitFor(() => expect(tab().querySelector('[data-board="slip"]')).toBeNull());
   });
 
   test('"None of them" sets the file aside: it goes to the tray, with its slip', () => {

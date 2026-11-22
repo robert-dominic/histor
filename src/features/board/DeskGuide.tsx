@@ -5,7 +5,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { numberWord } from '@/features/board/hints';
-import { MOTION_QUERIES, tween } from '@/lib/motion';
+import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
+import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
 
 gsap.registerPlugin(useGSAP);
 
@@ -16,12 +17,15 @@ interface DeskGuideProps {
 
 export default function DeskGuide({ threshold }: DeskGuideProps) {
   const [open, setOpen] = useState(false);
+  const desktop = useMediaQuery(DESKTOP_QUERY);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const closingRef = useRef(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const steps = [
-    { title: 'Open a file', text: 'Take a folder from the pile. Read what is inside.' },
+    { title: 'Open a file', text: `Take a folder from the ${desktop ? 'floor' : 'pile'}. Read what is inside.` },
     {
       title: 'Pin it',
       text: 'Choose the theory you think it points to, with “Pin to…”. On a desktop you can also drag the folder onto a note. “None of them” is an answer too.',
@@ -29,9 +33,26 @@ export default function DeskGuide({ threshold }: DeskGuideProps) {
     { title: 'Close the case', text: `Open ${numberWord(threshold)} files, and the seal appears.` },
   ];
 
+  /** Closes the guide: it fades out (quicker than it came in), and the focus goes back to the button at once. */
   const close = () => {
-    setOpen(false);
     buttonRef.current?.focus();
+    const overlay = overlayRef.current;
+    if (overlay === null || typeof window.matchMedia !== 'function') {
+      setOpen(false);
+      return;
+    }
+    if (closingRef.current) {
+      return;
+    }
+    closingRef.current = true;
+    gsap.to(overlay, {
+      opacity: 0,
+      ...QUICK_OUT,
+      onComplete: () => {
+        closingRef.current = false;
+        setOpen(false);
+      },
+    });
   };
 
   // The panel takes the focus when it opens.
@@ -90,6 +111,7 @@ export default function DeskGuide({ threshold }: DeskGuideProps) {
       </button>
       {open && (
         <div
+          ref={overlayRef}
           className="fixed inset-0 z-[45] grid place-items-center bg-night/80 px-4"
           onKeyDown={handleKeyDown}
           onPointerDown={event => {
