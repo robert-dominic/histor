@@ -5,13 +5,16 @@
 // Positions are written to the folders by GSAP, never through React state. When the floor changes size or the set of
 // files on it changes, the folders move to their new places with Flip (the `layout` token).
 // Reduced motion: the folders are simply placed.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import gsap from 'gsap';
 import Folder from '@/features/board/Folder';
+import type { DropOutcome } from '@/features/board/drag';
+import { createDeskDrag } from '@/features/board/use-desk-drag';
 import { Flip } from '@/features/board/flight';
 import { floorLayout, type FolderBox } from '@/lib/floor';
 import type { DeskLayout } from '@/lib/desk';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
+import type { Theory } from '@/types/case';
 import { emitStoryEvent } from '@/lib/story-events';
 
 /** How much a folder grows when it lifts under the pointer. */
@@ -19,9 +22,30 @@ const LIFT = 1.04;
 /** The hover media query of the design: a mouse or trackpad. */
 const FINE_HOVER = '(hover: hover) and (pointer: fine)';
 
+/** Where a folder was dropped on the floor, kept for the visit (Q7): the folder's place, and its tilt. */
+export interface DroppedPlace {
+  x: number;
+  y: number;
+  rotate: number;
+}
+
 interface FloorProps {
   layout: DeskLayout;
   filesHref: string;
+  theories: Theory[];
+  /** Folders dropped on the floor this visit. Held by the desk, so they stay while a file is open. Not stored. */
+  droppedAt: MutableRefObject<Map<string, DroppedPlace>>;
+  /** A folder was dropped somewhere other than the floor: the desk opens it, or pins it. */
+  onDrop: (id: string, outcome: DropOutcome, element: HTMLElement) => void;
+}
+
+/** A dropped place pulled back inside the floor, for a folder drawn at `scale`. */
+function clampToFloor(place: DroppedPlace, box: FolderBox, scale: number, width: number, height: number): DroppedPlace & { z?: number } {
+  const slackX = (box.width * (1 - scale)) / 2;
+  const slackY = (box.height * (1 - scale)) / 2;
+  const x = Math.min(width - box.width * scale - slackX, Math.max(-slackX, place.x));
+  const y = Math.min(height - box.height * scale - slackY, Math.max(-slackY, place.y));
+  return { x, y, rotate: place.rotate };
 }
 
 /** A folder's natural size, and the part of it (tab and label) that must stay visible, as measured on screen. */
@@ -61,7 +85,11 @@ function measureFolder(folders: HTMLElement[]): FolderBox | null {
   };
 }
 
-export default function Floor({ layout, filesHref }: FloorProps) {
+export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }: FloorProps) {
+  const onDropRef = useRef(onDrop);
+  useEffect(() => {
+    onDropRef.current = onDrop;
+  }, [onDrop]);
   const rootRef = useRef<HTMLElement>(null);
   const files = layout.pile;
   const openedIds = new Set(layout.folders.filter(f => f.place.kind === 'pile' && f.place.opened).map(f => f.evidence.id));
@@ -78,7 +106,7 @@ export default function Floor({ layout, filesHref }: FloorProps) {
     const finePointer = canQuery && window.matchMedia(FINE_HOVER).matches;
     const folders = () => [...root.querySelectorAll<HTMLElement>('[data-board="folder"]')];
     /** Where each folder lies now: its scale and stacking, so a hover can come back to them. */
-    const resting = new Map<string, { scale: number; z: number }>();
+    const resting = new Map<string, { x: number; y: number; rotate: number; scale: number; z: number }>();
     const known = new Set<string>();
     let placed = false;
 
@@ -100,8 +128,11 @@ export default function Floor({ layout, filesHref }: FloorProps) {
       for (const spot of places) {
         const folder = list.find(item => item.dataset.evidenceId === spot.id);
         if (folder !== undefined) {
-          gsap.set(folder, { x: spot.x, y: spot.y, rotation: spot.rotate, scale, zIndex: spot.z });
-          resting.set(spot.id, { scale, z: spot.z });
+          // A folder dropped here by hand stays where it was dropped, on top, for the visit.
+          const dropped = droppedAt.current.get(spot.id);
+          const where = dropped === undefined ? spot : { ...clampToFloor(dropped, box, scale, width, height), z: places.length + [...droppedAt.current.keys()].indexOf(spot.id) };
+          gsap.set(folder, { x: where.x, y: where.y, rotation: where.rotate, scale, zIndex: where.z });
+          resting.set(spot.id, { x: where.x, y: where.y, rotate: where.rotate, scale, z: where.z });
         }
       }
       if (before !== null) {
@@ -121,8 +152,53 @@ export default function Floor({ layout, filesHref }: FloorProps) {
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
     observer?.observe(root);
 
+    // Dragging, where a mouse can (a desktop with a fine pointer and full motion): a folder can be picked up and put
+    // on a note, the tray, the board or the floor. What each drop does is decided by dropOutcome.
+    const returnHome = (folder: HTMLElement) => {
+      const spot = resting.get(folder.dataset.evidenceId ?? '');
+      if (spot !== undefined) {
+        gsap.to(folder, { x: spot.x, y: spot.y, scale: spot.scale, opacity: 1, ...tween('paper.move'), overwrite: 'auto', onComplete: () => { gsap.set(folder, { zIndex: spot.z }); } });
+      }
+    };
+    const stopDragging = createDeskDrag({
+      elements: folders(),
+      theories,
+      sourceOf: folder => ({ from: 'floor', sealed: folder.dataset.opened !== 'true' }),
+      restingScale: folder => resting.get(folder.dataset.evidenceId ?? '')?.scale ?? 1,
+      onDrop: (folder, outcome) => {
+        const id = folder.dataset.evidenceId ?? '';
+        const spot = resting.get(id);
+        if (spot === undefined) {
+          return;
+        }
+        if (outcome.kind === 'return') {
+          returnHome(folder);
+        } else if (outcome.kind === 'settle') {
+          // It settles where it was let go, on top, and keeps its tilt.
+          const rect = root.getBoundingClientRect();
+          const box = measureFolder(folders());
+          const kept = box === null ? { x: outcome.x, y: outcome.y, rotate: spot.rotate } : clampToFloor({ x: outcome.x, y: outcome.y, rotate: spot.rotate }, box, spot.scale, rect.width || root.clientWidth, rect.height || root.clientHeight);
+          droppedAt.current.delete(id);
+          droppedAt.current.set(id, kept);
+          const z = files.length + droppedAt.current.size;
+          resting.set(id, { ...spot, x: kept.x, y: kept.y, z });
+          gsap.set(folder, { zIndex: z });
+          gsap.to(folder, { x: kept.x, y: kept.y, scale: spot.scale, opacity: 1, ...tween('paper.land'), overwrite: 'auto' });
+        } else {
+          // Opened, or pinned: the desk takes it from here, from where it was let go. The folder's own place is kept
+          // ready for when it comes back.
+          onDropRef.current(id, outcome, folder);
+          gsap.set(folder, { x: spot.x, y: spot.y, scale: spot.scale, opacity: 1, zIndex: spot.z });
+        }
+      },
+    });
+
     // The folder under the pointer lifts a little and comes to the top. Behind the hover media query.
     const lift = (folder: HTMLElement, up: boolean) => {
+      // A folder in the hand is not lifted by hovering.
+      if (document.documentElement.dataset.dragging === 'true') {
+        return;
+      }
       const spot = resting.get(folder.dataset.evidenceId ?? '');
       if (spot === undefined) {
         return;
@@ -150,6 +226,7 @@ export default function Floor({ layout, filesHref }: FloorProps) {
       root.addEventListener('pointerout', onOut);
     }
     return () => {
+      stopDragging();
       observer?.disconnect();
       root.removeEventListener('pointerenter', onEnter);
       root.removeEventListener('pointerover', onOver);
@@ -161,7 +238,13 @@ export default function Floor({ layout, filesHref }: FloorProps) {
   }, [order]);
 
   return (
-    <section ref={rootRef} aria-labelledby="floor-title" data-board="floor" className="relative h-full w-full">
+    <section
+      ref={rootRef}
+      aria-labelledby="floor-title"
+      data-board="floor"
+      data-drop-target="floor"
+      className="relative h-full w-full"
+    >
       <h3 id="floor-title" className="sr-only">
         The files on the floor
       </h3>

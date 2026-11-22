@@ -4,7 +4,7 @@
 // to the theory (or the tray) it was dropped on. The drop rule is tested here without a pointer.
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { FINE_POINTER_QUERY, canDrag, dropOnto, dropTargetOf } from '@/features/board/drag';
+import { FINE_POINTER_QUERY, canDrag, dropTargetFor, dropTargetOf, dropTargets } from '@/features/board/drag';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 
 const THEORIES = maryCeleste.theories;
@@ -75,33 +75,20 @@ describe('dropping', () => {
     expect(dropTargetOf(null, THEORIES)).toBeNull();
   });
 
-  test('dropped on a theory note, the file is pinned to that theory', () => {
-    const pin = vi.fn();
-    const cancel = vi.fn();
-
-    expect(dropOnto(target('t-sinking'), THEORIES, pin, cancel)).toBe('t-sinking');
-
-    expect(pin).toHaveBeenCalledExactlyOnceWith('t-sinking');
-    expect(cancel).not.toHaveBeenCalled();
+  test('dropTargetFor names where a drag ended', () => {
+    const at = { x: 40, y: 12 };
+    expect(dropTargetFor(target(THEORIES[0].id), THEORIES, at)).toEqual({ kind: 'theory', theoryId: THEORIES[0].id });
+    expect(dropTargetFor(target('none'), THEORIES, at)).toEqual({ kind: 'tray' });
+    expect(dropTargetFor(target('board'), THEORIES, at)).toEqual({ kind: 'board' });
+    expect(dropTargetFor(target('floor'), THEORIES, at)).toEqual({ kind: 'floor', x: 40, y: 12 });
+    expect(dropTargetFor(target('t-no-such-theory'), THEORIES, at)).toEqual({ kind: 'nothing' });
+    expect(dropTargetFor(null, THEORIES, at)).toEqual({ kind: 'nothing' });
   });
-
-  test('dropped on the tray, it is set aside: pinned to "none"', () => {
-    const pin = vi.fn();
-    const cancel = vi.fn();
-
-    dropOnto(target('none'), THEORIES, pin, cancel);
-
-    expect(pin).toHaveBeenCalledExactlyOnceWith('none');
-    expect(cancel).not.toHaveBeenCalled();
-  });
-
-  test('dropped on nothing, nothing is pinned and the folder goes back', () => {
-    const pin = vi.fn();
-    const cancel = vi.fn();
-
-    expect(dropOnto(null, THEORIES, pin, cancel)).toBeNull();
-
-    expect(pin).not.toHaveBeenCalled();
-    expect(cancel).toHaveBeenCalledOnce();
+  test('the drop targets are ranked: notes, then the tray, then the board, then the floor', () => {
+    document.body.innerHTML =
+      '<main><section data-drop-target="board"></section><section data-drop-target="floor"></section>' +
+      '<article data-drop-target="t-one"></article><aside data-drop-target="none"></aside></main>';
+    expect(dropTargets().map(element => element.getAttribute('data-drop-target'))).toEqual(['t-one', 'none', 'board', 'floor']);
+    document.body.innerHTML = '';
   });
 });

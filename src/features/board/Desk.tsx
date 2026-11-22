@@ -6,7 +6,7 @@
 // Everything shown comes from the case data and the investigation.
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { Outlet, useLocation, useParams } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
@@ -14,20 +14,22 @@ import DeskGuide from '@/features/board/DeskGuide';
 import DeskHints from '@/features/board/DeskHints';
 import DeskHintsProvider from '@/features/board/DeskHintsProvider';
 import DeskSurface from '@/features/board/DeskSurface';
-import Floor from '@/features/board/Floor';
+import Floor, { type DroppedPlace } from '@/features/board/Floor';
+import type { DropOutcome } from '@/features/board/drag';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
 import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import type { SlipReading } from '@/features/board/HangingTab';
-import { Flip, clearFlight, flightFor, recordFlight } from '@/features/board/flight';
+import { Flip, clearFlight, flightFor, pendingFlight, recordFlight } from '@/features/board/flight';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { READING_LABEL } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { deskLayout } from '@/lib/desk';
+import { emitStoryEvent } from '@/lib/story-events';
 
 gsap.registerPlugin(useGSAP);
 
@@ -60,7 +62,10 @@ export default function Desk() {
 }
 
 function DeskScreen() {
-  const { state, caseData } = useInvestigation();
+  const { state, dispatch, caseData } = useInvestigation();
+  const navigate = useNavigate();
+  /** Folders dropped on the floor this visit (Q7): in memory, gone when the desk is left or the page reloads. */
+  const droppedAt = useRef(new Map<string, DroppedPlace>());
   const desktop = useMediaQuery(DESKTOP_QUERY);
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
   const openId = useParams().evidenceId;
@@ -192,6 +197,51 @@ function DeskScreen() {
     };
   }, [openId]);
 
+  // A file pinned straight from the desk (dragged onto a note while already opened) has no open file to fly home
+  // from: its folder was recorded as it was let go, and flies to its tab (or the tray) as soon as it is there.
+  const placesNow = layout.folders.map(folder => `${folder.evidence.id}:${folder.place.kind}`).join('|');
+  useEffect(() => {
+    const root = rootRef.current;
+    const flight = pendingFlight('out');
+    if (fileOpen || root === null || flight === null) {
+      return;
+    }
+    const home = root.querySelector<HTMLElement>(`[data-flip-id="file-${flight.id}"]`);
+    if (home === null || home.closest('[data-board="floor"]') !== null) {
+      return;
+    }
+    clearFlight();
+    if (flight.state !== null) {
+      Flip.from(flight.state, {
+        targets: home,
+        scale: true,
+        ...tween('paper.move'),
+        zIndex: 30,
+        onComplete: () => {
+          gsap.fromTo(home, { y: -4 }, { y: 0, ...tween('paper.land') });
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placesNow]);
+  /** What a folder dropped on the board, a note or the tray does. (The floor itself handles dropping on the floor.) */
+  const handleFloorDrop = (id: string, outcome: DropOutcome, element: HTMLElement) => {
+    if (outcome.kind === 'open') {
+      recordFlight(id, 'in', element);
+      navigate(`${base}/files/${id}`);
+    } else if (outcome.kind === 'reveal-then-pin') {
+      // Read it first: the file opens and is written out, and when its stamp has landed it is pinned.
+      recordFlight(id, 'in', element);
+      navigate(`${base}/files/${id}`, { state: { pinAfterReveal: outcome.target } });
+    } else if (outcome.kind === 'pin') {
+      // Already read: pinned at once. The desk flies the folder to its place, draws its thread, opens its slip.
+      recordFlight(id, 'out', element);
+      dispatch({ type: 'PIN_EVIDENCE', evidenceId: id, target: outcome.target });
+      emitStoryEvent({ type: 'pin', evidence: id, target: outcome.target });
+      const pinned: PinnedState = { pinned: id };
+      navigate(`${base}/files`, { state: pinned, replace: true });
+    }
+  };
   /** Opening a folder: remember where it lay, so the open file can fly from there. */
   const handleClickCapture = (event: MouseEvent<HTMLElement>) => {
     const folder = (event.target as Element).closest('a[href]')?.closest<HTMLElement>('[data-flip-id][data-evidence-id]');
@@ -241,7 +291,13 @@ function DeskScreen() {
             <div data-desk="floor-row" className="relative min-h-0 px-4 pb-3">
               <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_16rem] gap-4">
                 <div className="min-h-0 min-w-0">
-                  <Floor layout={layout} filesHref={`${base}/files`} />
+                  <Floor
+                    layout={layout}
+                    filesHref={`${base}/files`}
+                    theories={caseData.theories}
+                    droppedAt={droppedAt}
+                    onDrop={handleFloorDrop}
+                  />
                 </div>
                 <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
               </div>

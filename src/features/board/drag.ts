@@ -129,23 +129,34 @@ export function dropTargetOf(element: Element | null, theories: Theory[]): PinTa
   return theories.some(theory => theory.id === value) ? (value as PinTarget) : null;
 }
 
+/** How a drop target ranks when several overlap the dragged folder: a note, then the tray, then the board, then the floor. */
+function rankOf(element: Element): number {
+  const value = element.getAttribute('data-drop-target');
+  return value === 'floor' ? 3 : value === 'board' ? 2 : value === 'none' ? 1 : 0;
+}
+
+/** Every drop target on the desk, most specific first, so the first one hit is the one meant. */
+export function dropTargets(): Element[] {
+  return [...document.querySelectorAll('main [data-drop-target]')].sort((a, b) => rankOf(a) - rankOf(b));
+}
+
 /**
- * What a release does: pins the file to the target it was dropped on, or, dropped on nothing, sends it back.
- * Returns the pin it made, if any.
+ * Where a drag ended, from the drop target that was hot (or none). `x` and `y` are the dragged folder's place on
+ * the floor, used when it was dropped there.
  */
-export function dropOnto(
-  hot: Element | null,
-  theories: Theory[],
-  pin: (target: PinTarget) => void,
-  cancel: () => void
-): PinTarget | null {
-  const target = dropTargetOf(hot, theories);
-  if (target === null) {
-    cancel();
-    return null;
+export function dropTargetFor(hot: Element | null, theories: Theory[], place: { x: number; y: number }): DropTarget {
+  const value = hot?.getAttribute('data-drop-target');
+  if (value === 'floor') {
+    return { kind: 'floor', x: place.x, y: place.y };
   }
-  pin(target);
-  return target;
+  if (value === 'board') {
+    return { kind: 'board' };
+  }
+  if (value === 'none') {
+    return { kind: 'tray' };
+  }
+  const theory = theories.find(item => item.id === value);
+  return theory === undefined ? { kind: 'nothing' } : { kind: 'theory', theoryId: theory.id };
 }
 
 /** Marks the drop target the dragged element overlaps enough (`data-drop-hot`), and returns it. */

@@ -53,6 +53,10 @@ export function flightFor(id: string, direction: FlightDirection): Flight | null
   return pending;
 }
 
+/** The recorded flight in `direction`, whichever file it is for, if it was recorded a moment ago. */
+export function pendingFlight(direction: FlightDirection): Flight | null {
+  return pending !== null && pending.direction === direction && Date.now() - pending.at <= FRESH_MS ? pending : null;
+}
 /** Forgets the recorded flight, once it has been flown. */
 export function clearFlight(): void {
   pending = null;

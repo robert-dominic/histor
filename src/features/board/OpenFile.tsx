@@ -8,7 +8,7 @@
 // Escape and "Back to the board" close it; the desk flies the folder home and gives it the focus back.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
@@ -19,7 +19,7 @@ import PinHint from '@/features/board/PinHint';
 import PinMenu from '@/features/board/PinMenu';
 import { useDeskHints } from '@/features/board/hints';
 import type { PinnedState } from '@/features/board/Desk';
-import { Draggable, canDrag, clearHotTargets, dropOnto, markHotTarget } from '@/features/board/drag';
+import { Draggable, canDrag, clearHotTargets, dropOutcome, dropTargetFor, dropTargets, markHotTarget } from '@/features/board/drag';
 import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
 import { READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
@@ -54,6 +54,8 @@ const REVEAL = {
   title: 1.2,
   /** A breath between the title and the text settling in. */
   pause: 0.15,
+  /** After the stamp lands, how long it is seen before a dropped folder is pinned. */
+  beforePin: 1.2,
 } as const;
 /** A legend's drifting ink: each word dims to `dim` and returns over `wave` seconds, in `waves` slow waves. */
 const DRIFT = {
@@ -88,6 +90,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const { state, dispatch, caseData } = useInvestigation();
   const navigate = useNavigate();
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  const location = useLocation();
   const rootRef = useRef<HTMLDivElement>(null);
   const folderRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -95,6 +98,17 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const [pinning, setPinning] = useState(false);
   /** Set once the file has been marked opened, so a re-run of the animation never says so twice. */
   const markedRef = useRef(false);
+  /**
+   * A sealed folder dropped on a theory (or the tray) is read first, then pinned: the target waits here until the
+   * reveal has finished (or been skipped). Closing the file any way before then pins it too: the drop was the choice.
+   */
+  const pendingPinRef = useRef<PinTarget | undefined>(
+    (location.state as { pinAfterReveal?: PinTarget } | null)?.pinAfterReveal
+  );
+  /** True from the moment a pin begins, so a second choice (or a waiting drop) does nothing. */
+  const pinningRef = useRef(false);
+  /** Always the latest `pin`, for the timeline and the key handler. */
+  const pinRef = useRef<(target: PinTarget) => void>(() => undefined);
   /** Finishes the writing reveal at once, once it is under way; nothing before that, nothing after. */
   const skipRef = useRef<(() => void) | null>(null);
   // Only the value when the file is first shown counts: a file opened before is shown stamped at once.
@@ -115,6 +129,11 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
 
   /** Closing: remember where the open folder is, so the desk can fly it home, then go back to the desk. */
   const close = useCallback(() => {
+    const waiting = pendingPinRef.current;
+    if (waiting !== undefined) {
+      pinRef.current(waiting);
+      return;
+    }
     recordFlight(evidence.id, 'out', folderRef.current);
     navigate(board);
   }, [board, evidence.id, navigate]);
@@ -278,6 +297,19 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           landed
         );
 
+        // A folder dropped on a note while sealed: once its stamp has landed and been seen, it is pinned.
+        if (pendingPinRef.current !== undefined) {
+          timeline.call(
+            () => {
+              const waiting = pendingPinRef.current;
+              if (waiting !== undefined) {
+                pinRef.current(waiting);
+              }
+            },
+            undefined,
+            landed + REVEAL.beforePin
+          );
+        }
         if (evidence.status === 'record') {
           // The seal presses in beside the stamp.
           timeline.fromTo(
@@ -372,6 +404,8 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const finishPin = useCallback(
     (choice: PinTarget) => {
       recordFlight(evidence.id, 'out', folderRef.current);
+      // A pin only counts for a file that has been opened (a drop can pin it before the cover has finished opening).
+      dispatch({ type: 'OPEN_EVIDENCE', evidenceId: evidence.id });
       dispatch({ type: 'PIN_EVIDENCE', evidenceId: evidence.id, target: choice });
       emitStoryEvent({ type: 'pin', evidence: evidence.id, target: choice });
       const pinned: PinnedState = { pinned: evidence.id };
@@ -411,7 +445,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           gsap.set(folder, { transformOrigin: `${event.clientX - box.left}px ${event.clientY - box.top}px` });
         },
         onDragStart() {
-          targets = [...document.querySelectorAll('main [data-drop-target]')];
+          targets = dropTargets();
           root.dataset.dragging = 'true';
           emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'close' });
           gsap.to(cover, { rotationY: 0, ...tween('paper.lift'), overwrite: true });
@@ -423,14 +457,17 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         },
         onDragEnd() {
           clearHotTargets(targets);
-          dropOnto(hot, caseData.theories, finishPin, () => {
+          const outcome = dropOutcome({ from: 'open-file' }, dropTargetFor(hot, caseData.theories, { x: 0, y: 0 }));
+          if (outcome.kind === 'pin') {
+            finishPin(outcome.target);
+          } else {
             // Back to the centre, open again, the desk dimmed again.
             delete root.dataset.dragging;
             emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
             gsap.to(folder, { x: 0, y: 0, scale: 1, ...tween('paper.lift'), overwrite: 'auto' });
             gsap.to(cover, { rotationY: COVER_OPEN, ...tween('paper.move'), delay: STEP.fast / 2, overwrite: true });
             gsap.to(backdrop, { opacity: 1, ...tween('hover'), overwrite: true });
-          });
+          }
           hot = null;
         },
       });
@@ -448,9 +485,11 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
    * historians' slip. Elsewhere it goes straight back to the desk, the folder already in its new place.
    */
   const pin = (choice: PinTarget) => {
-    if (pinning) {
+    if (pinning || pinningRef.current) {
       return;
     }
+    pinningRef.current = true;
+    pendingPinRef.current = undefined;
     const finish = () => finishPin(choice);
     const cover = rootRef.current?.querySelector('[data-file="cover"]');
     if (!canFly() || cover == null) {
@@ -462,6 +501,9 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
     gsap.to(cover, { rotationY: 0, ...tween('paper.lift'), overwrite: true, onComplete: finish });
   };
 
+  useEffect(() => {
+    pinRef.current = pin;
+  });
   return (
     <div
       ref={rootRef}
@@ -558,13 +600,30 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
               <nav aria-label="Case files" className="mx-2.5 mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 sm:mx-5">
                 <Link
                   to={board}
-                  onClick={() => recordFlight(evidence.id, 'out', folderRef.current)}
+                  onClick={event => {
+                    // A folder dropped on a note and not yet pinned is pinned on the way out.
+                    if (pendingPinRef.current !== undefined) {
+                      event.preventDefault();
+                      close();
+                      return;
+                    }
+                    recordFlight(evidence.id, 'out', folderRef.current);
+                  }}
                   className={`${LINK_CLASSES} text-ink/80 underline hover:text-ink`}
                 >
                   Back to the board
                 </Link>
                 {nextId !== null && (
-                  <Link to={`${board}/${nextId}`} className={`${LINK_CLASSES} text-record underline hover:text-ink`}>
+                  <Link
+                    to={`${board}/${nextId}`}
+                    onClick={event => {
+                      if (pendingPinRef.current !== undefined) {
+                        event.preventDefault();
+                        close();
+                      }
+                    }}
+                    className={`${LINK_CLASSES} text-record underline hover:text-ink`}
+                  >
                     Next file
                   </Link>
                 )}

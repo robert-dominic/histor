@@ -131,6 +131,8 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
       aria-labelledby="theories-title"
       data-board="board"
       data-fitted={fitted}
+      // The board outside the notes is a place to drop a folder too: it opens it.
+      data-drop-target={fitted ? 'board' : undefined}
       className={`desk-felt relative rounded-sm ${
         fitted ? 'h-full min-h-0 px-6 pt-3 pb-3 lg:px-8' : '-mx-4 px-4 pt-6 pb-8 sm:mx-0 sm:px-6 lg:px-8'
       }`}

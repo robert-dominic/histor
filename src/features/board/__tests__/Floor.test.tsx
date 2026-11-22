@@ -53,11 +53,21 @@ function stubMouse({ reduced = false }: { reduced?: boolean } = {}) {
   );
 }
 
+const droppedAt = { current: new Map() };
+const onDrop = vi.fn();
 function renderFloor(state: InvestigationState = EMPTY) {
+  droppedAt.current = new Map();
+  onDrop.mockClear();
   const layout = deskLayout(maryCeleste, state);
   const view = render(
     <MemoryRouter>
-      <Floor layout={layout} filesHref="/case/mary-celeste/files" />
+      <Floor
+        layout={layout}
+        filesHref="/case/mary-celeste/files"
+        theories={maryCeleste.theories}
+        droppedAt={droppedAt}
+        onDrop={onDrop}
+      />
     </MemoryRouter>
   );
   return { ...view, layout };
