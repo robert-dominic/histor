@@ -15,20 +15,21 @@ import DeskHints from '@/features/board/DeskHints';
 import DeskHintsProvider from '@/features/board/DeskHintsProvider';
 import DeskSurface from '@/features/board/DeskSurface';
 import Floor, { type DroppedPlace } from '@/features/board/Floor';
-import type { DropOutcome } from '@/features/board/drag';
+import type { DragSource, DropOutcome } from '@/features/board/drag';
+import { createDeskDrag } from '@/features/board/use-desk-drag';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
 import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import type { SlipReading } from '@/features/board/HangingTab';
-import { Flip, clearFlight, flightFor, pendingFlight, recordFlight } from '@/features/board/flight';
+import { Flip, clearFlight, flightFor, pendingFlight, recordFlight, recordTabs, takeTabs } from '@/features/board/flight';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { READING_LABEL } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
-import { deskLayout } from '@/lib/desk';
+import { deskLayout, hashUnit } from '@/lib/desk';
 import { emitStoryEvent } from '@/lib/story-events';
 
 gsap.registerPlugin(useGSAP);
@@ -199,18 +200,28 @@ function DeskScreen() {
 
   // A file pinned straight from the desk (dragged onto a note while already opened) has no open file to fly home
   // from: its folder was recorded as it was let go, and flies to its tab (or the tray) as soon as it is there.
-  const placesNow = layout.folders.map(folder => `${folder.evidence.id}:${folder.place.kind}`).join('|');
+  // A flight recorded before this desk was drawn belongs to some earlier screen, not to a drop here.
+  const mountedAt = useRef(Date.now());
+  const placesNow = layout.folders.map(folder => `${folder.evidence.id}:${JSON.stringify(folder.place)}`).join('|');
   useEffect(() => {
     const root = rootRef.current;
     const flight = pendingFlight('out');
-    if (fileOpen || root === null || flight === null) {
+    if (fileOpen || root === null || flight === null || flight.at < mountedAt.current) {
       return;
     }
     const home = root.querySelector<HTMLElement>(`[data-flip-id="file-${flight.id}"]`);
-    if (home === null || home.closest('[data-board="floor"]') !== null) {
+    if (home === null) {
       return;
     }
     clearFlight();
+    // The other tabs, which shifted to make room or close the gap, move to their new places.
+    const others = takeTabs();
+    if (others !== null) {
+      Flip.from(others, {
+        targets: [...root.querySelectorAll<HTMLElement>('[data-board="tab"]')].filter(tab => tab !== home),
+        ...tween('layout'),
+      });
+    }
     if (flight.state !== null) {
       Flip.from(flight.state, {
         targets: home,
@@ -236,12 +247,76 @@ function DeskScreen() {
     } else if (outcome.kind === 'pin') {
       // Already read: pinned at once. The desk flies the folder to its place, draws its thread, opens its slip.
       recordFlight(id, 'out', element);
+      if (rootRef.current !== null) {
+        recordTabs(rootRef.current);
+      }
       dispatch({ type: 'PIN_EVIDENCE', evidenceId: id, target: outcome.target });
       emitStoryEvent({ type: 'pin', evidence: id, target: outcome.target });
       const pinned: PinnedState = { pinned: id };
       navigate(`${base}/files`, { state: pinned, replace: true });
     }
   };
+  /** What a tab dragged from a note or the tray does, without opening the file (Requirement 17.5 and 17.6). */
+  const handleTabDrop = (tab: HTMLElement, outcome: DropOutcome) => {
+    const id = tab.dataset.evidenceId ?? '';
+    const root = rootRef.current;
+    if (outcome.kind === 'return' || root === null) {
+      gsap.to(tab, { x: 0, y: 0, scale: 1, opacity: 1, ...tween('paper.move'), overwrite: 'auto', clearProps: 'zIndex' });
+      return;
+    }
+    // The folder flies from where it was let go, and the other tabs move to close or make room (Flip, `layout`).
+    recordFlight(id, 'out', tab);
+    recordTabs(root);
+    if (outcome.kind === 'pin') {
+      dispatch({ type: 'PIN_EVIDENCE', evidenceId: id, target: outcome.target });
+      emitStoryEvent({ type: 'pin', evidence: id, target: outcome.target });
+      const pinned: PinnedState = { pinned: id };
+      navigate(`${base}/files`, { state: pinned, replace: true });
+    } else if (outcome.kind === 'unpin') {
+      // It lies on the floor where it was dropped, for the visit. `outcome` is where the tab's own transform ended,
+      // which is not a floor place: take the floor place from where the tab is on the screen.
+      const floor = root.querySelector<HTMLElement>('[data-board="floor"]');
+      const folder = floor?.querySelector<HTMLElement>('[data-board="folder"]');
+      const box = tab.getBoundingClientRect();
+      const origin = floor?.getBoundingClientRect();
+      const width = folder?.offsetWidth || 184;
+      const height = folder?.offsetHeight || 130;
+      if (origin !== undefined) {
+        droppedAt.current.delete(id);
+        droppedAt.current.set(id, {
+          x: box.left + box.width / 2 - origin.left - width / 2,
+          y: box.top + box.height / 2 - origin.top - height / 2,
+          rotate: (hashUnit(id, 'rot') * 2 - 1) * 8,
+        });
+      }
+      dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: id });
+    }
+  };
+  // On a desktop with a mouse, a tab on a note or in the tray can be picked up and put somewhere else.
+  const tabsNow = layout.folders
+    .filter(folder => folder.place.kind !== 'pile')
+    .map(folder => `${folder.evidence.id}:${JSON.stringify(folder.place)}`)
+    .join('|');
+  const handleTabDropRef = useRef(handleTabDrop);
+  useEffect(() => {
+    handleTabDropRef.current = handleTabDrop;
+  });
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!desktop || fileOpen || root === null) {
+      return;
+    }
+    return createDeskDrag({
+      elements: [...root.querySelectorAll<HTMLElement>('[data-board="tab"]')],
+      theories: caseData.theories,
+      sourceOf: (tab): DragSource =>
+        tab.closest('[data-board="aside"]') !== null
+          ? { from: 'tray' }
+          : { from: 'board', theoryId: tab.closest('[data-board="tabs"]')?.getAttribute('data-theory-id') ?? '' },
+      restingScale: () => 1,
+      onDrop: (tab, outcome) => handleTabDropRef.current(tab, outcome),
+    });
+  }, [desktop, fileOpen, tabsNow, caseData.theories]);
   /** Opening a folder: remember where it lay, so the open file can fly from there. */
   const handleClickCapture = (event: MouseEvent<HTMLElement>) => {
     const folder = (event.target as Element).closest('a[href]')?.closest<HTMLElement>('[data-flip-id][data-evidence-id]');

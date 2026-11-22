@@ -10,7 +10,7 @@ import gsap from 'gsap';
 import Folder from '@/features/board/Folder';
 import type { DropOutcome } from '@/features/board/drag';
 import { createDeskDrag } from '@/features/board/use-desk-drag';
-import { Flip } from '@/features/board/flight';
+import { Flip, pendingFlight } from '@/features/board/flight';
 import { floorLayout, type FolderBox } from '@/lib/floor';
 import type { DeskLayout } from '@/lib/desk';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
@@ -140,8 +140,11 @@ export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }
       }
       // A folder that has just come back to the floor fades in; the first placement of all fades in together.
       const arriving = list.filter(folder => !known.has(folder.dataset.evidenceId ?? ''));
-      if (!reduced && arriving.length > 0) {
-        gsap.fromTo(arriving, { opacity: 0 }, { opacity: 1, ...tween('paper.lift'), stagger: placed ? 0 : 0.015, clearProps: 'opacity' });
+      // A folder arriving from a tab flies in with Flip (Desk.tsx): it must not fade as well.
+      const flying = pendingFlight('out')?.id;
+      const fading = arriving.filter(folder => folder.dataset.evidenceId !== flying);
+      if (!reduced && fading.length > 0) {
+        gsap.fromTo(fading, { opacity: 0 }, { opacity: 1, ...tween('paper.lift'), stagger: placed ? 0 : 0.015, clearProps: 'opacity' });
       }
       list.forEach(folder => known.add(folder.dataset.evidenceId ?? ''));
       placed = true;

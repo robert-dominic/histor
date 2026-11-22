@@ -57,6 +57,20 @@ export function flightFor(id: string, direction: FlightDirection): Flight | null
 export function pendingFlight(direction: FlightDirection): Flight | null {
   return pending !== null && pending.direction === direction && Date.now() - pending.at <= FRESH_MS ? pending : null;
 }
+/**
+ * Where every hanging tab lay just before a pin changed, so the other tabs can move to their new places with Flip
+ * (the `layout` token) when a tab leaves a column or joins one. Read once, after the desk has drawn again.
+ */
+let tabsBefore: { state: FlipState; at: number } | null = null;
+export function recordTabs(root: Element): void {
+  tabsBefore = canFly() ? { state: Flip.getState(root.querySelectorAll('[data-board="tab"]')), at: Date.now() } : null;
+}
+/** The recorded tab positions, if they were recorded a moment ago. Reading them clears them. */
+export function takeTabs(): FlipState | null {
+  const recorded = tabsBefore !== null && Date.now() - tabsBefore.at <= FRESH_MS ? tabsBefore.state : null;
+  tabsBefore = null;
+  return recorded;
+}
 /** Forgets the recorded flight, once it has been flown. */
 export function clearFlight(): void {
   pending = null;

@@ -274,7 +274,9 @@ describe('a drop in the whole app', () => {
     timeline.time(first.startTime() + 0.01, true);
     fireEvent.click(document.querySelector('[data-file="grip"]')!);
     // The cover closes, then the pin is made.
-    act(() => finish(document.querySelector('[data-file="cover"]')!));
+    act(() => {
+      finish(document.querySelector('[data-file="cover"]')!);
+    });
     expect(saved().pins).toEqual({ [id]: NOTE });
     await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/files`));
     await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/files`));
@@ -289,7 +291,9 @@ describe('a drop in the whole app', () => {
     const id = 'e-sword';
     act(() => dragTo(folderOf(id), note()).over());
     fireEvent.keyDown(window, { key: 'Escape' });
-    act(() => finish(document.querySelector('[data-file="cover"]')!));
+    act(() => {
+      finish(document.querySelector('[data-file="cover"]')!);
+    });
     expect(saved().pins).toEqual({ [id]: NOTE });
   });
 
