@@ -296,7 +296,7 @@ For any case, any state and any evidence id, `UNPIN_EVIDENCE` leaves `opened` an
 
 ### Property 7: Every drop has exactly one outcome
 
-For any drag source and Drop_Target, `dropOutcome` returns one outcome; a pin outcome's target is the dropped-on theory or `"none"`; a drop on the source's own place is `return`.
+For any drag source and Drop_Target, `dropOutcome` returns one outcome; a pin outcome's target is the dropped-on theory or `"none"`; a drop on the source's own note or the tray it came from, or on nothing, is `return`.
 
 **Validates: Requirements 17.2, 17.3, 17.4, 17.5, 17.6**
 

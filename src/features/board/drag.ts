@@ -15,6 +15,96 @@ gsap.registerPlugin(Draggable);
 /** A mouse or trackpad: hovering, and pointing finely. */
 export const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)';
 
+/** Where a drag starts. */
+export type DragSource =
+  | { from: 'floor'; sealed: boolean }
+  | { from: 'board'; theoryId: string }
+  | { from: 'tray' }
+  | { from: 'open-file' };
+
+/** Where a drag ends. */
+export type DropTarget =
+  | { kind: 'theory'; theoryId: string }
+  | { kind: 'board' }
+  | { kind: 'tray' }
+  | { kind: 'floor'; x: number; y: number }
+  | { kind: 'nothing' };
+
+/** What a drop does. */
+export type DropOutcome =
+  /** A sealed floor file onto a theory or the tray: it opens and is read first, then it flies there (Q6). */
+  | { kind: 'reveal-then-pin'; target: PinTarget }
+  /** Pin at once: a re-pin, a file put aside, an opened floor file onto a theory (Q6), the open file. */
+  | { kind: 'pin'; target: PinTarget }
+  /** A floor file onto the board outside any note: it opens for reading. */
+  | { kind: 'open' }
+  /** A board or tray file onto the floor: it is taken off the board and lies where it was dropped. */
+  | { kind: 'unpin'; x: number; y: number }
+  /** A floor file onto the floor: it settles where it was dropped. */
+  | { kind: 'settle'; x: number; y: number }
+  /** Back to where it came from: onto its own note or the tray, or onto nothing. */
+  | { kind: 'return' };
+
+/**
+ * The one rule for every drop on the desk (Requirement 17). Pure: the Draggables only report where a drag started
+ * and where it ended, and this says what happens.
+ */
+export function dropOutcome(source: DragSource, target: DropTarget): DropOutcome {
+  if (target.kind === 'nothing') {
+    return { kind: 'return' };
+  }
+  switch (source.from) {
+    case 'floor':
+      switch (target.kind) {
+        case 'theory':
+          return source.sealed
+            ? { kind: 'reveal-then-pin', target: target.theoryId }
+            : { kind: 'pin', target: target.theoryId };
+        case 'tray':
+          return source.sealed ? { kind: 'reveal-then-pin', target: 'none' } : { kind: 'pin', target: 'none' };
+        case 'board':
+          return { kind: 'open' };
+        case 'floor':
+          return { kind: 'settle', x: target.x, y: target.y };
+      }
+      break;
+    case 'board':
+      switch (target.kind) {
+        case 'theory':
+          return target.theoryId === source.theoryId ? { kind: 'return' } : { kind: 'pin', target: target.theoryId };
+        case 'tray':
+          return { kind: 'pin', target: 'none' };
+        case 'floor':
+          return { kind: 'unpin', x: target.x, y: target.y };
+        case 'board':
+          return { kind: 'return' };
+      }
+      break;
+    case 'tray':
+      switch (target.kind) {
+        case 'theory':
+          return { kind: 'pin', target: target.theoryId };
+        case 'floor':
+          return { kind: 'unpin', x: target.x, y: target.y };
+        case 'tray':
+        case 'board':
+          return { kind: 'return' };
+      }
+      break;
+    case 'open-file':
+      switch (target.kind) {
+        case 'theory':
+          return { kind: 'pin', target: target.theoryId };
+        case 'tray':
+          return { kind: 'pin', target: 'none' };
+        case 'board':
+        case 'floor':
+          return { kind: 'return' };
+      }
+  }
+  return { kind: 'return' };
+}
+
 /** How much of the smaller element must overlap a drop target for it to count. */
 export const DROP_THRESHOLD = '40%';
 
