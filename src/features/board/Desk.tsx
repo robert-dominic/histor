@@ -201,12 +201,12 @@ function DeskScreen() {
   // A file pinned straight from the desk (dragged onto a note while already opened) has no open file to fly home
   // from: its folder was recorded as it was let go, and flies to its tab (or the tray) as soon as it is there.
   // A flight recorded before this desk was drawn belongs to some earlier screen, not to a drop here.
-  const mountedAt = useRef(Date.now());
+  const [mountedAt] = useState(() => Date.now());
   const placesNow = layout.folders.map(folder => `${folder.evidence.id}:${JSON.stringify(folder.place)}`).join('|');
   useEffect(() => {
     const root = rootRef.current;
     const flight = pendingFlight('out');
-    if (fileOpen || root === null || flight === null || flight.at < mountedAt.current) {
+    if (fileOpen || root === null || flight === null || flight.at < mountedAt) {
       return;
     }
     const home = root.querySelector<HTMLElement>(`[data-flip-id="file-${flight.id}"]`);
