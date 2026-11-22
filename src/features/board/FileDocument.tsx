@@ -11,6 +11,7 @@
 // Whatever follows the paper (the question, the links) is passed in as children. Motion is applied from outside.
 
 import type { ReactNode, Ref } from 'react';
+import Nib from '@/components/Nib';
 import Stamp from '@/components/Stamp';
 import PortalText from '@/features/portals/PortalText';
 import { STATUS_LABEL } from '@/lib/case-files';
@@ -103,7 +104,8 @@ export default function FileDocument({ evidence, number, headingRef, revealed, c
         <PaperClip />
 
         <div className="flex items-start justify-between gap-4">
-          <div>
+          {/* The nib that writes the title on a first opening is placed in this positioned box. */}
+          <div className="relative">
             <p
               data-file="number"
               className="inline-block border-b border-transparent pb-1 font-voice text-[0.8125rem] tracking-[0.18em] text-ink/75 tabular-nums"
@@ -118,6 +120,7 @@ export default function FileDocument({ evidence, number, headingRef, revealed, c
             >
               {evidence.title}
             </h2>
+            <Nib attribute="data-file-nib" />
           </div>
           {/* The stamp, and for a record the seal pressed in just below it. */}
           <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1">

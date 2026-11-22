@@ -24,7 +24,8 @@ import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
 import { READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { coverLabel } from '@/lib/desk';
-import { MOTION, MOTION_QUERIES, STEP, ghostDuration, stampHit, tween } from '@/lib/motion';
+import { INK_RISE, MOTION, MOTION_QUERIES, STEP, ghostDuration, stampHit, tween } from '@/lib/motion';
+import { createQuillWriter } from '@/lib/quill-writing';
 import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 import type { Evidence, PinTarget, Source } from '@/types/case';
@@ -47,6 +48,13 @@ const TIMING = {
   slip: MOTION['paper.move'].duration,
 } as const;
 
+/** The writing reveal of a first opening, in seconds. */
+const REVEAL = {
+  /** The nib writes the title in about this long. */
+  title: 1.2,
+  /** A breath between the title and the text settling in. */
+  pause: 0.15,
+} as const;
 /** A legend's drifting ink: each word dims to `dim` and returns over `wave` seconds, in `waves` slow waves. */
 const DRIFT = {
   dim: 0.72,
@@ -86,6 +94,8 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const [pinning, setPinning] = useState(false);
   /** Set once the file has been marked opened, so a re-run of the animation never says so twice. */
   const markedRef = useRef(false);
+  /** Finishes the writing reveal at once, once it is under way; nothing before that, nothing after. */
+  const skipRef = useRef<(() => void) | null>(null);
   // Only the value when the file is first shown counts: a file opened before is shown stamped at once.
   const [openedBefore] = useState(() => state.opened.includes(evidence.id));
   const board = `/case/${caseData.id}/files`;
@@ -114,6 +124,11 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       if (event.key === 'Escape' && !event.defaultPrevented) {
         event.preventDefault();
         close();
+        return;
+      }
+      // Any other key finishes the writing reveal (a modifier on its own is not a key press that means anything).
+      if (event.key !== 'Escape' && !['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) {
+        skipRef.current?.();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -201,9 +216,54 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         if (openedBefore) {
           return;
         }
-        // Plain paper first; after a short beat the stamp presses in: it shrinks onto the paper as its ink is
-        // uncovered (motion.md).
-        const stampAt = revealAt + TIMING.stampBeat;
+        // The writing reveal. Full motion: the nib writes the title letter by letter, then the rest of the text settles
+        // in line by line, from a slight blur to sharp, with a fade and a small rise (the blur is only on these text
+        // lines, only while they arrive). Reduced motion: the text is simply there.
+        let readAt = revealAt;
+        const parts: SplitText[] = [];
+        const heading = headingRef.current;
+        const point = rootRef.current?.querySelector<HTMLElement>('[data-file-nib="quill"]');
+        const body = rootRef.current?.querySelector<HTMLElement>('[data-file-nib="quill-body"]');
+        if (!reduced && heading !== null && point != null && body != null) {
+          const title = SplitText.create(heading, { type: 'words,chars' });
+          const paragraphs = gsap.utils.toArray<HTMLElement>('[data-file-ink]', rootRef.current);
+          const text = SplitText.create(paragraphs, { type: 'lines', aria: 'none' });
+          parts.push(title, text);
+          const claim = rootRef.current?.querySelector<HTMLElement>('[data-file="claim"]');
+          const settling = [...(text.lines as HTMLElement[]), ...(claim == null ? [] : [claim])];
+          gsap.set(title.chars, { opacity: 0 });
+          gsap.set(settling, { opacity: 0 });
+          const letters = title.chars as HTMLElement[];
+          const written = createQuillWriter(point, body).write(timeline, letters, readAt, letters.length / REVEAL.title);
+          readAt += written + REVEAL.pause;
+          timeline.fromTo(
+            settling,
+            { opacity: 0, y: INK_RISE, filter: 'blur(2px)' },
+            {
+              opacity: 1,
+              y: 0,
+              filter: 'blur(0px)',
+              ...tween('ink.in'),
+              stagger: STEP.fast / 2,
+              clearProps: 'filter,transform,opacity',
+              immediateRender: false,
+            },
+            readAt
+          );
+          readAt += MOTION['ink.in'].duration + (settling.length - 1) * (STEP.fast / 2);
+          // Everything is in: give the title and the text back as plain markup.
+          timeline.call(() => parts.forEach(part => part.revert()), undefined, readAt);
+        }
+        // Clicking the document, or any key but Escape, finishes the reveal at once, with every moment still played
+        // (the stamp, the status, the event), each once.
+        const revealStart = revealAt;
+        skipRef.current = () => {
+          if (timeline.time() >= revealStart && timeline.progress() < 1) {
+            timeline.progress(1, false);
+          }
+        };
+        // Plain paper first; after a beat the stamp presses in (motion.md).
+        const stampAt = readAt + TIMING.stampBeat;
         const landed = stampAt + TIMING.stamp;
         timeline.add(stampHit('[data-file="stamp"]', { reduced }), stampAt);
         // As it lands, the paper becomes its status. The end states live in effects.css, keyed on data-revealed;
@@ -238,16 +298,6 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         }
 
         if (evidence.status === 'legend') {
-          // Full motion: the ink swims into ghost ink out of a slight blur (≤2px), then rests crisp and readable.
-          if (!reduced) {
-            timeline.fromTo(
-              '[data-file-ink]',
-              { filter: 'blur(2px)' },
-              // Not before the stamp lands: until then the text is plain and sharp.
-              { filter: 'blur(0px)', ...tween('ink.in'), clearProps: 'filter', immediateRender: false },
-              landed
-            );
-          }
           // The slip slides out from under the sheet.
           timeline.fromTo(
             '[data-file="slip"]',
@@ -273,7 +323,11 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             timeline.call(() => drift(), undefined, landed + 1.2);
           }
         }
-        return () => split?.revert();
+        return () => {
+          skipRef.current = null;
+          parts.forEach(part => part.revert());
+          split?.revert();
+        };
       });
     },
     { scope: rootRef }
@@ -459,6 +513,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           {/* The document scrolls inside its paper (a thin scrollbar), while the folder stays still. */}
           <div
             data-file="grip"
+            onClick={() => skipRef.current?.()}
             data-lenis-prevent
             className="thin-scroll desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:rounded-[3px] lg:[grid-area:1/1]"
           >
