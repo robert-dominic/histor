@@ -27,7 +27,7 @@ Every GSAP tween spreads a token: `gsap.to(el, { ...tween('ink.in'), opacity: 1 
 | `scene` | `sine.inOut` | 1.2s or more | Camera moves and scene changes |
 | `ghost` | `sine.inOut` | 2 to 4s | Ghost ink drifting and flickering: slow and irregular (`ghostDuration(key)`) |
 
-**Duration steps** for everything that is not a token (delays, holds, staggers): `STEP.fast` 0.2s, `STEP.base` 0.45s, `STEP.slow` 0.9s, `STEP.scene` 1.2s.
+`QUICK_OUT` (the `ink.out` ease over half a fast step) is the exit for small things: a menu, a slip, a panel. **Duration steps** for everything that is not a token (delays, holds, staggers): `STEP.fast` 0.2s, `STEP.base` 0.45s, `STEP.slow` 0.9s, `STEP.scene` 1.2s.
 
 Linear is only for constant motion and scroll-scrubbed timelines. Never use the browser's built-in `ease-in`. CSS hover and focus transitions use `--motion-hover-ease` and `--motion-hover-duration`.
 
@@ -35,7 +35,7 @@ Linear is only for constant motion and scroll-scrubbed timelines. Never use the 
 
 Every visible change of state animates: menus opening, items moving, slips appearing, threads drawing, files returning. Nothing snaps, and nothing pushes something else out of the way without moving smoothly.
 
-- A change of position or size from a layout change uses **Flip** with the `layout` token.
+- A change of position or size from a layout change uses **Flip** with the `layout` token: the floor's folders when the floor changes, the hanging tabs when a pin changes or a slip opens. A folder flying between the floor, a tab and the open file uses `paper.move`, then `paper.land`.
 - Exits are always quicker than entrances.
 - Reduced motion keeps the fades and removes the movement. Every animation has a reduced version (`gsap.matchMedia()` or `@media (prefers-reduced-motion: reduce)`).
 

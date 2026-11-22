@@ -8,7 +8,8 @@ inclusion: always
 
 - **React 19 + TypeScript (strict) + Vite.** No server, no backend. The whole app is static.
 - **React Router** for pages: `/` (home) and `/case/:id`.
-- **GSAP** with `@gsap/react` (`useGSAP` for setup and cleanup). Plugins: ScrollTrigger (scroll story), SplitText (line and character reveals), ScrambleText (spinning numbers and glitching text), TextPlugin (typed text). All GSAP plugins are free.
+- **GSAP** with `@gsap/react` (`useGSAP` for setup and cleanup). Plugins: ScrollTrigger (scroll story), SplitText (line and character reveals), ScrambleText (spinning numbers and glitching text), TextPlugin (typed text), Flip (things changing place), Draggable (dragging on the desk). All GSAP plugins are free.
+- **Lenis** (`lenis`) for smooth scrolling, driven by GSAP's ticker and synced with ScrollTrigger. It is the one dependency added beyond the stack above; it is off under reduced motion and paused while the story plays itself or the desktop desk is on screen.
 - **Tailwind CSS v4** via `@tailwindcss/vite` for layout, spacing and responsiveness.
 - **Plain CSS** in `src/styles/` for signature effects (ghost ink, stamps, paper, flicker) and for design tokens.
 - **Audio:** a small in-house audio manager on the Web Audio API. No audio library unless a real problem needs one.

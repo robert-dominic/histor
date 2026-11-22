@@ -18,7 +18,8 @@ src/
     board/      theories, evidence files, pinning, threads
     verdict/    closing the case and the case report
   components/   shared UI (Stamp, CaseFile, Button, Panel)
-  lib/          audio.ts, storage.ts, motion.ts (easing and duration tokens)
+  lib/          audio.ts, storage.ts, motion.ts (every ease and duration), smooth-scroll.ts, floor.ts (the floor layout),
+                story-column.ts (the text column's timing), phone-gate.ts, image-sources.ts
   styles/       tokens.css, effects.css
   types/        case.ts (all content types)
   cases/

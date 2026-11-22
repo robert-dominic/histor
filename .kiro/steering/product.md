@@ -36,6 +36,7 @@ The case's most famous legend, told dramatically. For the Mary Celeste this is t
 A scroll-driven telling of what the record says, built with GSAP ScrollTrigger.
 - Told in short sections. Each section ends on a moment of curiosity that pulls the user to keep scrolling.
 - The screen grows darker as the story goes on.
+- The story opens on the case's title, years and teaser. The chapter's sentences stay on screen in a text column that moves as the reader scrolls. "Play the story" or "Read at my pace" is offered on a small card after the first scroll.
 - Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
 - Job: give a newcomer full context, so nobody finishes the story confused.
 
@@ -51,10 +52,12 @@ Then the app speaks: "Most people stop here. Want to see what the evidence says?
 ### 5. The board
 Two kinds of objects: theories and evidence.
 - **Theories** sit across the top, 5 for the Mary Celeste. Each shows its name and one-line claim. How historians rate it stays hidden until the verdict.
-- **Evidence** is shown as case files: a stack of numbered files. Every file starts unexamined.
+- **Evidence** is shown as case files: a set of numbered files lying on the floor of the desk. Every file starts unexamined.
 - Opening a file opens its own screen: what the claim is, the source, and its status revealed with a stamp (Record, Disputed or Legend).
 - At the end of each file the app asks: "Which theory does this point to?" The user picks a theory, or "None of them." The app then reveals how historians read that piece of evidence, so the user learns as they go.
 - The board updates: a thread connects the file to the theory it was pinned to, and that theory visibly strengthens or weakens.
+- On a desktop everything can also be moved by hand: a folder dragged from the floor onto a theory is read first and then pinned; a pinned or set-aside file can be dragged to another theory, to "None of them", or back to the floor, without opening it. The Pin menu does the same with the keyboard, and lists "Back to the floor" for a file that is pinned or set aside. A file taken off the board stays opened.
+- The investigation needs a laptop-sized screen: below 1024px wide it shows a gate, with a "Continue anyway" link.
 
 ### 6. The verdict
 When the user has opened enough files (6 files, set per case by closeThreshold), "Close the case" unlocks. The user picks the theory they believe and gets a **case report**:

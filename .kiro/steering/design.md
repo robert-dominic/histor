@@ -50,10 +50,19 @@ Body text must reach 4.5:1 contrast against its background; large display text a
 The story is told like a documentary, one full-screen scene per chapter (`docs/briefs/story-redesign.md`).
 
 - **Scene:** the chapter's image fills the screen (`object-fit: cover`, `100svh`) under a slow scrubbed camera (scale 1.0 → 1.12 and a slight pan, each chapter a different way). A dark gradient over the bottom 45% keeps text at 4.5:1. All scenes share one pinned stage; the next image cross-dissolves in over the old one.
-- **Type over the image:** kicker in Special Elite, heading in Grenze Gotisch written by the quill, large and centred. The text arrives in **beats** (one sentence each) in the lower third, Old Standard TT, centred, about 32 characters a line on phones. The **hook** is Old Standard TT italic, large and centred, over an image dimmed almost to black.
-- **Corners:** image labels top-left and the credit ⓘ top-right, below the case header. The voyage chart inset (old-chart look: `paper` lines on `night`) bottom-right, about 160px wide on desktop and 110px on phones. The play/pause control bottom-left. Beats and hooks keep clear of all four.
-- **Full text** is always in the DOM for screen readers; the beats are `aria-hidden`. A keyboard user who tabs to a portal sees the full chapter text as a panel.
+- **The opening scene** comes after the legend intro: the first chapter's image, full screen, under a slow camera push. The quill writes the case title large, the years are typed under it, the UNSOLVED stamp lands, then the teaser and a quiet scroll cue. When the reader scrolls, the title docks into the case header (which stays hidden until then).
+- **Type over the image:** kicker in Special Elite, heading in Grenze Gotisch written by the quill on its own timer (about 2 seconds, whatever the scroll speed), large and centred. The chapter's sentences stay on screen in a **text column** in the lower part of the scene, Old Standard TT, centred, about 32 characters a line on phones, about 3 to 4 lines visible. The column moves up as the reader scrolls, and older sentences fade out through a static mask at its top. The **hook** is Old Standard TT italic, large and centred, over an image dimmed almost to black; the column leaves before it.
+- **Corners:** image labels top-left and the credit ⓘ top-right, below the case header. The voyage chart inset (old-chart look: `paper` lines on `night`) bottom-right, about 160px wide on desktop and 110px on phones. The play/pause control bottom-left. The text column and hooks keep clear of all four. A small **play card** ("Play the story", "Read at my pace") slides up at the bottom centre after the first scroll past the opening, and goes when either is chosen.
+- **Full text** is always in the DOM for screen readers; the text column is `aria-hidden`. A keyboard user who tabs to a portal sees the full chapter text as a panel.
 - **Reduced motion:** plain stacked sections, still images, text that fades in. No camera, scrub or auto-play.
+
+## The desk (desktop)
+
+On a screen 1024px wide or more the investigation is **one fixed screen** that never scrolls: a compact header (title, progress line, hints, the wax seal), the board of theories on top (about 55% of the height) and the **floor** below (about 45%), with the tray labelled "None of them" beside it.
+- **The floor:** the files lie flat, tossed on the table and seen from above, each with a slight tilt (at most 8°), a little overlapping, every tab and label showing. Their places come from one pure function of the file ids and the floor size, so they are the same every visit.
+- **An open file** is centred, straight and at most 86% of the screen high. Its document scrolls inside the paper, with a thin scrollbar.
+- **The first opening** of a file is written: a small dip-pen nib writes the title, the text settles in line by line from a slight blur, then the stamp lands and the paper takes its status.
+- Below 1024px the investigation shows a gate ("This case is too big for a small screen."), with a "Continue anyway" link that shows the phone desk as it is.
 
 ## Evidence status: the visual language
 
