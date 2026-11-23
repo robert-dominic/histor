@@ -21,9 +21,9 @@ export interface StoryPlayer {
   toggle: () => void;
 }
 
-/** Keys a reader presses to take over. Tab and modifier keys on their own do not pause. */
+/** Keys a reader presses to take over. Tab and modifier keys on their own do not pause; Space is the play bar's own. */
 function isTakeOverKey(event: KeyboardEvent): boolean {
-  return !['Tab', 'Shift', 'Control', 'Alt', 'Meta'].includes(event.key);
+  return !['Tab', 'Shift', 'Control', 'Alt', 'Meta', ' '].includes(event.key);
 }
 
 /**

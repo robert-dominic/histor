@@ -23,7 +23,7 @@ import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import Fork, { type ForkProps } from '@/features/fork/Fork';
 import CentralQuestion from '@/features/story/CentralQuestion';
-import PlayControl from '@/features/story/PlayControl';
+import PlayBar from '@/features/story/PlayBar';
 import StoryChapter from '@/features/story/StoryChapter';
 import StoryRail from '@/features/story/StoryRail';
 import StoryScene from '@/features/story/StoryScene';
@@ -84,7 +84,8 @@ const PANS = [
 const NOT_A_STEP = '[data-portal="root"], [role="dialog"], [data-lenis-prevent], [data-story-control]';
 
 /** The keys that move the story, while nothing modal is open. */
-const FORWARD_KEYS = new Set(['ArrowDown', 'PageDown', ' ']);
+// Space plays and pauses the story (PlayBar.tsx), so it is not a step.
+const FORWARD_KEYS = new Set(['ArrowDown', 'PageDown']);
 const BACK_KEYS = new Set(['ArrowUp', 'PageUp']);
 
 /** What the play modal's choice, the rail and the fork's Escape ask of the stage. */
@@ -312,6 +313,7 @@ export default function Story({
         const phrases = questionLayer === null ? [] : all('[data-story="phrase"]', questionLayer);
         const chartFrame = one('[data-chart="frame"][data-variant="live"]');
         const playControl = one('[data-story="play-control"]');
+        const playProgress = one('[data-story="play-progress"]');
         const reveals = chartFrame === null ? [] : all('[data-chart="reveal"]', chartFrame);
         const ship = chartFrame?.querySelector('[data-chart="ship"]') ?? null;
         const dots = new Map((chartFrame === null ? [] : all('[data-chart="point"]', chartFrame)).map(dot => [dot.dataset.id, dot]));
@@ -409,6 +411,10 @@ export default function Story({
           current = index;
           root.dataset.step = stepName(steps[index]);
           setTick(tickOf(steps[index], count));
+          // The play bar's line: how far through the whole story.
+          if (playProgress !== null) {
+            gsap.to(playProgress, { scaleX: steps.length <= 1 ? 1 : index / (steps.length - 1), ...tween('scene'), overwrite: true });
+          }
         };
         const setAnimating = (value: boolean) => {
           animating = value;
@@ -938,7 +944,7 @@ export default function Story({
         observer.disable();
         cleanups.push(() => observer.kill());
 
-        // ---- The keyboard: ↓, PageDown and Space forward; ↑ and PageUp back; Home to the start. Only while no
+        // ---- The keyboard: ↓ and PageDown forward; ↑ and PageUp back; Home to the start. Only while no
         // modal or portal card is open.
         const onKey = (event: KeyboardEvent) => {
           if (current < 0 || event.defaultPrevented || modalOpen() || event.altKey || event.ctrlKey || event.metaKey) {
@@ -1131,7 +1137,7 @@ export default function Story({
         )}
 
         {cinematic && <VoyageChart route={route} variant="live" onExpand={player.pause} />}
-        {cinematic && <PlayControl player={player} />}
+        {cinematic && <PlayBar player={player} />}
         {cinematic && <StoryRail labels={railLabels} current={tick} hidden={!begun || forkOpen} onJump={jumpToTick} />}
       </section>
     </PortalProvider>

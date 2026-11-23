@@ -593,7 +593,7 @@ describe('Story: one gesture, one step', () => {
     expect(stepOf(container)).toBe('page-0');
   });
 
-  test('the keyboard: ↓, PageDown and Space forward; ↑ and PageUp back; Home to the start', () => {
+  test('the keyboard: ↓ and PageDown forward; ↑ and PageUp back; Home to the start (Space plays and pauses)', () => {
     const { container } = renderStory(maryCeleste, READ);
     finishWriting(container);
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -603,7 +603,7 @@ describe('Story: one gesture, one step', () => {
     settleSteps();
     expect(stepOf(container)).toBe('page-1');
     finishWriting(container);
-    fireEvent.keyDown(window, { key: ' ' });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
     settleSteps();
     expect(stepOf(container)).toBe('hook-1');
     fireEvent.keyDown(window, { key: 'ArrowUp' });
@@ -1157,6 +1157,91 @@ describe('Story: the central question, one line per step', () => {
     const opener = ScrollTrigger.getAll().find(trigger => trigger.vars.start === 'bottom 60%')!;
     act(() => opener.vars.onEnter?.(opener));
     expect(gsap.getTweensOf(screen.getByRole('dialog', { name: 'What next' }))).toHaveLength(0);
+  });
+});
+
+describe('Story: the autoplay bar', () => {
+  const bar = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('[data-story="play-control"]')!;
+
+  test('one control: a bar at the bottom centre, "▶ Playing — click or press Space to pause" while it plays', () => {
+    const { container } = renderStory(testCase, PLAY);
+    expect(container.querySelectorAll('[data-story-control][data-story="play-control"]')).toHaveLength(1);
+    expect(bar(container).dataset.visible).toBe('true');
+    expect(bar(container).className).toContain('left-1/2');
+    expect(bar(container).textContent).toContain('Playing — click or press Space to pause');
+    expect(bar(container).textContent).toContain('▶');
+  });
+
+  test('a click pauses it: "❚❚ Paused — press Space to continue"; Space plays it again, and pauses it', () => {
+    const { container } = renderStory(testCase, PLAY);
+    act(() => {
+      fireEvent.click(bar(container));
+    });
+    expect(bar(container).getAttribute('aria-pressed')).toBe('false');
+    expect(bar(container).textContent).toContain('❚❚');
+    expect(bar(container).textContent).toContain('Paused — press Space to continue');
+    act(() => {
+      fireEvent.keyDown(document.body, { key: ' ' });
+    });
+    expect(bar(container).getAttribute('aria-pressed')).toBe('true');
+    // Space does not take over (it is the bar's own key): it pauses.
+    act(() => {
+      fireEvent.keyDown(document.body, { key: ' ' });
+    });
+    expect(bar(container).getAttribute('aria-pressed')).toBe('false');
+    // Nor is it a step.
+    expect(stepOf(container)).toBe('page-0');
+  });
+
+  test('Space does nothing while a text field has the focus, or a modal is open', () => {
+    const { container } = renderStory(testCase, PLAY);
+    const field = document.createElement('input');
+    document.body.append(field);
+    act(() => {
+      fireEvent.keyDown(field, { key: ' ' });
+    });
+    expect(bar(container).getAttribute('aria-pressed')).toBe('true');
+    field.remove();
+    const modal = document.createElement('div');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    document.body.append(modal);
+    act(() => {
+      fireEvent.keyDown(document.body, { key: ' ' });
+    });
+    expect(bar(container).getAttribute('aria-pressed')).toBe('true');
+    modal.remove();
+  });
+
+  test('it fades to faint after 3s without the mouse moving, and comes back when it moves', () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = renderStory(testCase, READ);
+      expect(bar(container).dataset.idle).toBe('false');
+      act(() => {
+        vi.advanceTimersByTime(3100);
+      });
+      expect(bar(container).dataset.idle).toBe('true');
+      expect(bar(container).className).toContain('data-[idle=true]:opacity-30');
+      act(() => {
+        fireEvent.pointerMove(window);
+      });
+      expect(bar(container).dataset.idle).toBe('false');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('a thin line for the whole story\'s progress, moved with each step', () => {
+    const { container } = renderStory(testCase, READ);
+    const line = bar(container).querySelector<HTMLElement>('[data-story="play-progress"]')!;
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    const tweens = gsap.getTweensOf(line);
+    expect(tweens.length).toBeGreaterThan(0);
+    expect(Number(tweens.at(-1)!.vars.scaleX)).toBeGreaterThan(0);
+    expect(Number(tweens.at(-1)!.vars.scaleX)).toBeLessThan(1);
   });
 });
 
