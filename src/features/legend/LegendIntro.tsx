@@ -1,6 +1,6 @@
 // src/features/legend/LegendIntro.tsx
 // The legend intro: a quill writes the famous myth, a stamp lands on it, and a typewriter answers. It ends on a
-// scroll cue that leads into the story, which opens on the case's title (features/story/StoryOpening.tsx).
+// scroll cue that leads into the story.
 // The quill is the legend's voice; the typewriter is the app's voice.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 

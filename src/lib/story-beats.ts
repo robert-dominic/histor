@@ -76,28 +76,3 @@ export const MIN_BEAT_SECONDS = 2.5;
 export function beatSeconds(text: string): number {
   return Math.max(MIN_BEAT_SECONDS, (beatWords(text) / WORDS_PER_MINUTE) * 60);
 }
-
-const NUMBER_WORDS = [
-  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
-];
-
-/**
- * Where a roll call of `count` people comes in: after the first beat that gives their number, in words or
- * figures (for ten people: "ten" or "10"). Without such a beat, after the first one. -1 when there are no beats.
- */
-export function rollCallBeatIndex(beats: string[], count: number): number {
-  if (beats.length === 0) {
-    return -1;
-  }
-  const words = new Set([String(count), NUMBER_WORDS[count]].filter((word): word is string => word !== undefined));
-  const index = beats.findIndex(beat =>
-    parseRefs(beat)
-      .map(segment => (segment.kind === 'text' ? segment.text : segment.label))
-      .join('')
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .some(word => words.has(word))
-  );
-  return index === -1 ? 0 : index;
-}

@@ -128,7 +128,7 @@ describe('Case page: open case', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
-  test('the legend intro has no title card; the story opens on the title, its years, the stamp and the teaser', () => {
+  test('the legend intro has no title card, and there is no opening scene: the header carries the title and years', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
     const intro = screen.getByRole('region', { name: 'The legend' });
@@ -136,13 +136,12 @@ describe('Case page: open case', () => {
     expect(intro.querySelector('[data-legend="years"]')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-    const opening = document.querySelector('[data-story="opening"]') as HTMLElement;
-    expect(opening.querySelector('[data-opening="title"]')?.textContent).toBe(openEntry.data.title);
-    expect(opening.querySelector('[data-opening="years"]')?.textContent).toBe(
+    expect(document.querySelector('[data-story="opening"]')).toBeNull();
+    expect(document.querySelector('[data-case-header="title"]')?.textContent).toBe(openEntry.data.title);
+    expect(document.querySelector('[data-case-header="years"]')?.textContent).toBe(
       formatCaseYears(openEntry.data.year, openEntry.data.yearEnd)
     );
-    expect(opening.querySelector('[data-opening="stamp"]') !== null).toBe(openEntry.data.unsolved === true);
-    expect(opening.querySelector('[data-opening="teaser"]')?.textContent).toBe(openEntry.data.teaser);
+    expect(document.querySelector('[data-case-header="unsolved"]') !== null).toBe(openEntry.data.unsolved === true);
   });
 
   test('the case header starts hidden, and is still the page heading for screen readers', () => {

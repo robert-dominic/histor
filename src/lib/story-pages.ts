@@ -1,6 +1,7 @@
 // src/lib/story-pages.ts
 // Story v3: one page per chapter, written by the pen (night-run brief). The pace of the story, in one place, to be
 // tuned by feel. Timeline seconds are seconds of scroll: one of them is `pxPerSecond()` pixels.
+import { parseRefs } from '@/lib/parse-refs';
 
 export const STORY_PACE = {
   /** The pen writes at about 3× reading pace (240 words a minute), so it leads the eye. */
@@ -22,7 +23,28 @@ export const STORY_PACE = {
   pageHold: 3,
   /** The hook hold: how long the hook line holds, whole, before it decays, in timeline seconds. */
   hookHold: 4,
+  /** Reading pace, for the time a reader is given to read: words a minute, and the least time for anything. */
+  readWordsPerMinute: 240,
+  readAtLeast: 1.6,
+  /**
+   * Pixels of scroll for one second of the story's timeline, as a share of the screen's height, within limits.
+   * "Play the story" scrolls at the same rate, so its pace does not change when this does.
+   */
+  pxPerSecond: { share: 0.3, min: 160, max: 280 },
+  /** Lenis's wheel multiplier while the story is on the page (1 elsewhere): below 1 a flick moves the page less. */
+  wheelMultiplier: 0.8,
+  /** ScrollTrigger `scrub` smoothing in seconds: the scrubbed parts glide instead of jumping. */
+  scrub: 1.2,
 } as const;
+
+/** Seconds a reader needs for `text` (markup read as its label): its words at reading pace, and at least the least. */
+export function readingSeconds(text: string): number {
+  const plain = parseRefs(text)
+    .map(segment => (segment.kind === 'text' ? segment.text : segment.label))
+    .join('');
+  const words = plain.split(/\s+/).filter(word => word !== '').length;
+  return Math.max(STORY_PACE.readAtLeast, (words / STORY_PACE.readWordsPerMinute) * 60);
+}
 
 export interface PenPlan {
   /** What the pen writes one at a time. */

@@ -1,7 +1,7 @@
 // src/lib/__tests__/story-beats.test.ts
 import { describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { MIN_BEAT_SECONDS, beatSeconds, beatWords, rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
+import { MIN_BEAT_SECONDS, beatSeconds, beatWords, splitIntoBeats } from '@/lib/story-beats';
 import { emitStoryEvent, onStoryEvent } from '@/lib/story-events';
 
 describe('splitIntoBeats', () => {
@@ -51,23 +51,6 @@ describe('splitIntoBeats', () => {
   });
 });
 
-describe('rollCallBeatIndex', () => {
-  test('after the first beat that gives the number, in words or figures', () => {
-    expect(rollCallBeatIndex(['They sailed.', 'On board: ten people.', 'Ten more.'], 10)).toBe(1);
-    expect(rollCallBeatIndex(['They sailed.', 'There were 3 of them.'], 3)).toBe(1);
-  });
-
-  test('a number inside another word does not count, and without one it is the first beat', () => {
-    expect(rollCallBeatIndex(['They were often tense.', 'Then they left.'], 10)).toBe(0);
-    expect(rollCallBeatIndex([], 10)).toBe(-1);
-  });
-
-  test('Mary Celeste, chapter 1: after "On board: ten people."', () => {
-    const beats = maryCeleste.story[0].body.flatMap(splitIntoBeats);
-    const index = rollCallBeatIndex(beats, maryCeleste.story[0].rollCall?.length ?? 0);
-    expect(beats[index]).toBe('On board: ten people.');
-  });
-});
 
 describe('beat timing', () => {
   test('counts the words a reader sees, with markup as its label', () => {

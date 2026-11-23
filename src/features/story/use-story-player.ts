@@ -9,14 +9,14 @@ import gsap from 'gsap';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { LINEAR } from '@/lib/motion';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
-import { SCROLL_FEEL } from '@/lib/story-column';
+import { STORY_PACE } from '@/lib/story-pages';
 
 gsap.registerPlugin(ScrollToPlugin);
 
-/** Pixels of scroll for one second of the story's timeline. Proportional to the screen, within limits (SCROLL_FEEL). */
+/** Pixels of scroll for one second of the story's timeline. Proportional to the screen, within limits (STORY_PACE). */
 export function pxPerSecond(): number {
   const height = typeof window === 'undefined' ? 800 : window.innerHeight;
-  const { share, min, max } = SCROLL_FEEL.pxPerSecond;
+  const { share, min, max } = STORY_PACE.pxPerSecond;
   return Math.min(max, Math.max(min, height * share));
 }
 

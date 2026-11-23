@@ -3,9 +3,25 @@ import * as fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { parseRefs } from '@/lib/parse-refs';
-import { STORY_PACE, penPlan } from '@/lib/story-pages';
+import { STORY_PACE, penPlan, readingSeconds } from '@/lib/story-pages';
 
 const plain = (text: string) => parseRefs(text).map(segment => (segment.kind === 'text' ? segment.text : segment.label)).join('');
+
+describe('STORY_PACE: the scroll', () => {
+  test('about twice the old scroll per second of story (0.15 of the screen, 80 to 140px), and a wheel at 0.8', () => {
+    expect(STORY_PACE.pxPerSecond).toEqual({ share: 0.3, min: 160, max: 280 });
+    expect(STORY_PACE.wheelMultiplier).toBe(0.8);
+  });
+});
+
+describe('readingSeconds', () => {
+  test('words at 240 a minute, a reference read as its label, and never less than the least', () => {
+    expect(readingSeconds('Short.')).toBe(STORY_PACE.readAtLeast);
+    const long = Array.from({ length: 24 }, () => 'word').join(' ');
+    expect(readingSeconds(long)).toBeCloseTo(6, 6);
+    expect(readingSeconds(`{{ref:a|Two words}} ${Array.from({ length: 22 }, () => 'w').join(' ')}`)).toBeCloseTo(6, 6);
+  });
+});
 
 describe('penPlan', () => {
   test('a short page is written letter by letter at about 3× reading pace', () => {

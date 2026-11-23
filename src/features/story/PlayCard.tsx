@@ -26,17 +26,9 @@ interface PlayCardProps {
 /** How far the reader scrolls on while the card is shown, as a share of the screen's height, before it leaves. */
 export const AUTO_LEAVE = 0.6;
 
-/**
- * True once the reader has scrolled past the opening scene. Where the opening lies over the first scene (the
- * cinematic story), the story says so itself (`data-past-opening`); otherwise it is the opening's own bottom, or with
- * no opening the story's own top.
- */
+/** True once the reader has scrolled into the story: its top has reached the top of the screen. */
 function pastOpening(story: HTMLElement): boolean {
-  if (story.dataset.pastOpening !== undefined) {
-    return story.dataset.pastOpening === 'true';
-  }
-  const opening = story.querySelector('[data-story="opening"]');
-  return opening === null ? story.getBoundingClientRect().top <= 0 : opening.getBoundingClientRect().bottom <= 1;
+  return story.getBoundingClientRect().top <= 0;
 }
 
 /** True once the story is mostly behind the reader: the card leaves, so it never sits over the fork. */

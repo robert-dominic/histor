@@ -14,7 +14,6 @@ import { AUTO_LEAVE } from '@/features/story/PlayCard';
 import { parseRefs } from '@/lib/parse-refs';
 import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
-import { COLUMN } from '@/lib/story-column';
 import { STORY_PACE } from '@/lib/story-pages';
 import { splitQuestion } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
@@ -31,8 +30,7 @@ const plainText = (text: string) =>
 
 type StoryData = Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources' | 'voyage'>;
 
-const openingCard = { title: 'Test Case', years: '1900 – 1901', unsolved: true, teaser: 'A test teaser.' };
-function renderStory(caseData: StoryData = maryCeleste, withOpening = false) {
+function renderStory(caseData: StoryData = maryCeleste) {
   return render(
     <Story
       story={caseData.story}
@@ -40,20 +38,13 @@ function renderStory(caseData: StoryData = maryCeleste, withOpening = false) {
       references={caseData.references}
       sources={caseData.sources}
       voyage={caseData.voyage}
-      opening={withOpening ? openingCard : undefined}
     />
   );
 }
 /** Scrolls past the opening scene (jsdom has no layout, so the rectangles are set by hand) and lets tweens finish. */
 function scrollPastOpening(container: HTMLElement, { storyBottom = 5000 }: { storyBottom?: number } = {}) {
-  const opening = container.querySelector('[data-story="opening"]') as HTMLElement;
-  opening.getBoundingClientRect = () => ({ top: -900, bottom: -100, height: 800 }) as DOMRect;
   const root = container.querySelector('[data-story="root"]') as HTMLElement;
   root.getBoundingClientRect = () => ({ top: -900, bottom: storyBottom, height: storyBottom + 900 }) as DOMRect;
-  // Over the first scene the story says when the opening has cleared (its timeline does, as the scroll passes it).
-  if (root.dataset.pastOpening !== undefined) {
-    root.dataset.pastOpening = 'true';
-  }
   act(() => {
     fireEvent.scroll(window);
   });
@@ -125,7 +116,7 @@ describe('Story: the full text is in the DOM', () => {
   test('the scroll is scrubbed with smoothing, so the text glides', () => {
     renderStory(testCase);
     const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin !== undefined && trigger.pin !== null);
-    expect(pinned?.vars.scrub).toBe(COLUMN.scrub);
+    expect(pinned?.vars.scrub).toBe(STORY_PACE.scrub);
   });
   test('ends on the central question, whole for screen readers and in phrases for the eyes', () => {
     const { container } = renderStory();
@@ -363,7 +354,7 @@ describe('Story: play the story', () => {
     expect(wheelMultiplier()).toBe(1);
   });
   test('the play card is hidden until the reader has scrolled past the opening', () => {
-    const { container } = renderStory(maryCeleste, true);
+    const { container } = renderStory(maryCeleste);
     const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
     expect(card.style.visibility).toBe('hidden');
     expect(card.style.opacity).toBe('0');
@@ -372,7 +363,7 @@ describe('Story: play the story', () => {
     expect(card.style.opacity).toBe('1');
   });
   test('the card has the hint, "Play the story" and "Read at my pace", and does not block the page', () => {
-    const { container } = renderStory(maryCeleste, true);
+    const { container } = renderStory(maryCeleste);
     scrollPastOpening(container);
     const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
     expect(card.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll, or press play.');
@@ -388,7 +379,7 @@ describe('Story: play the story', () => {
     expect(container.querySelector('[data-story="play-control"]')?.closest('[inert]')).toBeNull();
   });
   test('the card goes away once the story is behind the reader, so it never sits over the fork', () => {
-    const { container } = renderStory(maryCeleste, true);
+    const { container } = renderStory(maryCeleste);
     scrollPastOpening(container);
     const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
     expect(card.style.opacity).toBe('1');
@@ -396,7 +387,7 @@ describe('Story: play the story', () => {
     expect(card.style.opacity).toBe('0');
   });
   test('"Play the story" on the card plays, and the card leaves and does not come back', () => {
-    const { container } = renderStory(maryCeleste, true);
+    const { container } = renderStory(maryCeleste);
     scrollPastOpening(container);
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
     const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
@@ -413,7 +404,7 @@ describe('Story: play the story', () => {
     expect(container.querySelector('[data-story="play-card"]')).toBeNull();
   });
   test('the card leaves by itself when the reader keeps scrolling: scrolling counts as "Read at my pace"', () => {
-    const { container } = renderStory(maryCeleste, true);
+    const { container } = renderStory(maryCeleste);
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 });
     scrollPastOpening(container);
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
@@ -438,7 +429,7 @@ describe('Story: play the story', () => {
     Reflect.deleteProperty(window, 'scrollY');
   });
   test('"Read at my pace" sends the card away without playing', () => {
-    const { container } = renderStory(maryCeleste, true);
+    const { container } = renderStory(maryCeleste);
     scrollPastOpening(container);
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
     const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
@@ -731,7 +722,7 @@ describe('Story: the central question as a chokepoint', () => {
     expect(question.className).toContain('bg-black');
     const trigger = questionTrigger();
     expect(trigger).toBeDefined();
-    expect(trigger.vars.scrub).toBe(COLUMN.scrub);
+    expect(trigger.vars.scrub).toBe(STORY_PACE.scrub);
     expect(trigger.vars.snap).toMatchObject({ snapTo: 'labelsDirectional', ease: 'power2.inOut', inertia: false });
     // Snapping is a nudge after the reader stops: nothing stops the reader scrolling on.
     expect(document.documentElement.style.overflow).toBe('');
@@ -781,68 +772,28 @@ describe('Story: the central question as a chokepoint', () => {
   });
 });
 
-describe('Story: one opening, on the first scene', () => {
-  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+describe('Story: no opening scene; the header shows the title once the story starts', () => {
   function renderWithHeader() {
     return render(
       <>
-        <CaseHeader title={openingCard.title} years={openingCard.years} unsolved startHidden />
-        <Story
-          story={testCase.story}
-          centralQuestion={testCase.centralQuestion}
-          references={testCase.references}
-          sources={testCase.sources}
-          opening={openingCard}
-        />
+        <CaseHeader title="Test Case" years="1900 – 1901" unsolved startHidden />
+        <Story story={testCase.story} centralQuestion={testCase.centralQuestion} references={testCase.references} sources={testCase.sources} />
       </>
     );
   }
 
-  test('the title, years, stamp and teaser lie over chapter 1\'s scene, in the stage: one image, one title', () => {
+  test('there is no separate opening scene: the story starts on chapter 1, its image only once', () => {
     const { container } = renderWithHeader();
-    const stage = container.querySelector('[data-story="stage"]') as HTMLElement;
-    const opening = container.querySelector<HTMLElement>('[data-story="opening"]')!;
-    expect(stage.contains(opening)).toBe(true);
-    expect(opening.dataset.overlay).toBe('true');
-    expect(container.querySelectorAll('[data-story="opening"]')).toHaveLength(1);
-    // The only image of chapter 1 is the scene's own.
-    expect(opening.querySelector('img')).toBeNull();
-    // The header stays empty until the title docks into it.
-    expect((container.querySelector('[data-case-header="bar"]') as HTMLElement).style.opacity).toBe('0');
+    expect(container.querySelector('[data-story="opening"]')).toBeNull();
+    expect(container.querySelectorAll('img[data-story="image"]')).toHaveLength(testCase.story.filter(section => section.image).length);
   });
 
-
-  test('scrolling on clears the opening (ink.out) and docks the title; scrolling back undocks it', () => {
+  test('the header shows the case title once the story starts, and the UNSOLVED tag beside the years', () => {
     const { container } = renderWithHeader();
-    const root = container.querySelector<HTMLElement>('[data-story="root"]')!;
-    const timeline = stageTimeline();
-    const years = container.querySelector<HTMLElement>('[data-opening="years"]')!;
     const bar = container.querySelector<HTMLElement>('[data-case-header="bar"]')!;
-    expect(root.dataset.pastOpening).toBe('false');
-    act(() => {
-      timeline.time(timeline.labels['chapter-0'] - 0.1, false);
-    });
-    expect(root.dataset.pastOpening).toBe('true');
-    const leaving = gsap.getTweensOf(years).find(tween => tween.vars.opacity === 0)!;
-    expect(leaving.vars).toMatchObject({ ease: 'power2.in', duration: 0.45 });
-    // jsdom has no layout, so the title does not fly: the header fades in.
-    expect(gsap.getTweensOf(bar).some(tween => tween.vars.opacity === 1)).toBe(true);
-    act(() => {
-      timeline.time(0, false);
-    });
-    expect(root.dataset.pastOpening).toBe('false');
-    expect(gsap.getTweensOf(bar).some(tween => tween.vars.opacity === 0)).toBe(true);
-    expect(gsap.getTweensOf(years).some(tween => tween.vars.opacity === 1)).toBe(true);
-  });
-
-  test('reduced motion: the opening has its own screen at night, with no image, before chapter 1', () => {
-    vi.unstubAllGlobals();
-    stubMatchMedia({ reducedMotion: true });
-    vi.stubGlobal('scrollTo', vi.fn());
-    const { container } = renderWithHeader();
-    const opening = container.querySelector<HTMLElement>('[data-story="opening"]')!;
-    expect(opening.dataset.overlay).toBe('false');
-    expect(opening.querySelector('img')).toBeNull();
+    // jsdom has no layout, so the story has already started.
+    expect(bar.style.opacity).toBe('1');
+    expect(bar.querySelector('[data-case-header="unsolved"]')?.textContent).toContain('Unsolved');
   });
 });
 

@@ -390,7 +390,7 @@ describe('LegendIntro: without matchMedia', () => {
 });
 
 describe('LegendIntro: no title card', () => {
-  // The case title now opens the story (StoryOpening.tsx); the legend intro starts straight on the myth.
+  // The case title is in the case header once the story starts; the legend intro starts straight on the myth.
   test('the intro has no title card, title, years or UNSOLVED stamp', () => {
     const { container } = renderIntro();
     expect(container.querySelector('[data-legend="title-card"]')).toBeNull();
@@ -408,7 +408,7 @@ describe('LegendIntro: no title card', () => {
     );
     const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-    // Still hidden: only the opening scene docks the title and shows the header.
+    // Still hidden: only the story shows the header, once it starts.
     expect(bar.style.opacity).toBe('0');
   });
 

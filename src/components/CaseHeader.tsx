@@ -1,7 +1,7 @@
 // src/components/CaseHeader.tsx
 // The slim header of a case page: the case title and its years, fixed to the top for the whole page.
-// It is the page's heading. The story's opening scene docks its title into it (features/story/dock-title.ts
-// finds it by its `data-case-header` attributes), and the story's images start below it, so it never covers them.
+// It is the page's heading. It shows once the story starts (features/story/Story.tsx finds it by its
+// `data-case-header` attribute), and the story's images start below it, so it never covers them.
 // Its height is the `--case-header` variable in src/index.css.
 
 interface CaseHeaderProps {
@@ -10,7 +10,7 @@ interface CaseHeaderProps {
   years: string;
   /** True for a case with no accepted answer. */
   unsolved?: boolean;
-  /** Starts invisible: the story's opening scene docks its title into the header and fades it in. */
+  /** Starts invisible: the story fades it in once it starts. */
   startHidden?: boolean;
 }
 
@@ -29,8 +29,15 @@ export default function CaseHeader({ title, years, unsolved = false, startHidden
       </h1>
       <p className="shrink-0 font-voice text-[0.6875rem] leading-none tracking-[0.18em] text-ghost-night tabular-nums lg:text-xs">
         <span data-case-header="years">{years}</span>
-        {/* The stamp on the title card is decoration; this is how a screen reader hears it. */}
-        {unsolved && <span className="sr-only">. Unsolved</span>}
+        {/* A small typed tag beside the years, for a case with no accepted answer. */}
+        {unsolved && (
+          <span
+            data-case-header="unsolved"
+            className="ml-2.5 inline-block -rotate-2 rounded-[0.14em] border border-rust-night px-1.5 pt-[0.3em] pb-[0.2em] text-rust-night uppercase"
+          >
+            <span className="sr-only">. </span>Unsolved
+          </span>
+        )}
       </p>
     </header>
   );
