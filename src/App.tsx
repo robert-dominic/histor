@@ -10,6 +10,7 @@ import Report from '@/features/verdict/Report';
 import Verdict from '@/features/verdict/Verdict';
 import Case from '@/pages/Case';
 import Home from '@/pages/Home';
+import DevSound from '@/pages/DevSound';
 import NotFound from '@/pages/NotFound';
 import { startSound } from '@/lib/sound';
 
@@ -31,6 +32,8 @@ export default function App() {
             <Route path="/case/:id/verdict" element={<Verdict />} />
             <Route path="/case/:id/report" element={<Report />} />
           </Route>
+          {/* Every generated sound, for tuning by ear: development builds only. */}
+          {import.meta.env.DEV && <Route path="/dev/sound" element={<DevSound />} />}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

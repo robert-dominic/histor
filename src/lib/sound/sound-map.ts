@@ -32,8 +32,9 @@ export interface SoundRow {
 
 /** What the sound has heard so far, for the rows that depend on it. */
 export interface SoundMemory {
-  /** When the pen last scratched, in ms. */
+  /** When the pen last scratched, and when a file on the floor was last brushed, in ms. */
   lastPen: number;
+  lastBrush: number;
   /** The case's one-off cues (from its ambience), and the ones already played. */
   cues: AmbienceCue[];
   played: Set<AmbienceCue>;
@@ -42,7 +43,7 @@ export interface SoundMemory {
 }
 
 export function freshMemory(): SoundMemory {
-  return { lastPen: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0 };
+  return { lastPen: Number.NEGATIVE_INFINITY, lastBrush: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0 };
 }
 
 type Rows = { [K in StoryEvent['type']]?: (event: Extract<StoryEvent, { type: K }>, memory: SoundMemory) => SoundRow | null };
@@ -83,8 +84,8 @@ export const SOUND_TABLE: Rows = {
   'roll-call-out': event => ({ cues: [{ sound: 'hiss', pitch: 0.9 ** event.order }] }),
   // The question: the drone stays low and still; each line adds a faint, low pulse.
   'question-line': event => (event.direction === 'forward' ? { drone: 'low', cues: [{ sound: 'pulse' }] } : { drone: 'low' }),
-  // The fork's modal: a paper slide.
-  fork: () => ({ cues: [{ sound: 'paper-slide' }] }),
+  // A modal (the play choice, the fork) opening: a paper slide in; closing: a paper slide out.
+  modal: event => ({ cues: [{ sound: event.open ? 'paper-slide' : 'slide-out' }] }),
   // ---- The desk (B4)
   // A folder picked up: a paper lift. Let go: it lands with a soft thud.
   'folder-lift': () => ({ cues: [{ sound: 'paper-lift' }] }),
@@ -106,6 +107,22 @@ export const SOUND_TABLE: Rows = {
   seal: event => (event.where === 'verdict' ? { duck: 'stamp', cues: [{ sound: 'thud-heavy', delay: MOTION['stamp.hit'].duration }] } : null),
   // The rank revealed: a single typewriter bell.
   rank: () => ({ cues: [{ sound: 'ding' }] }),
+
+  // ---- The interface (music brief, 4)
+  // Any button or link pressed (but those with a sound of their own): a soft paper tick.
+  'ui-click': () => ({ cues: [{ sound: 'paper-tick' }] }),
+  // A toggle switched: a small click.
+  'ui-toggle': () => ({ cues: [{ sound: 'switch-click' }] }),
+  // The ? guide: a page flip as it opens, a softer one as it closes.
+  guide: event => ({ cues: [{ sound: 'page-flip', gain: event.open ? 1 : 0.55 }] }),
+  // The pointer onto a file on the floor: a very faint brush, at most 4 a second.
+  'file-hover': (_event, memory) => {
+    if (memory.now - memory.lastBrush < 1000 / SOUND.brushesPerSecond) {
+      return null;
+    }
+    memory.lastBrush = memory.now;
+    return { cues: [{ sound: 'brush' }] };
+  },
 };
 
 /** The row for one event, or null when it is silent. `now` is in ms. */

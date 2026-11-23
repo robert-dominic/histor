@@ -8,6 +8,7 @@
 // A dialog: the focus stays inside, Escape closes it and gives the focus back to the button.
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import gsap from 'gsap';
+import { emitStoryEvent } from '@/lib/story-events';
 import { useGSAP } from '@gsap/react';
 import { numberWord } from '@/features/board/hints';
 import { hasSeenDeskGuide, isDeskGuideOff, markDeskGuideSeen, setDeskGuideOff } from '@/lib/desk-guide-seen';
@@ -56,6 +57,12 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
       markDeskGuideSeen(caseId);
     }
   }, [open, caseId]);
+  // Its sound: a page flip as it opens (a softer one as it starts to close, in `close`).
+  useEffect(() => {
+    if (open) {
+      emitStoryEvent({ type: 'guide', open: true });
+    }
+  }, [open]);
   // Opening by itself on arrival happens once per arrival.
   useEffect(() => {
     if (startOpen) {
@@ -70,12 +77,14 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
     buttonRef.current?.focus();
     const overlay = overlayRef.current;
     if (overlay === null || typeof window.matchMedia !== 'function') {
+      emitStoryEvent({ type: 'guide', open: false });
       setOpen(false);
       return;
     }
     if (closingRef.current) {
       return;
     }
+    emitStoryEvent({ type: 'guide', open: false });
     closingRef.current = true;
     gsap.to(overlay, {
       opacity: 0,
@@ -143,6 +152,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
         aria-label="How the desk works"
         aria-haspopup="dialog"
         aria-expanded={open}
+        data-ui-sound="off"
         onClick={() => setOpen(true)}
         className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 grid size-11 place-items-center rounded-full border border-brass bg-night font-voice text-lg text-brass shadow-lg shadow-black/50 transition-[scale,background-color,color] duration-150 ease-out hover:bg-brass hover:text-night focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] lg:right-6 lg:bottom-6"
       >
@@ -230,6 +240,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
             <button
               ref={closeRef}
               type="button"
+              data-ui-sound="off"
               onClick={close}
               className="mt-6 inline-flex min-h-11 items-center rounded-sm border border-ink px-5 font-voice text-sm tracking-[0.14em] uppercase transition-[scale,background-color,color] duration-150 ease-out hover:bg-ink hover:text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record active:scale-[0.97]"
             >

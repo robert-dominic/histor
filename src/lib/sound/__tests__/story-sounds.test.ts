@@ -70,8 +70,9 @@ describe('the story\'s rows', () => {
     expect(soundFor({ type: 'question-line', index: 0, direction: 'forward' }, freshMemory())).toEqual({ drone: 'low', cues: [{ sound: 'pulse' }] });
   });
 
-  test('the fork\'s modal: a paper slide', () => {
-    expect(sounds(soundFor({ type: 'fork' }, freshMemory()))).toEqual(['paper-slide']);
+  test('the fork\'s modal: a paper slide in; closing, out', () => {
+    expect(sounds(soundFor({ type: 'modal', name: 'fork', open: true }, freshMemory()))).toEqual(['paper-slide']);
+    expect(sounds(soundFor({ type: 'modal', name: 'fork', open: false }, freshMemory()))).toEqual(['slide-out']);
   });
 });
 

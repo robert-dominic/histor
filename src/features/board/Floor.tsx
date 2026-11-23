@@ -224,6 +224,7 @@ export default function Floor({ layout, filesHref, theories, dropped, onRearrang
       const folder = (event.target as Element).closest<HTMLElement>('[data-board="folder"]');
       if (folder !== null && !folder.contains(event.relatedTarget as Node | null)) {
         lift(folder, true);
+        emitStoryEvent({ type: 'file-hover' });
       }
     };
     const onOut = (event: PointerEvent) => {

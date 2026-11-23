@@ -81,7 +81,7 @@ It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned do
 | `roll-call-out` | A breathy hiss for each name, a little lower in pitch for each |
 | `chapter-enter` of a cued chapter | The ship's bell, once per visit, far away: an inharmonic bell of eight sine partials with a long decay, the upper ones dying first, low-passed. The Mary Celeste cues it at `s-found`, as the *Dei Gratia* sights her (`CaseAmbience.cues`) |
 | `question-line` | The drone stays low and still; each line adds a faint, low pulse |
-| `fork` | A paper slide |
+| `modal` (the fork opening over the question) | A paper slide in (closing: out; see "Interface sounds") |
 
 ## Desk sounds
 
@@ -107,6 +107,23 @@ A thud is one recipe at three weights (`thud-soft`, `thud`, `thud-heavy`): a sho
 - **"Play the story":** a chapter's clip plays as its page is written, and Play waits for the clip to end, plus a short beat (`NARRATION.beat`), before moving on. The question's clip starts with its first line; its last line waits for the clip.
 - **"Read at my pace":** a clip plays only when the reader presses the small **"Listen"** button on the panel (or under the question), with the recording's credit beside it. Pressing it again stops it.
 - One clip at a time; a step to another passage stops it (a chapter's clip carries on into its own hook). The ambience and the score duck under the voice until it ends. With the sound off, there is no voice.
+
+## Interface sounds (music brief, 4)
+
+Subtle, short and never annoying; through the effects bus and the event table like every effect.
+
+| Event | Sound |
+| --- | --- |
+| `ui-click` (any button or link) | A soft paper tick |
+| `ui-toggle` (a switch, a checkbox, a pressed button) | A small click |
+| `guide` (the ? guide opens) | A page flip |
+| `guide` (it starts to close) | A softer page flip |
+| `modal` (the play choice or the fork opens) | A paper slide in |
+| `modal` (it closes) | A paper slide out |
+| `file-hover` (the pointer onto a file on the floor) | A very faint brush, at most 4 a second |
+
+- **One listener** (`startSound`) hears every click on a button, a link, a switch or a menu item and sends `ui-click` or `ui-toggle`: no component asks for it. An element marked `data-ui-sound="off"` (or inside one) has its own sound already and gets no tick: the floor's folders (the cover's flip), the Pin menu's items (the pin), the ? guide's open and close buttons (the page flip), the play choice's two choices (the slide out), the verdict's "Close the case" (the stamp). Disabled controls are silent.
+- **`/dev/sound`** (development builds only) lists every sound with a button that plays it and the moment it belongs to, for tuning by ear. A new sound goes there too.
 
 ## Quality bar
 

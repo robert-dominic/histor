@@ -235,6 +235,7 @@ export default function PinMenu({ theories, current, onPin, onUnpin, busy = fals
                 role="menuitemradio"
                 aria-checked={checked}
                 tabIndex={-1}
+                data-ui-sound="off"
                 onClick={() => choose(item.id)}
                 className={`flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left font-voice text-sm leading-snug transition-[background-color] duration-100 ease-out hover:bg-ink/[0.07] focus-visible:bg-ink/[0.09] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brass ${
                   item.id === 'none' || item.id === FLOOR_ITEM ? 'mt-1 border-t border-ink/15' : ''

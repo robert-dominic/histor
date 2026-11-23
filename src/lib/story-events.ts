@@ -30,8 +30,14 @@ export type StoryEvent =
   | { type: 'roll-call-out'; chapter: string; name: string; order: number; direction: StoryDirection }
   // The pen writes a letter (anywhere: the legend, the story, a file, the verdict). Many a second.
   | { type: 'pen' }
-  // The fork's modal opens over the question.
-  | { type: 'fork' }
+  // A modal opens or closes: the play choice, the fork over the question.
+  | { type: 'modal'; name: 'play-choice' | 'fork'; open: boolean }
+  // The interface (music brief, 4): any button or link pressed (the app's own click listener sends these), a toggle
+  // switched, the ? guide opened or closed, the pointer onto a file on the floor.
+  | { type: 'ui-click' }
+  | { type: 'ui-toggle' }
+  | { type: 'guide'; open: boolean }
+  | { type: 'file-hover' }
   // The desk
   | { type: 'pile-hover' }
   // A folder picked up by hand, and let go (it lands).

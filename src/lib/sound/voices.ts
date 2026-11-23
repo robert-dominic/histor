@@ -365,8 +365,56 @@ const ding: Voice = {
   },
 };
 
+// ---- The interface's sounds (music brief, 4): subtle, short, never annoying
+
+/** Any button or link pressed: a soft paper tick. */
+const paperTick: Voice = {
+  seconds: 0.05,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 3000 * pitch * vary(0.08), q: 1.4, peak: 0.035 * gain, attack: 0.002, release: 0.025 }),
+};
+
+/** The ? guide opened (or, quieter, closed): a page turning, a swish with the flutter of its edge. */
+const pageFlip: Voice = {
+  seconds: 0.45,
+  play: (ctx, out, { at, gain, pitch }) => {
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 900 * pitch, sweepTo: 3200 * pitch, q: 0.8, peak: 0.07 * gain, attack: 0.06, release: 0.22 });
+    [0.05, 0.11, 0.16].forEach((offset, index) =>
+      noiseBurst(ctx, out, { at: at + offset, filter: 'highpass', frequency: 2600 * pitch, q: 0.7, peak: (0.025 - index * 0.006) * gain, attack: 0.003, release: 0.03 })
+    );
+  },
+};
+
+/** A modal closing: a paper slid back out, falling where the slide in rises. */
+const slideOut: Voice = {
+  seconds: 0.45,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 1000 * pitch, sweepTo: 1900 * pitch, q: 0.7, peak: 0.07 * gain, attack: 0.08, hold: 0.06, release: 0.24 }),
+};
+
+/** The pointer onto a file on the floor: a very faint brush. */
+const brush: Voice = {
+  seconds: 0.18,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 1500 * pitch * vary(0.1), q: 0.6, peak: 0.016 * gain, attack: 0.03, release: 0.13 }),
+};
+
+/** A toggle switched: a small click. */
+const switchClick: Voice = {
+  seconds: 0.06,
+  play: (ctx, out, { at, gain, pitch }) => {
+    noiseBurst(ctx, out, { at, filter: 'highpass', frequency: 5000 * pitch, peak: 0.03 * gain, attack: 0.001, release: 0.012 });
+    tone(ctx, out, { at, frequency: 1800 * pitch, peak: 0.02 * gain, attack: 0.001, release: 0.03 });
+  },
+};
+
 /** Every one-shot sound, by name. */
 export const VOICES = {
+  'paper-tick': paperTick,
+  'page-flip': pageFlip,
+  'slide-out': slideOut,
+  brush,
+  'switch-click': switchClick,
   'paper-lift': paperLift,
   'cover-flip': coverFlip,
   'thud-soft': thudSoft,

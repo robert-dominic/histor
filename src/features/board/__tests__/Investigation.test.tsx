@@ -322,7 +322,8 @@ describe('Closing the case', () => {
     const stop = onStoryEvent(heard);
     fireEvent.click(seal);
     stop();
-    expect(heard.mock.calls.map(([event]) => event)).toStrictEqual([{ type: 'seal', where: 'desk' }]);
+    // (Its press also ticks, like any link: the interface's sound, music brief 4.)
+    expect(heard.mock.calls.map(([event]) => event).filter(event => event.type !== 'ui-click')).toStrictEqual([{ type: 'seal', where: 'desk' }]);
   });
 
   test('there is no seal below the threshold', () => {

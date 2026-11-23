@@ -51,11 +51,15 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
   }
   const shown = drawn || open;
 
-  // The focus goes into it when it opens.
+  // The focus goes into it when it opens. Its sound: a paper slide in, and out.
+  const wasOpen = useRef(false);
   useEffect(() => {
     if (open) {
       panelRef.current?.focus({ preventScroll: true });
-      emitStoryEvent({ type: 'fork' });
+    }
+    if (open !== wasOpen.current) {
+      emitStoryEvent({ type: 'modal', name: 'fork', open });
+      wasOpen.current = open;
     }
   }, [open]);
 

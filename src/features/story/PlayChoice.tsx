@@ -14,6 +14,7 @@ import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { sound } from '@/lib/sound';
+import { emitStoryEvent } from '@/lib/story-events';
 import { STORY_PACE } from '@/lib/story-pages';
 
 gsap.registerPlugin(useGSAP);
@@ -49,6 +50,7 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
     html.style.overflow = 'hidden';
     pauseSmoothScroll();
     playRef.current?.focus({ preventScroll: true });
+    emitStoryEvent({ type: 'modal', name: 'play-choice', open: true });
     return () => {
       html.style.overflow = overflow;
       resumeSmoothScroll();
@@ -89,6 +91,7 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
       return;
     }
     choosingRef.current = true;
+    emitStoryEvent({ type: 'modal', name: 'play-choice', open: false });
     // This click (or key) is the gesture that may start the sound.
     sound.setOn('music', musicOn);
     sound.setOn('effects', effectsOn);
@@ -143,6 +146,7 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
             ref={playRef}
             type="button"
             data-story-control=""
+            data-ui-sound="off"
             onClick={() => choose('play')}
             className={`${CHOICE_CLASSES} border border-brass bg-brass text-night hover:bg-transparent hover:text-brass`}
           >
@@ -152,6 +156,7 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
             ref={readRef}
             type="button"
             data-story-control=""
+            data-ui-sound="off"
             onClick={() => choose('read')}
             className={`${CHOICE_CLASSES} border border-night-ink/40 text-night-ink hover:border-night-ink`}
           >

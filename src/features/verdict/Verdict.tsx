@@ -115,6 +115,7 @@ export default function Verdict() {
             <button
               type="button"
               disabled={choice === null}
+              data-ui-sound="off"
               onClick={close}
               className="min-h-11 rounded-sm border border-rust-night px-6 font-voice text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,background-color,opacity] duration-150 ease-out hover:bg-rust focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] disabled:opacity-40"
             >

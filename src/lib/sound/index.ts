@@ -13,7 +13,7 @@ import { MusicPlayer } from '@/lib/sound/music';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { VOICES, drone, vary, type Voice } from '@/lib/sound/voices';
-import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
+import { emitStoryEvent, onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import type { AmbienceLayer } from '@/types/case';
 
 /** The one engine. */
@@ -165,6 +165,19 @@ export function startSound(engine: SoundEngine = sound, setup: { createAudio?: (
   };
   // The tab hidden: everything fades, then the music pauses where it is; shown again, it carries on.
   let hiddenTimer: ReturnType<typeof setTimeout> | null = null;
+  // The interface's sounds (music brief, 4): one listener for every button and link, so no component has to ask.
+  // A toggle (a switch, a checkbox, a pressed button) clicks; anything else ticks. An element marked
+  // data-ui-sound="off" (or inside one) has a sound of its own already.
+  const press = (event: MouseEvent) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const control = target?.closest<HTMLElement>('button, a[href], [role="button"], [role="switch"], [role="menuitem"], [role="menuitemradio"], input[type="checkbox"]');
+    if (control == null || control.closest('[data-ui-sound="off"]') !== null || (control as HTMLButtonElement).disabled === true) {
+      return;
+    }
+    const toggle = control.matches('[role="switch"], input[type="checkbox"], [aria-pressed]');
+    emitStoryEvent({ type: toggle ? 'ui-toggle' : 'ui-click' });
+  };
+  document.addEventListener('click', press, true);
   const visibility = () => {
     const hidden = document.visibilityState === 'hidden';
     engine.setHidden(hidden);
@@ -214,6 +227,7 @@ export function startSound(engine: SoundEngine = sound, setup: { createAudio?: (
     window.removeEventListener('pointerdown', gesture, options);
     window.removeEventListener('keydown', gesture, options);
     document.removeEventListener('visibilitychange', visibility);
+    document.removeEventListener('click', press, true);
     stop();
     stopStart();
     stopChange();

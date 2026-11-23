@@ -28,6 +28,8 @@ export default function Folder({ evidence, number, href, opened, pin }: FolderPr
   return (
     <li
       data-board="folder"
+      // Opening a file has its own sound (the cover's flip): no click tick as well.
+      data-ui-sound="off"
       data-evidence-id={evidence.id}
       data-opened={opened}
       data-flip-id={`file-${evidence.id}`}
