@@ -18,6 +18,7 @@ import {
   type DropOutcome,
 } from '@/features/board/drag';
 import { tween } from '@/lib/motion';
+import { emitStoryEvent } from '@/lib/story-events';
 import type { Theory } from '@/types/case';
 
 /** How small a folder gets over a note, and how far it fades. */
@@ -69,6 +70,7 @@ export function createDeskDrag(config: DeskDragConfig): () => void {
       hot = null;
       overNote = false;
       config.onLift?.(this.target as HTMLElement);
+      emitStoryEvent({ type: 'folder-lift' });
       gsap.set(this.target, { zIndex: HELD_Z });
       document.documentElement.dataset.dragging = 'true';
     },
@@ -92,6 +94,7 @@ export function createDeskDrag(config: DeskDragConfig): () => void {
       clearHotTargets(targets);
       delete document.documentElement.dataset.dragging;
       config.onLetGo?.(element);
+      emitStoryEvent({ type: 'folder-land' });
       const place = { x: Number(gsap.getProperty(element, 'x')), y: Number(gsap.getProperty(element, 'y')) };
       const outcome = dropOutcome(config.sourceOf(element), dropTargetFor(hot, config.theories, place));
       hot = null;

@@ -7,6 +7,7 @@
 // Story events fire when the reader passes a moment, in either direction; `direction` says which way.
 // Desk events fire when the user does something at the investigation desk.
 
+import type { CaseRank } from '@/lib/case-rank';
 import type { CaseAmbience, EvidenceStatus, PinTarget } from '@/types/case';
 
 export type StoryDirection = 'forward' | 'backward';
@@ -33,13 +34,23 @@ export type StoryEvent =
   | { type: 'fork' }
   // The desk
   | { type: 'pile-hover' }
+  // A folder picked up by hand, and let go (it lands).
+  | { type: 'folder-lift' }
+  | { type: 'folder-land' }
   | { type: 'folder-open'; evidence: string }
   | { type: 'flip'; evidence: string; direction: 'open' | 'close' }
   | { type: 'stamp'; evidence: string; status: EvidenceStatus }
   // The same moment, one event per kind of stamp, for its own sound.
   | { type: 'stamp:record' | 'stamp:disputed' | 'stamp:legend'; evidence: string }
+  // A legend's pen starts writing "You almost believed this." at the foot of its page.
+  | { type: 'legend-pen'; evidence: string }
   | { type: 'pin'; evidence: string; target: PinTarget }
-  | { type: 'seal'; where: 'desk' | 'verdict' };
+  // The "Close the case" stamp thunks into the top bar as it appears.
+  | { type: 'close-stamp' }
+  // `seal`: "Close the case" is pressed (desk), or the chosen theory is stamped "Chosen" (verdict).
+  | { type: 'seal'; where: 'desk' | 'verdict' }
+  // The rank card is revealed on the result screen.
+  | { type: 'rank'; rank: CaseRank };
 
 type Listener = (event: StoryEvent) => void;
 

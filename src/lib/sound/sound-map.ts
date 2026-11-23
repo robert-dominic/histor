@@ -5,6 +5,7 @@
 // does. Levels are multipliers on each recipe's own (voices.ts); the buses' levels are in levels.ts.
 
 import type { DuckName } from '@/lib/sound/engine';
+import { MOTION } from '@/lib/motion';
 import { SOUND } from '@/lib/sound/levels';
 import type { SoundName } from '@/lib/sound/voices';
 import type { StoryEvent } from '@/lib/story-events';
@@ -84,10 +85,27 @@ export const SOUND_TABLE: Rows = {
   'question-line': event => (event.direction === 'forward' ? { drone: 'low', cues: [{ sound: 'pulse' }] } : { drone: 'low' }),
   // The fork's modal: a paper slide.
   fork: () => ({ cues: [{ sound: 'paper-slide' }] }),
-  // The desk
-  'stamp:record': () => ({ duck: 'stamp' }),
-  'stamp:disputed': () => ({ duck: 'stamp' }),
-  'stamp:legend': () => ({ duck: 'stamp' }),
+  // ---- The desk (B4)
+  // A folder picked up: a paper lift. Let go: it lands with a soft thud.
+  'folder-lift': () => ({ cues: [{ sound: 'paper-lift' }] }),
+  'folder-land': () => ({ cues: [{ sound: 'thud-soft' }] }),
+  // A folder opened: its cover flips (a swish and a soft thud); closing it, the same, quieter.
+  flip: event => ({ cues: [{ sound: 'cover-flip', gain: event.direction === 'open' ? 1 : 0.6 }] }),
+  // Pinning: a small metallic tick, with a faint string creak as the thread draws.
+  pin: () => ({ cues: [{ sound: 'pin-tick' }] }),
+  // The stamps. Record: heavy and solid. Disputed: lighter, then a pen scratch. Legend: a thud, then a detuned
+  // music box falling as the ink drains.
+  'stamp:record': () => ({ duck: 'stamp', cues: [{ sound: 'thud-heavy' }] }),
+  'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'thud', gain: 0.8 }, { sound: 'pen-stroke', delay: 0.3 }] }),
+  'stamp:legend': () => ({ duck: 'stamp', cues: [{ sound: 'thud' }, { sound: 'music-box', delay: 0.35 }] }),
+  // A faint whisper under "You almost believed this."
+  'legend-pen': () => ({ cues: [{ sound: 'whisper' }] }),
+  // The "Close the case" stamp appears: a thud, as it lands.
+  'close-stamp': () => ({ cues: [{ sound: 'thud', delay: MOTION['stamp.hit'].duration }] }),
+  // The verdict's "Chosen" stamp: a heavy thud, as it lands.
+  seal: event => (event.where === 'verdict' ? { duck: 'stamp', cues: [{ sound: 'thud-heavy', delay: MOTION['stamp.hit'].duration }] } : null),
+  // The rank revealed: a single typewriter bell.
+  rank: () => ({ cues: [{ sound: 'ding' }] }),
 };
 
 /** The row for one event, or null when it is silent. `now` is in ms. */

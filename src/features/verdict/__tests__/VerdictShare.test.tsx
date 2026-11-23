@@ -9,6 +9,7 @@ import maryCeleste from '@/cases/mary-celeste/case';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import { PLAYER_NAME_MAX, cleanPlayerName, loadPlayerName, savePlayerName } from '@/lib/player-name';
 import { drawShareCard, shareCardText, shareLinks, shareUrl } from '@/lib/share-card';
+import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { stubMatchMedia } from '@/test/match-media';
 import type { InvestigationState } from '@/types/case';
 
@@ -81,6 +82,24 @@ describe('the result screen', () => {
     const report = document.querySelector<HTMLElement>('article')!;
     expect(reveal().compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(report.className).toContain('lg:max-w-6xl');
+  });
+});
+
+describe('the rank revealed', () => {
+  test('just closed: the rank is revealed with its own moment (for its typewriter bell); a later visit, none', () => {
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
+    stubMatchMedia({ reducedMotion: true });
+    const state: InvestigationState = { opened, pins: {}, verdict: leading.id };
+    localStorage.setItem(`histor:case:${CASE.id}`, JSON.stringify(state));
+    window.history.pushState({ usr: { fresh: true }, key: 'test', idx: 0 }, '', `${BASE}/report`);
+    render(<App />);
+    expect(events.filter(event => event.type === 'rank')).toHaveLength(1);
+    cleanup();
+    events.length = 0;
+    renderReport();
+    stop();
+    expect(events.filter(event => event.type === 'rank')).toHaveLength(0);
   });
 });
 

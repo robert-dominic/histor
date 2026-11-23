@@ -1,7 +1,7 @@
 // src/features/board/CloseStamp.tsx
 // "Close the case", once enough files are open: a rubber ink stamp in the top bar, like the header's UNSOLVED tag
 // (a rectangular rust-ink frame around typed capitals), and a link to the verdict. It thunks in when it first
-// appears (`stamp.hit`), and emits `seal` when it is used. No logo mark: a real one comes later.
+// appears (`stamp.hit`, emitting `close-stamp`), and emits `seal` when it is used. No logo mark: a real one comes later.
 // Reduced motion: it fades in.
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -22,6 +22,7 @@ export default function CloseStamp({ to }: { to: string }) {
       const mm = gsap.matchMedia();
       mm.add(MOTION_QUERIES, context => {
         stampHit('[data-seal="mark"]', { reduced: context.conditions?.reduced === true });
+        emitStoryEvent({ type: 'close-stamp' });
       });
     },
     { scope: rootRef }

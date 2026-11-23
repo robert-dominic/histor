@@ -267,8 +267,116 @@ export function drone(ctx: AudioContext, out: AudioNode, level: number): (releas
   };
 }
 
+// ---- The desk's sounds (polish brief, B4)
+
+/** A folder picked up: a quick swish of paper. */
+const paperLift: Voice = {
+  seconds: 0.2,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 2300 * pitch, sweepTo: 3600 * pitch, q: 0.8, peak: 0.07 * gain, attack: 0.02, release: 0.14 }),
+};
+
+/** A thud on the desk, from soft (`weight` small) to heavy: a short low sine that drops, and a knock of low noise. */
+function thudOf(weight: number): Voice {
+  return {
+    seconds: 0.2 + 0.3 * weight,
+    play: (ctx, out, { at, gain, pitch }) => {
+      tone(ctx, out, { at, frequency: (70 + 40 * weight) * pitch, glideTo: 44 * pitch, peak: 0.55 * weight * gain, attack: 0.004, release: 0.12 + 0.26 * weight });
+      noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 420 * pitch, sweepTo: 110, peak: 0.4 * weight * gain, attack: 0.003, release: 0.08 + 0.12 * weight });
+    },
+  };
+}
+const thudSoft = thudOf(0.4);
+const thud = thudOf(0.7);
+const thudHeavy = thudOf(1);
+
+/** A folder opens: its cover flips (a swish), and settles with a soft thud. */
+const coverFlip: Voice = {
+  seconds: 0.5,
+  play: (ctx, out, options) => {
+    const { at, gain, pitch } = options;
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 1100 * pitch, sweepTo: 2600 * pitch, q: 0.7, peak: 0.09 * gain, attack: 0.05, release: 0.2 });
+    thudSoft.play(ctx, out, { ...options, at: at + 0.22, gain: gain * 0.7 });
+  },
+};
+
+/** A pin: a small metallic tick, then a faint creak of string as the thread draws. */
+const pinTick: Voice = {
+  seconds: 0.45,
+  play: (ctx, out, { at, gain, pitch }) => {
+    [
+      [3150, 0.05, 0.06],
+      [4720, 0.03, 0.045],
+      [6290, 0.018, 0.03],
+    ].forEach(([frequency, peak, release]) => tone(ctx, out, { at, frequency: frequency * pitch, peak: peak * gain, attack: 0.002, release }));
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(205 * pitch, at + 0.06);
+    osc.frequency.linearRampToValueAtTime(240 * pitch, at + 0.4);
+    const string = ctx.createBiquadFilter();
+    string.type = 'bandpass';
+    string.frequency.value = 950;
+    string.Q.value = 6;
+    const amp = ctx.createGain();
+    const end = envelope(amp.gain, at + 0.06, 0.025 * gain, 0.06, 0.08, 0.2);
+    osc.connect(string).connect(amp).connect(out);
+    osc.start(at + 0.06);
+    osc.stop(end + 0.05);
+  },
+};
+
+/** A disputed stamp's pen: a short stroke of scratches in the margin. */
+const penStroke: Voice = {
+  seconds: 0.5,
+  play: (ctx, out, options) => {
+    for (let i = 0; i < 5; i += 1) {
+      scratch.play(ctx, out, { ...options, at: options.at + i * 0.075 + Math.random() * 0.02, gain: options.gain * 1.3 });
+    }
+  },
+};
+
+/** A legend's ink drains: an eerie, detuned music-box phrase, falling in pitch, each note sagging a little. */
+const MUSIC_BOX = [88, 84, 81, 77, 74, 71];
+const musicBox: Voice = {
+  seconds: MUSIC_BOX.length * 0.34 + 1.4,
+  play: (ctx, out, { at, gain, pitch }) =>
+    MUSIC_BOX.forEach((note, index) => {
+      const frequency = 440 * 2 ** ((note - 69) / 12) * pitch;
+      const t = at + index * 0.34 + Math.random() * 0.03;
+      const detune = (Math.random() - 0.5) * 40;
+      tone(ctx, out, { at: t, type: 'triangle', frequency, glideTo: frequency * 0.985, detune, peak: 0.05 * gain, attack: 0.003, release: 1.2 });
+      tone(ctx, out, { at: t, frequency: frequency * 2.01, detune, peak: 0.012 * gain, attack: 0.002, release: 0.5 });
+    }),
+};
+
+/** Under "You almost believed this.": a faint whisper of noise. */
+const whisper: Voice = {
+  seconds: 2.6,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 3100 * pitch, sweepTo: 2300 * pitch, q: 0.6, peak: 0.03 * gain, attack: 0.7, hold: 0.6, release: 1.3 }),
+};
+
+/** The rank revealed: a single typewriter bell. */
+const ding: Voice = {
+  seconds: 1.5,
+  play: (ctx, out, { at, gain, pitch }) => {
+    tone(ctx, out, { at, frequency: 2093 * pitch, peak: 0.08 * gain, attack: 0.002, release: 1.4 });
+    tone(ctx, out, { at, frequency: 5230 * pitch, peak: 0.02 * gain, attack: 0.002, release: 0.6 });
+  },
+};
+
 /** Every one-shot sound, by name. */
 export const VOICES = {
+  'paper-lift': paperLift,
+  'cover-flip': coverFlip,
+  'thud-soft': thudSoft,
+  thud,
+  'thud-heavy': thudHeavy,
+  'pin-tick': pinTick,
+  'pen-stroke': penStroke,
+  'music-box': musicBox,
+  whisper,
+  ding,
   swell,
   scratch,
   boom,

@@ -408,6 +408,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             momentParts.push(written);
             const letters = written.chars as HTMLElement[];
             gsap.set(letters, { opacity: 0 });
+            timeline.call(() => emitStoryEvent({ type: 'legend-pen', evidence: evidence.id }), undefined, landed + STAMP_MOMENT.legendPenAfter);
             createQuillWriter(penPoint, penBody).write(timeline, letters, landed + STAMP_MOMENT.legendPenAfter, letters.length / STAMP_MOMENT.penRate);
           }
         }

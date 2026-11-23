@@ -10,6 +10,7 @@ import { InvestigationProvider } from '@/app/InvestigationProvider';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Desk from '@/features/board/Desk';
 import { setLenis } from '@/lib/smooth-scroll';
+import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { stubMatchMedia } from '@/test/match-media';
 
 const KEY = `histor:case:${maryCeleste.id}`;
@@ -96,7 +97,12 @@ describe('the desktop desk', () => {
     expect(desk().querySelector('header [data-seal="desk"]')).toBeNull();
     cleanup();
     localStorage.setItem(KEY, JSON.stringify({ opened, pins: {}, verdict: null }));
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
     renderDesk();
+    stop();
+    // Its thud (src/lib/sound) follows the moment it appears.
+    expect(events.filter(event => event.type === 'close-stamp')).toHaveLength(1);
     const seal = desk().querySelector<HTMLElement>('header [data-seal="desk"]')!;
     expect(seal.textContent).toContain('Close the case');
     // It thunks into the top bar like a rubber stamp (`stamp.hit`, the same press as a file's stamp).

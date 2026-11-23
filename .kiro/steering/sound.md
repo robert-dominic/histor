@@ -61,6 +61,24 @@ It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned do
 | `question-line` | The drone stays low and still; each line adds a faint, low pulse |
 | `fork` | A paper slide |
 
+## Desk sounds
+
+| Event | Sound |
+| --- | --- |
+| `folder-lift` (a folder picked up by hand) | A paper lift: a quick swish of band-passed noise |
+| `flip` (open) | The cover flipping: a swish and a soft thud (closing: the same, quieter) |
+| `folder-land` (a folder let go) | A soft thud |
+| `pin` | A small metallic tick (three high partials), with a faint string creak as the thread draws |
+| `stamp:record` | A heavy, solid thud; the ambience ducks |
+| `stamp:disputed` | A lighter thud, then a short pen scratch in the margin |
+| `stamp:legend` | A thud, then an eerie detuned music-box phrase falling in pitch as the ink drains |
+| `legend-pen` | A faint whisper of noise under "You almost believed this." |
+| `close-stamp` (the "Close the case" stamp appears) | A thud, as it lands |
+| `seal` (verdict: the "Chosen" stamp) | A heavy thud, as it lands |
+| `rank` (the rank revealed) | A single typewriter bell ("ding") |
+
+A thud is one recipe at three weights (`thud-soft`, `thud`, `thud-heavy`): a short low sine that drops in pitch, with a knock of low-passed noise.
+
 ## Quality bar
 
 - Nothing loud or sudden except the stamps. The master level is modest.

@@ -31,6 +31,7 @@ import {
   shareUrl,
   type ShareCardInput,
 } from '@/lib/share-card';
+import { emitStoryEvent } from '@/lib/story-events';
 import { RANK_COPY, REVEAL_COPY } from '@/lib/ui-copy';
 
 gsap.registerPlugin(useGSAP, SplitText);
@@ -112,6 +113,7 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
       mm.add(MOTION_QUERIES, context => {
         if (context.conditions?.reduced === true) {
           onNarrow?.(true);
+          emitStoryEvent({ type: 'rank', rank });
           return;
         }
         const splits: SplitText[] = [];
@@ -160,6 +162,7 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
           at
         );
         at = type(root.querySelector('[data-reveal="rank-name"]'), at + MOTION['paper.lift'].duration);
+        timeline.call(() => emitStoryEvent({ type: 'rank', rank }), undefined, at);
         timeline.to(root.querySelectorAll('[data-reveal="share"]'), { opacity: 1, ...tween('ink.in') }, at + REVEAL_PACE.beat);
         // Everything is in: the lamp opens again, the letters go back to plain text.
         timeline.call(() => {
