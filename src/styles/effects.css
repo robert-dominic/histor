@@ -342,3 +342,22 @@ html[data-story-stage='held'] {
     linear-gradient(176deg, color-mix(in srgb, white 16%, transparent), transparent 45%);
   box-shadow: 0 14px 28px -10px rgb(0 0 0 / 0.75), 0 2px 4px rgb(0 0 0 / 0.4);
 }
+
+/* A rubber ink stamp (investigation brief, items 3 and 4): a rectangular frame of rust ink around typed capitals,
+   a little crooked, like the header's UNSOLVED tag. Rust on paper; `.rubber-stamp-night` on a dark ground. No logo
+   mark anywhere until the real one comes. */
+.rubber-stamp {
+  display: inline-block;
+  border: 0.12em solid currentColor;
+  border-radius: 0.14em;
+  padding: 0.4em 0.55em 0.26em;
+  color: var(--color-rust);
+  font-family: var(--font-voice);
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  rotate: -2deg;
+}
+.rubber-stamp-night {
+  color: var(--color-rust-night);
+}

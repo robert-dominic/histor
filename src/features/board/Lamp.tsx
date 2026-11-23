@@ -8,21 +8,41 @@
 
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, tween } from '@/lib/motion';
 
 /** How quickly the light catches up with its target, per frame (0 to 1). */
 const EASE_FACTOR = 0.18;
-const RADIUS = { fine: 420, touch: 260, still: 640 } as const;
+const RADIUS = { fine: 420, touch: 260, still: 640, narrow: 340 } as const;
 
 const FINE_POINTER = '(hover: hover) and (pointer: fine)';
 
 interface LampProps {
   /** A static light, as under reduced motion: for the verdict and the report, where the paper is the focus. */
   still?: boolean;
+  /** A still lamp narrows its pool (the verdict's reveal): over `scene`, or at once under reduced motion. */
+  narrow?: boolean;
 }
 
-export default function Lamp({ still = false }: LampProps) {
+export default function Lamp({ still = false, narrow = false }: LampProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // The reveal: the pool narrows onto what is revealed, and opens again after.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (root === null || !still) {
+      return;
+    }
+    const radius = `${narrow ? RADIUS.narrow : RADIUS.still}px`;
+    const reduced = typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches;
+    if (reduced) {
+      root.style.setProperty('--lamp-r', radius);
+      return;
+    }
+    const tweened = gsap.to(root, { '--lamp-r': radius, ...tween('scene') });
+    return () => {
+      tweened.kill();
+    };
+  }, [still, narrow]);
 
   useEffect(() => {
     const root = rootRef.current;

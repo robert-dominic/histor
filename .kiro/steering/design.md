@@ -86,6 +86,12 @@ On a screen 1024px wide or more the investigation is **one fixed screen** that n
 - **The first opening** of a file is written: a small dip-pen nib writes the title, the text settles in line by line from a slight blur, then the stamp lands and the paper takes its status. **Every stamp is a moment** (first opening only; a file read before opens quietly, its note simply there): a Record lands heavy, with a tiny shake of the folder (2px, under 150ms) and the ink spreading slightly, then "Written down at the time." is typed under it; a Disputed stamp lands a little crooked (and stays so), the second sheet slides in askew and the "?" is drawn, then "Historians argue over this one."; a Legend's ink drains slowly to ghost ink and drifts, the paper yellows, then the pen writes "You almost believed this." at the foot of the page. Each emits its own sound event (`stamp:record`, `stamp:disputed`, `stamp:legend`). Reduced motion: the stamp and the note simply appear.
 - Below 1024px the investigation shows a gate ("This case is too big for a small screen."), with a "Continue anyway" link that shows the phone desk as it is.
 
+## The verdict's reveal
+
+- On the report page, above the report, when the player arrives from closing the case: the still lamp narrows (`scene`), the app types "Most historians lean toward…" (Special Elite), the quill writes the leading theories in one by one (Grenze Gotisch), then one typed line compares them with the player's choice, with the theory's standing reason after it when it is not a leading one. A later visit shows it all at once; reduced motion simply shows it.
+- **The rank card:** typed paper with the rank as a rubber stamp and its one line.
+- **The shareable card:** a 1200×630 canvas in the site's style: paper with an inked double rule, the case title (Grenze Gotisch) and years, "I closed the … case." (Old Standard TT), the rank as a rust rubber stamp, the legends line and `histor.space` (Special Elite), in the Ash palette's tokens. "Save the card" downloads the PNG; "Share" uses the Web Share API with the file where it can, and copies the text otherwise. Nothing is uploaded.
+
 ## Evidence status: the visual language
 
 The spooky effects encode trust. They are not decoration.

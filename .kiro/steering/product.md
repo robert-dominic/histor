@@ -61,14 +61,19 @@ Two kinds of objects: theories and evidence.
 - The investigation needs a laptop-sized screen: below 1024px wide it shows a gate, with a "Continue anyway" link.
 
 ### 6. The verdict
-When the user has opened enough files (6 files, set per case by closeThreshold), "Close the case" unlocks. The user picks the theory they believe and gets a **case report**:
+When the user has opened enough files (6 files, set per case by closeThreshold), "Close the case" unlocks. The user picks the theory they believe. Then **the reveal**: the lamp narrows, the app types "Most historians lean toward…", the pen writes in the leading theories one by one, and one line compares them with the user's choice ("You stand with the historians.", or "Historians ruled this one out:" with the reason). A typed **rank card** follows (`caseRank`, from the report only: Historian, Investigator or Deckhand, each with one line of the app's voice), and a **shareable card** (a 1200×630 image: the case closed, the rank, the legends trusted, histor.space) that "Save the card" downloads and "Share" hands to the browser's share sheet, or copies as text. Nothing is uploaded. Then the **case report**:
 - their verdict
 - the evidence they relied on
 - important evidence they never opened
 - any legend they pinned as support ("You trusted a legend.")
 - where historians stand, and that no one knows for sure
 
-The report is not graded. It mirrors the user's reasoning.
+The report is not graded. It mirrors the user's reasoning. The rank is a playful title at the very end, worked out in its own pure module (`src/lib/case-rank.ts`); `buildCaseReport` stays as it is.
+
+Rank lines (shared UI copy):
+- Historian (no legends trusted, and a leading theory chosen): "You kept to the record. Not one story got past you."
+- Investigator (at most one legend trusted, or a leading theory chosen): "Good instincts, and a loose thread or two."
+- Deckhand (anything else): "You trusted the stories. The sea keeps its secrets."
 
 ## Core model
 

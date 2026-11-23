@@ -1,0 +1,196 @@
+// src/lib/share-card.ts
+// The shareable card at the end of a case (investigation brief, 3.3): a 1200×630 image drawn on a canvas in the
+// site's style (paper, ink, the case title and years), saved or shared from the browser. Nothing is uploaded or sent
+// anywhere: "Save the card" downloads it, "Share" hands the file to the browser's share sheet, or copies the text.
+import { RANK_COPY } from '@/lib/ui-copy';
+import type { CaseRank } from '@/lib/case-rank';
+
+/** The card's size, in px: the size social sites show a link preview at. */
+export const SHARE_CARD = { width: 1200, height: 630 } as const;
+
+/** Where the card says it came from. */
+export const SHARE_SITE = 'histor.space';
+
+export interface ShareCardInput {
+  title: string;
+  years: string;
+  rank: CaseRank;
+  legends: number;
+}
+
+/** The card's words, in order: the line about the case, the rank, the legends, the site. */
+export function shareCardLines({ title, rank, legends }: ShareCardInput): { closed: string; rank: string; legends: string; site: string } {
+  return {
+    // "The Mary Celeste" reads "I closed the Mary Celeste case.", not "the The Mary Celeste".
+    closed: `I closed the ${title.replace(/^the\s+/i, '')} case.`,
+    rank: RANK_COPY[rank].name,
+    legends: legends === 0 ? 'I trusted no legends.' : legends === 1 ? 'I trusted 1 legend.' : `I trusted ${legends} legends.`,
+    site: SHARE_SITE,
+  };
+}
+
+/** The same words as one line of text, for sharing where a file cannot be. */
+export function shareCardText(input: ShareCardInput): string {
+  const lines = shareCardLines(input);
+  return `${lines.closed} Rank: ${lines.rank}. ${lines.legends} ${lines.site}`;
+}
+
+/** A colour token of the site (index.css `@theme`), read from the page. */
+function token(name: string, fallback: string): string {
+  if (typeof document === 'undefined') {
+    return fallback;
+  }
+  const value = getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim();
+  return value === '' ? fallback : value;
+}
+
+/** The fonts the card is set in: the site's own three voices. */
+const FONTS = {
+  legend: '"Grenze Gotisch", serif',
+  voice: '"Special Elite", monospace',
+  record: '"Old Standard TT", serif',
+} as const;
+
+/** Waits until the card's fonts are ready, so the canvas draws in them (it will not wait by itself). */
+export async function loadShareCardFonts(): Promise<void> {
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+  if (fonts === undefined) {
+    return;
+  }
+  await Promise.all(
+    [`72px ${FONTS.legend}`, `36px ${FONTS.voice}`, `32px ${FONTS.record}`].map(font => fonts.load(font).catch(() => []))
+  );
+}
+
+/**
+ * Draws the card onto `canvas` (resized to 1200×630). Paper with an inked double rule, the case title in the
+ * legend's face and its years, the closing line, the rank stamped in rust, the legends line and the site.
+ * Does nothing where the canvas cannot draw (no 2D context).
+ */
+export function drawShareCard(canvas: HTMLCanvasElement, input: ShareCardInput): void {
+  canvas.width = SHARE_CARD.width;
+  canvas.height = SHARE_CARD.height;
+  const context = canvas.getContext?.('2d') ?? null;
+  if (context === null) {
+    return;
+  }
+  // Fallbacks are the Ash palette's own values (design.md), for a page that has not loaded its styles.
+  const paper = token('paper', '#e2ddcf');
+  const ink = token('ink', '#23211d');
+  const muted = token('muted', '#6c6a62');
+  const rust = token('rust', '#9e3326');
+  const { width, height } = SHARE_CARD;
+  const lines = shareCardLines(input);
+
+  context.fillStyle = paper;
+  context.fillRect(0, 0, width, height);
+  // A faint fold of light across the paper, and darker edges.
+  const light = context.createLinearGradient(0, 0, width, height);
+  light.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+  light.addColorStop(0.45, 'rgba(255, 255, 255, 0)');
+  light.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+  context.fillStyle = light;
+  context.fillRect(0, 0, width, height);
+
+  // The double rule, inked.
+  context.strokeStyle = ink;
+  context.lineWidth = 3;
+  context.strokeRect(36, 36, width - 72, height - 72);
+  context.lineWidth = 1;
+  context.strokeRect(48, 48, width - 96, height - 96);
+
+  context.textBaseline = 'alphabetic';
+  context.textAlign = 'left';
+  const left = 96;
+
+  // The case, in the legend's face, with its years.
+  context.fillStyle = ink;
+  context.font = `76px ${FONTS.legend}`;
+  context.fillText(input.title, left, 170, width - 2 * left);
+  context.fillStyle = muted;
+  context.font = `28px ${FONTS.voice}`;
+  context.fillText(input.years.toUpperCase(), left, 214);
+
+  // The closing line, in the record's face.
+  context.fillStyle = ink;
+  context.font = `40px ${FONTS.record}`;
+  context.fillText(lines.closed, left, 300, width - 2 * left);
+
+  // The rank, as a rubber stamp in rust: a rectangle of ink around typed capitals, a little crooked.
+  context.save();
+  context.translate(left, 400);
+  context.rotate(-0.04);
+  context.font = `44px ${FONTS.voice}`;
+  const label = lines.rank.toUpperCase();
+  const labelWidth = context.measureText(label).width;
+  context.strokeStyle = rust;
+  context.lineWidth = 5;
+  context.strokeRect(-18, -50, labelWidth + 36, 70);
+  context.fillStyle = rust;
+  context.fillText(label, 0, 0);
+  context.restore();
+
+  // The legends, and the site.
+  context.fillStyle = ink;
+  context.font = `34px ${FONTS.voice}`;
+  context.fillText(lines.legends, left, 500, width - 2 * left);
+  context.fillStyle = muted;
+  context.font = `26px ${FONTS.voice}`;
+  context.textAlign = 'right';
+  context.fillText(lines.site, width - left, height - 84);
+}
+
+/** The card as a PNG file, or null where the canvas cannot give one. */
+export function shareCardFile(canvas: HTMLCanvasElement, name: string): Promise<File | null> {
+  return new Promise(resolve => {
+    if (typeof canvas.toBlob !== 'function') {
+      resolve(null);
+      return;
+    }
+    try {
+      canvas.toBlob(blob => resolve(blob === null ? null : new File([blob], name, { type: 'image/png' })), 'image/png');
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/** "Save the card": downloads the PNG. Returns false where the browser cannot make one. */
+export async function saveShareCard(canvas: HTMLCanvasElement, name: string): Promise<boolean> {
+  const file = await shareCardFile(canvas, name);
+  if (file === null || typeof URL.createObjectURL !== 'function') {
+    return false;
+  }
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  return true;
+}
+
+/**
+ * "Share": the browser's share sheet with the card, where it can share files; otherwise the text is copied.
+ * @returns what happened: shared, copied, or nothing (the reader cancelled, or the browser can do neither)
+ */
+export async function shareShareCard(canvas: HTMLCanvasElement, name: string, text: string): Promise<'shared' | 'copied' | 'none'> {
+  const file = await shareCardFile(canvas, name);
+  const canShareFile = file !== null && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+  if (canShareFile && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ files: [file], text });
+      return 'shared';
+    } catch {
+      return 'none';
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return 'copied';
+  } catch {
+    return 'none';
+  }
+}

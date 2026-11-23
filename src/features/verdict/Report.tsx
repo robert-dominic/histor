@@ -4,7 +4,7 @@
 // It lies on the desk as typed paper under a still lamp; the paper sits above the lamp's shadow, fully readable.
 
 import { useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
@@ -12,6 +12,8 @@ import Stamp from '@/components/Stamp';
 import DeskSurface from '@/features/board/DeskSurface';
 import Lamp from '@/features/board/Lamp';
 import ReportSection from '@/features/verdict/ReportSection';
+import VerdictReveal from '@/features/verdict/VerdictReveal';
+import { formatCaseYears } from '@/lib/case-years';
 import { READING_LABEL, STANDING_LABEL, STATUS_LABEL, fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
@@ -29,6 +31,10 @@ export default function Report() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLElement>(null);
   const [confirming, setConfirming] = useState(false);
+  // Just closed at the verdict: the reveal plays, under a narrowing lamp. Otherwise it is simply there.
+  const location = useLocation();
+  const [fresh] = useState(() => (location.state as { fresh?: boolean } | null)?.fresh === true);
+  const [narrow, setNarrow] = useState(false);
   const report = useMemo(() => buildCaseReport(caseData, state), [caseData, state]);
   const base = `/case/${caseData.id}`;
 
@@ -75,6 +81,15 @@ export default function Report() {
       className="relative isolate min-h-svh bg-night px-3 pt-[calc(var(--case-header)+1.25rem)] pb-16 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
     >
       <DeskSurface />
+      {/* The reveal, the rank and the shareable card; the full report follows below, as before. */}
+      <VerdictReveal
+        report={report}
+        caseId={caseData.id}
+        title={caseData.title}
+        years={formatCaseYears(caseData.year, caseData.yearEnd)}
+        fresh={fresh}
+        onNarrow={setNarrow}
+      />
       <article className="desk-typed-paper relative z-[21] mx-auto flex max-w-3xl flex-col gap-8 rounded-[2px] px-5 pt-8 pb-8 text-ink sm:px-10 sm:pt-10">
         <h2 id="report-title" className="font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-none">
           Case report
@@ -272,7 +287,7 @@ export default function Report() {
           </Link>
         </nav>
       </article>
-      <Lamp still />
+      <Lamp still narrow={narrow} />
     </main>
   );
 }

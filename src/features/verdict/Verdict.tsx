@@ -42,7 +42,8 @@ export default function Verdict() {
     }
     const finish = () => {
       dispatch({ type: 'CLOSE_CASE', theoryId: choice });
-      navigate(`${base}/report`);
+      // The report opens on its reveal (VerdictReveal.tsx).
+      navigate(`${base}/report`, { state: { fresh: true } });
     };
     emitStoryEvent({ type: 'seal', where: 'verdict' });
     const seal = rootRef.current?.querySelector('[data-verdict="seal"]');
