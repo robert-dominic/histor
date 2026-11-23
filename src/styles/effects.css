@@ -361,3 +361,23 @@ html[data-story-stage='held'] {
 .rubber-stamp-night {
   color: var(--color-rust-night);
 }
+
+/* The story page's shade on a laptop (polish brief, A1): dark under the text, then easing out over a long reach past
+   the panel's edge, so it melts into the image with no line where the panel ends. Its stops follow an ease-out curve,
+   not a straight ramp, so there is no visible knee. It is as wide as the panel (which a long page widens) plus a
+   quarter of the screen. */
+.story-page-shade {
+  width: calc(42% + var(--page-widen, 0px) + 24%);
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-night) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-night) 88%, transparent) 40%,
+    color-mix(in srgb, var(--color-night) 78%, transparent) 54%,
+    color-mix(in srgb, var(--color-night) 62%, transparent) 64%,
+    color-mix(in srgb, var(--color-night) 44%, transparent) 72%,
+    color-mix(in srgb, var(--color-night) 27%, transparent) 80%,
+    color-mix(in srgb, var(--color-night) 13%, transparent) 88%,
+    color-mix(in srgb, var(--color-night) 4%, transparent) 95%,
+    transparent 100%
+  );
+}

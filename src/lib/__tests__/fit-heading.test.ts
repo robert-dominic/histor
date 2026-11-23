@@ -1,7 +1,7 @@
 // src/lib/__tests__/fit-heading.test.ts
 import * as fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { HEADING_MIN_PX, fitHeading } from '@/lib/fit-heading';
+import { HEADING_MIN_PX, PAGE_FIT, fitHeading, fitPageWidth } from '@/lib/fit-heading';
 
 describe('fitHeading: a chapter heading on one line', () => {
   test('a heading that fits keeps its design size, and the panel stays as it is', () => {
@@ -40,6 +40,46 @@ describe('fitHeading: a chapter heading on one line', () => {
           expect((natural * fontPx) / design).toBeLessThanOrEqual(available + widenPx + 1e-6);
         }
       )
+    );
+  });
+});
+
+describe('fitPageWidth: a long page fits by widening its panel, never by shrinking its text', () => {
+  // A page whose height falls as its column widens: 1200px tall at its design width, 1px shorter for every px wider.
+  const pageFits = (room: number) => (widen: number) => 1200 - widen <= room;
+
+  test('a short page keeps its width', () => {
+    expect(fitPageWidth(pageFits(2000), 0, 230)).toBe(0);
+  });
+
+  test('a long page widens just enough to fit', () => {
+    const widen = fitPageWidth(pageFits(1100), 0, 230);
+    expect(widen).toBeGreaterThanOrEqual(100);
+    expect(widen).toBeLessThanOrEqual(100 + PAGE_FIT.precisionPx);
+    expect(pageFits(1100)(widen)).toBe(true);
+  });
+
+  test('never wider than the most it may grow, even when the page still does not fit', () => {
+    expect(fitPageWidth(pageFits(400), 0, 230)).toBe(230);
+  });
+
+  test('the panel grows from today’s width up to about 58% of the screen', () => {
+    expect(PAGE_FIT.baseShare).toBe(0.42);
+    expect(PAGE_FIT.maxShare).toBeCloseTo(0.58, 2);
+  });
+
+  test('any monotonic page: the answer fits, and a little less would not', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 400 }), fc.integer({ min: 1, max: 400 }), (need, max) => {
+        const fits = (widen: number) => widen >= need;
+        const widen = fitPageWidth(fits, 0, max);
+        if (need > max) {
+          expect(widen).toBe(max);
+        } else {
+          expect(fits(widen)).toBe(true);
+          expect(widen - need).toBeLessThanOrEqual(PAGE_FIT.precisionPx + 1);
+        }
+      })
     );
   });
 });

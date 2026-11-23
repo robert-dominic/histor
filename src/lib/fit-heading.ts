@@ -27,3 +27,43 @@ export function fitHeading(naturalWidth: number, available: number, designPx: nu
   const width = (naturalWidth * fontPx) / designPx;
   return { fontPx, widenPx: width > available ? Math.ceil(width - available) : 0 };
 }
+
+/**
+ * A long chapter's page fits the screen by widening its panel, never by shrinking its text (polish brief, A1). The
+ * panel starts at its design share of the screen and may grow to `maxShare`; a short chapter keeps its width.
+ */
+export const PAGE_FIT = {
+  /** The panel's design width, as a share of the screen (the stylesheet's `42%`). */
+  baseShare: 0.42,
+  /** The widest a panel may grow to fit its page, as a share of the screen. */
+  maxShare: 0.58,
+  /** The search stops once it is this close, in px. */
+  precisionPx: 4,
+} as const;
+
+/**
+ * The smallest widening, in px between `minPx` and `maxPx`, at which `fits(widenPx)` holds. Text only gets shorter as
+ * its column gets wider, so `fits` is taken as monotonic and the answer is found by bisection, a handful of layouts.
+ * When even `maxPx` does not fit, it returns `maxPx`: as wide as the panel may go.
+ */
+export function fitPageWidth(fits: (widenPx: number) => boolean, minPx: number, maxPx: number, precisionPx: number = PAGE_FIT.precisionPx): number {
+  const low = Math.max(0, minPx);
+  const high = Math.max(low, maxPx);
+  if (fits(low)) {
+    return low;
+  }
+  if (!fits(high)) {
+    return high;
+  }
+  let lo = low;
+  let hi = high;
+  while (hi - lo > precisionPx) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
+  }
+  return Math.ceil(hi);
+}

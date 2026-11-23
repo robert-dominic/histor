@@ -159,8 +159,12 @@ describe('Story: a page per chapter', () => {
     for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
       const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
-      expect(page.className).toContain('lg:w-[calc(42%+var(--heading-widen,0px))]');
+      expect(page.className).toContain('lg:w-[calc(42%+var(--page-widen,0px))]');
       expect(page.className).toContain('lg:right-auto');
+      // No hard edge: on a laptop the panel has no background of its own; a shade that reaches past it and eases out
+      // into the image does the darkening, and fades with the page.
+      expect(page.className).toContain('lg:bg-none');
+      expect(chapter.querySelector('[data-story="page-shade"]')?.className).toContain('story-page-shade');
       expect(page.querySelector('[data-story="kicker"]')?.textContent).toBe(section.kicker);
       expect(page.querySelector('[data-story="heading"]')?.textContent).toBe(section.heading);
       const paragraphs = [...page.querySelectorAll('[data-story="paragraph"]')].map(paragraph => paragraph.textContent);
@@ -200,7 +204,7 @@ describe('Story: a page per chapter', () => {
         expect(heading.dataset.fit).toBe('heading');
         expect(heading.className).toContain('whitespace-nowrap');
         expect(heading.className).not.toContain('text-balance');
-        expect(page.className).toContain('var(--heading-widen,0px)');
+        expect(page.className).toContain('var(--page-widen,0px)');
       }
     }
   });
@@ -409,7 +413,7 @@ describe('Story: reduced motion', () => {
     for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
       const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
-      expect(page.className).toContain('lg:w-[calc(42%+var(--heading-widen,0px))]');
+      expect(page.className).toContain('lg:w-[calc(42%+var(--page-widen,0px))]');
       expect(chapter.querySelector('[data-story="pane"] img')).not.toBeNull();
       // No pen: nothing is split to be written.
       expect(page.querySelector('[data-pen]')).toBeNull();

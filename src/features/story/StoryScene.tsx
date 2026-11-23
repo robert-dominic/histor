@@ -32,12 +32,14 @@ const LABEL_CLASSES =
 export default function StoryScene({ section, index, grade, loadImage }: StorySceneProps) {
   const headingId = `story-${section.id}`;
   // The heading never wraps: it shrinks to fit the panel, and the panel widens if it must (use-heading-fit.ts).
-  const { headingRef, headingTextRef, boxRef, panelRef } = useHeadingFit();
+  // A long page fits the screen by widening its panel, never by shrinking its text.
+  const { headingRef, headingTextRef, boxRef, panelRef, widenRef } = useHeadingFit({ fitHeight: true });
   const { image, rollCall } = section;
   const sources = image === undefined ? null : imageSources(image.src);
 
   return (
     <article
+      ref={widenRef}
       data-story="chapter"
       data-chapter={section.id}
       data-index={index}
@@ -94,12 +96,15 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
           the top, then the body in Old Standard TT at about 18 to 19px. The pen writes it
           all (Story.tsx); a click on the panel finishes the writing at once. Portals stay tappable, out of the Tab
           order: the full text below has them for the keyboard and screen readers. */}
+      {/* The page's shade on a laptop: a gradient that reaches past the panel and melts into the image, with no edge
+          (effects.css). It follows the panel's width as a long page widens it. */}
+      <div aria-hidden="true" data-story="page-shade" className="story-page-shade pointer-events-none absolute inset-y-0 left-0 z-[2] hidden lg:block" />
       <div
         ref={panelRef}
         data-story="page"
-        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[calc(42%+var(--heading-widen,0px))] lg:flex-col lg:justify-center lg:bg-linear-to-r lg:from-night/92 lg:via-night/80 lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
+        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[calc(42%+var(--page-widen,0px))] lg:flex-col lg:justify-center lg:bg-none lg:[scrollbar-width:none] lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
       >
-        <div ref={boxRef} data-story="page-inner" className="relative max-w-[calc(34rem+var(--heading-widen,0px))]">
+        <div ref={boxRef} data-story="page-inner" className="relative max-w-[calc(34rem+var(--page-widen,0px))]">
           {section.kicker !== undefined && (
             <p data-story="kicker" className="font-voice text-[0.75rem] leading-snug tracking-[0.2em] uppercase sm:text-[0.8125rem]">
               {section.kicker}

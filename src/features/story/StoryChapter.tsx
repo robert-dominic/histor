@@ -29,7 +29,7 @@ const LABEL_CLASSES =
 export default function StoryChapter({ section, index, step, grade, route }: StoryChapterProps) {
   const headingId = `story-${section.id}`;
   // The heading never wraps: it shrinks to fit the panel, and the panel widens if it must (use-heading-fit.ts).
-  const { headingRef, headingTextRef, boxRef, panelRef } = useHeadingFit();
+  const { headingRef, headingTextRef, boxRef, panelRef, widenRef } = useHeadingFit();
   const { image, rollCall } = section;
   const tone = step.dark ? 'text-night-ink' : 'text-ink';
   const hasChartPoint = route.points.some(point => point.chapterIndex === index && point.unreached !== true);
@@ -37,7 +37,7 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
   return (
     <article data-story="chapter" data-chapter={section.id} data-index={index} aria-labelledby={headingId}>
       {/* The chapter's image, with its page already written on it: the same page as the cinematic story, still. */}
-      <div data-story="pane" className="relative isolate min-h-svh overflow-hidden">
+      <div ref={widenRef} data-story="pane" className="relative isolate min-h-svh overflow-hidden">
         {image !== undefined && (
           <figure data-story="figure" className="absolute inset-0 -z-10 bg-night">
             <img
@@ -70,12 +70,13 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
             className="top-[var(--case-header)] right-0 z-10 lg:right-1"
           />
         )}
+        <div aria-hidden="true" data-story="page-shade" className="story-page-shade pointer-events-none absolute inset-y-0 left-0 hidden lg:block" />
         <div
           ref={panelRef}
           data-story="page"
-          className="relative flex min-h-svh flex-col justify-end bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-[38svh] pb-12 text-night-ink sm:px-10 lg:w-[calc(42%+var(--heading-widen,0px))] lg:justify-center lg:bg-linear-to-r lg:from-night/92 lg:via-night/80 lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-16 lg:pl-[clamp(1.5rem,4vw,4rem)]"
+          className="relative flex min-h-svh flex-col justify-end bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-[38svh] pb-12 text-night-ink sm:px-10 lg:w-[calc(42%+var(--page-widen,0px))] lg:justify-center lg:bg-none lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-16 lg:pl-[clamp(1.5rem,4vw,4rem)]"
         >
-          <div ref={boxRef} className="max-w-[calc(34rem+var(--heading-widen,0px))]">
+          <div ref={boxRef} className="max-w-[calc(34rem+var(--page-widen,0px))]">
             {section.kicker !== undefined && (
               <p data-story="kicker" className="font-voice text-[0.75rem] tracking-[0.2em] uppercase sm:text-[0.8125rem]">
                 {section.kicker}

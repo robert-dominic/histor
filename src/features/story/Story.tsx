@@ -305,6 +305,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         const parts = scenes.map(scene => ({
           page: one('[data-story="page"]', scene),
           corners: one('[data-story="corners"]', scene),
+          // The page's shade fades with the page.
+          shade: one('[data-story="page-shade"]', scene),
           names: all('[data-story="name"]', scene),
           dim: one('[data-story="dim"]', scene),
           figure: one('[data-story="figure"]', scene),
@@ -411,7 +413,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
 
         /** A scene as its page shows it, or as its hook does. */
         const look = (index: number, as: 'page' | 'hook') => {
-          const { page, corners, names, dim, figure, hook, hookChars, slip } = parts[index];
+          const { page, shade, corners, names, dim, figure, hook, hookChars, slip } = parts[index];
           // The crew list's slip: on screen with a page whose pen has reached it, gone while the hook has the screen.
           // (Its entrance lives on the pen's own timeline, so its tweens are never killed here.)
           if (slip !== null) {
@@ -421,7 +423,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               gsap.set(slip, { opacity: 1, y: 0, scale: 1 });
             }
           }
-          const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
+          const quiet = [page, shade, corners].filter((element): element is HTMLElement => element !== null);
           gsap.killTweensOf([...quiet, ...names, dim, figure, hook].filter((element): element is HTMLElement => element !== null));
           gsap.set(quiet, { opacity: as === 'page' ? 1 : 0 });
           gsap.set(names, { opacity: as === 'page' ? 1 : 0 });
@@ -642,7 +644,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               // image's corners dim away and the image darkens, the camera creeping closer; only then, in the dark,
               // does the hook snap in, whole.
               if (from.kind === 'page' && to.kind === 'hook') {
-                const { page, corners, names, dim, figure, hook, slip } = parts[fromScene];
+                const { page, shade, corners, names, dim, figure, hook, slip } = parts[fromScene];
                 const section = story[fromScene];
                 const unwrite = writers[fromScene].unwriteRoll(STORY_PACE.unwrite);
                 if (unwrite !== null) {
@@ -661,7 +663,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   timeline.to(slip, { opacity: 0, y: -10, ...tween('ink.out') }, at);
                   at += MOTION['ink.out'].duration;
                 }
-                const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
+                const quiet = [page, shade, corners].filter((element): element is HTMLElement => element !== null);
                 if (quiet.length > 0) {
                   timeline.to(quiet, { opacity: 0, duration: SCENE.pageOut, ease: MOTION['ink.out'].ease }, at);
                 }
@@ -735,8 +737,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             if (from.kind === 'hook' && to.kind === 'page' && toScene === fromScene) {
               // Back from a hook to its page: all of it in reverse. The hook text leaves first; then the light
               // returns with the page; then the slip comes back and the pen writes the names in again.
-              const { page, corners, names, dim, figure, hook, slip } = parts[fromScene];
-              const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
+              const { page, shade, corners, names, dim, figure, hook, slip } = parts[fromScene];
+              const quiet = [page, shade, corners].filter((element): element is HTMLElement => element !== null);
               let at = 0;
               if (hook !== null) {
                 timeline.to(hook, { opacity: 0, ...quick }, at);
