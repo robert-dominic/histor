@@ -11,6 +11,7 @@ import TheoryNote from '@/features/board/TheoryNote';
 import TheoryCascade from '@/features/board/TheoryCascade';
 import Threads, { type Thread } from '@/features/board/Threads';
 import type { DeskLayout } from '@/lib/desk';
+import { theoryWeights } from '@/lib/theory-weight';
 import { SMALL_PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Case } from '@/types/case';
 
@@ -45,6 +46,11 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
   const setShown = (update: (current: string | null) => string | null) => setChosen(update(shown));
   const claimId = useId();
   const numberOf = new Map(layout.folders.map(folder => [folder.evidence.id, folder.number]));
+  // The board answers back to the player's own pins (theory-weight.ts), on the desk.
+  const weights = theoryWeights(
+    new Map(caseData.theories.map(theory => [theory.id, (layout.byTheory.get(theory.id) ?? []).length])),
+    layout.folders.filter(folder => folder.place.opened).length
+  );
   // The desktop desk: one thread per theory with files, to the top of its pile. The phone desk: one per file.
   const threads: Thread[] = fitted
     ? caseData.theories
@@ -152,7 +158,7 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
             data-board="column"
             className={`w-[15rem] shrink-0 snap-start lg:w-auto ${fitted ? 'lg:flex lg:min-h-0 lg:flex-col' : ''}`}
           >
-            <TheoryNote theory={theory} className="relative z-[2]" fitted={fitted} />
+            <TheoryNote theory={theory} className="relative z-[2]" fitted={fitted} weight={weights.get(theory.id)} />
             {fitted ? (
               <TheoryCascade
                 theoryId={theory.id}
