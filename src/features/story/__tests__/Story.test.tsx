@@ -11,12 +11,11 @@ import maryCeleste from '@/cases/mary-celeste/case';
 import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
 import { AUTO_LEAVE } from '@/features/story/PlayCard';
-import { pxPerSecond } from '@/features/story/use-story-player';
 import { parseRefs } from '@/lib/parse-refs';
 import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
-import { splitIntoBeats } from '@/lib/story-beats';
-import { COLUMN, columnLines, columnPlan } from '@/lib/story-column';
+import { COLUMN } from '@/lib/story-column';
+import { STORY_PACE } from '@/lib/story-pages';
 import { splitQuestion } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case, StorySection } from '@/types/case';
@@ -67,7 +66,6 @@ function finishTweens(element: Element | null) {
   }
 }
 
-const texts = (section: StorySection) => section.body.flatMap(splitIntoBeats);
 const chapterOf = (container: HTMLElement, section: StorySection) =>
   container.querySelector(`[data-story="chapter"][data-chapter="${section.id}"]`) as HTMLElement;
 
@@ -122,92 +120,8 @@ describe('Story: the full text is in the DOM', () => {
     }
   );
 
-  test('the text column holds every sentence of the chapter in order, for the eyes only', () => {
-    const { container } = renderStory();
-    for (const section of maryCeleste.story) {
-      const chapter = chapterOf(container, section);
-      const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
-      expect(column.getAttribute('aria-hidden')).toBe('true');
-      expect([...column.querySelectorAll('[data-story="sentence"]')].map(sentence => sentence.textContent)).toEqual(
-        section.body.flatMap(splitIntoBeats).map(plainText)
-      );
-      if (section.hook !== undefined) {
-        expect(chapter.querySelector('[data-story="hook-moment"]')?.getAttribute('aria-hidden')).toBe('true');
-      }
-    }
-  });
-  test('the column is about 3 to 4 lines tall and has a static mask at the top', () => {
-    const { container } = renderStory();
-    for (const section of maryCeleste.story) {
-      const column = chapterOf(container, section).querySelector('[data-story="column"]') as HTMLElement;
-      // Height in lines of its own text: the visible band, one line for the mask, and more for a very long sentence.
-      const lines = Number.parseFloat(column.style.height) / Number.parseFloat(column.style.lineHeight);
-      expect(lines).toBe(columnLines(section.body.flatMap(splitIntoBeats)));
-      expect(lines).toBeGreaterThanOrEqual(COLUMN.visibleLines + 1);
-      expect(column.className).toContain('overflow-hidden');
-      expect(column.className).toContain('mask-image');
-    }
-  });
-  test('the column sits in the lower part of the scene, and the sentences start out hidden below it', () => {
-    const { container } = renderStory();
-    const column = container.querySelector('[data-story="column"]') as HTMLElement;
-    expect(column.className).toMatch(/bottom-\[1[36]%\]/);
-    const list = column.querySelector('[data-story="sentences"]') as HTMLElement;
-    expect(list.className).toContain('top-full');
-    for (const sentence of column.querySelectorAll<HTMLElement>('[data-story="sentence"]')) {
-      expect(sentence.style.opacity).toBe('0');
-    }
-  });
-  test('portals in the column stay tappable but out of the Tab order; the full text has them for the keyboard', () => {
-    const { container } = renderStory();
 
-    const inColumn = [...container.querySelectorAll<HTMLElement>('[data-story="column"] [data-portal-trigger]')];
-    const inText = [...container.querySelectorAll<HTMLElement>('[data-story="text"] [data-portal-trigger]')];
-    expect(inColumn.length).toBeGreaterThan(0);
-    expect(inColumn.every(trigger => trigger.tabIndex === -1)).toBe(true);
-    expect(inText.length).toBeGreaterThan(0);
-    expect(inText.every(trigger => trigger.tabIndex === 0)).toBe(true);
-    const ids = new Set(maryCeleste.references.map(reference => reference.id));
-    expect(inText.every(trigger => ids.has(trigger.dataset.portalTrigger ?? ''))).toBe(true);
-  });
 
-  test('tapping a portal in the column opens its card', () => {
-    const { container } = renderStory(testCase);
-
-    fireEvent.click(container.querySelector('[data-story="column"] [data-portal-trigger="thing"]') as HTMLElement);
-
-    expect(screen.getByRole('dialog', { name: 'The thing' })).toBeDefined();
-  });
-
-  test('each sentence starts where the one before ends, by its reading time (columnPlan)', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[0]);
-    const texts = testCase.story[0].body.flatMap(splitIntoBeats);
-    const plan = columnPlan(texts);
-    const starts = [...chapter.querySelectorAll('[data-story="sentence"]')].map(
-      sentence => gsap.getTweensOf(sentence)[0].startTime()
-    );
-    expect(starts).toHaveLength(texts.length);
-    for (let index = 1; index < starts.length; index += 1) {
-      expect(starts[index] - starts[index - 1]).toBeCloseTo(plan[index - 1].seconds, 6);
-    }
-  });
-  test('the sentences rise word by word from behind their masks, and the list moves up over the same stretch', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[0]);
-    const sentence = chapter.querySelector('[data-story="sentence"]') as HTMLElement;
-    const list = chapter.querySelector('[data-story="sentences"]') as HTMLElement;
-    const words = [...sentence.querySelectorAll<HTMLElement>('[data-story="word"]')];
-    expect(words.length).toBeGreaterThan(1);
-    expect(words.every(word => word.parentElement?.dataset.story === 'mask')).toBe(true);
-    const rise = gsap.getTweensOf(words[0])[0];
-    expect(rise.vars).toMatchObject({ yPercent: 0, opacity: 1, ease: 'power3.out' });
-    expect(gsap.getTweensOf(words[1])[0]).toBe(rise);
-    const fade = gsap.getTweensOf(sentence)[0];
-    const moves = gsap.getTweensOf(list);
-    expect(moves).toHaveLength(texts(testCase.story[0]).length);
-    expect(moves[0].startTime()).toBeCloseTo(fade.startTime(), 6);
-  });
   test('the scroll is scrubbed with smoothing, so the text glides', () => {
     renderStory(testCase);
     const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin !== undefined && trigger.pin !== null);
@@ -220,6 +134,96 @@ describe('Story: the full text is in the DOM', () => {
     expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
     const phrases = [...question.querySelectorAll('[data-story="phrase"]')].map(phrase => phrase.textContent?.trim());
     expect(phrases).toEqual(splitQuestion(maryCeleste.centralQuestion));
+  });
+});
+
+describe('Story: a page per chapter', () => {
+  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+
+  test('each chapter has a page on one side of its image: kicker, heading, every paragraph and the roll call', () => {
+    const { container } = renderStory();
+    for (const section of maryCeleste.story) {
+      const chapter = chapterOf(container, section);
+      const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
+      expect(page.className).toContain('lg:w-[42%]');
+      expect(page.className).toContain('lg:right-auto');
+      expect(page.querySelector('[data-story="kicker"]')?.textContent).toBe(section.kicker);
+      expect(page.querySelector('[data-story="heading"]')?.textContent).toBe(section.heading);
+      const paragraphs = [...page.querySelectorAll('[data-story="paragraph"]')].map(paragraph => paragraph.textContent);
+      expect(paragraphs).toEqual(section.body.map(plainText));
+      expect(page.querySelectorAll('[data-story="name"]')).toHaveLength(section.rollCall?.length ?? 0);
+    }
+  });
+
+  test('the body is set in Old Standard TT at about 18 to 19px, the heading large, the kicker small', () => {
+    const { container } = renderStory();
+    const page = container.querySelector<HTMLElement>('[data-story="page"]')!;
+    const body = page.querySelector<HTMLElement>('[data-story="body"]')!;
+    expect(body.className).toContain('font-record');
+    expect(body.className).toContain('text-[1.125rem]');
+    expect(body.className).toContain('lg:text-[1.1875rem]');
+    expect(page.querySelector('h2')?.className).toContain('font-legend');
+    expect(page.querySelector('[data-story="kicker"]')?.className).toContain('font-voice');
+  });
+
+  test('portals in the page stay tappable but out of the Tab order; the full text has them for the keyboard', () => {
+    const { container } = renderStory();
+    const inPage = [...container.querySelectorAll<HTMLElement>('[data-story="page"] [data-portal-trigger]')];
+    const inText = [...container.querySelectorAll<HTMLElement>('[data-story="text"] [data-portal-trigger]')];
+    expect(inPage.length).toBeGreaterThan(0);
+    expect(inPage.every(trigger => trigger.tabIndex === -1)).toBe(true);
+    expect(inText.every(trigger => trigger.tabIndex === 0)).toBe(true);
+    expect(container.querySelector('[data-story="body"]')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('tapping a portal in the page opens its card', () => {
+    const { container } = renderStory(testCase);
+    fireEvent.click(container.querySelector('[data-story="page"] [data-portal-trigger="thing"]') as HTMLElement);
+    expect(screen.getByRole('dialog', { name: 'The thing' })).toBeDefined();
+  });
+
+  test('the page holds for a stretch of scroll before the hook, and is the same page all the while', () => {
+    const { container } = renderStory(testCase);
+    const chapter = chapterOf(container, testCase.story[0]);
+    const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
+    const leave = gsap.getTweensOf(page)[0];
+    expect(leave.vars).toMatchObject({ opacity: 0, ease: 'power2.in' });
+    expect(leave.startTime()).toBeGreaterThanOrEqual(STORY_PACE.pageHold);
+    expect(stageTimeline().labels['chapter-1']).toBeGreaterThan(leave.startTime());
+  });
+
+  test('a chapter without a hook keeps its page until the next scene dissolves in', () => {
+    const { container } = renderStory(testCase);
+    const chapter = chapterOf(container, testCase.story[1]);
+    expect(gsap.getTweensOf(chapter.querySelector('[data-story="page"]')!)).toHaveLength(0);
+    expect(chapter.querySelector('[data-story="hook-moment"]')).toBeNull();
+  });
+
+  test('story events: each chapter is entered, its page comes, each hook comes, in order', () => {
+    renderStory(testCase);
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
+    try {
+      const timeline = stageTimeline();
+      timeline.time(timeline.duration(), false);
+    } finally {
+      stop();
+    }
+    expect(events.map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)).toEqual([
+      'chapter-enter:s-one',
+      'beat:s-one',
+      'hook:s-one',
+      'chapter-enter:s-two',
+      'beat:s-two',
+    ]);
+  });
+
+  test('on a phone-width screen each page lies along the bottom, over the image', () => {
+    const { container } = renderStory();
+    const page = container.querySelector<HTMLElement>('[data-story="page"]')!;
+    expect(page.className).toContain('inset-x-0');
+    expect(page.className).toContain('bottom-0');
+    expect(page.className).toContain('max-h-[78svh]');
   });
 });
 
@@ -497,7 +501,7 @@ describe('Story: play the story', () => {
     });
     expect(control.getAttribute('aria-pressed')).toBe('true');
     act(() => {
-      fireEvent.click(first.querySelector('[data-story="column"] [data-portal-trigger]') as HTMLElement);
+      fireEvent.click(first.querySelector('[data-story="page"] [data-portal-trigger]') as HTMLElement);
     });
     expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
     expect(control.getAttribute('aria-pressed')).toBe('false');
@@ -510,7 +514,7 @@ describe('Story: play the story', () => {
       fireEvent.click(control);
     });
     act(() => {
-      fireEvent.click(container.querySelector('[data-story="column"] [data-portal-trigger="thing"]') as HTMLElement);
+      fireEvent.click(container.querySelector('[data-story="page"] [data-portal-trigger="thing"]') as HTMLElement);
     });
 
     expect(control.getAttribute('aria-pressed')).toBe('false');
@@ -621,41 +625,7 @@ describe('Story: sized images', () => {
 describe('Story: the four entrances', () => {
   const voyage = maryCeleste.story.find(section => section.id === 's-voyage')!;
 
-  test('weighted words hold their space, then land on their own after a beat, and a rust line grows under them', () => {
-    const { container } = renderStory();
-    const chapter = chapterOf(container, voyage);
-    const weighted = [...chapter.querySelectorAll<HTMLElement>('[data-story="column"] [data-story="weighted"]')];
-    expect(weighted.map(span => span.textContent)).toEqual(voyage.emphasis);
-    const span = weighted[0];
-    const sentence = span.closest<HTMLElement>('[data-story="sentence"]')!;
-    const words = [...span.querySelectorAll<HTMLElement>('[data-story="word"]')];
-    // Held empty while the sentence rises.
-    expect(words.every(word => word.style.opacity === '0')).toBe(true);
-    const plainRise = gsap.getTweensOf(sentence.querySelector('[data-story="word"]')!)[0];
-    const landing = gsap.getTweensOf(words[0])[0];
-    expect(landing.vars).toMatchObject({ yPercent: 0, opacity: 1, ease: 'power4.out' });
-    // After the sentence has risen, and a beat of stillness.
-    expect(landing.startTime()).toBeGreaterThanOrEqual(plainRise.startTime() + plainRise.duration() + 0.9 - 1e-6);
-    const rule = gsap.getTweensOf(span.querySelector('[data-story="weight-line"]')!)[0];
-    expect(rule.vars.scaleX).toBe(1);
-    expect(rule.startTime()).toBeCloseTo(landing.startTime() + landing.duration(), 6);
-  });
 
-  test('before a hook the column clears, the image darkens and the camera creeps closer, and nothing new appears', () => {
-    const { container } = renderStory();
-    const chapter = chapterOf(container, voyage);
-    const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
-    const figure = chapter.querySelector('[data-story="figure"]') as HTMLElement;
-    const hook = chapter.querySelector('[data-story="hook-moment"]') as HTMLElement;
-    const clear = gsap.getTweensOf(column).find(tween => tween.vars.opacity === 0)!;
-    expect(clear.vars.ease).toBe('power2.in');
-    const creep = gsap.getTweensOf(figure)[0];
-    expect(creep.vars).toMatchObject({ scale: 1.05, ease: 'sine.inOut', duration: 2.4 });
-    const firstLetter = hook.querySelector('[data-story="hook-char"]')!;
-    const snap = gsap.getTweensOf(firstLetter).find(tween => tween.vars.opacity === 1)!;
-    // The hook comes only once the breath is over.
-    expect(snap.startTime()).toBeCloseTo(creep.startTime() + creep.duration(), 6);
-  });
 
   test('a hook arrives word by word, slower than anything else, its letters snapping into place from out of line', () => {
     const { container } = renderStory();
@@ -691,13 +661,6 @@ describe('Story: the four entrances', () => {
     expect(order).not.toEqual(letters.map((_, index) => index));
   });
 
-  test('screen readers still get the full text once: the split copies are hidden', () => {
-    const { container } = renderStory();
-    const chapter = chapterOf(container, voyage);
-    expect(chapter.querySelector('[data-story="column"]')?.getAttribute('aria-hidden')).toBe('true');
-    expect(chapter.querySelector('[data-story="hook-moment"]')?.getAttribute('aria-hidden')).toBe('true');
-    expect(chapter.querySelector('[data-story="text"]')?.textContent).toContain('ten people');
-  });
 });
 
 describe('Story: the central question as a chokepoint', () => {
@@ -801,16 +764,6 @@ describe('Story: one opening, on the first scene', () => {
     expect((container.querySelector('[data-case-header="bar"]') as HTMLElement).style.opacity).toBe('0');
   });
 
-  test('chapter 1 begins after the opening, on the same image, whose camera starts with the opening', () => {
-    const { container } = renderWithHeader();
-    const timeline = stageTimeline();
-    expect(timeline.labels['chapter-0']).toBeGreaterThan(0);
-    const first = chapterOf(container, testCase.story[0]);
-    const firstSentence = first.querySelector('[data-story="sentence"]') as HTMLElement;
-    expect(gsap.getTweensOf(firstSentence)[0].startTime()).toBeGreaterThan(timeline.labels['chapter-0']);
-    const camera = gsap.getTweensOf(first.querySelector('[data-story="image"]')!)[0];
-    expect(camera.startTime()).toBe(0);
-  });
 
   test('scrolling on clears the opening (ink.out) and docks the title; scrolling back undocks it', () => {
     const { container } = renderWithHeader();
@@ -934,99 +887,10 @@ describe('Story: the other parts, with the column', () => {
   const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
   const pinned = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!;
 
-  test('story events: each chapter is entered, each sentence rises, each hook comes, in order', () => {
-    renderStory(testCase);
-    const events: StoryEvent[] = [];
-    const stop = onStoryEvent(event => events.push(event));
-    try {
-      const timeline = stageTimeline();
-      timeline.time(timeline.duration(), false);
-    } finally {
-      stop();
-    }
-    expect(events.map(event => event.type)).toEqual([
-      'chapter-enter',
-      'beat',
-      'beat',
-      'beat',
-      'hook',
-      'chapter-enter',
-      'beat',
-    ]);
-    expect(events.filter(event => event.type === 'beat').map(event => (event as { index: number }).index)).toEqual([0, 1, 2, 0]);
-    expect(events.map(event => (event as { chapter?: string }).chapter)).toEqual([
-      's-one',
-      's-one',
-      's-one',
-      's-one',
-      's-one',
-      's-two',
-      's-two',
-    ]);
-  });
 
-  test('the hook: the column leaves first, then the hook has the screen, then stillness before the next scene', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[0]);
-    const timeline = stageTimeline();
-    const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
-    const hook = chapter.querySelector('[data-story="hook-moment"]') as HTMLElement;
-    const leave = gsap.getTweensOf(column)[0];
-    const arrive = gsap.getTweensOf(hook)[0];
-    const lastSentence = [...chapter.querySelectorAll('[data-story="sentence"]')].pop()!;
-    expect(leave.vars.ease).toBe('power2.in');
-    // The column leaves once its last sentence has had its time, and before the hook comes in.
-    expect(leave.startTime()).toBeGreaterThan(gsap.getTweensOf(lastSentence)[0].startTime());
-    expect(leave.startTime() + leave.duration()).toBeLessThanOrEqual(arrive.startTime());
-    // A beat of stillness: the next scene waits for the hook to hold.
-    expect(timeline.labels['chapter-1'] - arrive.startTime()).toBeGreaterThanOrEqual(arrive.duration() + 4);
-  });
 
-  test('an invisible hook is click-through, so it never covers the column; it takes clicks once it appears', () => {
-    const { container } = renderStory(testCase);
-    const hook = chapterOf(container, testCase.story[0]).querySelector('[data-story="hook-moment"]') as HTMLElement;
-    expect(hook.className).toContain('pointer-events-none');
-    const switches = gsap.getTweensOf(hook).filter(tween => tween.vars.pointerEvents === 'auto');
-    expect(switches).toHaveLength(1);
-    const arrive = gsap.getTweensOf(hook).find(tween => tween.vars.opacity === 1)!;
-    expect(switches[0].startTime()).toBeGreaterThanOrEqual(arrive.startTime() - 1e-6);
-  });
-  test('a chapter without a hook keeps its column, and still pauses before the next scene', () => {
-    const { container } = renderStory(testCase);
-    const column = chapterOf(container, testCase.story[1]).querySelector('[data-story="column"]') as HTMLElement;
-    expect(gsap.getTweensOf(column)).toHaveLength(0);
-    expect(chapterOf(container, testCase.story[1]).querySelector('[data-story="hook-moment"]')).toBeNull();
-  });
 
-  test('the roll call comes in after the sentence that gives the number, and leaves before the hook', () => {
-    const { container } = renderStory();
-    const section = maryCeleste.story.find(candidate => candidate.rollCall !== undefined && candidate.rollCall.length > 0)!;
-    const chapter = chapterOf(container, section);
-    const names = [...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')];
-    const sentences = [...chapter.querySelectorAll<HTMLElement>('[data-story="sentence"]')];
-    expect(names).toHaveLength(section.rollCall!.length);
-    const nameIn = names.map(name => gsap.getTweensOf(name)[0].startTime());
-    expect(nameIn).toEqual([...nameIn].sort((a, b) => a - b));
-    // After the first sentence's slot has begun and before the hook.
-    expect(nameIn[0]).toBeGreaterThan(gsap.getTweensOf(sentences[0])[0].startTime());
-    const hook = chapter.querySelector('[data-story="hook-moment"]') as HTMLElement;
-    const hookAt = gsap.getTweensOf(hook)[0].startTime();
-    const nameOut = names.map(name => gsap.getTweensOf(name).at(-1)!.startTime());
-    expect(Math.max(...nameOut)).toBeLessThan(hookAt);
-    // The column is gone before the names go out.
-    const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
-    expect(gsap.getTweensOf(column)[0].startTime()).toBeLessThanOrEqual(Math.min(...nameOut));
-  });
 
-  test('the title leaves before the roll call comes in over the same part of the screen', () => {
-    const { container } = renderStory();
-    const section = maryCeleste.story.find(candidate => candidate.rollCall !== undefined && candidate.rollCall.length > 0)!;
-    const chapter = chapterOf(container, section);
-    const title = chapter.querySelector('[data-story="title"]') as HTMLElement;
-    const names = [...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')];
-    const leave = gsap.getTweensOf(title)[0];
-    expect(leave.startTime() + leave.duration()).toBeLessThanOrEqual(gsap.getTweensOf(names[0])[0].startTime() + 1e-6);
-  });
 
   test('the voyage chart draws its route in order as the story goes', () => {
     const { container } = renderStory();
@@ -1054,21 +918,4 @@ describe('Story: the other parts, with the column', () => {
     expect(root.dataset.tone).toBe('night-ink');
   });
 
-  test('on a phone-width screen the story still has its scenes and its column', () => {
-    const { innerWidth, innerHeight } = window;
-    Object.assign(window, { innerWidth: 375, innerHeight: 667 });
-    try {
-      const { container } = renderStory();
-      const scenes = container.querySelectorAll('[data-story="chapter"]');
-      expect(scenes).toHaveLength(maryCeleste.story.length);
-      for (const scene of scenes) {
-        const column = scene.querySelector('[data-story="column"]') as HTMLElement;
-        expect(column.className).toContain('w-[min(32ch,88vw)]');
-        expect(column.querySelectorAll('[data-story="sentence"]').length).toBeGreaterThan(0);
-      }
-      expect(pxPerSecond()).toBeGreaterThanOrEqual(160);
-    } finally {
-      Object.assign(window, { innerWidth, innerHeight });
-    }
-  });
 });

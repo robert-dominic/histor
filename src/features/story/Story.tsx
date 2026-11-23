@@ -31,8 +31,9 @@ import { hashUnit } from '@/lib/desk';
 import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { scrollToY, setWheelMultiplier } from '@/lib/smooth-scroll';
-import { rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
-import { COLUMN, SCROLL_FEEL, columnPlan, sentenceSeconds } from '@/lib/story-column';
+import { splitIntoBeats } from '@/lib/story-beats';
+import { COLUMN, SCROLL_FEEL, sentenceSeconds } from '@/lib/story-column';
+import { STORY_PACE } from '@/lib/story-pages';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
@@ -48,27 +49,14 @@ gsap.registerPlugin(useGSAP, ScrollToPlugin);
 const SCENE = {
   /** The next image cross-dissolves in over the old one. */
   dissolve: 1.4,
-  /** Scroll that passes before the first sentence of a chapter starts to rise: the heading has the screen first. */
-  columnLead: 1,
-  /** The title (kicker and heading) leaves, in scroll seconds, once its sentences are under way. */
-  titleOut: 0.6,
-  /** How many of a chapter's first sentences the title stays for. */
-  titleStaysFor: 2,
-  /** The share of a sentence's time spent moving it into place; the rest it holds still, to be read. */
-  columnMove: 0.4,
-  /** The column leaves before the hook takes the screen. */
-  columnOut: 0.45,
-  nameEvery: 0.32,
-  nameIn: 0.45,
-  rollCallDim: 0.55,
+  /** The page's panel dims away before the hook takes the screen. */
+  pageOut: 0.45,
   nameOut: 0.36,
   hookDim: 0.92,
   /** "Hooks hold about 4s." */
   hookHold: 4,
   /** A beat of stillness: nothing changes before the next scene. */
   stillness: 1.6,
-  /** A normal sentence's words surface one after another, over this share of the sentence's move. */
-  surfaceSpread: 0.5,
   /** Weighted words: the beat of stillness before a phrase lands, and how long its rust line takes to grow. */
   weightBeat: STEP.slow,
   weightLine: STEP.slow,
@@ -84,8 +72,7 @@ const SCENE = {
   restWithoutHook: 1,
   /** The camera's slow push in. */
   zoomTo: 1.12,
-  /** The dimming for the roll call and the hook, and a point on the route fading in. */
-  rollCallDimIn: 0.6,
+  /** A point on the route fading in. */
   dotIn: 0.3,
   /** A name going out like a candle: [opacity, seconds] steps. */
   candle: [
@@ -271,7 +258,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
 
           interface Span {
             start: number;
-            /** When the text column begins and ends: the chart draws its route in between. */
+            /** When the page is on screen: the chart draws its route in between. */
             textFrom: number;
             textTo: number;
             end: number;
@@ -324,7 +311,6 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             // The heading: the kicker, then the quill writes the heading. Not scrubbed: when the scene starts, a timer
             // of about 2 seconds writes it, whatever the scroll speed. Scrolling back above the scene fades it out.
             const kicker = one('[data-story="kicker"]', scene);
-            const title = one('[data-story="title"]', scene);
             const heading = one('[data-story="heading"]', scene);
             const point = one('[data-story="quill"]', scene);
             const body = one('[data-story="quill-body"]', scene);
@@ -362,128 +348,20 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 });
               },
             });
-            // A new scene starts after the dissolve; the first sentence rises a little after the heading appears.
-            t += SCENE.columnLead;
-            const textFrom = t;
-
-            // The text column: the sentences stacked in order. The list moves up as the reader scrolls, one sentence
-            // at a time, over the scroll distance of its reading time (columnPlan). A sentence eases in as it
-            // comes into view and stays. The sentences that pass the top are faded by the column's static mask.
-            const sentenceTexts = sentences[index] ?? [];
-            const plan = columnPlan(sentenceTexts);
+            // The page: the chapter's text, in its panel on one side of the image. It holds for a stretch of scroll
+            // (`STORY_PACE.pageHold`) before the hook can begin.
+            const page = one('[data-story="page"]', scene);
             const names = quote('[data-story="name"]');
-            const rollAfter = names.length > 0 ? rollCallBeatIndex(sentenceTexts, names.length) : -1;
-            const column = one('[data-story="column"]', scene);
-            const list = one('[data-story="sentences"]', scene);
-            const lines = quote('[data-story="sentence"]');
-            let rollStart = Infinity;
-            // Where each sentence's top lies in the list, and where the list ends: measured again on every refresh.
-            const topOf = (sentenceIndex: number) =>
-              sentenceIndex < lines.length ? lines[sentenceIndex].offsetTop : (list?.offsetHeight ?? 0);
-            lines.forEach((line, lineIndex) => {
-              const seconds = plan[lineIndex]?.seconds ?? COLUMN.minSeconds;
-              const move = seconds * SCENE.columnMove;
-              // A normal sentence rises out of the dark: each word slides up from behind its own mask edge, one after
-              // another (`story.surface`). Its weighted phrases hold their space, empty, and land on their own after a
-              // beat of stillness; then a thin rust line grows under each. All scrubbed, so scrolling back reverses it.
-              // The words are already split, each inside its own mask (StoryWords.tsx).
-              const words = all('[data-story="word"]', line);
-              const weightedSpans = [...line.querySelectorAll<HTMLElement>('[data-story="weighted"]')];
-              const plainWords = words.filter(word => word.closest('[data-story="weighted"]') === null);
-              timeline.set(line, { opacity: 1 }, t);
-              if (plainWords.length > 0) {
-                const each = (move * SCENE.surfaceSpread) / plainWords.length;
-                timeline.fromTo(
-                  plainWords,
-                  { yPercent: 100, opacity: 0 },
-                  {
-                    yPercent: 0,
-                    opacity: 1,
-                    ease: MOTION['story.surface'].ease,
-                    duration: move - each * (plainWords.length - 1),
-                    stagger: each,
-                    immediateRender: false,
-                  },
-                  t
-                );
-              }
-              let landAt = t + move;
-              weightedSpans.forEach(span => {
-                const phraseWords = words.filter(word => span.contains(word));
-                const rule = span.querySelector<HTMLElement>('[data-story="weight-line"]');
-                gsap.set(phraseWords, { opacity: 0 });
-                landAt += SCENE.weightBeat;
-                timeline.fromTo(
-                  phraseWords,
-                  { yPercent: -100, opacity: 0 },
-                  { yPercent: 0, opacity: 1, ...tween('story.weighted'), immediateRender: false },
-                  landAt
-                );
-                landAt += MOTION['story.weighted'].duration;
-                if (rule !== null) {
-                  timeline.fromTo(
-                    rule,
-                    { scaleX: 0 },
-                    { scaleX: 1, ease: MOTION['story.weighted'].ease, duration: SCENE.weightLine, immediateRender: false },
-                    landAt
-                  );
-                }
-              });
-              // The weighted phrases add their beats to the sentence's time; the rest of it is still for reading.
-              const extra = weightedSpans.length === 0 ? 0 : landAt - (t + move) + SCENE.weightLine;
-              if (list !== null) {
-                // The sentence's bottom comes to rest at the bottom of the column; the next one starts from there.
-                timeline.fromTo(
-                  list,
-                  { y: () => -topOf(lineIndex) },
-                  { y: () => -topOf(lineIndex + 1), duration: move, ease: MOTION.scene.ease, immediateRender: false },
-                  t
-                );
-              }
-              emitAt(t, () => ({ type: 'beat', chapter: section.id, index: lineIndex, direction }));
-              t += seconds + extra;
-
-              // The roll call: after the sentence that gives their number, the names appear one by one, and stay.
-              if (lineIndex === rollAfter) {
-                rollStart = t;
-                dimTo(SCENE.rollCallDim, t, SCENE.rollCallDimIn);
-                names.forEach((name, nameIndex) => {
-                  timeline.fromTo(
-                    name,
-                    { opacity: 0, y: 6 },
-                    { opacity: 1, y: 0, duration: SCENE.nameIn, immediateRender: false },
-                    t + 0.3 + nameIndex * SCENE.nameEvery
-                  );
-                });
-                t += 0.3 + names.length * SCENE.nameEvery + SCENE.nameIn;
-              }
-            });
-            // The title (the heading's wrapper) leaves with the scroll once the first sentences are under way, and
-            // always before the roll call comes in over the same part of the screen.
-            const stays = plan.slice(0, SCENE.titleStaysFor).reduce((total, slot) => total + slot.seconds, 0);
-            const titleGone = Math.min(textFrom + stays, rollStart);
-            if (title !== null) {
-              timeline.fromTo(
-                title,
-                { opacity: 1, y: 0 },
-                { opacity: 0, y: -14, duration: SCENE.titleOut, immediateRender: false },
-                Math.max(textFrom, titleGone - SCENE.titleOut)
-              );
-            }
+            const textFrom = t;
+            // (A moment after the page starts: a call at the timeline's very start never fires.)
+            emitAt(t + 0.02, () => ({ type: 'beat', chapter: section.id, index: 0, direction }));
+            t += STORY_PACE.pageHold;
             const textTo = t;
 
-            // The hook: the names go out like candles, last to first; the image dims almost to black; the line
-            // takes the screen; then stillness.
+            // The hook: the names go out like candles, last to first; the panel dims away; the image darkens and the
+            // camera creeps closer; the line takes the centre of the screen; then it decays, and stillness.
             const hook = one('[data-story="hook-moment"]', scene);
             if (hook !== null) {
-              // The column leaves first, so the hook has the whole screen.
-              timeline.fromTo(
-                column,
-                { opacity: 1 },
-                { opacity: 0, duration: SCENE.columnOut, ease: MOTION['ink.out'].ease, immediateRender: false },
-                t
-              );
-              t += SCENE.columnOut;
               [...names].reverse().forEach(name => {
                 timeline.fromTo(
                   name,
@@ -498,6 +376,16 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 emitAt(t, () => ({ type: 'roll-call-out', chapter: section.id, name: label, direction }));
                 t += SCENE.nameOut;
               });
+              // The panel dims away, so the hook has the whole screen.
+              if (page !== null) {
+                timeline.fromTo(
+                  page,
+                  { opacity: 1 },
+                  { opacity: 0, duration: SCENE.pageOut, ease: MOTION['ink.out'].ease, immediateRender: false },
+                  t
+                );
+              }
+              t += SCENE.pageOut;
               // The breath before the hook: the column has cleared; the image darkens further and the camera creeps
               // closer, and for a stretch of scroll nothing new appears.
               const breath = MOTION['story.breath'].duration;
@@ -883,7 +771,6 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 section={section}
                 index={index}
                 grade={grades[index]}
-                sentences={sentences[index]}
                 loadImage={index <= loadedThrough}
               />
             ))}

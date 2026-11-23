@@ -1,51 +1,32 @@
 // src/features/story/StoryScene.tsx
-// One chapter as a full-screen cinematic scene: the image fills the screen, the quill writes the heading over it,
-// then the text column rises in the lower part: the chapter's sentences, stacked in order, moving up as the
-// reader scrolls, and the hook takes the whole screen.
+// One chapter as a full-screen cinematic scene (story v3): the image fills the screen under a slow camera, and a
+// dark, softly faded panel on one side holds the chapter's page: the kicker, the heading, the body and the roll call,
+// all written by the pen (Story.tsx). Then the hook takes the centre of the screen.
 // The scenes lie on top of each other in one pinned stage; Story.tsx scrubs a timeline that plays them in turn.
 //
 // Screen readers and search engines get the full text: every paragraph is in the DOM, whole, in `data-story="text"`,
-// which is visually hidden until a keyboard user tabs into one of its portals. The column is for the eyes only.
+// which is visually hidden until a keyboard user tabs into one of its portals. The page is for the eyes only.
 
 import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import PortalText from '@/features/portals/PortalText';
+import PenText from '@/features/story/PenText';
+import { HookLetters } from '@/features/story/StoryWords';
 import type { ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
-import { columnLines } from '@/lib/story-column';
-import { weightedPieces } from '@/lib/story-emphasis';
-import { HookLetters, MaskedWords } from '@/features/story/StoryWords';
 import type { StorySection } from '@/types/case';
 
 interface StorySceneProps {
   section: StorySection;
   index: number;
   grade: ImageGrade;
-  /** The chapter's text split into sentences, in order. */
-  sentences: string[];
   loadImage: boolean;
 }
 
 const LABEL_CLASSES =
   'bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase lg:text-[0.6875rem]';
 
-/** The column's own text size. Sentences are set in this size, or a little smaller when they are long. */
-const COLUMN_TEXT = 'text-[1.375rem] sm:text-[1.875rem] lg:text-[2.5rem]';
-/** Line height of the column, in em. The column's height is set in lines of it. */
-const LINE_HEIGHT = 1.35;
-
-/** Long sentences get a smaller size, so the longest still fits a 375×667 screen. */
-function sentenceSizeClass(sentence: string): string {
-  if (sentence.length > 150) {
-    return 'text-[1.0625rem] sm:text-[1.5rem] lg:text-[1.875rem]';
-  }
-  if (sentence.length > 90) {
-    return 'text-[1.1875rem] sm:text-[1.625rem] lg:text-[2.125rem]';
-  }
-  return '';
-}
-
-export default function StoryScene({ section, index, grade, sentences, loadImage }: StorySceneProps) {
+export default function StoryScene({ section, index, grade, loadImage }: StorySceneProps) {
   const headingId = `story-${section.id}`;
   const { image, rollCall } = section;
   const sources = image === undefined ? null : imageSources(image.src);
@@ -107,92 +88,50 @@ export default function StoryScene({ section, index, grade, sentences, loadImage
         />
       )}
 
-      {/* The opening: the kicker, then the heading, written large and centred by the quill. */}
-      <header
-        data-story="title"
-        className="absolute inset-x-0 top-[38%] px-5 text-center -translate-y-1/2 sm:px-10"
+      {/* The page: a dark, softly faded panel on the left (along the bottom on phones) holding the chapter's text.
+          The image stays visible on the rest of the screen. The kicker is typed small, the heading written large at
+          the top, then the body in Old Standard TT at about 18 to 19px, and the roll call after it. The pen writes it
+          all (Story.tsx); a click on the panel finishes the writing at once. Portals stay tappable, out of the Tab
+          order: the full text below has them for the keyboard and screen readers. */}
+      <div
+        data-story="page"
+        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[42%] lg:flex-col lg:justify-center lg:bg-linear-to-r lg:from-night/92 lg:via-night/80 lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
       >
-        {/* Width in the screen's units, not `ch`: this wrapper's font is the body size, not the heading's. */}
-        <div className="relative mx-auto w-fit max-w-[min(92vw,60rem)]">
+        <div data-story="page-inner" className="relative max-w-[34rem]">
           {section.kicker !== undefined && (
-            <p
-              data-story="kicker"
-              className="font-voice text-[0.75rem] leading-snug tracking-[0.2em] text-night-ink uppercase sm:text-sm"
-              style={{ opacity: 0 }}
-            >
+            <p data-story="kicker" className="font-voice text-[0.75rem] leading-snug tracking-[0.2em] uppercase sm:text-[0.8125rem]">
               {section.kicker}
             </p>
           )}
           <h2
             id={headingId}
-            className="mt-3 font-legend text-[clamp(2.625rem,1.6rem+5vw,6rem)] leading-[1] text-balance text-night-ink [text-shadow:0_2px_24px_rgb(0_0_0/0.55)]"
+            className="mt-2 font-legend text-[clamp(2.25rem,1.6rem+2.4vw,3.75rem)] leading-[1.02] text-balance [text-shadow:0_2px_24px_rgb(0_0_0/0.55)]"
           >
-            {/* Screen readers get the whole heading at once; the copy the quill writes is for the eyes only. */}
+            {/* Screen readers get the whole heading at once; the copy the pen writes is for the eyes only. */}
             <span className="sr-only">{section.heading}</span>
             <span aria-hidden="true" data-story="heading">
               {section.heading}
             </span>
           </h2>
-          <Quill attribute="data-story" sizeClassName="h-[clamp(2.75rem,5vw,4.5rem)]" />
-        </div>
-      </header>
-
-      {/* The roll call: names appear one by one, and go out like candles at the hook. */}
-      {rollCall !== undefined && rollCall.length > 0 && (
-        <ul
-          data-story="roll-call"
-          aria-label="The ten aboard"
-          className="absolute top-[calc(var(--case-header)+1rem)] left-1/2 flex w-[min(88vw,24rem)] -translate-x-1/2 flex-col gap-[0.35rem] text-center sm:top-[calc(var(--case-header)+2.5rem)] sm:gap-2 lg:left-[8%] lg:w-[22rem] lg:translate-x-0 lg:text-left"
-        >
-          {rollCall.map(entry => (
-            <li key={entry.name} data-story="name" className="leading-tight text-night-ink" style={{ opacity: 0 }}>
-              <span className="font-record text-[1rem] sm:text-[1.25rem] lg:text-[1.375rem]">{entry.name}</span>
-              <span className="font-voice text-[0.6875rem] tracking-[0.08em] text-ghost-night sm:text-xs">
-                {' '}
-                · {entry.role}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* The text column, for the eyes only: the chapter's sentences stacked in order. Story.tsx moves the list up as
-          the reader scrolls; the sentences that pass the top fade out under a static mask, so they never blink. Their
-          portals stay tappable but out of the Tab order: the full text below has the same portals for keyboard and
-          screen-reader users. The list starts just below the column and is clipped by it. */}
-      <div
-        aria-hidden="true"
-        data-story="column"
-        className={`absolute inset-x-0 bottom-[16%] mx-auto w-[min(32ch,88vw)] overflow-hidden px-1 text-center font-record text-night-ink [mask-image:linear-gradient(to_bottom,transparent,black_24%)] sm:w-[30ch] lg:bottom-[13%] ${COLUMN_TEXT}`}
-        style={{ height: `${columnLines(sentences) * LINE_HEIGHT}em`, lineHeight: LINE_HEIGHT }}
-      >
-        <div data-story="sentences" className="absolute inset-x-0 top-full">
-          {sentences.map((sentence, sentenceIndex) => (
-            <p
-              key={sentenceIndex}
-              data-story="sentence"
-              className={`pt-[0.45em] text-pretty ${sentenceSizeClass(sentence)}`}
-              style={{ opacity: 0 }}
-            >
-              {/* A weighted phrase holds its space while the sentence rises, then lands on its own, and a thin rust line
-                  grows under it (Story.tsx). Never broken across lines, so its line is one line. */}
-              {weightedPieces(sentence, section.emphasis).map((piece, pieceIndex) =>
-                piece.weighted ? (
-                  <span key={pieceIndex} data-story="weighted" className="relative inline-block whitespace-nowrap">
-                    <MaskedWords text={piece.text} />
-                    <span
-                      aria-hidden="true"
-                      data-story="weight-line"
-                      className="absolute inset-x-0 -bottom-[0.06em] h-[0.06em] min-h-px origin-left bg-rust-night"
-                      style={{ transform: 'scaleX(0)' }}
-                    />
-                  </span>
-                ) : (
-                  <MaskedWords key={pieceIndex} text={piece.text} />
-                )
-              )}
-            </p>
-          ))}
+          <div aria-hidden="true" data-story="body" className="mt-5 flex flex-col gap-[0.85em] font-record text-[1.125rem] leading-[1.6] text-night-ink/90 lg:text-[1.1875rem]">
+            {section.body.map((paragraph, paragraphIndex) => (
+              <p key={paragraphIndex} data-story="paragraph" className="text-pretty">
+                <PenText text={paragraph} emphasis={section.emphasis} />
+              </p>
+            ))}
+          </div>
+          {/* The roll call: a short list after the body. The names go out like candles, last to first, at the hook. */}
+          {rollCall !== undefined && rollCall.length > 0 && (
+            <ul data-story="roll-call" aria-label="The ten aboard" className="mt-5 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+              {rollCall.map(entry => (
+                <li key={entry.name} data-story="name" className="leading-tight">
+                  <span className="font-record text-[1rem]">{entry.name}</span>
+                  <span className="font-voice text-[0.6875rem] tracking-[0.08em] text-ghost-night"> · {entry.role}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Quill attribute="data-story" sizeClassName="h-[clamp(2.5rem,4vw,3.75rem)]" />
         </div>
       </div>
       {section.hook !== undefined && (
@@ -200,14 +139,14 @@ export default function StoryScene({ section, index, grade, sentences, loadImage
           aria-hidden="true"
           data-story="hook-moment"
           // Click-through until it appears (Story.tsx): an invisible hook must not cover the text column.
-          className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto max-w-[min(20ch,88vw)] -translate-y-1/2 text-center font-record text-[clamp(1.75rem,1.2rem+3vw,3.75rem)] leading-[1.2] text-balance text-night-ink italic"
+          className="pointer-events-none absolute inset-x-0 top-1/2 z-[4] mx-auto max-w-[min(20ch,88vw)] -translate-y-1/2 text-center font-record text-[clamp(1.75rem,1.2rem+3vw,3.75rem)] leading-[1.2] text-balance text-night-ink italic"
           style={{ opacity: 0 }}
         >
           <HookLetters text={section.hook} />
         </p>
       )}
 
-      {/* The full text. Hidden while the column tells it; shown as a readable panel when it holds the focus. */}
+      {/* The full text. Hidden while the page tells it; shown as a readable panel when it holds the focus. */}
       <div
         data-story="text"
         data-lenis-prevent
