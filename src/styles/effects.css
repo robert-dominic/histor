@@ -36,6 +36,29 @@
   color: var(--color-ghost-ink);
 }
 
+/* A legend's ink drains slowly, visibly, to ghost ink as its stamp lands (investigation brief, item 1). */
+[data-status="legend"] [data-file-ink] {
+  transition: color 2.4s var(--ease-out);
+}
+[data-status="legend"] > [data-paper] {
+  transition-duration: 2.4s;
+}
+
+/* The app's word on the stamp: typed under it on a first opening (OpenFile), simply there on a file read before. */
+[data-file="stamp-note"],
+[data-file="legend-pen"] {
+  opacity: 0;
+}
+[data-revealed="true"] [data-file="stamp-note"],
+[data-revealed="true"] [data-file="legend-pen"] {
+  opacity: 1;
+}
+
+/* A disputed stamp lands a little crooked, and stays that way. */
+[data-revealed="true"][data-status="disputed"] [data-file="stamp"] {
+  transform: rotate(-4deg);
+}
+
 /* Record: the typed letterhead takes the record's official ink, with a rule beneath it. */
 [data-revealed="true"][data-status="record"] [data-file="number"] {
   color: var(--color-record);

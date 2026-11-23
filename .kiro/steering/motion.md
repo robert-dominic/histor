@@ -22,6 +22,8 @@ Every GSAP tween spreads a token: `gsap.to(el, { ...tween('ink.in'), opacity: 1 
 | `paper.move` | `power3.inOut` | 0.6s | A paper travelling across the screen |
 | `paper.land` | `back.out(1.15)` | 0.5s | A paper coming to rest, a small overshoot |
 | `stamp.hit` | `expo.in` | 0.16s | The press of a stamp, then a small settle (`stampHit`) |
+| `stamp.shake` | `power1.inOut` | 0.14s | A record's stamp landing heavy: the folder's tiny shake (about 2px) |
+| `stamp.spread` | `power2.out` | 0.6s | A stamp's ink spreading slightly into the paper as it settles |
 | `hover` | `power2.out` | 0.2s | Hover and focus feedback. CSS mirror: `--motion-hover-ease`, `--motion-hover-duration` |
 | `layout` | `power2.inOut` | 0.5s | Anything that changes place or size (with Flip) |
 | `scene` | `sine.inOut` | 1.2s or more | Camera moves and scene changes |

@@ -11,6 +11,8 @@ const NAMES: TokenName[] = [
   'paper.move',
   'paper.land',
   'stamp.hit',
+  'stamp.shake',
+  'stamp.spread',
   'hover',
   'layout',
   'scene',

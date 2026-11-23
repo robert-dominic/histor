@@ -110,7 +110,7 @@ describe('the writing reveal, first opening', () => {
     expect(stampTween.parent!.startTime() + stampTween.startTime()).toBeGreaterThan(settle.startTime());
   });
 
-  test('blur is only on text: the lines that settle and the letters of the title (the nib\'s ink). Nothing else is blurred', () => {
+  test('blur is only on text: the lines that settle and the letters the pen writes (its ink). Nothing else is blurred', () => {
     renderAt(`${BASE}/files/e-legend-breakfast`);
     const blurred = gsap
       .getTweensOf('*')
@@ -118,7 +118,7 @@ describe('the writing reveal, first opening', () => {
     expect(blurred.length).toBeGreaterThan(0);
     for (const tween of blurred) {
       for (const target of tween.targets() as HTMLElement[]) {
-        expect(target.closest('[data-file-ink], #file-title')).not.toBeNull();
+        expect(target.closest('[data-file-ink], #file-title, [data-file="legend-pen"]')).not.toBeNull();
       }
     }
   });
@@ -240,5 +240,81 @@ describe('portals inside an opened file (story-steps 4)', () => {
     expect(rebuilt).not.toBe(name);
     fireEvent.keyDown(rebuilt, { key: 'Enter' });
     expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
+  });
+});
+
+describe('every stamp is a moment (investigation 1)', () => {
+  const ofStatus = (status: 'record' | 'disputed' | 'legend') => CASE.evidence.find(evidence => evidence.status === status)!;
+  const note = () => document.querySelector<HTMLElement>('[data-file="stamp-note"]');
+  const penLine = () => document.querySelector<HTMLElement>('[data-file="legend-pen"]');
+  /** When a tween on the reveal's timeline starts, in the timeline's time. */
+  const at = (tween: gsap.core.Tween) => (tween.parent === timelineOf() ? tween.startTime() : tween.parent!.startTime() + tween.startTime());
+  const landedAt = () => {
+    const press = gsap.getTweensOf(stamp())[0];
+    return at(press) + press.duration();
+  };
+
+  test('a record lands heavy: a tiny shake of the folder, the ink spreading, then its note typed', () => {
+    renderAt(`${BASE}/files/${ofStatus('record').id}`);
+    const shake = gsap.getTweensOf(document.querySelector('[data-file="grip"]')!).find(tween => tween.vars.keyframes !== undefined)!;
+    const offsets = (shake.vars.keyframes as { x: number[] }).x;
+    expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(2);
+    expect(shake.duration()).toBeLessThan(0.15);
+    expect(gsap.getTweensOf(stamp()).some(tween => tween.vars.ease === 'power2.out' && (tween.vars.scale as number) > 1)).toBe(true);
+    expect(note()?.textContent).toBe('Written down at the time.');
+    const letters = [...note()!.querySelectorAll<HTMLElement>('*')].filter(element => element.children.length === 0);
+    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
+    expect(at(gsap.getTweensOf(letters[0])[0])).toBeGreaterThanOrEqual(landedAt());
+  });
+
+  test('a disputed stamp lands a little crooked, with its note', () => {
+    renderAt(`${BASE}/files/${ofStatus('disputed').id}`);
+    const crooked = gsap.getTweensOf(stamp()).find(tween => tween.vars.rotation !== undefined)!;
+    expect(crooked.vars.rotation).toBe(-4);
+    expect(note()?.textContent).toBe('Historians argue over this one.');
+    expect(document.querySelector('[data-file="sheet-two"]')).not.toBeNull();
+  });
+
+  test('a legend: the ink drains, then the pen writes "You almost believed this." at the foot of the page', () => {
+    renderAt(`${BASE}/files/${ofStatus('legend').id}`);
+    expect(note()).toBeNull();
+    expect(penLine()?.textContent).toBe('You almost believed this.');
+    const letters = [...penLine()!.querySelectorAll<HTMLElement>('*')].filter(element => element.children.length === 0);
+    const firstLetter = gsap.getTweensOf(letters[0])[0];
+    expect(at(firstLetter)).toBeGreaterThan(landedAt() + 2);
+    expect(gsap.getTweensOf('[data-file-pen="quill-body"]').length).toBeGreaterThan(0);
+  });
+
+  test('one sound event per kind of stamp, as it lands', () => {
+    for (const status of ['record', 'disputed', 'legend'] as const) {
+      cleanup();
+      localStorage.removeItem(KEY);
+      const events: StoryEvent[] = [];
+      const stop = onStoryEvent(event => events.push(event));
+      try {
+        renderAt(`${BASE}/files/${ofStatus(status).id}`);
+        timelineOf().progress(1);
+      } finally {
+        stop();
+      }
+      expect(events.filter(event => event.type.startsWith('stamp:')).map(event => event.type)).toEqual([`stamp:${status}`]);
+    }
+  });
+
+  test('a file read before opens quietly: its note is simply there, nothing typed', () => {
+    localStorage.setItem(KEY, JSON.stringify({ opened: [ofStatus('record').id], pins: {}, verdict: null }));
+    renderAt(`${BASE}/files/${ofStatus('record').id}`);
+    expect(sheet().getAttribute('data-revealed')).toBe('true');
+    expect(note()!.querySelectorAll('*')).toHaveLength(0);
+    expect(gsap.getTweensOf(document.querySelector('[data-file="grip"]')!)).toHaveLength(0);
+  });
+
+  test('reduced motion: the stamp and the note simply appear', () => {
+    vi.unstubAllGlobals();
+    stubDesktop({ reduced: true });
+    renderAt(`${BASE}/files/${ofStatus('legend').id}`);
+    expect(penLine()!.querySelectorAll('*')).toHaveLength(0);
+    expect(gsap.getTweensOf('[data-file-pen="quill-body"]')).toHaveLength(0);
+    expect(gsap.getTweensOf(document.querySelector('[data-file="grip"]')!)).toHaveLength(0);
   });
 });

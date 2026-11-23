@@ -13,6 +13,7 @@
 import type { ReactNode, Ref } from 'react';
 import Nib from '@/components/Nib';
 import Stamp from '@/components/Stamp';
+import { STAMP_NOTE } from '@/lib/ui-copy';
 import PortalText from '@/features/portals/PortalText';
 import { STATUS_LABEL } from '@/lib/case-files';
 import { firstSentence } from '@/lib/desk';
@@ -132,6 +133,12 @@ export default function FileDocument({ evidence, number, headingRef, revealed, c
                 <RecordSeal />
               </span>
             )}
+            {/* The app's word on the stamp, typed under it as it lands (a legend's is written at the foot instead). */}
+            {evidence.status !== 'legend' && (
+              <p data-file="stamp-note" className="max-w-[11rem] text-right font-voice text-[0.75rem] leading-snug text-ink/80">
+                {STAMP_NOTE[evidence.status]}
+              </p>
+            )}
           </div>
         </div>
 
@@ -142,6 +149,16 @@ export default function FileDocument({ evidence, number, headingRef, revealed, c
             </p>
           ))}
         </div>
+
+        {/* Legend: once the ink has drained, the pen writes the app's word at the foot of the page. */}
+        {evidence.status === 'legend' && (
+          <div className="relative mt-7 text-right">
+            <p data-file="legend-pen" className="inline-block font-record text-[1.125rem] text-ink italic">
+              {STAMP_NOTE.legend}
+            </p>
+            <Nib attribute="data-file-pen" />
+          </div>
+        )}
 
         {evidence.status === 'disputed' && (
           <section

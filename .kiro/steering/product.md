@@ -110,6 +110,11 @@ Refined during the build. Working direction: dry, a little mischievous, never ch
 - "Most people stop here."
 - "You trusted a legend. Happens to the best of us."
 
+When a file's stamp lands on its first opening, the app says one line (shared UI copy, `src/lib/ui-copy.ts`, never case data):
+- Record: "Written down at the time."
+- Disputed: "Historians argue over this one."
+- Legend: "You almost believed this." (written by the pen at the foot of the page)
+
 ## Atmosphere
 
 One shared design system: type, files, statuses, board, stamps, portals, case report. Each case adds its own atmosphere from its own folder of assets: images, maps, portraits, sounds and theme colours.

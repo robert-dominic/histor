@@ -56,12 +56,30 @@ const REVEAL = {
   /** A breath between the title and the text settling in. */
   pause: 0.15,
 } as const;
-/** A legend's drifting ink: each word dims to `dim` and returns over `wave` seconds, in `waves` slow waves. */
+/**
+ * A legend's drifting ink: each word dims to `dim` and returns over `wave` seconds, in `waves` slow waves. Slower
+ * and deeper than it was, so the reader sees the ink drain (investigation brief, item 1).
+ */
 const DRIFT = {
-  dim: 0.72,
-  each: 0.07,
-  rest: 3.5,
+  dim: 0.45,
+  each: 0.1,
+  rest: 4,
   waves: 3,
+} as const;
+
+/** The stamp's moments on a first opening (investigation brief, item 1). */
+const STAMP_MOMENT = {
+  /** A record's folder shakes this far, in px. */
+  shake: 2,
+  /** A record's ink spreads to this scale as it settles. */
+  spread: 1.015,
+  /** A disputed stamp lands this crooked, in degrees (effects.css keeps it so). */
+  crooked: -4,
+  /** The app's note under the stamp is typed at this many letters a second. */
+  typeRate: 30,
+  /** A legend's pen line: written this long after the stamp lands (the ink has drained), at this many letters a second. */
+  legendPenAfter: 2.6,
+  penRate: 14,
 } as const;
 
 /** How far the cover swings open: almost flat, still lifted a little off the desk. */
@@ -292,10 +310,48 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           () => {
             rootRef.current?.querySelector('[data-file="sheet"]')?.setAttribute('data-revealed', 'true');
             emitStoryEvent({ type: 'stamp', evidence: evidence.id, status: evidence.status });
+            emitStoryEvent({ type: `stamp:${evidence.status}`, evidence: evidence.id });
           },
           undefined,
           landed
         );
+
+        // Every stamp is a moment (investigation brief, item 1). Under reduced motion the stamp and its note simply
+        // appear (effects.css, keyed on data-revealed).
+        const stamp = rootRef.current?.querySelector<HTMLElement>('[data-file="stamp"]') ?? null;
+        /** The letters of the app's lines, split to be typed or written: put back when the file closes. */
+        const momentParts: SplitText[] = [];
+        /** Types a line of the app's voice, letter by letter, from `at`. Returns when it is done. */
+        const type = (element: HTMLElement | null | undefined, at: number) => {
+          if (element == null || reduced) {
+            return at;
+          }
+          const typed = SplitText.create(element, { type: 'chars', aria: 'none' });
+          momentParts.push(typed);
+          const letters = typed.chars as HTMLElement[];
+          gsap.set(letters, { opacity: 0 });
+          letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, at + index / STAMP_MOMENT.typeRate));
+          return at + letters.length / STAMP_MOMENT.typeRate;
+        };
+        const note = rootRef.current?.querySelector<HTMLElement>('[data-file="stamp-note"]');
+        if (evidence.status === 'record' && !reduced) {
+          // It lands heavy: the folder gives a tiny shake, and the ink spreads a little as it settles.
+          timeline.to(
+            '[data-file="grip"]',
+            { keyframes: { x: [0, -STAMP_MOMENT.shake, STAMP_MOMENT.shake, -STAMP_MOMENT.shake / 2, 0] }, ...tween('stamp.shake') },
+            stampAt + MOTION['stamp.hit'].duration
+          );
+          if (stamp !== null) {
+            timeline.fromTo(stamp, { scale: 1 }, { scale: STAMP_MOMENT.spread, ...tween('stamp.spread') }, landed);
+          }
+        }
+        if (evidence.status === 'disputed' && !reduced && stamp !== null) {
+          // It lands a little crooked.
+          timeline.fromTo(stamp, { rotation: 0 }, { rotation: STAMP_MOMENT.crooked, ...tween('paper.land') }, landed - STEP.fast);
+        }
+        if (evidence.status !== 'legend') {
+          type(note, landed + STEP.base);
+        }
 
         if (evidence.status === 'record') {
           // The seal presses in beside the stamp.
@@ -342,10 +398,22 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             });
             timeline.call(() => drift(), undefined, landed + 1.2);
           }
+          // Once the ink has drained, the pen writes the app's word at the foot of the page.
+          const line = rootRef.current?.querySelector<HTMLElement>('[data-file="legend-pen"]');
+          const penPoint = rootRef.current?.querySelector<HTMLElement>('[data-file-pen="quill"]');
+          const penBody = rootRef.current?.querySelector<HTMLElement>('[data-file-pen="quill-body"]');
+          if (!reduced && line != null && penPoint != null && penBody != null) {
+            const written = SplitText.create(line, { type: 'chars', aria: 'none' });
+            momentParts.push(written);
+            const letters = written.chars as HTMLElement[];
+            gsap.set(letters, { opacity: 0 });
+            createQuillWriter(penPoint, penBody).write(timeline, letters, landed + STAMP_MOMENT.legendPenAfter, letters.length / STAMP_MOMENT.penRate);
+          }
         }
         return () => {
           skipRef.current = null;
           parts.forEach(part => part.revert());
+          momentParts.forEach(part => part.revert());
           split?.revert();
         };
       });

@@ -22,6 +22,8 @@ export type StoryEvent =
   | { type: 'folder-open'; evidence: string }
   | { type: 'flip'; evidence: string; direction: 'open' | 'close' }
   | { type: 'stamp'; evidence: string; status: EvidenceStatus }
+  // The same moment, one event per kind of stamp, for its own sound.
+  | { type: 'stamp:record' | 'stamp:disputed' | 'stamp:legend'; evidence: string }
   | { type: 'pin'; evidence: string; target: PinTarget }
   | { type: 'seal'; where: 'desk' | 'verdict' };
 

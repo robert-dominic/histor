@@ -14,6 +14,8 @@ export type TokenName =
   | 'paper.move'
   | 'paper.land'
   | 'stamp.hit'
+  | 'stamp.shake'
+  | 'stamp.spread'
   | 'hover'
   | 'layout'
   | 'scene'
@@ -47,6 +49,10 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'paper.land': { ease: 'back.out(1.15)', duration: 0.5 },
   /** The press of a stamp: a hard drop. `stampHit` follows it with a settle. */
   'stamp.hit': { ease: 'expo.in', duration: 0.16 },
+  /** A record's stamp landing heavy: the folder gives a tiny shake (about 2px). `duration` is the whole shake. */
+  'stamp.shake': { ease: 'power1.inOut', duration: 0.14 },
+  /** The ink of a stamp spreading slightly into the paper as it settles. */
+  'stamp.spread': { ease: 'power2.out', duration: 0.6 },
   /** Hover and focus feedback. Mirrored in CSS as --motion-hover-ease and --motion-hover-duration. */
   hover: { ease: 'power2.out', duration: 0.2 },
   /** Things changing place or size (used with Flip). */
