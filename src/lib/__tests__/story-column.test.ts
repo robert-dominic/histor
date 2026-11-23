@@ -1,7 +1,7 @@
 // src/lib/__tests__/story-column.test.ts
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { COLUMN, columnLines, columnPlan, columnSeconds, sentenceSeconds } from '@/lib/story-column';
+import { COLUMN, columnLines, columnPlan, columnSeconds, sentenceSeconds, SCROLL_FEEL } from '@/lib/story-column';
 import { splitIntoBeats } from '@/lib/story-beats';
 
 const words = (count: number) => Array.from({ length: count }, (_, index) => `word${index}`).join(' ') + '.';
@@ -13,6 +13,15 @@ describe('COLUMN', () => {
     expect(COLUMN.visibleLines).toBeGreaterThanOrEqual(3);
     expect(COLUMN.visibleLines).toBeLessThanOrEqual(4);
     expect(COLUMN.scrub).toBeGreaterThan(0);
+  });
+});
+
+describe('SCROLL_FEEL: the story is slower on a trackpad', () => {
+  test('about twice the scroll per sentence as before (0.15 of the screen, 80 to 140px), and a wheel at 0.8', () => {
+    expect(SCROLL_FEEL.pxPerSecond.share).toBeCloseTo(0.15 * 2, 6);
+    expect(SCROLL_FEEL.pxPerSecond.min).toBe(80 * 2);
+    expect(SCROLL_FEEL.pxPerSecond.max).toBe(140 * 2);
+    expect(SCROLL_FEEL.wheelMultiplier).toBe(0.8);
   });
 });
 

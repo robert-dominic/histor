@@ -9,13 +9,15 @@ import gsap from 'gsap';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { LINEAR } from '@/lib/motion';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
+import { SCROLL_FEEL } from '@/lib/story-column';
 
 gsap.registerPlugin(ScrollToPlugin);
 
-/** Pixels of scroll for one second of the story's timeline. Proportional to the screen, within limits. */
+/** Pixels of scroll for one second of the story's timeline. Proportional to the screen, within limits (SCROLL_FEEL). */
 export function pxPerSecond(): number {
   const height = typeof window === 'undefined' ? 800 : window.innerHeight;
-  return Math.min(140, Math.max(80, height * 0.15));
+  const { share, min, max } = SCROLL_FEEL.pxPerSecond;
+  return Math.min(max, Math.max(min, height * share));
 }
 
 /** Where playing stops: the fork, just below the case header, or else the end of the page. */

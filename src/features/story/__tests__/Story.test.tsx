@@ -12,7 +12,7 @@ import Story from '@/features/story/Story';
 import { AUTO_LEAVE } from '@/features/story/PlayCard';
 import { pxPerSecond } from '@/features/story/use-story-player';
 import { parseRefs } from '@/lib/parse-refs';
-import { setLenis } from '@/lib/smooth-scroll';
+import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { splitIntoBeats } from '@/lib/story-beats';
 import { COLUMN, columnLines, columnPlan } from '@/lib/story-column';
@@ -342,6 +342,12 @@ describe('Story: play the story', () => {
     expect(control.getAttribute('aria-pressed')).toBe('false');
   });
 
+  test('while the story is on the page the wheel is slower, and it is normal again once the story goes', () => {
+    const { unmount } = renderStory();
+    expect(wheelMultiplier()).toBe(0.8);
+    unmount();
+    expect(wheelMultiplier()).toBe(1);
+  });
   test('the play card is hidden until the reader has scrolled past the opening', () => {
     const { container } = renderStory(maryCeleste, true);
     const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
@@ -822,7 +828,7 @@ describe('Story: the other parts, with the column', () => {
         expect(column.className).toContain('w-[min(32ch,88vw)]');
         expect(column.querySelectorAll('[data-story="sentence"]').length).toBeGreaterThan(0);
       }
-      expect(pxPerSecond()).toBeGreaterThanOrEqual(80);
+      expect(pxPerSecond()).toBeGreaterThanOrEqual(160);
     } finally {
       Object.assign(window, { innerWidth, innerHeight });
     }

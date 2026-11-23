@@ -7,7 +7,7 @@
 // Under reduced motion the chapters are plain stacked sections with still images, and the text only fades in.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -25,9 +25,9 @@ import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
-import { scrollToY } from '@/lib/smooth-scroll';
+import { scrollToY, setWheelMultiplier } from '@/lib/smooth-scroll';
 import { rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
-import { COLUMN, columnPlan } from '@/lib/story-column';
+import { COLUMN, SCROLL_FEEL, columnPlan } from '@/lib/story-column';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
@@ -131,6 +131,15 @@ export default function Story({ story, centralQuestion, references, sources, voy
   const grades = useMemo(() => story.map((_, index) => imageGrade(index, count)), [story, count]);
   const sentences = useMemo(() => story.map(section => section.body.flatMap(splitIntoBeats)), [story]);
   const route = useMemo(() => buildRoute(voyage, story), [voyage, story]);
+
+  // While the story is on the page, a wheel or trackpad moves it less (SCROLL_FEEL), so the text does not race.
+  useEffect(() => {
+    if (!cinematic) {
+      return;
+    }
+    setWheelMultiplier(SCROLL_FEEL.wheelMultiplier);
+    return () => setWheelMultiplier(1);
+  }, [cinematic]);
 
   /** "Read at my pace": a short glide to the first scene. */
   const goToFirstScene = useCallback(() => {

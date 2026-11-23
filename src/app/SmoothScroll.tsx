@@ -8,7 +8,7 @@ import { useEffect, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
-import { setLenis } from '@/lib/smooth-scroll';
+import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 export default function SmoothScroll({ children }: { children: ReactNode }) {
@@ -23,7 +23,19 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     }
     gsap.registerPlugin(ScrollTrigger);
     // autoRaf is off: GSAP's ticker is the one clock (Lenis wants milliseconds, GSAP gives seconds).
-    const lenis = new Lenis({ autoRaf: false });
+    // A page can ask for a slower wheel (the story does): Lenis's public `virtualScroll` hook scales each wheel
+    // movement before Lenis uses it.
+    const lenis = new Lenis({
+      autoRaf: false,
+      virtualScroll: data => {
+        const scale = wheelMultiplier();
+        if (scale !== 1 && data.event.type.includes('wheel')) {
+          data.deltaX *= scale;
+          data.deltaY *= scale;
+        }
+        return true;
+      },
+    });
     lenis.on('scroll', ScrollTrigger.update);
     const tick = (time: number) => lenis.raf(time * 1000);
     gsap.ticker.add(tick);

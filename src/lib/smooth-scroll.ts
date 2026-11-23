@@ -10,6 +10,22 @@ gsap.registerPlugin(ScrollToPlugin);
 
 let instance: Lenis | null = null;
 
+/** What every wheel or trackpad movement is multiplied by: 1, or less while a page asks for a slower scroll. */
+let wheelScale = 1;
+
+/**
+ * Makes wheel and trackpad scrolling slower (below 1) or back to normal (1), for the page now on screen. Read on
+ * every wheel event, so it takes effect at once, with or without a smooth scroller yet.
+ */
+export function setWheelMultiplier(multiplier: number): void {
+  wheelScale = multiplier;
+}
+
+/** The wheel multiplier now asked for. */
+export function wheelMultiplier(): number {
+  return wheelScale;
+}
+
 /** Called by SmoothScroll only. */
 export function setLenis(lenis: Lenis | null): void {
   instance = lenis;

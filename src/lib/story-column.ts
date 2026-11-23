@@ -18,6 +18,21 @@ export const COLUMN = {
   scrub: 1.2,
 } as const;
 
+/**
+ * How the story's scroll feels, in one place, to be tuned by feel (story-dread 1.2). On a trackpad the column moved
+ * too fast, so:
+ *   `pxPerSecond`: pixels of scroll for one second of the story's timeline, as a share of the screen's height,
+ *   within limits. One sentence's scroll is its seconds (at least `COLUMN.minSeconds`) times this, so doubling it
+ *   doubles every sentence's distance, the minimum included. Was 0.15 of the screen, 80 to 140px; now about twice
+ *   that. "Play the story" scrolls at the same rate, so its reading pace does not change.
+ *   `wheelMultiplier`: Lenis's wheel multiplier while the story is on the page (1 elsewhere). Below 1, each wheel or
+ *   trackpad flick moves the page less.
+ */
+export const SCROLL_FEEL = {
+  pxPerSecond: { share: 0.3, min: 160, max: 280 },
+  wheelMultiplier: 0.8,
+} as const;
+
 /** Lines of height the column adds when a sentence is too long to fit the band (see `columnLines`). */
 const LONG_SENTENCE = { characters: 150, extraLines: 2 } as const;
 
