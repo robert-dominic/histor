@@ -196,12 +196,12 @@ describe('threads and the other tabs when a pin changes', () => {
     expect(document.querySelectorAll('[data-board="threads"] path')).toHaveLength(0);
   });
 
-  test("a thread runs from the note's pin to the pin on its pile's top file, with the one gentle sag", () => {
+  test("a thread runs from the note's pin to the pin at the top of its cascade, with the one gentle sag", () => {
     seed({ 'e-lifeboat': A, 'e-sword': A });
     const boxAt = (x: number, y: number) => ({ left: x, top: y, width: 0, height: 0, right: x, bottom: y, x, y, toJSON: () => ({}) }) as DOMRect;
     renderDesk();
     const anchor = document.querySelector(`[data-board="theory"][data-theory-id="${A}"] [data-board="anchor"]`)!;
-    const end = document.querySelector(`[data-board="pile"][data-theory-id="${A}"] [data-board="pile-top"] [data-board="tab-pin"]`)!;
+        const end = document.querySelector(`[data-board="cascade"][data-theory-id="${A}"] [data-board="cascade-pin"]`)!;
     vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue(boxAt(100, 40));
     vi.spyOn(end, 'getBoundingClientRect').mockReturnValue(boxAt(120, 140));
     // Measured again once a move on the desk has finished.

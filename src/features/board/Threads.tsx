@@ -1,12 +1,12 @@
 // src/features/board/Threads.tsx
 // Thin rust-night threads from the theory notes to the files pinned to them, pinned at both ends, each with the same
 // gentle sag, like real thread.
-//   The desktop desk: one thread per theory, from the brass pin at the foot of its note to the pin on the top file of
-//   its pile. The "None of them" tray has no thread.
+//   The desktop desk: one thread per theory, from the brass pin at the foot of its note to the pin at the top of
+//   its cascade of files. The "None of them" tray has no thread.
 //   The phone desk: one thread per file, from the note's pin to the pin on the file's tab.
 // Decorative (aria-hidden): the files themselves sit under their note, and say so to screen readers.
 // Both ends are measured from the real elements after layout, again after every Flip on the desk has finished
-// (`onDeskLayout`), and again whenever the board, a note or a pile changes size (a ResizeObserver), so a thread never
+// (`onDeskLayout`), and again whenever the board, a note or a cascade changes size (a ResizeObserver), so a thread never
 // points somewhere stale. The paths are written straight to the SVG, never through React state.
 // When a pin changes nothing snaps: the thread that moves fades out where it was (ink.out), then draws in at its new
 // place once the tab has landed; a thread that goes away (the file is unpinned or set aside) fades out where it hung.
@@ -23,13 +23,13 @@ export const THREAD_SAG = 12;
 export interface Thread {
   id: string;
   theoryId: string;
-  /** The files it stands for: one, or every file in the theory's pile. */
+  /** The files it stands for: one, or every file pinned to the theory. */
   evidenceIds: string[];
 }
 
 interface ThreadsProps {
   threads: Thread[];
-  /** True on the desktop desk: one thread per theory, ending at its pile. */
+  /** True on the desktop desk: one thread per theory, ending at the top of its cascade. */
   perTheory?: boolean;
   /** The file just pinned: its thread draws in from the note, once per `token`. */
   fresh?: { evidenceId: string; token: string } | null;
@@ -64,10 +64,10 @@ export default function Threads({ threads, perTheory = false, fresh = null }: Th
     const canQuery = typeof window.matchMedia === 'function';
     const reduced = canQuery && window.matchMedia(MOTION_QUERIES.reduced).matches;
 
-    /** Where a thread ends: the pin on its pile's top file, or on its file's tab. */
+    /** Where a thread ends: the pin at the top of its theory's cascade, or on its file's tab. */
     const endOf = (path: SVGPathElement) =>
       perTheory
-        ? board.querySelector(`[data-board="pile"][data-theory-id="${path.dataset.theoryId}"] [data-board="pile-top"] [data-board="tab-pin"]`)
+        ? board.querySelector(`[data-board="cascade"][data-theory-id="${path.dataset.theoryId}"] [data-board="cascade-pin"]`)
         : board.querySelector(`[data-board="tab"][data-evidence-id="${path.dataset.threadId}"] [data-board="tab-pin"]`);
     /** Places one thread between its note's pin and its end. */
     const drawOne = (path: SVGPathElement, origin: DOMRect) => {
@@ -178,7 +178,7 @@ export default function Threads({ threads, perTheory = false, fresh = null }: Th
     // fonts have loaded (they change the notes' heights).
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(draw) : null;
     observer?.observe(board);
-    for (const element of board.querySelectorAll('[data-board="theory"], [data-board="pile"], [data-board="tab"]')) {
+    for (const element of board.querySelectorAll('[data-board="theory"], [data-board="cascade"], [data-board="tab"]')) {
       observer?.observe(element);
     }
     const stopListening = onDeskLayout(draw);

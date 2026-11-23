@@ -286,17 +286,15 @@
   }
 }
 
-/* ---- A pile's panel while one of its tabs is carried out (TheoryPile.tsx `carryOut`) ----
-   It stops clipping, so the tab in the hand shows wherever it goes; its paper and the other tabs fade away. */
-[data-board="pile-panel"] > [data-board="pile-panel-bg"],
-[data-board="pile-panel"] [data-board="tab"] {
+/* ---- A cascade of pinned files while one of its tabs is carried out (pile.ts `carryOut`) ----
+   It stops clipping, so the tab in the hand shows wherever it goes; the other tabs fade away meanwhile. */
+[data-board="cascade-scroll"] [data-board="tab"] {
   transition: opacity var(--motion-hover-duration) var(--motion-hover-ease);
 }
-[data-board="pile-panel"][data-carrying="true"] {
+[data-board="cascade-scroll"][data-carrying="true"] {
   overflow: visible;
 }
-[data-board="pile-panel"][data-carrying="true"] > [data-board="pile-panel-bg"],
-[data-board="pile-panel"][data-carrying="true"] [data-board="tab"]:not([data-carried="true"]) {
+[data-board="cascade-scroll"][data-carrying="true"] [data-board="tab"]:not([data-carried="true"]) {
   opacity: 0;
 }
 

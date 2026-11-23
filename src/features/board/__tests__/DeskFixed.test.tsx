@@ -111,19 +111,27 @@ describe('the desktop desk', () => {
     expect(screen.queryByText('Set aside')).toBeNull();
   });
 
-  test('the files pinned to a theory lie in one pile under its note, not a column: the board never grows', () => {
-    const six = maryCeleste.evidence.slice(0, 6).map(item => item.id);
+  test('pinned files are always in view: a cascade of strips under the theory, scrolling inside itself; the board never grows', () => {
+    const all = maryCeleste.evidence.map(item => item.id);
     localStorage.setItem(
       KEY,
-      JSON.stringify({ opened: six, pins: Object.fromEntries(six.map(id => [id, maryCeleste.theories[0].id])), verdict: null })
+      JSON.stringify({ opened: all, pins: Object.fromEntries(all.map(id => [id, maryCeleste.theories[0].id])), verdict: null })
     );
     renderDesk();
     const board = desk().querySelector('[data-board="board"]') as HTMLElement;
-    expect(board.querySelectorAll('[data-board="pile"]')).toHaveLength(1);
-    // The tabs are only in the pile's panel, closed until it is opened.
-    const panel = board.querySelector<HTMLElement>('[data-board="pile-panel"]')!;
-    expect(panel.hidden).toBe(true);
-    expect(panel.querySelectorAll('[data-board="tab"]')).toHaveLength(6);
+    const cascade = board.querySelector<HTMLElement>(`[data-board="cascade"][data-theory-id="${maryCeleste.theories[0].id}"]`)!;
+    const strips = [...cascade.querySelectorAll<HTMLElement>('[data-board="tab"]')];
+    expect(strips).toHaveLength(all.length);
+    // Every strip shows its number and label; nothing is hidden to hover over.
+    expect(strips.every(strip => strip.closest('[hidden]') === null)).toBe(true);
+    expect(strips[0].textContent).toContain(maryCeleste.evidence[0].title);
+    expect(board.querySelector('[data-board="pile-panel"]')).toBeNull();
+    // Slightly overlapping, and scrolling inside itself.
+    expect(cascade.querySelector('[data-board="tabs"]')?.className).toContain('[&>li+li]:-mt-2.5');
+    const scroller = cascade.querySelector<HTMLElement>('[data-board="cascade-scroll"]')!;
+    expect(scroller.className).toContain('overflow-y-auto');
+    expect(scroller.className).toContain('thin-scroll');
+    expect(cascade.className).toContain('min-h-0');
   });
 });
 

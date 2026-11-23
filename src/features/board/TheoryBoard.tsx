@@ -8,7 +8,7 @@ import { useId, useRef, useState } from 'react';
 import HangingTab, { type SlipReading } from '@/features/board/HangingTab';
 import TheoryCard from '@/features/board/TheoryCard';
 import TheoryNote from '@/features/board/TheoryNote';
-import TheoryPile from '@/features/board/TheoryPile';
+import TheoryCascade from '@/features/board/TheoryCascade';
 import Threads, { type Thread } from '@/features/board/Threads';
 import type { DeskLayout } from '@/lib/desk';
 import { SMALL_PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query';
@@ -30,7 +30,7 @@ interface TheoryBoardProps {
   filesHref: string;
   slips: DeskSlips;
   /** The one-screen desk: the board fills the row it is given, and the files pinned to a theory lie in a tidy pile
-   * under its note (TheoryPile), so the board never grows. */
+   * under its note as a cascade of strips that scrolls inside itself (TheoryCascade), so the board never grows. */
   fitted?: boolean;
 }
 
@@ -143,12 +143,18 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
       </h3>
       {/* The threads run behind the paper, so they show in the gaps between a note and its files. */}
       <Threads threads={threads} perTheory={fitted} fresh={slips.fresh} />
-      <div className="relative flex snap-x gap-5 overflow-x-auto pb-2 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0">
+      <div
+        className={`relative flex snap-x gap-5 overflow-x-auto pb-2 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0 ${fitted ? 'lg:h-full lg:min-h-0' : ''}`}
+      >
         {caseData.theories.map(theory => (
-          <div key={theory.id} data-board="column" className="w-[15rem] shrink-0 snap-start lg:w-auto">
+          <div
+            key={theory.id}
+            data-board="column"
+            className={`w-[15rem] shrink-0 snap-start lg:w-auto ${fitted ? 'lg:flex lg:min-h-0 lg:flex-col' : ''}`}
+          >
             <TheoryNote theory={theory} className="relative z-[2]" fitted={fitted} />
             {fitted ? (
-              <TheoryPile
+              <TheoryCascade
                 theoryId={theory.id}
                 theoryTitle={theory.title}
                 files={layout.byTheory.get(theory.id) ?? []}
