@@ -79,7 +79,8 @@ const STAMP_MOMENT = {
   typeRate: 30,
   /** A legend's pen line: written this long after the stamp lands (the ink has drained), at this many letters a second. */
   legendPenAfter: 2.6,
-  penRate: 14,
+  /** About 25% faster than the first 14 (polish brief, A2): still slow enough to creep, no longer a wait. */
+  penRate: 17.5,
 } as const;
 
 /** How far the cover swings open: almost flat, still lifted a little off the desk. */
