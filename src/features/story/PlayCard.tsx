@@ -1,10 +1,12 @@
 // src/features/story/PlayCard.tsx
 // The small card at the bottom centre that offers "Play the story" or "Read at my pace". It slides up after the
-// reader's first scroll past the opening scene, and goes away when either is chosen. It is not a dialog: it takes
+// reader's first scroll past the opening scene, and goes away when either is chosen. It never waits for an answer:
+// if the reader keeps scrolling while it is shown (`AUTO_LEAVE` of a screen past where it appeared), it slides away
+// by itself, and that counts as "Read at my pace" (scrolling is the answer). It is not a dialog: it takes
 // no layout space, does not lock the scroll and sits over nothing that has to stay clickable (it leaves again when
 // the story is behind the reader). It shows once per visit until it is chosen, and never under reduced motion,
 // where there is nothing to play.
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import gsap from 'gsap';
 import type { StoryPlayer } from '@/features/story/use-story-player';
 import { tween } from '@/lib/motion';
@@ -21,8 +23,18 @@ interface PlayCardProps {
   storyRef: RefObject<HTMLElement | null>;
 }
 
-/** True once the reader has scrolled past the opening scene (or, with no opening, past the story's own top). */
+/** How far the reader scrolls on while the card is shown, as a share of the screen's height, before it leaves. */
+export const AUTO_LEAVE = 0.6;
+
+/**
+ * True once the reader has scrolled past the opening scene. Where the opening lies over the first scene (the
+ * cinematic story), the story says so itself (`data-past-opening`); otherwise it is the opening's own bottom, or with
+ * no opening the story's own top.
+ */
 function pastOpening(story: HTMLElement): boolean {
+  if (story.dataset.pastOpening !== undefined) {
+    return story.dataset.pastOpening === 'true';
+  }
   const opening = story.querySelector('[data-story="opening"]');
   return opening === null ? story.getBoundingClientRect().top <= 0 : opening.getBoundingClientRect().bottom <= 1;
 }
@@ -39,39 +51,8 @@ export default function PlayCard({ player, onRead, storyRef }: PlayCardProps) {
   const [gone, setGone] = useState(false);
   const active = player !== null && !gone;
 
-  useEffect(() => {
-    const story = storyRef.current;
-    const card = cardRef.current;
-    if (!active || story === null || card === null) {
-      return;
-    }
-    const slide = (show: boolean) => {
-      if (shownRef.current === show || chosenRef.current) {
-        return;
-      }
-      shownRef.current = show;
-      gsap.killTweensOf(card);
-      if (show) {
-        gsap.fromTo(card, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ...tween('paper.lift') });
-      } else {
-        gsap.to(card, { autoAlpha: 0, y: 12, ...tween('ink.out') });
-      }
-    };
-    const check = () => slide(pastOpening(story) && !pastStory(story));
-    window.addEventListener('scroll', check, { passive: true });
-    check();
-    return () => {
-      window.removeEventListener('scroll', check);
-      gsap.killTweensOf(card);
-    };
-  }, [active, storyRef]);
-
-  if (!active) {
-    return null;
-  }
-
   /** Sends the card away, then does what was chosen. */
-  const choose = (action: () => void) => {
+  const choose = useCallback((action: () => void) => {
     chosenRef.current = true;
     gsap.killTweensOf(cardRef.current);
     gsap.to(cardRef.current, {
@@ -81,7 +62,49 @@ export default function PlayCard({ player, onRead, storyRef }: PlayCardProps) {
       onComplete: () => setGone(true),
     });
     action();
-  };
+  }, []);
+
+  useEffect(() => {
+    const story = storyRef.current;
+    const card = cardRef.current;
+    if (!active || story === null || card === null) {
+      return;
+    }
+    /** Where the page was scrolled when the card last appeared. */
+    let shownAt = 0;
+    const slide = (show: boolean) => {
+      if (shownRef.current === show || chosenRef.current) {
+        return;
+      }
+      shownRef.current = show;
+      gsap.killTweensOf(card);
+      if (show) {
+        shownAt = window.scrollY;
+        gsap.fromTo(card, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ...tween('paper.lift') });
+      } else {
+        gsap.to(card, { autoAlpha: 0, y: 12, ...tween('ink.out') });
+      }
+    };
+    const check = () => {
+      // Scrolling on is the answer: "Read at my pace". The card slides away and does not come back.
+      if (shownRef.current && !chosenRef.current && window.scrollY - shownAt > window.innerHeight * AUTO_LEAVE) {
+        choose(() => undefined);
+        return;
+      }
+      slide(pastOpening(story) && !pastStory(story));
+    };
+    window.addEventListener('scroll', check, { passive: true });
+    check();
+    return () => {
+      window.removeEventListener('scroll', check);
+      gsap.killTweensOf(card);
+    };
+  }, [active, storyRef, choose]);
+
+  if (!active) {
+    return null;
+  }
+
 
   return (
     <div

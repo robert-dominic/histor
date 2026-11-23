@@ -9,6 +9,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Story from '@/features/story/Story';
+import { AUTO_LEAVE } from '@/features/story/PlayCard';
 import { pxPerSecond } from '@/features/story/use-story-player';
 import { parseRefs } from '@/lib/parse-refs';
 import { setLenis } from '@/lib/smooth-scroll';
@@ -390,6 +391,31 @@ describe('Story: play the story', () => {
     // Once chosen it is not shown again this visit.
     scrollPastOpening(container);
     expect(container.querySelector('[data-story="play-card"]')).toBeNull();
+  });
+  test('the card leaves by itself when the reader keeps scrolling: scrolling counts as "Read at my pace"', () => {
+    const { container } = renderStory(maryCeleste, true);
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 });
+    scrollPastOpening(container);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
+    expect(card.style.opacity).toBe('1');
+    // A little further: it stays.
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 + window.innerHeight * (AUTO_LEAVE - 0.1) });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+    expect(gsap.getTweensOf(card)).toHaveLength(0);
+    // About 60% of a screen past where it appeared: it slides away with ink.out, and does not come back.
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 + window.innerHeight * (AUTO_LEAVE + 0.05) });
+    act(() => {
+      fireEvent.scroll(window);
+    });
+    const leaving = gsap.getTweensOf(card)[0];
+    expect(leaving.vars).toMatchObject({ autoAlpha: 0, ease: 'power2.in', duration: 0.45 });
+    act(() => finishTweens(card));
+    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+    Reflect.deleteProperty(window, 'scrollY');
   });
   test('"Read at my pace" sends the card away without playing', () => {
     const { container } = renderStory(maryCeleste, true);
