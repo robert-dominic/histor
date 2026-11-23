@@ -125,8 +125,13 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
             <ul data-story="roll-call" aria-label="The ten aboard" className="mt-5 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
               {rollCall.map(entry => (
                 <li key={entry.name} data-story="name" className="leading-tight">
-                  <span className="font-record text-[1rem]">{entry.name}</span>
-                  <span className="font-voice text-[0.6875rem] tracking-[0.08em] text-ghost-night"> · {entry.role}</span>
+                  <span className="font-record text-[1rem]">
+                    <PenText text={entry.name} />
+                  </span>
+                  <span className="font-voice text-[0.6875rem] tracking-[0.08em] text-ghost-night">
+                    {' · '}
+                    <PenText text={entry.role} />
+                  </span>
                 </li>
               ))}
             </ul>

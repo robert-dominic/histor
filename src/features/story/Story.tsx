@@ -33,7 +33,7 @@ import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { scrollToY, setWheelMultiplier } from '@/lib/smooth-scroll';
 import { splitIntoBeats } from '@/lib/story-beats';
 import { COLUMN, SCROLL_FEEL, sentenceSeconds } from '@/lib/story-column';
-import { STORY_PACE } from '@/lib/story-pages';
+import { STORY_PACE, penPlan } from '@/lib/story-pages';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
@@ -100,17 +100,6 @@ const QUESTION = {
   lead: 0.6,
   holdAtLeast: 1.6,
   beforeFork: STEP.scene * 2,
-} as const;
-
-/**
- * The heading is written on a timer, not by the scroll: the quill takes about 2 seconds, whatever the scroll speed.
- * Seconds of real time.
- */
-const HEADING = {
-  /** The kicker fades in first; the quill starts a moment later. */
-  quillAt: 0.3,
-  /** How long the quill takes to write the letters. */
-  writing: 1.8,
 } as const;
 
 /** Each chapter's camera pans its own way, as a share of the image (xPercent, yPercent). */
@@ -274,8 +263,11 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             lastTime = timeline.time();
           });
           const playheadForward = () => timeline.time() >= lastTime;
-          const headings: { enter: () => void; leave: () => void }[] = [];
+          /** Each chapter's pen: start writing its page, finish it at once, and whether it is written. */
+          const pageWriters: { start: () => void; finish: () => void; written: () => boolean }[] = [];
           const headingTimelines: gsap.core.Timeline[] = [];
+          /** Who is waiting for a page to be written ("Play the story"). */
+          const onWritten: (() => void)[][] = scenes.map(() => []);
 
           scenes.forEach((scene, index) => {
             const section = story[index];
@@ -298,56 +290,113 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 // Load this chapter's image, and the next one ahead of the reader.
                 setLoadedThrough(loaded => Math.max(loaded, index + 1));
                 emitStoryEvent({ type: 'chapter-enter', chapter: section.id, direction });
-                // Forward over the start of the scene, the heading is written; back over it, the heading fades. The
-                // first scene's heading is written as the stage comes up, or after the opening when there is one.
+                // Forward over the start of the scene, the pen writes its page; going back over it, the writing simply
+                // finishes (once written, the text stays). The first page is written as the stage comes up, or after
+                // the opening when there is one.
                 if (index > 0 || overlay !== null) {
-                  (playheadForward() ? headings[index].enter : headings[index].leave)();
+                  (playheadForward() ? pageWriters[index].start : pageWriters[index].finish)();
                 }
               },
               undefined,
               start + 0.01
             );
 
-            // The heading: the kicker, then the quill writes the heading. Not scrubbed: when the scene starts, a timer
-            // of about 2 seconds writes it, whatever the scroll speed. Scrolling back above the scene fades it out.
+            // The page, written by the pen: the kicker typed, the heading written, then the whole body and the roll
+            // call, by the same pen. Timed, not scrubbed: it starts when the chapter settles and runs at a steady pace
+            // that leads the eye (penPlan), a word at a time for a long chapter. Weighted phrases get a breath before
+            // them and are written a touch slower. Once written, the text stays. A click on the panel, or scrolling
+            // onward, finishes it at once.
             const kicker = one('[data-story="kicker"]', scene);
             const heading = one('[data-story="heading"]', scene);
             const point = one('[data-story="quill"]', scene);
-            const body = one('[data-story="quill-body"]', scene);
+            const quillBody = one('[data-story="quill-body"]', scene);
             const writing = gsap.timeline({ paused: true });
-            let letters: HTMLElement[] = [];
-            if (kicker !== null) {
-              writing.fromTo(kicker, { opacity: 0 }, { opacity: 1, ...tween('ink.in') }, 0);
-            }
-            if (heading !== null && point !== null && body !== null) {
-              const split = splitForQuill(heading);
-              splits.push(split);
-              letters = split.chars as HTMLElement[];
-              createQuillWriter(point, body).write(writing, letters, HEADING.quillAt, letters.length / HEADING.writing);
+            const pageEl = one('[data-story="page"]', scene);
+            if (point !== null && quillBody !== null) {
+              const pen = createQuillWriter(point, quillBody);
+              let at = 0;
+              if (kicker !== null) {
+                const split = splitForQuill(kicker);
+                splits.push(split);
+                const kickerLetters = split.chars as HTMLElement[];
+                kickerLetters.forEach((letter, letterIndex) =>
+                  writing.set(letter, { opacity: 1 }, letterIndex / STORY_PACE.kickerRate)
+                );
+                at += kickerLetters.length / STORY_PACE.kickerRate;
+              }
+              if (heading !== null) {
+                const split = splitForQuill(heading);
+                splits.push(split);
+                const headingLetters = split.chars as HTMLElement[];
+                at += pen.write(writing, headingLetters, at, headingLetters.length / STORY_PACE.headingSeconds);
+              }
+              // The body and the roll call: letters, or whole words for a long page.
+              const written = quote('[data-story="body"] [data-pen="char"], [data-story="roll-call"] [data-pen="char"]');
+              const wordUnits = quote('[data-story="body"] [data-pen="word"], [data-story="roll-call"] [data-pen="word"]');
+              const plan = penPlan(written.length, wordUnits.length);
+              const units = plan.unit === 'letter' ? written : wordUnits;
+              gsap.set(units, { opacity: 0 });
+              // Runs of plain units, and the weighted phrases between them.
+              let run: HTMLElement[] = [];
+              const flush = () => {
+                if (run.length > 0) {
+                  at += pen.write(writing, run, at, plan.rate);
+                  run = [];
+                }
+              };
+              let weightedRun: HTMLElement | null = null;
+              let weightedUnits: HTMLElement[] = [];
+              const flushWeighted = () => {
+                if (weightedUnits.length > 0) {
+                  at += STORY_PACE.weightedBreath;
+                  at += pen.write(writing, weightedUnits, at, plan.rate / STORY_PACE.weightedSlowdown);
+                  weightedUnits = [];
+                }
+                weightedRun = null;
+              };
+              units.forEach(unit => {
+                const weighted = unit.closest<HTMLElement>('[data-pen="weighted"]');
+                if (weighted !== null) {
+                  if (weightedRun !== weighted) {
+                    flush();
+                    flushWeighted();
+                    weightedRun = weighted;
+                  }
+                  weightedUnits.push(unit);
+                } else {
+                  flushWeighted();
+                  run.push(unit);
+                }
+              });
+              flush();
+              flushWeighted();
+              writing.call(() => {
+                if (pageEl !== null) {
+                  pageEl.dataset.written = 'true';
+                }
+                onWritten[index]?.forEach(callback => callback());
+                onWritten[index] = [];
+              }, undefined, at);
+              pageWriters.push({
+                start: () => {
+                  if (writing.progress() === 0 && !writing.isActive()) {
+                    writing.play(0);
+                  }
+                },
+                finish: () => {
+                  if (writing.progress() < 1) {
+                    writing.progress(1);
+                    pen.hide();
+                  }
+                },
+                written: () => writing.progress() === 1,
+              });
+            } else {
+              pageWriters.push({ start: () => undefined, finish: () => undefined, written: () => true });
             }
             headingTimelines.push(writing);
-            const written = [kicker, ...letters].filter((element): element is HTMLElement => element !== null);
-            let fadeOut: gsap.core.Tween | null = null;
-            headings.push({
-              enter: () => {
-                fadeOut?.kill();
-                fadeOut = null;
-                writing.restart();
-              },
-              leave: () => {
-                // Stop writing, fade what is written quickly, then put the heading back to unwritten.
-                writing.pause();
-                fadeOut?.kill();
-                fadeOut = gsap.to(written, {
-                  opacity: 0,
-                  ...tween('ink.out'),
-                  onComplete: () => {
-                    fadeOut = null;
-                    writing.pause(0);
-                  },
-                });
-              },
-            });
+            pageEl?.addEventListener('click', () => pageWriters[index]?.finish());
+
             // The page: the chapter's text, in its panel on one side of the image. It holds for a stretch of scroll
             // (`STORY_PACE.pageHold`) before the hook can begin.
             const page = one('[data-story="page"]', scene);
@@ -595,6 +644,14 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               writeSky(mixAt(timeline.time()));
               syncWillChange(timeline.time());
               syncActive(timeline.time());
+              // Scrolling onward into a page finishes its writing at once: the reader is never kept waiting.
+              if (direction === 'forward') {
+                spans.forEach((span, spanIndex) => {
+                  if (timeline.time() > span.textFrom + STORY_PACE.skipAfter && timeline.time() < span.end) {
+                    pageWriters[spanIndex]?.finish();
+                  }
+                });
+              }
             },
             onToggle: self => {
               if (chartFrame !== null) {
@@ -603,8 +660,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             },
             // The first scene has no dissolve to start it: without an opening, its heading is written as the stage
             // comes up. (With one, it is written once the opening has cleared, above.)
-            onEnter: () => overlay === null && headings[0]?.enter(),
-            onLeaveBack: () => overlay === null && headings[0]?.leave(),
+            onEnter: () => overlay === null && pageWriters[0]?.start(),
+            onLeaveBack: () => overlay === null && pageWriters[0]?.finish(),
           });
 
           syncWillChange(0);

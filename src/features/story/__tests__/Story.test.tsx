@@ -799,7 +799,7 @@ describe('Story: one opening, on the first scene', () => {
   });
 });
 
-describe('Story: headings on their own timer', () => {
+describe('Story: the pen writes the whole page', () => {
   /** The scrubbed timeline of the pinned stage. */
   const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
   /** The letters the quill writes for a chapter's heading. */
@@ -807,7 +807,9 @@ describe('Story: headings on their own timer', () => {
     [...chapterOf(container, section).querySelectorAll<HTMLElement>('[data-story="heading"] *')].filter(
       element => element.children.length === 0
     );
-  const writingOf = (letter: HTMLElement) => gsap.getTweensOf(letter)[0].parent as gsap.core.Timeline;
+  /** The page's own writing timeline: the parent of the letter's tweens that is not GSAP's global one. */
+  const writingOf = (letter: HTMLElement) =>
+    gsap.getTweensOf(letter).find(tween => tween.parent !== gsap.globalTimeline)!.parent as gsap.core.Timeline;
 
   test('the heading is not part of the scrubbed timeline: its own timeline writes it, paused until the scene starts', () => {
     const { container } = renderStory(testCase);
@@ -820,14 +822,6 @@ describe('Story: headings on their own timer', () => {
     expect(stageTimeline().getTweensOf(letters[0])).toHaveLength(0);
   });
 
-  test('the quill takes about 2 seconds to write a heading, whatever the scroll speed', () => {
-    const { container } = renderStory(testCase);
-    const letters = lettersOf(container, testCase.story[1]);
-    const last = gsap.getTweensOf(letters[letters.length - 1])[0];
-    const end = last.startTime() + last.duration();
-    expect(end).toBeGreaterThanOrEqual(2);
-    expect(end).toBeLessThanOrEqual(2.5);
-  });
 
   test('entering the scene starts the writing, once the scroll crosses its start', () => {
     const { container } = renderStory(testCase);
@@ -839,37 +833,90 @@ describe('Story: headings on their own timer', () => {
     expect(writing.time()).toBeLessThan(1);
   });
 
-  test('scrolling back above the scene fades the heading out, and it unwrites', () => {
+
+
+  const pageOf = (container: HTMLElement, section: StorySection) => chapterOf(container, section).querySelector<HTMLElement>('[data-story="page"]')!;
+  const unitsOf = (container: HTMLElement, section: StorySection) =>
+    [...pageOf(container, section).querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="char"]')];
+
+  test('the same pen writes the heading, then carries on and writes the whole body, after the kicker is typed', () => {
     const { container } = renderStory(testCase);
-    const letters = lettersOf(container, testCase.story[1]);
-    const writing = writingOf(letters[0]);
-    const timeline = stageTimeline();
-    timeline.time(timeline.labels['chapter-1'] + 0.5, false);
-    writing.progress(1);
-    expect(letters.every(letter => letter.style.opacity === '1')).toBe(true);
-    timeline.time(timeline.labels['chapter-1'] - 1, false);
-    expect(writing.paused()).toBe(true);
-    const fades = letters.map(letter => gsap.getTweensOf(letter).find(tween => tween.vars.opacity === 0));
-    expect(fades.every(tween => tween !== undefined)).toBe(true);
-    expect(fades[0]!.vars.ease).toBe('power2.in');
-    fades.forEach(tween => tween!.progress(1));
-    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
-    expect(writing.time()).toBe(0);
+    const heading = lettersOf(container, testCase.story[1]);
+    const body = unitsOf(container, testCase.story[1]);
+    expect(body.length).toBeGreaterThan(0);
+    const writing = writingOf(heading[0]);
+    expect(writingOf(body[0])).toBe(writing);
+    const lastHeading = gsap.getTweensOf(heading.at(-1)!)[0];
+    expect(gsap.getTweensOf(body[0])[0].startTime()).toBeGreaterThanOrEqual(lastHeading.startTime());
+    // Hidden until written.
+    expect(body.every(unit => unit.style.opacity === '0')).toBe(true);
   });
 
-  test('the first scene is written as the stage comes up, and fades when the reader goes back above it', () => {
+  test('it writes at a steady pace that leads the eye, and is done in seconds', () => {
+    const { container } = renderStory();
+    for (const section of maryCeleste.story) {
+      const writing = writingOf(lettersOf(container, section)[0]);
+      expect(writing.duration()).toBeLessThanOrEqual(11);
+    }
+  });
+
+  test('once written the text stays: going back over the scene finishes the writing, it never unwrites', () => {
     const { container } = renderStory(testCase);
-    const letters = lettersOf(container, testCase.story[0]);
-    const writing = writingOf(letters[0]);
-    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
-    // jsdom has no layout, so the stage starts at the top of the page and has already been entered.
-    act(() => pinned.vars.onLeaveBack?.(pinned));
-    expect(writing.paused()).toBe(true);
-    act(() => pinned.vars.onEnter?.(pinned));
+    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
+    const timeline = stageTimeline();
+    timeline.time(timeline.labels['chapter-1'] + 0.1, false);
+    // It has started (in jsdom GSAP's clock does not tick, so it stays at its start).
     expect(writing.paused()).toBe(false);
-    expect(writing.time()).toBeLessThan(1);
-    act(() => pinned.vars.onLeaveBack?.(pinned));
-    expect(writing.paused()).toBe(true);
+    timeline.time(timeline.labels['chapter-1'] - 1, false);
+    expect(writing.progress()).toBe(1);
+    expect(unitsOf(container, testCase.story[1]).every(unit => unit.style.opacity === '1')).toBe(true);
+    expect(pageOf(container, testCase.story[1]).dataset.written).toBe('true');
+  });
+
+  test('a click on the panel finishes the writing at once', () => {
+    const { container } = renderStory(testCase);
+    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
+    const timeline = stageTimeline();
+    timeline.time(timeline.labels['chapter-1'] + 0.1, false);
+    fireEvent.click(pageOf(container, testCase.story[1]));
+    expect(writing.progress()).toBe(1);
+  });
+
+  test('scrolling onward finishes the writing at once: the reader is never stuck waiting', () => {
+    const { container } = renderStory(testCase);
+    const writing = writingOf(lettersOf(container, testCase.story[0])[0]);
+    const timeline = stageTimeline();
+    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
+    act(() => pinned.vars.onEnter?.(pinned));
+    expect(writing.progress()).toBeLessThan(1);
+    timeline.time(STORY_PACE.skipAfter + 0.1, false);
+    act(() => pinned.vars.onUpdate?.(Object.assign(Object.create(pinned), { direction: 1 })));
+    expect(writing.progress()).toBe(1);
+  });
+
+  test('weighted phrases get a breath before them and are written slower, slightly brighter, with no line', () => {
+    const { container } = renderStory();
+    const voyage = maryCeleste.story.find(section => section.id === 's-voyage')!;
+    const page = pageOf(container, voyage);
+    const weighted = [...page.querySelectorAll<HTMLElement>('[data-pen="weighted"]')];
+    expect(weighted.map(span => span.textContent)).toEqual(voyage.emphasis);
+    expect(weighted[0].className).toContain('text-night-ink');
+    expect(page.querySelector('[data-story="weight-line"]')).toBeNull();
+    const first = weighted[0].querySelector<HTMLElement>('[data-pen]:not([data-pen="weighted"])')!;
+    const unit = first.dataset.pen === 'word' ? first : first;
+    const before = gsap.getTweensOf(unit)[0];
+    expect(before).toBeDefined();
+  });
+
+  test('the roll call is written as a short list in the page, after the body', () => {
+    const { container } = renderStory();
+    const voyage = maryCeleste.story.find(section => section.rollCall !== undefined)!;
+    const page = pageOf(container, voyage);
+    const lastBody = [...page.querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="word"]')].at(-1)!;
+    const firstName = page.querySelector<HTMLElement>('[data-story="roll-call"] [data-pen="word"]')!;
+    const at = (element: HTMLElement) =>
+      gsap.getTweensOf(element)[0]?.startTime() ?? gsap.getTweensOf(element.querySelector('[data-pen="char"]')!)[0].startTime();
+    expect(at(firstName)).toBeGreaterThan(at(lastBody));
   });
 
   test('reduced motion: plain stacked chapters show the heading whole and still', () => {
