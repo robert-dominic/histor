@@ -2,7 +2,7 @@
 // src/pages/__tests__/Case.test.tsx
 // Task 7.2: the case page handles a missing case, a sealed case and an open case.
 // An open case is its legend intro, then its story below it.
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registry } from '@/cases';
@@ -204,7 +204,7 @@ describe('Case page: open case', () => {
     expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
   });
 
-  test('the scroll cue scrolls smoothly to the story', () => {
+  test('the scroll cue opens the play choice, and the story starts only once the reader has chosen', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     try {
@@ -212,9 +212,14 @@ describe('Case page: open case', () => {
 
       finishLegendIntro();
 
-      expect(scrollIntoView).toHaveBeenCalledTimes(1);
-      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
-      expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('region', { name: 'The story' }).parentElement);
+      const choice = screen.getByRole('dialog', { name: openEntry.data.title });
+      expect(within(choice).getByRole('button', { name: 'Play the story' })).toBeDefined();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      fireEvent.click(within(choice).getByRole('button', { name: 'Read at my pace' }));
+      // It leaves quickly (a tween), then the story starts.
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      // The page scrolls again once the choice is made.
+      expect(document.documentElement.style.overflow).toBe('');
     } finally {
       // jsdom has no scrollIntoView of its own.
       delete (Element.prototype as Partial<Element>).scrollIntoView;
@@ -249,7 +254,7 @@ describe('Case page: open case', () => {
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError.mock.calls[0][1]).toEqual(errors);
     finishLegendIntro();
-    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 });
 

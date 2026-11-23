@@ -23,6 +23,11 @@ export const STORY_PACE = {
   pageHold: 3,
   /** The hook hold: how long the hook line holds, whole, before it decays, in timeline seconds. */
   hookHold: 4,
+  /**
+   * The auto-play reading time: once a page is written, "Play the story" waits for the rest of its reading time
+   * (the page read at `readWordsPerMinute`, less the time the pen took), and at least this long, in seconds.
+   */
+  playHoldAtLeast: 2,
   /** Reading pace, for the time a reader is given to read: words a minute, and the least time for anything. */
   readWordsPerMinute: 240,
   readAtLeast: 1.6,

@@ -16,13 +16,12 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
 import CentralQuestion from '@/features/story/CentralQuestion';
-import PlayCard from '@/features/story/PlayCard';
 import PlayControl from '@/features/story/PlayControl';
 import { activeSceneIndex } from '@/features/story/active-scene';
 import StoryChapter from '@/features/story/StoryChapter';
 import StoryScene from '@/features/story/StoryScene';
 import VoyageChart from '@/features/story/VoyageChart';
-import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
+import { pxPerSecond, useStoryPlayer, type PlayStep } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { hashUnit } from '@/lib/desk';
 import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
@@ -106,16 +105,20 @@ interface StoryProps {
   sources: Source[];
   /** The voyage, drawn on the chart as the story goes. */
   voyage?: Voyage;
+  /** The reader's choice in the play modal, each time it is made (a new token): the story starts with it. */
+  start?: { mode: 'play' | 'read'; token: number } | null;
 }
 
-export default function Story({ story, centralQuestion, centralQuestionEmphasis, references, sources, voyage }: StoryProps) {
+export default function Story({ story, centralQuestion, centralQuestionEmphasis, references, sources, voyage, start = null }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
   const reducedMotion = useReducedMotion();
   // Without matchMedia a reduced-motion request cannot be honoured, so nothing is animated.
   const canAnimate = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const cinematic = canAnimate && !reducedMotion;
-  const player = useStoryPlayer(cinematic);
+  /** The stops "Play the story" plays through, worked out from the timeline when play is pressed. */
+  const playPlanRef = useRef<(() => PlayStep[]) | null>(null);
+  const player = useStoryPlayer(cinematic, () => playPlanRef.current?.() ?? []);
   // Images load one chapter ahead of the reader. The first one loads at once.
   const [loadedThrough, setLoadedThrough] = useState(0);
 
@@ -136,6 +139,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
   const goToFirstScene = useCallback(() => {
     const stage = rootRef.current?.querySelector<HTMLElement>('[data-story="stage"]');
     if (stage === null || stage === undefined) {
+      // The stacked story (reduced motion): to its top, at once.
+      rootRef.current?.scrollIntoView?.({ behavior: 'auto', block: 'start' });
       return;
     }
     const y = stage.getBoundingClientRect().top + window.scrollY;
@@ -143,6 +148,22 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
       scrollToY(y);
     }
   }, []);
+
+  // The reader has chosen how to hear the story: it starts. "Play the story" plays from here (its first stop is the
+  // first page); "Read at my pace" glides to the first page.
+  const startToken = start?.token;
+  const startMode = start?.mode;
+  const { play } = player;
+  useEffect(() => {
+    if (startToken === undefined) {
+      return;
+    }
+    if (startMode === 'play' && cinematic) {
+      play();
+    } else {
+      goToFirstScene();
+    }
+  }, [startToken, startMode, cinematic, play, goToFirstScene]);
 
   // The case header shows the case's title once the story starts: as the story comes up the screen, and away again
   // when the reader goes back up into the legend. Without matchMedia it is simply shown.
@@ -205,6 +226,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         };
 
         const cleanups: (() => void)[] = [];
+        /** "Play the story"'s stops at the central question: worked out once its chokepoint is built. */
+        let questionStops: () => PlayStep[] = () => [];
 
         if (reduced || !cinematic) {
           // ---- Reduced motion: stacked sections. The text fades in as it comes into view; nothing moves.
@@ -263,7 +286,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           });
           const playheadForward = () => timeline.time() >= lastTime;
           /** Each chapter's pen: start writing its page, finish it at once, and whether it is written. */
-          const pageWriters: { start: () => void; finish: () => void; written: () => boolean }[] = [];
+          const pageWriters: { seconds: number; start: () => void; finish: () => void; written: () => boolean }[] = [];
           const headingTimelines: gsap.core.Timeline[] = [];
           /** When each hook has the screen: the chart inset goes quiet then. */
           const hooks: { from: number; to: number }[] = [];
@@ -378,6 +401,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 onWritten[index] = [];
               }, undefined, at);
               pageWriters.push({
+                seconds: writing.duration(),
                 start: () => {
                   if (writing.progress() === 0 && !writing.isActive()) {
                     writing.play(0);
@@ -392,7 +416,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 written: () => writing.progress() === 1,
               });
             } else {
-              pageWriters.push({ start: () => undefined, finish: () => undefined, written: () => true });
+              pageWriters.push({ seconds: 0, start: () => undefined, finish: () => undefined, written: () => true });
             }
             headingTimelines.push(writing);
             pageEl?.addEventListener('click', () => pageWriters[index]?.finish());
@@ -638,6 +662,35 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           syncWillChange(0);
           syncActive(0);
 
+          // ---- "Play the story": a stop at every page, where it waits for the pen, then gives the page its reading
+          // time; the hooks between pass at the story's own pace. Worked out when play is pressed, from the pin.
+          const whenWritten = (index: number) =>
+            new Promise<void>(resolve => {
+              if (pageWriters[index]?.written() ?? true) {
+                resolve();
+                return;
+              }
+              onWritten[index].push(resolve);
+              pageWriters[index].start();
+            });
+          playPlanRef.current = () => {
+            const px = pxPerSecond();
+            const pages: PlayStep[] = spans.map((span, index) => {
+              const text = all('[data-story="paragraph"], [data-story="name"]', scenes[index])
+                .map(element => element.textContent ?? '')
+                .join(' ');
+              return {
+                y: pinned.start + span.textFrom * px,
+                waitFor: () => whenWritten(index),
+                hold: Math.max(STORY_PACE.playHoldAtLeast, readingSeconds(text) - (pageWriters[index]?.seconds ?? 0)),
+              };
+            });
+            return [...pages, ...questionStops()];
+          };
+          cleanups.push(() => {
+            playPlanRef.current = null;
+          });
+
           // ---- Coming out of the legend's night, the start of the story eases into the first scene's sky.
           ScrollTrigger.create({
             trigger: stage,
@@ -725,7 +778,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             chokepoint.addLabel('whole', at);
             chokepoint.to({}, { duration: QUESTION.beforeFork }, at);
             const settle = MOTION['story.settle'];
-            ScrollTrigger.create({
+            const questionPin = ScrollTrigger.create({
               trigger: question,
               start: 'top top',
               end: () => `+=${Math.round(chokepoint.duration() * pxPerSecond())}`,
@@ -741,6 +794,17 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 inertia: false,
               },
             });
+            // Playing reads it slowly: a stop at every phrase, held for its reading time, then the whole question.
+            questionStops = () => {
+              const px = pxPerSecond();
+              return [
+                ...phrases.map((phrase, index) => ({
+                  y: questionPin.start + chokepoint.labels[`phrase-${index}`] * px,
+                  hold: readingSeconds(phrase.textContent ?? ''),
+                })),
+                { y: questionPin.start + chokepoint.labels.whole * px, hold: QUESTION.beforeFork },
+              ];
+            };
           }
         }
 
@@ -803,7 +867,6 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
 
         {cinematic && <VoyageChart route={route} variant="live" onExpand={player.pause} />}
         {cinematic && <PlayControl player={player} />}
-        <PlayCard player={cinematic ? player : null} onRead={goToFirstScene} storyRef={rootRef} />
       </section>
     </PortalProvider>
   );

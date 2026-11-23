@@ -10,10 +10,10 @@ import CaseHeader from '@/components/CaseHeader';
 import { getCaseById } from '@/cases';
 import Fork from '@/features/fork/Fork';
 import LegendIntro from '@/features/legend/LegendIntro';
+import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
 import Story from '@/features/story/Story';
 import { formatCaseYears } from '@/lib/case-years';
 import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
-import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { validateCase } from '@/lib/validate-case';
 
 export default function Case() {
@@ -26,7 +26,10 @@ export default function Case() {
   const caseId = caseData?.id;
   const introSeenBefore = useMemo(() => (caseId === undefined ? false : hasSeenIntro(caseId)), [caseId]);
   const storyRef = useRef<HTMLDivElement>(null);
-  const reducedMotion = useReducedMotion();
+  /** The play choice is open: the reader has gone on from the legend intro and must choose how to hear the story. */
+  const [choosing, setChoosing] = useState(false);
+  /** The reader's choice, each time it is made: the story starts with it. */
+  const [start, setStart] = useState<{ mode: PlayMode; token: number } | null>(null);
 
   const title = caseData?.title;
   const year = caseData?.year;
@@ -80,17 +83,22 @@ export default function Case() {
   // The story is only there to scroll to once the intro has made its point (or was seen on an earlier visit).
   const showStory = introSeenBefore || introEndedFor === caseData.id;
 
-  /** The scroll cue: glide down to the first chapter. Reduced motion jumps there instead. */
-  const scrollToStory = () => {
-    storyRef.current?.scrollIntoView?.({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
-  };
-
   return (
     // The key gives every case its own provider, so one case never starts with another case's investigation.
     <InvestigationProvider key={caseData.id} caseData={caseData}>
       {/* The title stays at the top for the whole page. It is hidden until the story starts (Story.tsx). */}
       {headerCard !== undefined && (
         <CaseHeader title={headerCard.title} years={headerCard.years} unsolved={headerCard.unsolved} startHidden />
+      )}
+      {/* After the legend intro: how to hear the story. The reader must choose; Escape means "Read at my pace". */}
+      {choosing && showStory && (
+        <PlayChoice
+          title={caseData.title}
+          onChoose={mode => {
+            setChoosing(false);
+            setStart(current => ({ mode, token: (current?.token ?? 0) + 1 }));
+          }}
+        />
       )}
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
@@ -103,7 +111,7 @@ export default function Case() {
             markIntroSeen(caseData.id);
             setIntroEndedFor(caseData.id);
           }}
-          onDone={scrollToStory}
+          onDone={() => setChoosing(true)}
         />
         {showStory && (
           // The scroll cue stops with the first chapter filling the screen.
@@ -116,6 +124,7 @@ export default function Case() {
               references={caseData.references}
               sources={caseData.sources}
               voyage={caseData.voyage}
+              start={start}
             />
             {/* After the central question: stop here, or open the case files. */}
             <Fork

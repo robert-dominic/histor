@@ -53,7 +53,7 @@ describe('App routing', () => {
     // An open case starts with its legend intro; the case page proper follows it.
     expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
     finishLegendIntro();
-    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 
   test('"/case/<sealed id>" shows "This case is sealed."', () => {
@@ -76,7 +76,7 @@ describe('App routing', () => {
 
     expect(window.location.pathname).toBe(`/case/${openEntry.id}`);
     finishLegendIntro();
-    expect(screen.getByRole('heading', { name: openEntry.data.title })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 
   test('"Return to home" on a case page navigates back to the home page', () => {

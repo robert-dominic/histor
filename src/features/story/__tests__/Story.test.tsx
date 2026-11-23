@@ -10,7 +10,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
-import { AUTO_LEAVE } from '@/features/story/PlayCard';
 import { parseRefs } from '@/lib/parse-refs';
 import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
@@ -40,21 +39,6 @@ function renderStory(caseData: StoryData = maryCeleste) {
       voyage={caseData.voyage}
     />
   );
-}
-/** Scrolls past the opening scene (jsdom has no layout, so the rectangles are set by hand) and lets tweens finish. */
-function scrollPastOpening(container: HTMLElement, { storyBottom = 5000 }: { storyBottom?: number } = {}) {
-  const root = container.querySelector('[data-story="root"]') as HTMLElement;
-  root.getBoundingClientRect = () => ({ top: -900, bottom: storyBottom, height: storyBottom + 900 }) as DOMRect;
-  act(() => {
-    fireEvent.scroll(window);
-  });
-  finishTweens(container.querySelector('[data-story="play-card"]'));
-}
-/** Runs the tweens of an element to their end, as the ticker would. */
-function finishTweens(element: Element | null) {
-  if (element !== null) {
-    gsap.getTweensOf(element).forEach(tween => tween.progress(1));
-  }
 }
 
 const chapterOf = (container: HTMLElement, section: StorySection) =>
@@ -335,16 +319,50 @@ describe('Story: play the story', () => {
     Reflect.deleteProperty(document.documentElement, 'scrollHeight');
   });
 
-  test('with nothing left to scroll, play does not start', () => {
-    Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 0 });
+  test('past its last stop, play does not start', () => {
     const { container } = renderStory();
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    const real = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1_000_000 });
+    try {
+      act(() => {
+        fireEvent.click(control);
+      });
+      expect(control.getAttribute('aria-pressed')).toBe('false');
+    } finally {
+      if (real !== undefined) {
+        Object.defineProperty(window, 'scrollY', real);
+      }
+    }
+  });
 
+  test('play has a stop at every page: it waits for the pen, then gives the page its reading time; then the question', async () => {
+    const { container } = renderStory(testCase);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    const writing = (index: number) =>
+      gsap
+        .getTweensOf(chapterOf(container, testCase.story[index]).querySelector('[data-pen="char"]')!)
+        .find(tween => tween.parent !== gsap.globalTimeline)!.parent as gsap.core.Timeline;
+    const delayed = vi.spyOn(gsap, 'delayedCall');
     act(() => {
       fireEvent.click(control);
     });
-
-    expect(control.getAttribute('aria-pressed')).toBe('false');
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    // At the first page: waiting for the pen, no hold yet.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(delayed).not.toHaveBeenCalled();
+    // The pen finishes: now the reading time.
+    act(() => {
+      writing(0).progress(1);
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(delayed).toHaveBeenCalledTimes(1);
+    expect(delayed.mock.calls[0][0]).toBeGreaterThanOrEqual(STORY_PACE.playHoldAtLeast);
   });
 
   test('while the story is on the page the wheel is slower, and it is normal again once the story goes', () => {
@@ -353,94 +371,7 @@ describe('Story: play the story', () => {
     unmount();
     expect(wheelMultiplier()).toBe(1);
   });
-  test('the play card is hidden until the reader has scrolled past the opening', () => {
-    const { container } = renderStory(maryCeleste);
-    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
-    expect(card.style.visibility).toBe('hidden');
-    expect(card.style.opacity).toBe('0');
-    scrollPastOpening(container);
-    expect(card.style.visibility).not.toBe('hidden');
-    expect(card.style.opacity).toBe('1');
-  });
-  test('the card has the hint, "Play the story" and "Read at my pace", and does not block the page', () => {
-    const { container } = renderStory(maryCeleste);
-    scrollPastOpening(container);
-    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
-    expect(card.querySelector('[data-story="hint"]')?.textContent).toBe('Scroll, or press play.');
-    expect(within(card).getByRole('button', { name: 'Play the story' })).toBeDefined();
-    expect(within(card).getByRole('button', { name: 'Read at my pace' })).toBeDefined();
-    // Not a dialog, not modal; fixed to the screen, so it takes no layout space; nothing locks the scroll.
-    expect(card.getAttribute('role')).toBe('group');
-    expect(card.getAttribute('aria-modal')).toBeNull();
-    expect(card.className).toContain('fixed');
-    expect(document.documentElement.style.overflow).toBe('');
-    expect(document.body.style.overflow).toBe('');
-    // The page's other controls stay reachable.
-    expect(container.querySelector('[data-story="play-control"]')?.closest('[inert]')).toBeNull();
-  });
-  test('the card goes away once the story is behind the reader, so it never sits over the fork', () => {
-    const { container } = renderStory(maryCeleste);
-    scrollPastOpening(container);
-    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
-    expect(card.style.opacity).toBe('1');
-    scrollPastOpening(container, { storyBottom: 100 });
-    expect(card.style.opacity).toBe('0');
-  });
-  test('"Play the story" on the card plays, and the card leaves and does not come back', () => {
-    const { container } = renderStory(maryCeleste);
-    scrollPastOpening(container);
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
-    act(() => {
-      fireEvent.click(within(card).getByRole('button', { name: 'Play the story' }));
-    });
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    // It leaves with a tween, then it is gone.
-    expect(gsap.getTweensOf(card).length).toBeGreaterThan(0);
-    act(() => finishTweens(card));
-    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
-    // Once chosen it is not shown again this visit.
-    scrollPastOpening(container);
-    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
-  });
-  test('the card leaves by itself when the reader keeps scrolling: scrolling counts as "Read at my pace"', () => {
-    const { container } = renderStory(maryCeleste);
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 });
-    scrollPastOpening(container);
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
-    expect(card.style.opacity).toBe('1');
-    // A little further: it stays.
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 + window.innerHeight * (AUTO_LEAVE - 0.1) });
-    act(() => {
-      fireEvent.scroll(window);
-    });
-    expect(gsap.getTweensOf(card)).toHaveLength(0);
-    // About 60% of a screen past where it appeared: it slides away with ink.out, and does not come back.
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1000 + window.innerHeight * (AUTO_LEAVE + 0.05) });
-    act(() => {
-      fireEvent.scroll(window);
-    });
-    const leaving = gsap.getTweensOf(card)[0];
-    expect(leaving.vars).toMatchObject({ autoAlpha: 0, ease: 'power2.in', duration: 0.45 });
-    act(() => finishTweens(card));
-    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
-    expect(control.getAttribute('aria-pressed')).toBe('false');
-    Reflect.deleteProperty(window, 'scrollY');
-  });
-  test('"Read at my pace" sends the card away without playing', () => {
-    const { container } = renderStory(maryCeleste);
-    scrollPastOpening(container);
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    const card = container.querySelector('[data-story="play-card"]') as HTMLElement;
-    act(() => {
-      fireEvent.click(within(card).getByRole('button', { name: 'Read at my pace' }));
-    });
-    act(() => finishTweens(card));
-    expect(container.querySelector('[data-story="play-card"]')).toBeNull();
-    expect(control.getAttribute('aria-pressed')).toBe('false');
-  });
-  test('play and pause toggle from the floating control, which the card leaves as it is', () => {
+  test('play and pause toggle from the floating control', () => {
     const { container } = renderStory();
     const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
     expect(control.getAttribute('aria-label')).toBe('Play the story');
