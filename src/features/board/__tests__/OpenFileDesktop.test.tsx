@@ -46,6 +46,8 @@ const dialog = () => screen.getByRole('dialog');
 beforeEach(() => {
   continuePastGate();
   localStorage.clear();
+  // The guide opens on every arrival; these tests are about the desk under it.
+  localStorage.setItem('histor:desk-guide-off:mary-celeste', '1');
   localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1');
   forgetShownThisLoad();
   stubDesktop();

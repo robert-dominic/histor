@@ -46,6 +46,8 @@ beforeEach(() => {
   // These tests are about the desk, not the phone gate (which has its own tests): go past it.
   continuePastGate();
   localStorage.clear();
+  // The guide opens on every arrival; these tests are about the desk under it.
+  localStorage.setItem('histor:desk-guide-off:mary-celeste', '1');
   stubMatchMedia();
 });
 

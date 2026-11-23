@@ -1,7 +1,8 @@
 // src/features/board/DeskGuide.tsx
-// The desk's guide, "How to investigate": what the case is, what the theories and the evidence are, what the stamps
-// mean, how to pin, and when the case can be closed. It opens by itself on the first visit to the desk (remembered
-// in storage), and a small "?" in the corner opens it again any time.
+// The desk's guide, "How to investigate": what the case is, what the theories and the case files are, what the
+// stamps mean, how to pin, and when the case can be closed. It is the first thing the player sees every time they
+// arrive on the desk, until they close it; after the first visit it offers "Don't show this again" (remembered in
+// storage). A small "?" in the corner opens it again any time. It always opens at the top.
 // The case's own words come from the case data: its intro sentence, its title and how many files close it. On a
 // desktop the files lie on the floor; on the phone desk they are "the files below".
 // A dialog: the focus stays inside, Escape closes it and gives the focus back to the button.
@@ -9,7 +10,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { numberWord } from '@/features/board/hints';
-import { hasSeenDeskGuide, markDeskGuideSeen } from '@/lib/desk-guide-seen';
+import { hasSeenDeskGuide, isDeskGuideOff, markDeskGuideSeen, setDeskGuideOff } from '@/lib/desk-guide-seen';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
 
@@ -23,6 +24,10 @@ interface DeskGuideProps {
   intro?: string;
   /** How many files must be opened to close the case. */
   threshold: number;
+  /** Open from the start: the player has just arrived on the desk, and has not asked for it to stay closed. */
+  startOpen: boolean;
+  /** Told once it has opened by itself, so it does not open again until the next arrival. */
+  onShown?: () => void;
 }
 
 /** One part of the guide: a bold lead-in, then its text. */
@@ -34,9 +39,13 @@ function Part({ lead, children }: { lead: string; children: ReactNode }) {
   );
 }
 
-export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuideProps) {
-  // The first visit to the desk: the guide is open from the start, and that is remembered.
-  const [open, setOpen] = useState(() => !hasSeenDeskGuide(caseId));
+export default function DeskGuide({ caseId, title, intro, threshold, startOpen, onShown }: DeskGuideProps) {
+  // Every arrival on the desk: the guide is the first thing the player sees, until they close it.
+  const [open, setOpen] = useState(startOpen);
+  // After the first visit it offers "Don't show this again".
+  const [firstVisit] = useState(() => !hasSeenDeskGuide(caseId));
+  const [off, setOff] = useState(() => isDeskGuideOff(caseId));
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const overlayRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
@@ -49,6 +58,14 @@ export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuide
       markDeskGuideSeen(caseId);
     }
   }, [open, caseId]);
+  // Opening by itself on arrival happens once per arrival.
+  useEffect(() => {
+    if (startOpen) {
+      onShown?.();
+    }
+    // Only the first render's value: an arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Closes the guide: it fades out (quicker than it came in), and the focus goes back to the button at once. */
   const close = () => {
@@ -72,10 +89,14 @@ export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuide
     });
   };
 
-  // The panel takes the focus when it opens.
+  // It opens at the top: the focus goes to its heading (not the Close button at the bottom, which would scroll the
+  // panel down to it), and its scroll is reset.
   useEffect(() => {
     if (open) {
-      closeRef.current?.focus();
+      if (panelRef.current !== null) {
+        panelRef.current.scrollTop = 0;
+      }
+      headingRef.current?.focus({ preventScroll: true });
     }
   }, [open]);
 
@@ -105,12 +126,15 @@ export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuide
       close();
       return;
     }
-    if (event.key !== 'Tab') {
+    if (event.key !== 'Tab' || panelRef.current === null) {
       return;
     }
-    // Only the close button can take the focus inside: it stays there.
+    // The focus stays inside, on its controls.
+    const stops = [...panelRef.current.querySelectorAll<HTMLElement>('input, button')];
+    const at = stops.indexOf(document.activeElement as HTMLElement);
     event.preventDefault();
-    closeRef.current?.focus();
+    const next = event.shiftKey ? (at <= 0 ? stops.length - 1 : at - 1) : (at + 1) % stops.length;
+    stops[next]?.focus();
   };
 
   return (
@@ -146,7 +170,7 @@ export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuide
             data-lenis-prevent
             className="thin-scroll max-h-[88svh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-[2px] bg-paper px-6 pt-6 pb-5 text-ink shadow-2xl shadow-black/70"
           >
-            <h2 id="desk-guide-title" className="font-legend text-3xl leading-none">
+            <h2 ref={headingRef} id="desk-guide-title" tabIndex={-1} className="font-legend text-3xl leading-none outline-none">
               How to investigate
             </h2>
             <div className="mt-4 flex flex-col gap-3.5">
@@ -191,6 +215,21 @@ export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuide
                 A warning: the most famous details are often the ones that never happened.
               </p>
             </div>
+            {!firstVisit && (
+              <label className="mt-6 flex cursor-pointer items-center gap-2.5 font-voice text-[0.9375rem]">
+                <input
+                  type="checkbox"
+                  data-guide="dont-show"
+                  checked={off}
+                  onChange={event => {
+                    setOff(event.target.checked);
+                    setDeskGuideOff(caseId, event.target.checked);
+                  }}
+                  className="size-4 accent-[var(--color-record)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record"
+                />
+                Don’t show this again
+              </label>
+            )}
             <button
               ref={closeRef}
               type="button"

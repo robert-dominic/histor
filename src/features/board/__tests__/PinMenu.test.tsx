@@ -154,6 +154,8 @@ describe('in the open file, on a desktop', () => {
   beforeEach(() => {
     continuePastGate();
     localStorage.clear();
+  // The guide opens on every arrival; these tests are about the desk under it.
+  localStorage.setItem('histor:desk-guide-off:mary-celeste', '1');
     localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1');
     forgetShownThisLoad();
     stubDesktop();
@@ -207,6 +209,8 @@ describe('on a phone', () => {
   beforeEach(() => {
     continuePastGate();
     localStorage.clear();
+  // The guide opens on every arrival; these tests are about the desk under it.
+  localStorage.setItem('histor:desk-guide-off:mary-celeste', '1');
     localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1');
     stubMatchMedia();
   });

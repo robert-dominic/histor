@@ -34,6 +34,7 @@ import { deskLayout } from '@/lib/desk';
 import { droppedSpot, type DroppedSpot } from '@/lib/floor';
 import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
+import { isDeskGuideOff } from '@/lib/desk-guide-seen';
 
 gsap.registerPlugin(useGSAP);
 
@@ -76,6 +77,10 @@ function DeskScreen() {
     saveFloorPositions(caseData.id, dropped);
   };
   const desktop = useMediaQuery(DESKTOP_QUERY);
+  // The guide is the first thing the player sees on arriving at the desk (not on coming back from an open file),
+  // unless they asked for it not to open by itself.
+  const [guideOnArrival] = useState(() => !isDeskGuideOff(caseData.id));
+  const [guideShown, setGuideShown] = useState(false);
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
   const openId = useParams().evidenceId;
   const fileOpen = openId !== undefined;
@@ -438,6 +443,8 @@ function DeskScreen() {
       {!fileOpen && (
         <DeskGuide
           caseId={caseData.id}
+          startOpen={guideOnArrival && !guideShown}
+          onShown={() => setGuideShown(true)}
           title={caseData.title}
           intro={caseData.deskGuideIntro}
           threshold={caseData.closeThreshold}

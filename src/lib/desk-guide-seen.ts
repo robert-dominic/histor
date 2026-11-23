@@ -1,7 +1,7 @@
 // src/lib/desk-guide-seen.ts
-// Remembers, per case, that the desk's guide has been shown, so it opens by itself only on the first visit to the
-// desk. Kept in localStorage under "histor:desk-guide:<caseId>". If storage is unavailable, it opens by itself once
-// per page load.
+// The desk's guide in storage, per case: whether it has been shown before (from then on it offers "Don't show this
+// again"), under "histor:desk-guide:<caseId>", and whether the player ticked that box, under
+// "histor:desk-guide-off:<caseId>". Until they do, the guide opens every time they arrive on the desk.
 
 const shownThisLoad = new Set<string>();
 
@@ -34,4 +34,30 @@ export function markDeskGuideSeen(caseId: string): void {
 /** For tests: forget what this page load has shown. */
 export function forgetDeskGuideThisLoad(): void {
   shownThisLoad.clear();
+}
+
+function offKey(caseId: string): string {
+  return `histor:desk-guide-off:${caseId}`;
+}
+
+/** True when the player asked for the guide not to open by itself any more ("Don't show this again"). */
+export function isDeskGuideOff(caseId: string): boolean {
+  try {
+    return localStorage.getItem(offKey(caseId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Remembers the player's "Don't show this again", or forgets it. Fails silently. */
+export function setDeskGuideOff(caseId: string, off: boolean): void {
+  try {
+    if (off) {
+      localStorage.setItem(offKey(caseId), '1');
+    } else {
+      localStorage.removeItem(offKey(caseId));
+    }
+  } catch {
+    // Storage unavailable: the guide simply keeps opening.
+  }
 }

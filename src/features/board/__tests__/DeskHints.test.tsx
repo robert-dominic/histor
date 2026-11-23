@@ -181,16 +181,42 @@ describe('Hint 2 wording', () => {
 });
 
 describe('The guide', () => {
-  test('opens by itself on the first visit to the desk, and only then: it is remembered', async () => {
+  test('it is the first thing the player sees on every arrival at the desk, until they close it', () => {
     localStorage.setItem(FLAG, '1');
     const first = renderAt(`${BASE}/files`);
     expect(screen.getByRole('dialog', { name: 'How to investigate' })).toBeDefined();
-    expect(localStorage.getItem(`histor:desk-guide:${CASE.id}`)).toBe('1');
     first.unmount();
     forgetDeskGuideThisLoad();
     renderAt(`${BASE}/files`);
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'How to investigate' })).toBeDefined();
   });
+
+  test('after the first visit it offers "Don\'t show this again", which is remembered', () => {
+    localStorage.setItem(FLAG, '1');
+    const first = renderAt(`${BASE}/files`);
+    // The first visit: no box yet.
+    expect(screen.queryByRole('checkbox', { name: 'Don’t show this again' })).toBeNull();
+    first.unmount();
+    forgetDeskGuideThisLoad();
+    const second = renderAt(`${BASE}/files`);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Don’t show this again' }));
+    expect(localStorage.getItem(`histor:desk-guide-off:${CASE.id}`)).toBe('1');
+    second.unmount();
+    renderAt(`${BASE}/files`);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // The ? still opens it.
+    fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));
+    expect(screen.getByRole('dialog', { name: 'How to investigate' })).toBeDefined();
+  });
+
+  test('it opens at the top: the focus is on its heading, not the Close button, and its scroll is reset', () => {
+    localStorage.setItem(FLAG, '1');
+    renderAt(`${BASE}/files`);
+    const guide = screen.getByRole('dialog', { name: 'How to investigate' });
+    expect(document.activeElement).toBe(within(guide).getByRole('heading', { name: 'How to investigate' }));
+    expect(guide.scrollTop).toBe(0);
+  });
+
 
   test('says how to investigate, in the case\'s own words: its intro, its title and how many files close it', () => {
     localStorage.setItem(FLAG, '1');
@@ -216,16 +242,18 @@ describe('The guide', () => {
 
   test('the "?" opens the guide again, and Escape closes it and gives the focus back', async () => {
     localStorage.setItem(FLAG, '1');
-    localStorage.setItem(`histor:desk-guide:${CASE.id}`, '1');
+    localStorage.setItem(`histor:desk-guide-off:${CASE.id}`, '1');
     renderAt(`${BASE}/files`);
     const button = screen.getByRole('button', { name: 'How the desk works' });
     expect(screen.queryByRole('dialog')).toBeNull();
 
     fireEvent.click(button);
     const guide = screen.getByRole('dialog', { name: 'How to investigate' });
-    expect(document.activeElement).toBe(within(guide).getByRole('button', { name: 'Close' }));
+    expect(document.activeElement).toBe(within(guide).getByRole('heading', { name: 'How to investigate' }));
 
-    // Tab cannot leave the dialog.
+    // Tab goes to its controls, and cannot leave the dialog.
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+    expect(document.activeElement).toBe(within(guide).getByRole('button', { name: 'Close' }));
     fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
     expect(document.activeElement).toBe(within(guide).getByRole('button', { name: 'Close' }));
 
@@ -237,7 +265,7 @@ describe('The guide', () => {
 
   test('the Close button closes it too', async () => {
     localStorage.setItem(FLAG, '1');
-    localStorage.setItem(`histor:desk-guide:${CASE.id}`, '1');
+    localStorage.setItem(`histor:desk-guide-off:${CASE.id}`, '1');
     renderAt(`${BASE}/files`);
 
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));

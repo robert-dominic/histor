@@ -118,7 +118,7 @@ describe('slips', () => {
 describe('the ? guide', () => {
   beforeEach(() => {
     localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1');
-    localStorage.setItem(`histor:desk-guide:${CASE.id}`, '1');
+    localStorage.setItem(`histor:desk-guide-off:${CASE.id}`, '1');
   });
 
   test('fades out with a quick tween, with the focus back on its button at once', () => {
