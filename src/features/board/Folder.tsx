@@ -26,27 +26,29 @@ export default function Folder({ evidence, number, href, opened }: FolderProps) 
       data-opened={opened}
       data-flip-id={`file-${evidence.id}`}
       // In the phone strip the folder in the middle lifts (data-centred, set by Pile.tsx). On a desktop GSAP places it.
-      className="desk-folder w-[10.5rem] shrink-0 motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-out data-[centred=true]:-translate-y-2.5 lg:w-[11.5rem]"
+      // On the desktop floor every folder has one fixed size (7.75rem by 6rem), stamped or not, so the floor layout can
+      // keep them apart; the label takes up to three lines.
+      className="desk-folder w-[10.5rem] shrink-0 motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-out data-[centred=true]:-translate-y-2.5 lg:h-24 lg:w-[7.75rem]"
     >
       <Link
         to={href}
         data-focus-home
-        className="desk-folder-link group/folder relative block pt-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-brass"
+        className="desk-folder-link group/folder relative block pt-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-brass lg:h-full"
       >
         {/* The shadow of a lifted folder: a layer whose opacity changes on hover (effects.css). */}
         <span aria-hidden="true" data-folder="lift" className="absolute inset-x-0 top-3 bottom-0 rounded-[3px] shadow-[0_12px_20px_-2px] shadow-black/80" />
         {/* The tab, with the file's number. */}
-        <span data-folder="tab" className="desk-manila absolute top-0 left-3 flex h-4 items-center rounded-t-[3px] px-2.5 font-voice text-[0.6875rem] tracking-[0.14em] text-ink/80 tabular-nums">
+        <span data-folder="tab" className="desk-manila absolute top-0 left-3 flex h-4 items-center rounded-t-[3px] px-2.5 font-voice text-[0.6875rem] tracking-[0.14em] text-ink/80 tabular-nums lg:left-2 lg:px-2 lg:text-ink">
           <span className="sr-only">File </span>
           {number}
         </span>
-        <span className="desk-manila relative flex min-h-[6.5rem] flex-col justify-between gap-2 rounded-[3px] rounded-tl-none px-3.5 pt-3 pb-3 shadow-[0_2px_6px] shadow-black/60">
+        <span className="desk-manila relative flex min-h-[6.5rem] flex-col justify-between gap-2 rounded-[3px] rounded-tl-none px-3.5 pt-3 pb-3 shadow-[0_2px_6px] shadow-black/60 lg:h-full lg:min-h-0 lg:gap-1 lg:px-2 lg:pt-2 lg:pb-2">
           {/* The typed title label. */}
-          <span data-folder="label" className="self-start rounded-[1px] bg-paper/80 px-2 py-1 font-voice text-[0.8125rem] leading-snug text-ink">
+          <span data-folder="label" className="self-start rounded-[1px] bg-paper/80 px-2 py-1 font-voice text-[0.8125rem] leading-snug text-ink lg:line-clamp-3 lg:px-1.5 lg:py-0.5 lg:text-[0.75rem] lg:leading-[1.25]">
             {evidence.title}
           </span>
           {opened && (
-            <span className="self-end">
+            <span className="self-end lg:absolute lg:right-1.5 lg:bottom-1.5">
               <Stamp label={STATUS_LABEL[evidence.status]} tone={evidence.status} />
             </span>
           )}

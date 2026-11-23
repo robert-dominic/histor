@@ -1,17 +1,20 @@
 // src/features/board/Floor.tsx
-// The floor of the desktop desk: the files lie flat, tossed on the table and seen from above, each with a slight
-// tilt, a little overlapping, every tab and label showing. Where each one lies comes from `floorLayout` (lib/floor.ts),
-// the same every visit. A file that was opened but not pinned lies here too, with its status stamp.
-// Positions are written to the folders by GSAP, never through React state. When the floor changes size or the set of
-// files on it changes, the folders move to their new places with Flip (the `layout` token).
-// Reduced motion: the folders are simply placed.
-import { useEffect, useRef, type MutableRefObject } from 'react';
+// The floor of the desktop desk: the files lie flat in rows on the table, seen from above, each a little off its
+// spot and slightly tilted, none covering another. Where each one lies comes from `floorLayout` (lib/floor.ts),
+// worked out once for every file of the case and the floor's size, so the same every visit. A file that was opened
+// but not pinned lies here too, with its status stamp.
+// Nothing moves by itself: opening, closing or pinning a file never moves another. A pinned file leaves a gap; a file
+// sent back returns to its own spot, or to where the player dropped it. Dropping a folder somewhere else on the floor
+// moves only that folder, and the desk keeps the spot in storage (lib/floor-positions.ts).
+// Positions are written to the folders by GSAP, never through React state. When the floor changes size, the folders
+// move to their new places with Flip (the `layout` token). Reduced motion: the folders are simply placed.
+import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import Folder from '@/features/board/Folder';
 import type { DropOutcome } from '@/features/board/drag';
 import { createDeskDrag } from '@/features/board/use-desk-drag';
 import { Flip, pendingFlight } from '@/features/board/flight';
-import { floorLayout, type FolderBox } from '@/lib/floor';
+import { droppedSpot, floorLayout, placeOnFloor, type DroppedSpot, type FloorPlace, type FolderBox } from '@/lib/floor';
 import type { DeskLayout } from '@/lib/desk';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
 import type { Theory } from '@/types/case';
@@ -22,30 +25,16 @@ const LIFT = 1.04;
 /** The hover media query of the design: a mouse or trackpad. */
 const FINE_HOVER = '(hover: hover) and (pointer: fine)';
 
-/** Where a folder was dropped on the floor, kept for the visit (Q7): the folder's place, and its tilt. */
-export interface DroppedPlace {
-  x: number;
-  y: number;
-  rotate: number;
-}
-
 interface FloorProps {
   layout: DeskLayout;
   filesHref: string;
   theories: Theory[];
-  /** Folders dropped on the floor this visit. Held by the desk, so they stay while a file is open. Not stored. */
-  droppedAt: MutableRefObject<Map<string, DroppedPlace>>;
+  /** Folders the player dropped on the floor, in the order they were dropped. Held (and stored) by the desk. */
+  dropped: ReadonlyMap<string, DroppedSpot>;
+  /** A folder was dropped somewhere on the floor: the desk remembers the spot. */
+  onRearrange: (id: string, spot: DroppedSpot) => void;
   /** A folder was dropped somewhere other than the floor: the desk opens it, or pins it. */
   onDrop: (id: string, outcome: DropOutcome, element: HTMLElement) => void;
-}
-
-/** A dropped place pulled back inside the floor, for a folder drawn at `scale`. */
-function clampToFloor(place: DroppedPlace, box: FolderBox, scale: number, width: number, height: number): DroppedPlace & { z?: number } {
-  const slackX = (box.width * (1 - scale)) / 2;
-  const slackY = (box.height * (1 - scale)) / 2;
-  const x = Math.min(width - box.width * scale - slackX, Math.max(-slackX, place.x));
-  const y = Math.min(height - box.height * scale - slackY, Math.max(-slackY, place.y));
-  return { x, y, rotate: place.rotate };
 }
 
 /** A folder's natural size, and the part of it (tab and label) that must stay visible, as measured on screen. */
@@ -60,20 +49,17 @@ function measureFolder(folders: HTMLElement[]): FolderBox | null {
   let top = Infinity;
   let right = 0;
   let bottom = 0;
-  for (const folder of folders) {
-    for (const part of folder.querySelectorAll<HTMLElement>('[data-folder="tab"], [data-folder="label"]')) {
-      // offsetLeft/offsetTop are in the folder's own units; the link is the offset parent of the parts.
-      let x = part.offsetLeft;
-      let y = part.offsetTop;
-      for (let parent = part.offsetParent as HTMLElement | null; parent !== null && parent !== folder; parent = parent.offsetParent as HTMLElement | null) {
-        x += parent.offsetLeft;
-        y += parent.offsetTop;
-      }
-      left = Math.min(left, x);
-      top = Math.min(top, y);
-      right = Math.max(right, x + part.offsetWidth);
-      bottom = Math.max(bottom, y + part.offsetHeight);
+  for (const part of first.querySelectorAll<HTMLElement>('[data-folder="tab"], [data-folder="label"]')) {
+    let x = part.offsetLeft;
+    let y = part.offsetTop;
+    for (let parent = part.offsetParent as HTMLElement | null; parent !== null && parent !== first; parent = parent.offsetParent as HTMLElement | null) {
+      x += parent.offsetLeft;
+      y += parent.offsetTop;
     }
+    left = Math.min(left, x);
+    top = Math.min(top, y);
+    right = Math.max(right, x + part.offsetWidth);
+    bottom = Math.max(bottom, y + part.offsetHeight);
   }
   if (!Number.isFinite(left)) {
     return { width: first.offsetWidth, height: first.offsetHeight, label: { x: 0, y: 0, width: first.offsetWidth, height: 28 } };
@@ -85,16 +71,25 @@ function measureFolder(folders: HTMLElement[]): FolderBox | null {
   };
 }
 
-export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }: FloorProps) {
+export default function Floor({ layout, filesHref, theories, dropped, onRearrange, onDrop }: FloorProps) {
   const onDropRef = useRef(onDrop);
+  const onRearrangeRef = useRef(onRearrange);
   useEffect(() => {
     onDropRef.current = onDrop;
-  }, [onDrop]);
+    onRearrangeRef.current = onRearrange;
+  }, [onDrop, onRearrange]);
   const rootRef = useRef<HTMLElement>(null);
   const files = layout.pile;
   const openedIds = new Set(layout.folders.filter(f => f.place.kind === 'pile' && f.place.opened).map(f => f.evidence.id));
   const numberOf = new Map(layout.folders.map(folder => [folder.evidence.id, folder.number]));
+  // Every file of the case has a spot, on the floor now or not: the spots never depend on which files are here.
+  const allIds = layout.folders.map(folder => folder.evidence.id);
+  const allKey = allIds.join(',');
   const order = files.map(evidence => evidence.id).join(',');
+  /** Where each folder on the floor rests now, so a hover or a drop can come back to it. Survives a change of files. */
+  const resting = useRef(new Map<string, FloorPlace & { scale: number }>());
+  /** The floor's size and folder box the folders were last placed for. */
+  const placedFor = useRef<{ width: number; height: number; box: FolderBox } | null>(null);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -105,49 +100,63 @@ export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }
     const reduced = !canQuery || window.matchMedia(MOTION_QUERIES.reduced).matches;
     const finePointer = canQuery && window.matchMedia(FINE_HOVER).matches;
     const folders = () => [...root.querySelectorAll<HTMLElement>('[data-board="folder"]')];
-    /** Where each folder lies now: its scale and stacking, so a hover can come back to them. */
-    const resting = new Map<string, { x: number; y: number; rotate: number; scale: number; z: number }>();
-    const known = new Set<string>();
-    let placed = false;
+    const idOf = (folder: HTMLElement) => folder.dataset.evidenceId ?? '';
+    const ids = allKey === '' ? [] : allKey.split(',');
+
+    /** Where every folder of the case lies on this floor, for the folder box measured. */
+    const placesFor = (width: number, height: number, box: FolderBox) => {
+      const plan = floorLayout(ids, { width, height }, box);
+      return { scale: plan.scale, places: placeOnFloor(plan, { width, height }, box, dropped) };
+    };
 
     const place = () => {
       const list = folders();
       const width = root.clientWidth;
       const height = root.clientHeight;
-      const box = measureFolder(list);
+      const box = measureFolder(list) ?? placedFor.current?.box ?? null;
       if (list.length === 0 || width === 0 || height === 0 || box === null) {
         return;
       }
-      const { places, scale } = floorLayout(
-        list.map(folder => folder.dataset.evidenceId ?? ''),
-        { width, height },
-        box
-      );
-      // Where they were, for the move: only the folders that were already on the floor.
-      const before = !reduced && placed ? Flip.getState(list.filter(folder => known.has(folder.dataset.evidenceId ?? ''))) : null;
-      for (const spot of places) {
-        const folder = list.find(item => item.dataset.evidenceId === spot.id);
-        if (folder !== undefined) {
-          // A folder dropped here by hand stays where it was dropped, on top, for the visit.
-          const dropped = droppedAt.current.get(spot.id);
-          const where = dropped === undefined ? spot : { ...clampToFloor(dropped, box, scale, width, height), z: places.length + [...droppedAt.current.keys()].indexOf(spot.id) };
-          gsap.set(folder, { x: where.x, y: where.y, rotation: where.rotate, scale, zIndex: where.z });
-          resting.set(spot.id, { x: where.x, y: where.y, rotate: where.rotate, scale, z: where.z });
+      const before = placedFor.current;
+      const resized = before !== null && (before.width !== width || before.height !== height);
+      const { places, scale } = placesFor(width, height, box);
+      // Only a change of the floor's size moves folders that were already lying here; that move is a Flip.
+      const lying = list.filter(folder => resting.current.has(idOf(folder)));
+      const flip = !reduced && resized && lying.length > 0 ? Flip.getState(lying) : null;
+      const arriving: HTMLElement[] = [];
+      for (const folder of list) {
+        const id = idOf(folder);
+        const spot = places.find(candidate => candidate.id === id);
+        if (spot === undefined) {
+          continue;
+        }
+        const was = resting.current.get(id);
+        if (was === undefined) {
+          arriving.push(folder);
+        }
+        if (was === undefined || resized || was.x !== spot.x || was.y !== spot.y || was.scale !== scale) {
+          gsap.set(folder, { x: spot.x, y: spot.y, rotation: spot.rotate, scale, zIndex: spot.z });
+        }
+        resting.current.set(id, { ...spot, scale });
+      }
+      // Folders that have left the floor (pinned) are forgotten, so they come back as arrivals.
+      const here = new Set(list.map(idOf));
+      for (const id of [...resting.current.keys()]) {
+        if (!here.has(id)) {
+          resting.current.delete(id);
         }
       }
-      if (before !== null) {
-        Flip.from(before, { ...tween('layout'), scale: true, nested: false });
+      if (flip !== null) {
+        Flip.from(flip, { ...tween('layout'), scale: true, nested: false });
       }
       // A folder that has just come back to the floor fades in; the first placement of all fades in together.
-      const arriving = list.filter(folder => !known.has(folder.dataset.evidenceId ?? ''));
       // A folder arriving from a tab flies in with Flip (Desk.tsx): it must not fade as well.
       const flying = pendingFlight('out')?.id;
-      const fading = arriving.filter(folder => folder.dataset.evidenceId !== flying);
+      const fading = arriving.filter(folder => idOf(folder) !== flying);
       if (!reduced && fading.length > 0) {
-        gsap.fromTo(fading, { opacity: 0 }, { opacity: 1, ...tween('paper.lift'), stagger: placed ? 0 : 0.015, clearProps: 'opacity' });
+        gsap.fromTo(fading, { opacity: 0 }, { opacity: 1, ...tween('paper.lift'), stagger: before === null ? 0.015 : 0, clearProps: 'opacity' });
       }
-      list.forEach(folder => known.add(folder.dataset.evidenceId ?? ''));
-      placed = true;
+      placedFor.current = { width, height, box };
       root.dataset.placed = 'true';
     };
     place();
@@ -158,7 +167,7 @@ export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }
     // Dragging, where a mouse can (a desktop with a fine pointer and full motion): a folder can be picked up and put
     // on a note, the tray, the board or the floor. What each drop does is decided by dropOutcome.
     const returnHome = (folder: HTMLElement) => {
-      const spot = resting.get(folder.dataset.evidenceId ?? '');
+      const spot = resting.current.get(idOf(folder));
       if (spot !== undefined) {
         gsap.to(folder, { x: spot.x, y: spot.y, scale: spot.scale, opacity: 1, ...tween('paper.move'), overwrite: 'auto', onComplete: () => { gsap.set(folder, { zIndex: spot.z }); } });
       }
@@ -167,26 +176,28 @@ export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }
       elements: folders(),
       theories,
       sourceOf: folder => ({ from: 'floor', sealed: folder.dataset.opened !== 'true' }),
-      restingScale: folder => resting.get(folder.dataset.evidenceId ?? '')?.scale ?? 1,
+      restingScale: folder => resting.current.get(idOf(folder))?.scale ?? 1,
       onDrop: (folder, outcome) => {
-        const id = folder.dataset.evidenceId ?? '';
-        const spot = resting.get(id);
+        const id = idOf(folder);
+        const spot = resting.current.get(id);
+        const frame = placedFor.current;
         if (spot === undefined) {
           return;
         }
         if (outcome.kind === 'return') {
           returnHome(folder);
-        } else if (outcome.kind === 'settle') {
-          // It settles where it was let go, on top, and keeps its tilt.
-          const rect = root.getBoundingClientRect();
-          const box = measureFolder(folders());
-          const kept = box === null ? { x: outcome.x, y: outcome.y, rotate: spot.rotate } : clampToFloor({ x: outcome.x, y: outcome.y, rotate: spot.rotate }, box, spot.scale, rect.width || root.clientWidth, rect.height || root.clientHeight);
-          droppedAt.current.delete(id);
-          droppedAt.current.set(id, kept);
-          const z = files.length + droppedAt.current.size;
-          resting.set(id, { ...spot, x: kept.x, y: kept.y, z });
-          gsap.set(folder, { zIndex: z });
-          gsap.to(folder, { x: kept.x, y: kept.y, scale: spot.scale, opacity: 1, ...tween('paper.land'), overwrite: 'auto' });
+        } else if (outcome.kind === 'settle' && frame !== null) {
+          // It settles where it was let go, on top, and keeps its tilt. Only this folder moves.
+          const size = { width: frame.width, height: frame.height };
+          onRearrangeRef.current(id, droppedSpot(outcome.x + frame.box.width / 2, outcome.y + frame.box.height / 2, size));
+          const now = placesFor(frame.width, frame.height, frame.box).places.find(candidate => candidate.id === id);
+          if (now === undefined) {
+            returnHome(folder);
+            return;
+          }
+          resting.current.set(id, { ...now, scale: spot.scale });
+          gsap.set(folder, { zIndex: now.z });
+          gsap.to(folder, { x: now.x, y: now.y, scale: spot.scale, opacity: 1, ...tween('paper.land'), overwrite: 'auto' });
         } else {
           // Opened, or pinned: the desk takes it from here, from where it was let go. The folder's own place is kept
           // ready for when it comes back.
@@ -202,11 +213,11 @@ export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }
       if (document.documentElement.dataset.dragging === 'true') {
         return;
       }
-      const spot = resting.get(folder.dataset.evidenceId ?? '');
+      const spot = resting.current.get(idOf(folder));
       if (spot === undefined) {
         return;
       }
-      gsap.set(folder, { zIndex: up ? files.length + 10 : spot.z });
+      gsap.set(folder, { zIndex: up ? allIds.length * 2 + 10 : spot.z });
       gsap.to(folder, { scale: up ? spot.scale * LIFT : spot.scale, ...tween('hover'), overwrite: 'auto' });
     };
     const onOver = (event: PointerEvent) => {
@@ -236,9 +247,9 @@ export default function Floor({ layout, filesHref, theories, droppedAt, onDrop }
       root.removeEventListener('pointerout', onOut);
       gsap.killTweensOf(folders());
     };
-    // The folders on the floor change with `order`; the effect places the new set.
+    // The folders on the floor change with `order`; the effect places the new ones and leaves the others be.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order]);
+  }, [order, allKey]);
 
   return (
     <section

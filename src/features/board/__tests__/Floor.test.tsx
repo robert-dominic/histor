@@ -53,25 +53,35 @@ function stubMouse({ reduced = false }: { reduced?: boolean } = {}) {
   );
 }
 
-const droppedAt = { current: new Map() };
 const onDrop = vi.fn();
+const onRearrange = vi.fn();
+const ALL = maryCeleste.evidence.map(evidence => evidence.id);
+const floorFor = (state: InvestigationState) => (
+  <MemoryRouter>
+    <Floor
+      layout={deskLayout(maryCeleste, state)}
+      filesHref="/case/mary-celeste/files"
+      theories={maryCeleste.theories}
+      dropped={new Map()}
+      onRearrange={onRearrange}
+      onDrop={onDrop}
+    />
+  </MemoryRouter>
+);
 function renderFloor(state: InvestigationState = EMPTY) {
-  droppedAt.current = new Map();
   onDrop.mockClear();
   const layout = deskLayout(maryCeleste, state);
-  const view = render(
-    <MemoryRouter>
-      <Floor
-        layout={layout}
-        filesHref="/case/mary-celeste/files"
-        theories={maryCeleste.theories}
-        droppedAt={droppedAt}
-        onDrop={onDrop}
-      />
-    </MemoryRouter>
-  );
+  const view = render(floorFor(state));
   return { ...view, layout };
 }
+/** Where every folder on the floor lies now. */
+const placesNow = () =>
+  new Map(
+    folders().map(folder => [
+      folder.dataset.evidenceId!,
+      [gsap.getProperty(folder, 'x'), gsap.getProperty(folder, 'y'), gsap.getProperty(folder, 'rotation'), gsap.getProperty(folder, 'scale')],
+    ])
+  );
 const folders = () => [...document.querySelectorAll<HTMLElement>('[data-board="folder"]')];
 
 beforeEach(() => stubLayout());
@@ -96,11 +106,10 @@ describe('Floor', () => {
     expect(document.querySelector('[data-board="floor"]')?.getAttribute('aria-labelledby')).toBe('floor-title');
   });
 
-  test('each folder lies where floorLayout puts it', () => {
+  test('each folder lies where floorLayout puts it, worked out for every file of the case', () => {
     stubMouse();
     renderFloor();
-    const ids = folders().map(folder => folder.dataset.evidenceId!);
-    const { places, scale } = floorLayout(ids, SIZE, BOX);
+    const { places, scale } = floorLayout(ALL, SIZE, BOX);
     for (const place of places) {
       const folder = folders().find(item => item.dataset.evidenceId === place.id)!;
       expect(gsap.getProperty(folder, 'x')).toBeCloseTo(place.x, 3);
@@ -128,12 +137,34 @@ describe('Floor', () => {
     expect(document.querySelector('[data-evidence-id="e-lifeboat"]')).toBeNull();
   });
 
+  test('opening, pinning and unpinning a file never moves any other file: a pinned file leaves a gap', () => {
+    stubMouse();
+    const { rerender } = renderFloor();
+    const before = placesNow();
+    const same = (except: string[]) => {
+      for (const [id, place] of placesNow()) {
+        if (!except.includes(id)) {
+          expect(place).toEqual(before.get(id));
+        }
+      }
+    };
+    rerender(floorFor({ opened: ['e-lifeboat'], pins: {}, verdict: null }));
+    same([]);
+    rerender(floorFor({ opened: ['e-lifeboat'], pins: { 'e-lifeboat': maryCeleste.theories[0].id }, verdict: null }));
+    expect(placesNow().has('e-lifeboat')).toBe(false);
+    same([]);
+    // Back on the floor: it returns to its own spot.
+    rerender(floorFor({ opened: ['e-lifeboat'], pins: {}, verdict: null }));
+    same([]);
+    expect(placesNow().get('e-lifeboat')).toEqual(before.get('e-lifeboat'));
+  });
+
   test('reduced motion places the folders with no movement', () => {
     stubMouse({ reduced: true });
     renderFloor();
-    const ids = folders().map(folder => folder.dataset.evidenceId!);
-    const { places } = floorLayout(ids, SIZE, BOX);
-    expect(gsap.getProperty(folders()[0], 'x')).toBeCloseTo(places[0].x, 3);
+    const { places } = floorLayout(ALL, SIZE, BOX);
+    const first = places.find(place => place.id === folders()[0].dataset.evidenceId)!;
+    expect(gsap.getProperty(folders()[0], 'x')).toBeCloseTo(first.x, 3);
     for (const folder of folders()) {
       expect(gsap.getTweensOf(folder)).toHaveLength(0);
     }
@@ -146,7 +177,7 @@ describe('Floor', () => {
     const before = Number(gsap.getProperty(folder, 'scale'));
     const resting = folder.style.zIndex;
     fireEvent.pointerOver(folder.querySelector('a')!, { relatedTarget: document.body });
-    expect(folder.style.zIndex).toBe(String(folders().length + 10));
+    expect(folder.style.zIndex).toBe(String(ALL.length * 2 + 10));
     const tweens = gsap.getTweensOf(folder);
     expect(tweens.length).toBeGreaterThan(0);
     tweens.forEach(tween => tween.progress(1));
@@ -198,8 +229,7 @@ describe('Floor', () => {
     expect(flip.mock.calls[0][1]).toMatchObject({ ease: 'power2.inOut', duration: 0.5 });
     flip.mockRestore();
     getState.mockRestore();
-    const ids = folders().map(folder => folder.dataset.evidenceId!);
-    const narrow = floorLayout(ids, { width: 900, height: 330 }, BOX).places[0];
+    const narrow = floorLayout(ALL, { width: 900, height: 330 }, BOX).places.find(place => place.id === first.dataset.evidenceId)!;
     expect(Number(gsap.getProperty(first, 'x'))).toBeCloseTo(narrow.x, 3);
     expect(narrow.x).not.toBeCloseTo(wide, 3);
   });

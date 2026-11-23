@@ -14,7 +14,7 @@ import DeskGuide from '@/features/board/DeskGuide';
 import DeskHints from '@/features/board/DeskHints';
 import DeskHintsProvider from '@/features/board/DeskHintsProvider';
 import DeskSurface from '@/features/board/DeskSurface';
-import Floor, { type DroppedPlace } from '@/features/board/Floor';
+import Floor from '@/features/board/Floor';
 import type { DragSource, DropOutcome } from '@/features/board/drag';
 import { createDeskDrag } from '@/features/board/use-desk-drag';
 import Pile from '@/features/board/Pile';
@@ -29,7 +29,9 @@ import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { READING_LABEL } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
-import { deskLayout, hashUnit } from '@/lib/desk';
+import { deskLayout } from '@/lib/desk';
+import { droppedSpot, type DroppedSpot } from '@/lib/floor';
+import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
 
 gsap.registerPlugin(useGSAP);
@@ -65,8 +67,13 @@ export default function Desk() {
 function DeskScreen() {
   const { state, dispatch, caseData } = useInvestigation();
   const navigate = useNavigate();
-  /** Folders dropped on the floor this visit (Q7): in memory, gone when the desk is left or the page reloads. */
-  const droppedAt = useRef(new Map<string, DroppedPlace>());
+  /** Folders the player dropped on the floor, in the order they were dropped: kept in storage, apart from the investigation. */
+  const [dropped] = useState(() => loadFloorPositions(caseData.id, caseData.evidence.map(evidence => evidence.id)));
+  const rememberDrop = (id: string, spot: DroppedSpot) => {
+    dropped.delete(id);
+    dropped.set(id, spot);
+    saveFloorPositions(caseData.id, dropped);
+  };
   const desktop = useMediaQuery(DESKTOP_QUERY);
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
   const openId = useParams().evidenceId;
@@ -288,21 +295,15 @@ function DeskScreen() {
       const pinned: PinnedState = { pinned: id };
       navigate(`${base}/files`, { state: pinned, replace: true });
     } else if (outcome.kind === 'unpin') {
-      // It lies on the floor where it was dropped, for the visit. `outcome` is where the tab's own transform ended,
-      // which is not a floor place: take the floor place from where the tab is on the screen.
+      // It lies on the floor where it was dropped, and the desk remembers the spot. `outcome` is where the tab's own
+      // transform ended, which is not a floor place: take the spot from where the tab's centre is on the screen.
       const floor = root.querySelector<HTMLElement>('[data-board="floor"]');
-      const folder = floor?.querySelector<HTMLElement>('[data-board="folder"]');
       const box = tab.getBoundingClientRect();
       const origin = floor?.getBoundingClientRect();
-      const width = folder?.offsetWidth || 184;
-      const height = folder?.offsetHeight || 130;
-      if (origin !== undefined) {
-        droppedAt.current.delete(id);
-        droppedAt.current.set(id, {
-          x: box.left + box.width / 2 - origin.left - width / 2,
-          y: box.top + box.height / 2 - origin.top - height / 2,
-          rotate: (hashUnit(id, 'rot') * 2 - 1) * 8,
-        });
+      if (floor != null && origin !== undefined) {
+        const cx = box.left + box.width / 2 - origin.left;
+        const cy = box.top + box.height / 2 - origin.top;
+        rememberDrop(id, droppedSpot(cx, cy, { width: floor.clientWidth, height: floor.clientHeight }));
       }
       dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: id });
     }
@@ -352,7 +353,7 @@ function DeskScreen() {
         aria-labelledby="board-title"
         className={
           desktop
-            ? 'relative isolate grid h-svh grid-rows-[auto_minmax(0,55fr)_minmax(0,45fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
+            ? 'relative isolate grid h-svh grid-rows-[3.5rem_minmax(0,46fr)_minmax(0,54fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
             : 'relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink'
         }
       >
@@ -360,8 +361,9 @@ function DeskScreen() {
         {desktop ? (
           <>
             {/* The compact header: the title, the progress line, the hints and the way to close the case. Above the
-                lamp's shadow, so all of it is always readable. */}
-            <header className="relative z-[21] flex items-center gap-x-6 px-8 pt-2 pb-1">
+                lamp's shadow, so all of it is always readable. Its height is fixed, so nothing that comes or goes in
+                it (a hint, the seal) changes the size of the board or the floor, and no folder moves. */}
+            <header className="relative z-[21] flex h-14 items-center gap-x-6 px-8">
               <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
                 The case files
               </h2>
@@ -379,13 +381,14 @@ function DeskScreen() {
             </div>
             {/* The floor, with the tray beside it. */}
             <div data-desk="floor-row" className="relative min-h-0 px-4 pb-3">
-              <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_16rem] gap-4">
+              <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_13rem] gap-4">
                 <div className="min-h-0 min-w-0">
                   <Floor
                     layout={layout}
                     filesHref={`${base}/files`}
                     theories={caseData.theories}
-                    droppedAt={droppedAt}
+                    dropped={dropped}
+                    onRearrange={rememberDrop}
                     onDrop={handleFloorDrop}
                   />
                 </div>

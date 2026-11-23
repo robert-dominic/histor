@@ -43,7 +43,7 @@ export default function WaxSeal({ to }: WaxSealProps) {
       onClick={() => emitStoryEvent({ type: 'seal', where: 'desk' })}
       className="group/seal flex items-center gap-3 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-brass"
     >
-      <SealMark className="size-16 drop-shadow-[0_3px_6px_rgba(0,0,0,0.6)] transition-[scale] duration-150 ease-out group-active/seal:scale-[0.97] lg:size-20" />
+      <SealMark className="size-16 drop-shadow-[0_3px_6px_rgba(0,0,0,0.6)] transition-[scale] duration-150 ease-out group-active/seal:scale-[0.97] lg:size-12" />
       <span className="font-voice text-sm tracking-[0.14em] text-night-ink uppercase underline decoration-brass/60 underline-offset-4">
         Close the case
       </span>

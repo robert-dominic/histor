@@ -38,10 +38,10 @@ afterEach(() => {
 describe('the desktop desk', () => {
   beforeEach(() => stubMatchMedia({ desktop: true }));
 
-  test('is one screen: a grid of header, board and floor, with nothing that scrolls', () => {
+  test('is one screen: a grid of a fixed-height header, the board and a roomier floor, with nothing that scrolls', () => {
     renderDesk();
     expect(desk().dataset.desk).toBe('fixed');
-    for (const name of ['h-svh', 'grid', 'overflow-hidden', 'grid-rows-[auto_minmax(0,55fr)_minmax(0,45fr)]']) {
+    for (const name of ['h-svh', 'grid', 'overflow-hidden', 'grid-rows-[3.5rem_minmax(0,46fr)_minmax(0,54fr)]']) {
       expect(desk().className).toContain(name);
     }
     expect(desk().querySelector('[data-desk="board-row"]')).not.toBeNull();

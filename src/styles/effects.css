@@ -151,8 +151,10 @@
   );
 }
 
-/* The lamp: one overlay. Everything outside the pool falls to about 25% brightness. The pool's centre and size
-   come from CSS variables that Lamp.tsx writes every frame; nothing here animates by itself. */
+/* The lamp: one overlay. The ambient light stays high enough that every label on the desk reads at 4.5:1 or more
+   anywhere, however far from the lamp (lamp-contrast.test.ts checks the shadow's strength): outside the pool the
+   desk is only dimmed a little, and the lamp adds a warm highlight where it points. The pool's centre and size come
+   from CSS variables that Lamp.tsx writes every frame; nothing here animates by itself. */
 .desk-lamp {
   --lamp-x: 50vw;
   --lamp-y: 45vh;
@@ -160,7 +162,8 @@
 }
 
 .desk-lamp-shadow {
-  background-color: color-mix(in srgb, var(--color-night) 75%, transparent);
+  /* The ambient shadow: how far the desk outside the pool is dimmed. */
+  background-color: color-mix(in srgb, var(--color-night) 35%, transparent);
   -webkit-mask-image: radial-gradient(
     circle var(--lamp-r) at var(--lamp-x) var(--lamp-y),
     transparent 0,
@@ -174,7 +177,7 @@
 .desk-lamp-warmth {
   background: radial-gradient(
     circle var(--lamp-r) at var(--lamp-x) var(--lamp-y),
-    color-mix(in srgb, var(--color-brass) 13%, transparent) 0,
+    color-mix(in srgb, var(--color-brass) 16%, transparent) 0,
     transparent 70%
   );
   mix-blend-mode: soft-light;

@@ -1,12 +1,23 @@
 // src/lib/__tests__/floor.test.ts
+// The floor layout (desk-fixes item 3): every file in rows, each in its own cell, none covering another; the same
+// every time; and a folder the player drops moves only that folder.
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { MAX_TILT, MIN_SCALE, floorLayout, polygonsOverlap } from '@/lib/floor';
+import { MAX_JITTER, MAX_TILT, MIN_SCALE, droppedSpot, floorLayout, placeOnFloor, polygonsOverlap } from '@/lib/floor';
 import type { FolderBox } from '@/lib/floor';
 
-/** About the size of a folder on the desk: 184px wide, with its tab and label across the top left. */
-export const FOLDER: FolderBox = { width: 184, height: 130, label: { x: 14, y: 12, width: 120, height: 40 } };
+/** A folder on the desktop floor: 7.75rem by 6rem, its tab and label across the top left. */
+export const FOLDER: FolderBox = { width: 124, height: 96, label: { x: 8, y: 0, width: 100, height: 60 } };
 const IDS = maryCeleste.evidence.map(evidence => evidence.id);
+
+/**
+ * The floor's size on the desk at a given screen: the screen minus the case header (2.75rem), the desk's header
+ * (3.5rem), the board's 46 parts of the rest, the floor row's padding, the tray (13rem) and the gap beside it.
+ */
+function floorAt(screenWidth: number, screenHeight: number) {
+  const rows = screenHeight - 44 - 56;
+  return { width: screenWidth - 32 - 208 - 16, height: Math.floor((rows * 54) / 100) - 12 };
+}
 
 describe('floorLayout with the Mary Celeste files', () => {
   test('there are 23 files to place', () => {
@@ -14,65 +25,104 @@ describe('floorLayout with the Mary Celeste files', () => {
   });
 
   test.each([
-    [1080, 380],
-    [1100, 360],
-    [900, 330],
-    [1300, 420],
-  ])('at a floor of %i×%i every file has one place, in order, with a tilt of at most 8°', (width, height) => {
-    const { places, scale } = floorLayout(IDS, { width, height }, FOLDER);
-    expect(places.map(place => place.id)).toEqual(IDS);
-    expect(places.map(place => place.z)).toEqual(IDS.map((_, index) => index));
-    for (const place of places) {
-      expect(Math.abs(place.rotate)).toBeLessThanOrEqual(MAX_TILT);
+    [1366, 768],
+    [1440, 900],
+    [1280, 720],
+    [1920, 1080],
+  ])('at a %i×%i screen the 23 folders lie apart, in rows, readable (at least 90%% of their size)', (width, height) => {
+    const floor = floorAt(width, height);
+    const layout = floorLayout(IDS, floor, FOLDER);
+    expect(layout.apart).toBe(true);
+    expect(layout.places.map(place => place.id)).toEqual(IDS);
+    if (width >= 1366) {
+      expect(layout.scale).toBeGreaterThanOrEqual(0.9);
     }
-    expect(scale).toBeGreaterThanOrEqual(MIN_SCALE);
-    expect(scale).toBeLessThanOrEqual(1);
+    // More than one row, and rows across the floor.
+    const rows = new Set(layout.places.map(place => Math.round(place.y / layout.cell.height)));
+    expect(rows.size).toBeGreaterThan(1);
+    expect(rows.size).toBeLessThan(IDS.length);
   });
 
-  test('the folders really are tilted: not all the same, not all straight', () => {
-    const { places } = floorLayout(IDS, { width: 1100, height: 380 }, FOLDER);
-    const tilts = new Set(places.map(place => Math.round(place.rotate * 10)));
+  test('every tilt is within ±6°, every offset within ±12px of its cell, and they really vary', () => {
+    const floor = floorAt(1440, 900);
+    const layout = floorLayout(IDS, floor, FOLDER);
+    const columns = Math.round(floor.width / layout.cell.width);
+    const tilts = new Set(layout.places.map(place => Math.round(place.rotate * 10)));
     expect(tilts.size).toBeGreaterThan(10);
+    layout.places.forEach((place, index) => {
+      expect(Math.abs(place.rotate)).toBeLessThanOrEqual(MAX_TILT);
+      const row = Math.floor(index / columns);
+      const inRow = Math.min(columns, IDS.length - row * columns);
+      const cx = ((columns - inRow) * layout.cell.width) / 2 + ((index % columns) + 0.5) * layout.cell.width;
+      const cy = (row + 0.5) * layout.cell.height;
+      expect(Math.abs(place.x + FOLDER.width / 2 - cx)).toBeLessThanOrEqual(MAX_JITTER + 0.01);
+      expect(Math.abs(place.y + FOLDER.height / 2 - cy)).toBeLessThanOrEqual(MAX_JITTER + 0.01);
+    });
   });
 
   test('a roomy floor keeps the folders at full size', () => {
     expect(floorLayout(IDS, { width: 2000, height: 900 }, FOLDER).scale).toBe(1);
   });
 
-  test('a tight floor shrinks the folders, but never below 70%', () => {
-    const { scale } = floorLayout(IDS, { width: 800, height: 300 }, FOLDER);
+  test('a tight floor shrinks the folders, but never below 75%', () => {
+    const { scale } = floorLayout(IDS, { width: 800, height: 250 }, FOLDER);
     expect(scale).toBeLessThan(1);
     expect(scale).toBeGreaterThanOrEqual(MIN_SCALE);
   });
 
   test('the same inputs give the same places', () => {
-    const floor = { width: 1100, height: 380 };
+    const floor = floorAt(1366, 768);
     expect(floorLayout(IDS, floor, FOLDER)).toStrictEqual(floorLayout(IDS, floor, FOLDER));
   });
 
   test('no ids, no places', () => {
-    expect(floorLayout([], { width: 1000, height: 400 }, FOLDER)).toEqual({ places: [], scale: 1 });
+    expect(floorLayout([], { width: 1000, height: 400 }, FOLDER).places).toEqual([]);
   });
 
   test('one folder lies near the middle', () => {
     const { places } = floorLayout(['e-one'], { width: 1000, height: 400 }, FOLDER);
     expect(places).toHaveLength(1);
-    // Within the jitter of the middle of the floor.
-    expect(Math.abs(places[0].x + FOLDER.width / 2 - 500)).toBeLessThanOrEqual(10);
-    expect(Math.abs(places[0].y + FOLDER.height / 2 - 200)).toBeLessThanOrEqual(8);
-  });
-
-  test('a short last row is centred under the rows above it', () => {
-    const { places } = floorLayout(IDS.slice(0, 7), { width: 1100, height: 380 }, FOLDER);
-    expect(places).toHaveLength(7);
+    expect(Math.abs(places[0].x + FOLDER.width / 2 - 500)).toBeLessThanOrEqual(MAX_JITTER);
+    expect(Math.abs(places[0].y + FOLDER.height / 2 - 200)).toBeLessThanOrEqual(MAX_JITTER);
   });
 
   test('the same file keeps its tilt when the floor changes size', () => {
-    const wide = floorLayout(IDS, { width: 1300, height: 420 }, FOLDER).places;
-    const narrow = floorLayout(IDS, { width: 1100, height: 380 }, FOLDER).places;
-    // Tilt comes from the id alone, scaled down only where a label needed room.
+    const wide = floorLayout(IDS, floorAt(1920, 1080), FOLDER).places;
+    const narrow = floorLayout(IDS, floorAt(1366, 768), FOLDER).places;
     const same = wide.filter((place, index) => place.rotate === narrow[index].rotate).length;
-    expect(same).toBeGreaterThan(IDS.length / 2);
+    expect(same).toBe(IDS.length);
+  });
+});
+
+describe('placeOnFloor: what the player moves', () => {
+  const floor = floorAt(1366, 768);
+  const layout = floorLayout(IDS, floor, FOLDER);
+
+  test('with nothing dropped, every folder is on its own spot', () => {
+    expect(placeOnFloor(layout, floor, FOLDER, new Map())).toEqual(layout.places);
+  });
+
+  test('a dropped folder lies where it was dropped, on top, with its own tilt; no other folder moves', () => {
+    const spot = droppedSpot(300, 120, floor);
+    const places = placeOnFloor(layout, floor, FOLDER, new Map([['e-sword', spot]]));
+    const sword = places.find(place => place.id === 'e-sword')!;
+    expect(sword.x + FOLDER.width / 2).toBeCloseTo(300, 0);
+    expect(sword.y + FOLDER.height / 2).toBeCloseTo(120, 0);
+    expect(sword.rotate).toBe(layout.places.find(place => place.id === 'e-sword')!.rotate);
+    expect(sword.z).toBeGreaterThan(Math.max(...layout.places.map(place => place.z)));
+    expect(places.filter(place => place.id !== 'e-sword')).toEqual(layout.places.filter(place => place.id !== 'e-sword'));
+  });
+
+  test('a folder dropped at the edge is kept inside the floor', () => {
+    const places = placeOnFloor(layout, floor, FOLDER, new Map([['e-galley', { fx: 1, fy: 1 }]]));
+    const galley = places.find(place => place.id === 'e-galley')!;
+    expect(galley.x + FOLDER.width / 2 + (FOLDER.width * layout.scale) / 2).toBeLessThanOrEqual(floor.width + 0.01);
+    expect(galley.y + FOLDER.height / 2 + (FOLDER.height * layout.scale) / 2).toBeLessThanOrEqual(floor.height + 0.01);
+  });
+
+  test('a spot is remembered as a share of the floor, so it survives a change of size', () => {
+    expect(droppedSpot(555, 174, { width: 1110, height: 348 })).toEqual({ fx: 0.5, fy: 0.5 });
+    expect(droppedSpot(-40, 9000, { width: 1110, height: 348 })).toEqual({ fx: 0, fy: 1 });
   });
 });
 

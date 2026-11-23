@@ -1,17 +1,19 @@
 // src/lib/__tests__/floor.property.test.ts
-// Properties 1–4 of .kiro/specs/fix-pack: the floor layout. Pure logic, so they run in Node.
+// Properties 1–4 of .kiro/specs/fix-pack, as changed by desk-fixes item 3: the floor layout. Pure logic, so they run
+// in Node. Wherever the floor holds the folders apart (`apart`), they all lie inside it and none covers any part of
+// another, labels included; the layout is the same every time; and moving one folder leaves the others be.
 import * as fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { MAX_TILT, floorLayout } from '@/lib/floor';
+import { MAX_TILT, MIN_SCALE, floorLayout, placeOnFloor } from '@/lib/floor';
 import type { FloorLayout, FloorSize, FolderBox } from '@/lib/floor';
 
-/** About the size of a folder on the desk. */
-const FOLDER: FolderBox = { width: 184, height: 130, label: { x: 14, y: 12, width: 120, height: 40 } };
+/** A folder on the desktop floor. */
+const FOLDER: FolderBox = { width: 124, height: 96, label: { x: 8, y: 0, width: 100, height: 60 } };
 
 const ids = fc.uniqueArray(fc.stringMatching(/^e-[a-z0-9]{1,8}$/), { minLength: 0, maxLength: 30 });
 const floors: fc.Arbitrary<FloorSize> = fc.record({
-  width: fc.integer({ min: 800, max: 2000 }),
-  height: fc.integer({ min: 300, max: 600 }),
+  width: fc.integer({ min: 700, max: 2000 }),
+  height: fc.integer({ min: 220, max: 600 }),
 });
 
 type Point = readonly [number, number];
@@ -79,6 +81,7 @@ describe('Floor layout properties', () => {
     fc.assert(
       fc.property(ids, floors, (list, floor) => {
         const layout = floorLayout(list, floor, FOLDER);
+        fc.pre(layout.apart);
         for (const id of list) {
           for (const [x, y] of outline(layout, id, 'whole')) {
             expect(x).toBeGreaterThanOrEqual(-1e-6);
@@ -114,30 +117,71 @@ describe('Floor layout properties', () => {
   });
 
   /**
-   * Feature: fix-pack, Property 3: No folder label is covered
+   * Feature: fix-pack, Property 3: No folder label is covered (desk-fixes: no folder covers another at all)
    * **Validates: Requirements 13.2, 13.4**
    */
-  test('Property 3: no label meets the folder of anything above it', () => {
+  test('Property 3: no folder covers another, nor its label', () => {
     fc.assert(
       fc.property(ids, floors, (list, floor) => {
         const layout = floorLayout(list, floor, FOLDER);
-        const byZ = [...layout.places].sort((a, b) => a.z - b.z);
-        byZ.forEach((place, index) => {
+        fc.pre(layout.apart);
+        layout.places.forEach((place, index) => {
+          const whole = outline(layout, place.id, 'whole');
           const label = outline(layout, place.id, 'label');
-          for (const above of byZ.slice(index + 1)) {
-            expect(overlapArea(label, outline(layout, above.id, 'whole'))).toBe(false);
+          for (const other of layout.places.slice(index + 1)) {
+            const otherWhole = outline(layout, other.id, 'whole');
+            expect(overlapArea(whole, otherWhole)).toBe(false);
+            expect(overlapArea(label, otherWhole)).toBe(false);
+            expect(overlapArea(outline(layout, other.id, 'label'), whole)).toBe(false);
           }
         });
       }),
-      { numRuns: 100 }
+      { numRuns: 150 }
+    );
+  });
+
+  test('the 23 files of a case always lie apart on a desktop floor (1000×280 and up)', () => {
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(fc.stringMatching(/^e-[a-z0-9]{1,8}$/), { minLength: 23, maxLength: 23 }),
+        fc.record({ width: fc.integer({ min: 1000, max: 2400 }), height: fc.integer({ min: 280, max: 700 }) }),
+        (list, floor) => {
+          expect(floorLayout(list, floor, FOLDER).apart).toBe(true);
+        }
+      ),
+      { numRuns: 150 }
     );
   });
 
   /**
-   * Feature: fix-pack, Property 4: Floor tilts stay within eight degrees
+   * desk-fixes item 3: stable. A folder's place depends on its own id, the case's ids and the floor only, so
+   * dropping one folder somewhere never moves any other.
+   */
+  test('moving one folder leaves every other folder where it was', () => {
+    fc.assert(
+      fc.property(
+        ids.filter(list => list.length > 1),
+        floors,
+        fc.nat(),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        (list, floor, pick, fx, fy) => {
+          const layout = floorLayout(list, floor, FOLDER);
+          const moved = list[pick % list.length];
+          const before = placeOnFloor(layout, floor, FOLDER, new Map());
+          const after = placeOnFloor(layout, floor, FOLDER, new Map([[moved, { fx, fy }]]));
+          expect(after.filter(place => place.id !== moved)).toEqual(before.filter(place => place.id !== moved));
+        }
+      ),
+      { numRuns: 150 }
+    );
+  });
+
+  /**
+   * Feature: fix-pack, Property 4: Floor tilts stay within six degrees (desk-fixes: was eight)
    * **Validates: Requirements 13.2, 13.3**
    */
-  test('Property 4: every tilt is within ±8° and every id appears once', () => {
+  test('Property 4: every tilt is within ±6° and every id appears once', () => {
     fc.assert(
       fc.property(ids, floors, (list, floor) => {
         const { places, scale } = floorLayout(list, floor, FOLDER);
@@ -147,7 +191,7 @@ describe('Floor layout properties', () => {
           expect(place.rotate).toBeGreaterThanOrEqual(-MAX_TILT);
           expect(place.rotate).toBeLessThanOrEqual(MAX_TILT);
         }
-        expect(scale).toBeGreaterThanOrEqual(0.7);
+        expect(scale).toBeGreaterThanOrEqual(MIN_SCALE);
         expect(scale).toBeLessThanOrEqual(1);
       }),
       { numRuns: 100 }

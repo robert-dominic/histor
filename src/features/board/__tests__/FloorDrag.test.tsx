@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // src/features/board/__tests__/FloorDrag.test.tsx
 // Dragging a folder from the floor (Requirement 17): Draggables exist only for a mouse with full motion; each drop
-// is turned into an outcome by dropOutcome; a folder dropped on the floor stays there for the visit; a sealed
-// folder dropped on a note is read first, then pinned.
+// is turned into an outcome by dropOutcome; a folder dropped on the floor stays there, and the desk keeps the spot
+// in storage; a sealed folder dropped on a note is pinned at once, still sealed.
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import gsap from 'gsap';
 import { MemoryRouter } from 'react-router-dom';
@@ -13,6 +13,8 @@ import Floor from '@/features/board/Floor';
 import { Draggable } from '@/features/board/drag';
 import { forgetShownThisLoad } from '@/features/board/hints';
 import { deskLayout } from '@/lib/desk';
+import type { DroppedSpot } from '@/lib/floor';
+import { floorKey } from '@/lib/floor-positions';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 import type { InvestigationState } from '@/types/case';
@@ -74,11 +76,16 @@ const finish = (element: Element) => gsap.getTweensOf(element).forEach(tween => 
 describe('Draggables on the floor', () => {
   const EMPTY: InvestigationState = { opened: [], pins: {}, verdict: null };
   const onDrop = vi.fn();
-  const droppedAt = { current: new Map() };
+  let dropped = new Map<string, DroppedSpot>();
+  const onRearrange = vi.fn((id: string, spot: DroppedSpot) => {
+    dropped.delete(id);
+    dropped.set(id, spot);
+  });
 
   function renderFloor(state: InvestigationState = EMPTY) {
-    droppedAt.current = new Map();
+    dropped = new Map();
     onDrop.mockClear();
+    onRearrange.mockClear();
     return render(
       <MemoryRouter>
         <main>
@@ -91,7 +98,8 @@ describe('Draggables on the floor', () => {
             layout={deskLayout(CASE, state)}
             filesHref={`${BASE}/files`}
             theories={CASE.theories}
-            droppedAt={droppedAt}
+            dropped={dropped}
+            onRearrange={onRearrange}
             onDrop={onDrop}
           />
         </main>
@@ -195,18 +203,29 @@ describe('Draggables on the floor', () => {
     expect(Number(gsap.getProperty(folder, 'y'))).toBeCloseTo(home.y, 3);
   });
 
-  test('dropped back on the floor, a folder settles where it was let go, on top, and keeps that spot for the visit', () => {
+  test('dropped back on the floor, a folder settles where it was let go, on top, and keeps that spot; no other moves', () => {
     stubMedia();
     const { rerender } = renderFloor();
     const folder = folders()[4];
     const id = folder.dataset.evidenceId!;
+    const others = folders()
+      .filter(item => item !== folder)
+      .map(item => [gsap.getProperty(item, 'x'), gsap.getProperty(item, 'y'), gsap.getProperty(item, 'rotation')]);
     gsap.set(folder, { x: 200, y: 60 });
     dragTo(folder, document.querySelector('[data-board="floor"]')).over();
     finish(folder);
-    expect(droppedAt.current.get(id)).toMatchObject({ x: 200, y: 60 });
-    expect(Number(gsap.getProperty(folder, 'x'))).toBeCloseTo(200, 3);
-    expect(Number(folder.style.zIndex)).toBeGreaterThan(23);
+    // The spot is the folder's centre, as a share of the floor (1100 × 380).
+    expect(onRearrange).toHaveBeenCalledTimes(1);
+    expect(dropped.get(id)?.fx).toBeCloseTo((200 + 92) / 1100, 3);
+    expect(dropped.get(id)?.fy).toBeCloseTo((60 + 65) / 380, 3);
+    expect(Number(gsap.getProperty(folder, 'x'))).toBeCloseTo(200, 0);
+    expect(Number(folder.style.zIndex)).toBeGreaterThanOrEqual(23);
     expect(onDrop).not.toHaveBeenCalled();
+    expect(
+      folders()
+        .filter(item => item !== folder)
+        .map(item => [gsap.getProperty(item, 'x'), gsap.getProperty(item, 'y'), gsap.getProperty(item, 'rotation')])
+    ).toEqual(others);
     // The desk draws again (another file is pinned, say): the folder is still there.
     rerender(
       <MemoryRouter>
@@ -215,25 +234,35 @@ describe('Draggables on the floor', () => {
             layout={deskLayout(CASE, { opened: [], pins: {}, verdict: null })}
             filesHref={`${BASE}/files`}
             theories={CASE.theories}
-            droppedAt={droppedAt}
+            dropped={dropped}
+            onRearrange={onRearrange}
             onDrop={onDrop}
           />
         </main>
       </MemoryRouter>
     );
-    expect(Number(gsap.getProperty(folderOf(id), 'x'))).toBeCloseTo(200, 3);
+    expect(Number(gsap.getProperty(folderOf(id), 'x'))).toBeCloseTo(200, 0);
   });
 
-  test('nothing is stored: a fresh visit puts every folder back where floorLayout puts it', () => {
+  test('a folder the desk remembers lies at its spot from the first placement', () => {
     stubMedia();
-    renderFloor();
-    const folder = folders()[4];
-    gsap.set(folder, { x: 200, y: 60 });
-    dragTo(folder, document.querySelector('[data-board="floor"]')).over();
-    expect(localStorage.getItem(KEY)).toBeNull();
-    cleanup();
-    renderFloor();
-    expect(Number(gsap.getProperty(folders()[4], 'x'))).not.toBeCloseTo(200, 0);
+    dropped = new Map();
+    render(
+      <MemoryRouter>
+        <main>
+          <Floor
+            layout={deskLayout(CASE, EMPTY)}
+            filesHref={`${BASE}/files`}
+            theories={CASE.theories}
+            dropped={new Map([['e-galley', { fx: 0.5, fy: 0.5 }]])}
+            onRearrange={onRearrange}
+            onDrop={onDrop}
+          />
+        </main>
+      </MemoryRouter>
+    );
+    expect(Number(gsap.getProperty(folderOf('e-galley'), 'x'))).toBeCloseTo(550 - 92, 3);
+    expect(Number(gsap.getProperty(folderOf('e-galley'), 'y'))).toBeCloseTo(190 - 65, 3);
   });
 });
 
@@ -261,6 +290,19 @@ describe('a drop in the whole app', () => {
   };
   const saved = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
   const note = () => document.querySelector<HTMLElement>(`[data-board="theory"][data-drop-target="${NOTE}"]`)!;
+
+  test('a folder dropped on the floor is kept under its own key, the investigation untouched, and a reload keeps it', () => {
+    const view = renderDesk();
+    const folder = folderOf('e-galley');
+    gsap.set(folder, { x: 200, y: 60 });
+    act(() => dragTo(folder, document.querySelector('[data-board="floor"]')).over());
+    const stored = JSON.parse(localStorage.getItem(floorKey(CASE.id)) ?? '[]') as [string, DroppedSpot][];
+    expect(stored.map(([id]) => id)).toEqual(['e-galley']);
+    expect(saved() ?? { opened: [], pins: {} }).toMatchObject({ opened: [], pins: {} });
+    view.unmount();
+    renderDesk();
+    expect(Number(gsap.getProperty(folderOf('e-galley'), 'x'))).toBeCloseTo(200, 0);
+  });
 
   test('a sealed folder on a note is pinned at once: no file opens, and it stays sealed', async () => {
     renderDesk();

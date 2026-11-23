@@ -1,7 +1,13 @@
 // src/lib/floor.ts
-// Where the evidence folders lie on the desk's floor: tossed flat on the table, seen from above, each with a
-// slight tilt, a little overlapping, every folder's tab and label still showing. Pure: the same inputs always give
-// the same places, with no randomness (jitter and tilt come from `hashUnit` of the file's id).
+// Where the evidence folders lie on the desk's floor: in rows across the table, seen from above, each a little off
+// its spot and slightly tilted, so they still look scattered by hand. No folder covers another: at most their cells'
+// edges touch, so every tab and label is always in view and nothing hides under anything else.
+//
+// The places are worked out once, for every file of the case, from the file ids and the floor's size alone. Which
+// files are on the floor right now does not matter: a pinned file leaves its spot empty and the others stay where
+// they are, and a file sent back to the floor returns to its own spot (or to where the player dropped it, which is
+// kept apart: `placeOnFloor`). Pure: the same inputs always give the same places, with no randomness (the offsets
+// and tilts come from `hashUnit` of the file's id).
 import { hashUnit } from '@/lib/desk';
 
 /** The floor's size in px. */
@@ -26,9 +32,9 @@ export interface FloorPlace {
   id: string;
   x: number;
   y: number;
-  /** Degrees, between −8 and 8. */
+  /** Degrees, between −6 and 6. */
   rotate: number;
-  /** Reading order: a later folder lies over an earlier one. */
+  /** Stacking order. Folders never overlap, so it only matters for one dropped by hand. */
   z: number;
 }
 
@@ -36,24 +42,25 @@ export interface FloorLayout {
   places: FloorPlace[];
   /** How much smaller than natural size the folders are drawn, so that they fit. 1 when the floor is roomy. */
   scale: number;
+  /** Each folder's cell: the folder, tilted and moved off its spot, always stays inside it. */
+  cell: { width: number; height: number };
+  /** True when every folder fits its cell, so none overlaps another. False only on a floor too small for them. */
+  apart: boolean;
 }
 
 /** The most a folder is tilted, in degrees. */
-export const MAX_TILT = 8;
-/** Smallest the folders are drawn before the layout gives up making room. */
-export const MIN_SCALE = 0.7;
-const SCALE_STEP = 0.05;
-/** How far a folder may stray from its grid spot, in px at natural size. */
-const JITTER = { x: 10, y: 8 } as const;
-/** Space kept between a label and the next folder's edge, in px at natural size. */
-const LABEL_GAP = 4;
-/** Times a folder's jitter is halved before it is set to zero. */
-const HALVINGS = 3;
+export const MAX_TILT = 6;
+/** The most a folder strays from the middle of its cell, in px on screen. */
+export const MAX_JITTER = 12;
+/** Smallest the folders are drawn before the layout gives up keeping them apart. */
+export const MIN_SCALE = 0.75;
+/** Room kept around the most tilted folder in its cell, in px, so that even it can stray a little. */
+const SLACK = 8;
 
 type Point = readonly [number, number];
 
 /** The four corners of a `width` × `height` rectangle with its top-left at (x, y), turned by `degrees` about `centre`. */
-function corners(x: number, y: number, width: number, height: number, degrees: number, centre: Point): Point[] {
+export function corners(x: number, y: number, width: number, height: number, degrees: number, centre: Point): Point[] {
   const radians = (degrees * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
@@ -94,177 +101,132 @@ export function polygonsOverlap(a: readonly Point[], b: readonly Point[]): boole
   return true;
 }
 
-interface Slot {
-  /** The grid spot's centre. */
-  cx: number;
-  cy: number;
-}
-
-/** The rotated outline of the whole folder, and of its label, for a folder centred at (cx, cy). */
-function outlines(cx: number, cy: number, degrees: number, folder: FolderBox, scale: number) {
-  const width = folder.width * scale;
-  const height = folder.height * scale;
-  const centre: Point = [cx, cy];
-  const left = cx - width / 2;
-  const top = cy - height / 2;
-  return {
-    whole: corners(left, top, width, height, degrees, centre),
-    label: corners(
-      left + folder.label.x * scale,
-      top + folder.label.y * scale,
-      folder.label.width * scale,
-      folder.label.height * scale,
-      degrees,
-      centre
-    ),
-  };
-}
-
-/** The growth of a rectangle's bounding box when it is turned by the largest tilt. */
-function tiltedExtent(width: number, height: number): { width: number; height: number } {
-  const radians = (MAX_TILT * Math.PI) / 180;
+/** The bounding box of a `width` × `height` rectangle turned by `degrees`. */
+function tiltedExtent(width: number, height: number, degrees: number): { width: number; height: number } {
+  const radians = (Math.abs(degrees) * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
   return { width: width * cos + height * sin, height: width * sin + height * cos };
 }
 
-/** One grid at one scale: the best columns × rows that keep every label clear of the folders after it. */
-function planGrid(count: number, floor: FloorSize, folder: FolderBox, scale: number) {
-  const extent = tiltedExtent(folder.width * scale, folder.height * scale);
-  const jitterX = JITTER.x * scale;
-  const jitterY = JITTER.y * scale;
-  // Centres may lie in this box: every tilted folder, at the largest jitter, stays inside the floor.
-  const minX = extent.width / 2 + jitterX;
-  const maxX = floor.width - extent.width / 2 - jitterX;
-  const minY = extent.height / 2 + jitterY;
-  const maxY = floor.height - extent.height / 2 - jitterY;
-  // The next folder in a row starts `pitchX` further on, the next row `pitchY` lower. A label stays clear of them
-  // when it ends before they begin.
-  const needX = (folder.label.x + folder.label.width) * scale + LABEL_GAP * scale;
-  const needY = (folder.label.y + folder.label.height) * scale + LABEL_GAP * scale;
-  let best: { columns: number; rows: number; pitchX: number; pitchY: number; fit: number } | null = null;
+const round = (value: number) => Math.round(value * 100) / 100;
+
+/**
+ * The grid: the number of columns that lets the folders be drawn largest, with the most tilted folder still
+ * inside its cell with `SLACK` to spare.
+ */
+function planGrid(count: number, floor: FloorSize, folder: FolderBox) {
+  const unit = tiltedExtent(folder.width, folder.height, MAX_TILT);
+  let best: { columns: number; rows: number; scale: number } | null = null;
   for (let columns = 1; columns <= count; columns += 1) {
     const rows = Math.ceil(count / columns);
-    const pitchX = columns === 1 ? Number.POSITIVE_INFINITY : (maxX - minX) / (columns - 1);
-    const pitchY = rows === 1 ? Number.POSITIVE_INFINITY : (maxY - minY) / (rows - 1);
-    if (pitchX < needX || pitchY < needY) {
+    // A grid with a whole empty row is never better than one with fewer columns.
+    if (columns > 1 && Math.ceil(count / (columns - 1)) === rows) {
       continue;
     }
-    // The least overlap wins: how close the pitch is to the folder's own size, the tighter of the two.
-    const fit = Math.min(pitchX / (folder.width * scale), pitchY / (folder.height * scale));
-    if (best === null || fit > best.fit) {
-      best = { columns, rows, pitchX, pitchY, fit };
+    const cellWidth = floor.width / columns;
+    const cellHeight = floor.height / rows;
+    const scale = Math.min(1, (cellWidth - SLACK) / unit.width, (cellHeight - SLACK) / unit.height);
+    if (best === null || scale > best.scale + 1e-9) {
+      best = { columns, rows, scale };
     }
   }
-  if (best === null) {
-    return null;
-  }
-  const { columns, rows } = best;
-  const slots: Slot[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const row = Math.floor(index / columns);
-    const inRow = Math.min(columns, count - row * columns);
-    const pitchX = Number.isFinite(best.pitchX) ? best.pitchX : 0;
-    const pitchY = Number.isFinite(best.pitchY) ? best.pitchY : 0;
-    // A short last row is centred under the rows above it.
-    const firstX = columns === 1 ? (minX + maxX) / 2 : minX + ((columns - inRow) * pitchX) / 2;
-    const column = index - row * columns;
-    slots.push({
-      cx: Math.min(maxX, firstX + column * pitchX),
-      cy: rows === 1 ? (minY + maxY) / 2 : minY + row * pitchY,
-    });
-  }
-  return { slots, jitterX, jitterY };
-}
-
-/** The layout at one scale, or null when its labels cannot be kept clear. */
-function layoutAt(ids: readonly string[], floor: FloorSize, folder: FolderBox, scale: number): FloorPlace[] | null {
-  const plan = planGrid(ids.length, floor, folder, scale);
-  if (plan === null) {
-    return null;
-  }
-  // How much of its jitter and tilt each folder keeps: 1, 1/2, 1/4, 1/8, then none.
-  const keep = ids.map(() => 1);
-  const place = (index: number) => {
-    const id = ids[index];
-    const { cx, cy } = plan.slots[index];
-    const factor = keep[index];
-    const x = cx + (hashUnit(id, 'fx') * 2 - 1) * plan.jitterX * factor;
-    const y = cy + (hashUnit(id, 'fy') * 2 - 1) * plan.jitterY * factor;
-    const rotate = (hashUnit(id, 'rot') * 2 - 1) * MAX_TILT * factor;
-    return { x, y, rotate };
-  };
-  // Folders later in the reading order lie over earlier ones, so only they can cover a label. Wherever one does,
-  // the covered folder keeps less of its jitter and tilt. Moving a folder can change what covers what, so this
-  // repeats until nothing is covered. Every pass only ever lowers a folder's share, so it ends.
-  const outlineOf = (index: number) => {
-    const { x, y, rotate } = place(index);
-    return outlines(x, y, rotate, folder, scale);
-  };
-  let settled = false;
-  while (!settled) {
-    settled = true;
-    for (let index = 0; index < ids.length; index += 1) {
-      const label = outlineOf(index).label;
-      let covered = false;
-      for (let later = index + 1; later < ids.length && !covered; later += 1) {
-        covered = polygonsOverlap(label, outlineOf(later).whole);
-      }
-      if (!covered) {
-        continue;
-      }
-      if (keep[index] === 0) {
-        // Even with no jitter and no tilt this label is covered: the grid is too tight at this scale.
-        return null;
-      }
-      keep[index] = keep[index] <= 1 / 2 ** HALVINGS ? 0 : keep[index] / 2;
-      settled = false;
-    }
-  }
-  return ids.map((id, index) => {
-    const { x, y, rotate } = place(index);
-    return { id, x: x - folder.width / 2, y: y - folder.height / 2, rotate, z: index };
-  });
+  return best!;
 }
 
 /**
- * Places the folders on the floor.
+ * Places every folder of the case on the floor.
  *
- * A grid of the folders in reading order, each with a little jitter and a tilt of up to 8°, both taken from its id.
- * Later folders lie over earlier ones. Wherever a folder would cover the label of one before it, that folder's
- * jitter and tilt are halved (up to three times), then dropped. If even that is not enough, the whole layout is
- * tried again with smaller folders, down to 70%.
+ * The folders lie in rows, in case order, each in its own cell; a short last row is centred under the others.
+ * Within its cell a folder is tilted by up to 6° and moved off the middle by up to 12px, both taken from its id,
+ * and never by so much that it leaves the cell. So no folder covers another, and all of them lie inside the floor.
+ * The folders are drawn as large as that allows, at most at their natural size and at least at 75%; on a floor too
+ * small even for that, tilts and offsets shrink to nothing before the folders are allowed to overlap.
  *
- * @param ids - the folders' ids, in reading order
+ * @param ids - every file of the case, in case order (not only those on the floor now)
  */
 export function floorLayout(ids: readonly string[], floor: FloorSize, folder: FolderBox): FloorLayout {
-  if (ids.length === 0) {
-    return { places: [], scale: 1 };
+  if (ids.length === 0 || floor.width <= 0 || floor.height <= 0) {
+    return { places: [], scale: 1, cell: { width: floor.width, height: floor.height }, apart: true };
   }
-  for (let scale = 1; scale >= MIN_SCALE - 1e-9; scale -= SCALE_STEP) {
-    const rounded = Math.round(scale * 100) / 100;
-    const places = layoutAt(ids, floor, folder, rounded);
-    if (places !== null) {
-      return { places, scale: rounded };
-    }
-  }
-  // The floor is too small for the labels to stay clear at 70%: stack them as a plain, untilted grid.
-  return { places: fallbackGrid(ids, floor, folder), scale: MIN_SCALE };
-}
+  const { columns, rows, scale: fitted } = planGrid(ids.length, floor, folder);
+  const scale = round(Math.max(MIN_SCALE, Math.floor(fitted * 100) / 100));
+  const cellWidth = floor.width / columns;
+  const cellHeight = floor.height / rows;
+  const width = folder.width * scale;
+  const height = folder.height * scale;
+  let apart = true;
 
-/** The last resort: untilted rows at the smallest scale, as spread out as the floor allows. */
-function fallbackGrid(ids: readonly string[], floor: FloorSize, folder: FolderBox): FloorPlace[] {
-  const width = folder.width * MIN_SCALE;
-  const height = folder.height * MIN_SCALE;
-  const columns = Math.max(1, Math.floor(floor.width / width));
-  const rows = Math.ceil(ids.length / columns);
-  const pitchX = columns === 1 ? 0 : Math.max(0, (floor.width - width) / (columns - 1));
-  const pitchY = rows === 1 ? 0 : Math.max(0, (floor.height - height) / (rows - 1));
-  return ids.map((id, index) => {
+  const places = ids.map((id, index) => {
     const row = Math.floor(index / columns);
     const column = index - row * columns;
-    const cx = width / 2 + column * Math.min(pitchX, width);
-    const cy = height / 2 + row * pitchY;
-    return { id, x: cx - folder.width / 2, y: cy - folder.height / 2, rotate: 0, z: index };
+    const inRow = Math.min(columns, ids.length - row * columns);
+    const cx = ((columns - inRow) * cellWidth) / 2 + (column + 0.5) * cellWidth;
+    const cy = (row + 0.5) * cellHeight;
+    // The tilt from the id, halved until the folder fits its cell (only ever needed on a very small floor).
+    let rotate = (hashUnit(id, 'rot') * 2 - 1) * MAX_TILT;
+    let extent = tiltedExtent(width, height, rotate);
+    for (let halvings = 0; (extent.width > cellWidth || extent.height > cellHeight) && halvings < 4; halvings += 1) {
+      rotate /= 2;
+      extent = tiltedExtent(width, height, rotate);
+    }
+    if (extent.width > cellWidth || extent.height > cellHeight) {
+      rotate = 0;
+      extent = tiltedExtent(width, height, 0);
+      apart = apart && extent.width <= cellWidth && extent.height <= cellHeight;
+    }
+    // The offset from the id, as far as the room left in the cell allows (a hair less, for rounding).
+    const roomX = Math.max(0, Math.min(MAX_JITTER, (cellWidth - extent.width) / 2 - 0.02));
+    const roomY = Math.max(0, Math.min(MAX_JITTER, (cellHeight - extent.height) / 2 - 0.02));
+    const x = cx + (hashUnit(id, 'fx') * 2 - 1) * roomX;
+    const y = cy + (hashUnit(id, 'fy') * 2 - 1) * roomY;
+    return { id, x: round(x - folder.width / 2), y: round(y - folder.height / 2), rotate: round(rotate), z: index };
   });
+  return { places, scale, cell: { width: cellWidth, height: cellHeight }, apart };
+}
+
+/** Where a folder was dropped by hand: its centre, as a share of the floor's width and height (0 to 1). */
+export interface DroppedSpot {
+  fx: number;
+  fy: number;
+}
+
+/**
+ * Where each folder on the floor lies now: its own place from `layout`, or, for a folder the player dropped
+ * somewhere, there (kept inside the floor, with its own tilt, above the others in the order they were dropped).
+ * A folder's place depends only on its own spot and its own drop, so moving one folder never moves another.
+ *
+ * @param dropped - the folders dropped by hand, in the order they were dropped
+ */
+export function placeOnFloor(
+  layout: FloorLayout,
+  floor: FloorSize,
+  folder: FolderBox,
+  dropped: ReadonlyMap<string, DroppedSpot>
+): FloorPlace[] {
+  const order = [...dropped.keys()];
+  const halfWidth = (folder.width * layout.scale) / 2;
+  const halfHeight = (folder.height * layout.scale) / 2;
+  return layout.places.map(place => {
+    const spot = dropped.get(place.id);
+    if (spot === undefined) {
+      return place;
+    }
+    const clamp = (value: number, low: number, high: number) => (low > high ? (low + high) / 2 : Math.min(high, Math.max(low, value)));
+    const cx = clamp(spot.fx * floor.width, halfWidth, floor.width - halfWidth);
+    const cy = clamp(spot.fy * floor.height, halfHeight, floor.height - halfHeight);
+    return {
+      id: place.id,
+      x: round(cx - folder.width / 2),
+      y: round(cy - folder.height / 2),
+      rotate: place.rotate,
+      z: layout.places.length + order.indexOf(place.id),
+    };
+  });
+}
+
+/** The spot to remember for a folder dropped with its centre at (cx, cy) on the floor. */
+export function droppedSpot(cx: number, cy: number, floor: FloorSize): DroppedSpot {
+  const share = (value: number, size: number) => (size > 0 ? Math.min(1, Math.max(0, value / size)) : 0.5);
+  return { fx: Math.round(share(cx, floor.width) * 10000) / 10000, fy: Math.round(share(cy, floor.height) * 10000) / 10000 };
 }
