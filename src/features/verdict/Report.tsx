@@ -90,7 +90,7 @@ export default function Report() {
         fresh={fresh}
         onNarrow={setNarrow}
       />
-      <article className="desk-typed-paper relative z-[21] mx-auto flex max-w-3xl flex-col gap-8 rounded-[2px] px-5 pt-8 pb-8 text-ink sm:px-10 sm:pt-10">
+      <article className="desk-typed-paper relative z-[21] mx-auto flex max-w-3xl flex-col lg:max-w-6xl gap-8 rounded-[2px] px-5 pt-8 pb-8 text-ink sm:px-10 sm:pt-10">
         <h2 id="report-title" className="font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-none">
           Case report
         </h2>

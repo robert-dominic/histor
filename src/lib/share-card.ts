@@ -2,6 +2,8 @@
 // The shareable card at the end of a case (investigation brief, 3.3): a 1200×630 image drawn on a canvas in the
 // site's style (paper, ink, the case title and years), saved or shared from the browser. Nothing is uploaded or sent
 // anywhere: "Save the card" downloads it, "Share" hands the file to the browser's share sheet, or copies the text.
+// The share links (polish brief, A4) open each site's own share page with the text and the link filled in; they cannot
+// carry the image, so it is saved for attaching.
 import { RANK_COPY } from '@/lib/ui-copy';
 import type { CaseRank } from '@/lib/case-rank';
 
@@ -16,7 +18,15 @@ export interface ShareCardInput {
   years: string;
   rank: CaseRank;
   legends: number;
+  /** The player's signature, when they signed (player-name.ts). No name, no signature line. */
+  name?: string;
 }
+
+/**
+ * Where the signature sits on the card, in its own px: "Signed" small, then the name in the legend's face, on one
+ * baseline. The preview places its pen-written copy by the same numbers (VerdictReveal.tsx).
+ */
+export const SHARE_SIGNATURE = { left: 96, baseline: 560, labelPx: 20, namePx: 50, gap: 14 } as const;
 
 /** The card's words, in order: the line about the case, the rank, the legends, the site. */
 export function shareCardLines({ title, rank, legends }: ShareCardInput): { closed: string; rank: string; legends: string; site: string } {
@@ -29,10 +39,41 @@ export function shareCardLines({ title, rank, legends }: ShareCardInput): { clos
   };
 }
 
-/** The same words as one line of text, for sharing where a file cannot be. */
+/** The link that is shared: the case's own page on the site, so a friend lands on its start. */
+export function shareUrl(caseId: string): string {
+  return `https://${SHARE_SITE}/case/${encodeURIComponent(caseId)}`;
+}
+
+/**
+ * The words that are shared (polish brief, A4): "I closed the {title} case on Histor. {rank}. I trusted {n} legends.
+ * Can you tell legend from history?". The link goes beside it.
+ */
 export function shareCardText(input: ShareCardInput): string {
   const lines = shareCardLines(input);
-  return `${lines.closed} Rank: ${lines.rank}. ${lines.legends} ${lines.site}`;
+  return `${lines.closed.replace(/ case\.$/, ' case on Histor.')} ${lines.rank}. ${lines.legends} Can you tell legend from history?`;
+}
+
+export interface ShareLink {
+  id: 'x' | 'facebook' | 'linkedin' | 'whatsapp' | 'reddit' | 'telegram';
+  label: string;
+  href: string;
+}
+
+/**
+ * The direct share links: each site's own share page, opened in a new tab with the text and the link filled in
+ * (Facebook and LinkedIn take only the link; they read the words from the page). None of them can carry an image.
+ */
+export function shareLinks(text: string, url: string): ShareLink[] {
+  const t = encodeURIComponent(text);
+  const u = encodeURIComponent(url);
+  return [
+    { id: 'x', label: 'X', href: `https://x.com/intent/tweet?text=${t}&url=${u}` },
+    { id: 'facebook', label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+    { id: 'linkedin', label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${u}` },
+    { id: 'whatsapp', label: 'WhatsApp', href: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}` },
+    { id: 'reddit', label: 'Reddit', href: `https://www.reddit.com/submit?url=${u}&title=${t}` },
+    { id: 'telegram', label: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}` },
+  ];
 }
 
 /** A colour token of the site (index.css `@theme`), read from the page. */
@@ -138,6 +179,28 @@ export function drawShareCard(canvas: HTMLCanvasElement, input: ShareCardInput):
   context.font = `26px ${FONTS.voice}`;
   context.textAlign = 'right';
   context.fillText(lines.site, width - left, height - 84);
+
+  // The signature, when the player signed: "Signed", then the name in the legend's face.
+  const name = input.name?.trim() ?? '';
+  if (name !== '') {
+    const sign = SHARE_SIGNATURE;
+    context.textAlign = 'left';
+    context.fillStyle = muted;
+    context.font = `${sign.labelPx}px ${FONTS.voice}`;
+    const label = 'SIGNED';
+    context.fillText(label, sign.left, sign.baseline);
+    const labelWidth = context.measureText(label).width;
+    context.fillStyle = ink;
+    context.font = `${sign.namePx}px ${FONTS.legend}`;
+    context.fillText(name, sign.left + labelWidth + sign.gap, sign.baseline, width / 2);
+  }
+}
+
+/** The card drawn on a canvas of its own, signature and all: what is saved and shared. */
+export function renderShareCard(input: ShareCardInput): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  drawShareCard(canvas, input);
+  return canvas;
 }
 
 /** The card as a PNG file, or null where the canvas cannot give one. */
@@ -173,20 +236,27 @@ export async function saveShareCard(canvas: HTMLCanvasElement, name: string): Pr
 }
 
 /**
- * "Share": the browser's share sheet with the card, where it can share files; otherwise the text is copied.
+ * "Share": the browser's share sheet with the card, where it can share files (the link is in the text, since some
+ * apps drop a separate link when a file is shared); a share sheet without files gets the text and the link; otherwise
+ * both are copied.
  * @returns what happened: shared, copied, or nothing (the reader cancelled, or the browser can do neither)
  */
-export async function shareShareCard(canvas: HTMLCanvasElement, name: string, text: string): Promise<'shared' | 'copied' | 'none'> {
+export async function shareShareCard(canvas: HTMLCanvasElement, name: string, text: string, url: string): Promise<'shared' | 'copied' | 'none'> {
   const file = await shareCardFile(canvas, name);
   const canShareFile = file !== null && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
-  if (canShareFile && typeof navigator.share === 'function') {
+  if (typeof navigator.share === 'function' && (canShareFile || typeof navigator.canShare !== 'function' || navigator.canShare({ text, url }))) {
     try {
-      await navigator.share({ files: [file], text });
+      await navigator.share(canShareFile && file !== null ? { files: [file], text: `${text} ${url}` } : { text, url });
       return 'shared';
     } catch {
       return 'none';
     }
   }
+  return copyText(`${text} ${url}`);
+}
+
+/** Copies `text` to the clipboard ("Copy link", and Share where nothing else can). */
+export async function copyText(text: string): Promise<'copied' | 'none'> {
   try {
     await navigator.clipboard.writeText(text);
     return 'copied';

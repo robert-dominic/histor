@@ -120,7 +120,7 @@ describe('the shareable card', () => {
     });
     expect(shareCardLines({ ...input, legends: 0 }).legends).toBe('I trusted no legends.');
     expect(shareCardLines({ ...input, legends: 1 }).legends).toBe('I trusted 1 legend.');
-    expect(shareCardText(input)).toContain('histor.space');
+    expect(shareCardText(input)).toBe('I closed the Mary Celeste case on Histor. Deckhand. I trusted 3 legends. Can you tell legend from history?');
     expect(shareCardLines({ ...input, title: 'Test Case' }).closed).toBe('I closed the Test Case case.');
   });
 
