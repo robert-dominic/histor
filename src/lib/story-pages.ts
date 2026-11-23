@@ -32,7 +32,7 @@ export const STORY_PACE = {
   backDissolve: 0.5,
   /** A jump from the progress rail: a quick dissolve. */
   jumpDissolve: 0.35,
-  /** Before a hook, the roll call's names go out one after another, this far apart (last to first). */
+  /** Before a hook, the crew list's names fade off one after another, this far apart (last to first). */
   nameOutEvery: 0.09,
   /** The breath before a hook: the page has dimmed away; the image darkens and the camera creeps closer. */
   breath: 0.7,

@@ -309,3 +309,13 @@
 html[data-story-stage='held'] {
   overflow: hidden;
 }
+
+/* The crew list in the story (story-steps brief, item 3): a small slip of aged paper pinned over the image, a little
+   yellowed and darker at the edges. Ink text on it stays above 7:1 whatever the image behind. */
+.story-crew-slip {
+  background-color: color-mix(in srgb, var(--color-paper), var(--color-brass) 14%);
+  background-image:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, color-mix(in srgb, var(--color-ink) 12%, transparent)),
+    linear-gradient(176deg, color-mix(in srgb, white 16%, transparent), transparent 45%);
+  box-shadow: 0 14px 28px -10px rgb(0 0 0 / 0.75), 0 2px 4px rgb(0 0 0 / 0.4);
+}

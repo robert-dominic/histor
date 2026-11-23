@@ -321,6 +321,21 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional heading of the roll call's slip (3.19): a non-empty string, on a section with a roll call
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const title: unknown = section?.rollCallTitle;
+      if (title === undefined || title === null) {
+        return;
+      }
+      if (typeof title !== 'string' || title.trim() === '') {
+        errors.push(`Field story[${i}].rollCallTitle: Must be a non-empty string`);
+      } else if (!Array.isArray(section?.rollCall) || section.rollCall.length === 0) {
+        errors.push(`Field story[${i}].rollCallTitle: The section must have a rollCall`);
+      }
+    });
+  }
+
   // Validate the optional weighted parts of the central question (3.17): an array of non-empty phrases, each found
   // word for word in centralQuestion
   const questionEmphasis: unknown = caseData.centralQuestionEmphasis;

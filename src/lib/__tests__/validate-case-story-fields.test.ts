@@ -311,3 +311,20 @@ describe('validateCase: lines of the central question (data-foundation 3.18)', (
     expect(validateCase(maryCeleste)).toEqual([]);
   });
 });
+
+describe('validateCase: the heading of the roll call\'s slip (data-foundation 3.19)', () => {
+  test('may be left out, and a heading on a section with a roll call is valid', async () => {
+    expect(validateCase(createCase())).toEqual([]);
+    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
+    expect(maryCeleste.story[0].rollCallTitle).toBe('Crew list · Mary Celeste · Nov. 1872');
+    expect(validateCase(maryCeleste)).toEqual([]);
+  });
+
+  test('an empty heading, or a heading on a section with no roll call, is an error', () => {
+    const base = createCase();
+    const withTitle = (title: unknown, rollCall?: unknown) =>
+      createCase({ story: [{ ...base.story[0], rollCallTitle: title as string, rollCall: rollCall as never }, ...base.story.slice(1)] });
+    expect(validateCase(withTitle(' ', [{ name: 'A', role: 'b' }]))).toContain('Field story[0].rollCallTitle: Must be a non-empty string');
+    expect(validateCase(withTitle('Crew list'))).toContain('Field story[0].rollCallTitle: The section must have a rollCall');
+  });
+});

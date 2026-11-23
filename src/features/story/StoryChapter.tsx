@@ -101,20 +101,27 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
             </div>
           </div>
         </div>
-        {/* The roll call: its own quiet column on the other side of the image from the page (below it on phones). */}
+        {/* The roll call: a crew list, a slip of aged paper on the other side of the image from the page (below it on
+            phones), with the whole list already written. */}
         {rollCall !== undefined && rollCall.length > 0 && (
-          <ul
-            data-story="roll-call"
-            aria-label="The ten aboard"
-            className="grid grid-cols-2 gap-x-5 gap-y-1 px-5 pb-12 text-night-ink [text-shadow:0_1px_12px_rgb(0_0_0/0.85)] sm:px-10 lg:absolute lg:top-1/2 lg:right-[clamp(1.5rem,4vw,4rem)] lg:w-[min(19rem,24%)] lg:-translate-y-1/2 lg:grid-cols-1 lg:gap-y-2 lg:px-0 lg:pb-0"
-          >
-            {rollCall.map(entry => (
-              <li key={entry.name} data-story="name" className="font-record leading-tight">
-                {entry.name}
-                <span className="font-voice text-[0.75rem] tracking-[0.08em] text-ghost-night"> · {entry.role}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="px-5 pb-12 sm:px-10 lg:absolute lg:top-1/2 lg:right-[clamp(1.5rem,5vw,5rem)] lg:-translate-y-1/2 lg:px-0 lg:pb-0">
+            <div data-story="crew-slip" className="story-crew-slip relative w-[min(100%,22rem)] rotate-[1.5deg] rounded-[2px] px-4 pt-4 pb-3.5 text-ink lg:w-[min(17.5rem,22vw)] lg:px-5 lg:pt-5 lg:pb-4">
+              <span aria-hidden="true" className="desk-pin absolute -top-1 left-1/2 size-2.5 -translate-x-1/2 rounded-full" />
+              {section.rollCallTitle !== undefined && (
+                <p data-story="crew-title" className="border-b border-ink/25 pb-1.5 font-voice text-[0.625rem] tracking-[0.14em] text-ink/80 uppercase lg:text-[0.6875rem]">
+                  {section.rollCallTitle}
+                </p>
+              )}
+              <ul data-story="roll-call" aria-label={section.rollCallTitle ?? 'The roll call'} className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 lg:grid-cols-1 lg:gap-y-1">
+                {rollCall.map(entry => (
+                  <li key={entry.name} data-story="name" className="font-record text-[0.875rem] leading-tight text-ink lg:text-[0.9375rem]">
+                    {entry.name}
+                    <span className="font-voice text-[0.6875rem] tracking-[0.06em] text-ink/75"> · {entry.role}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         )}
       </div>
 

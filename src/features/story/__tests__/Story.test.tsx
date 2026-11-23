@@ -180,6 +180,7 @@ describe('Story: a page per chapter', () => {
     expect(column.className).toContain('lg:right-[');
     expect(column.className).toContain('lg:inset-x-auto');
     expect(column.className).toContain('top-[');
+    expect(column.querySelector('[data-story="crew-slip"]')).not.toBeNull();
     // Its own pen, in its own column.
     expect(column.querySelector('[data-roll="quill"]')).not.toBeNull();
   });
@@ -317,6 +318,23 @@ describe('Story: scenes', () => {
 });
 
 describe('Story: the roll call', () => {
+  test('chapter 1\'s roll call is a crew list: a slip of aged paper, headed from the case data, with dark ink', () => {
+    const { container } = renderStory();
+    const section = maryCeleste.story[0];
+    const slip = chapterOf(container, section).querySelector<HTMLElement>('[data-story="crew-slip"]')!;
+    expect(slip.className).toContain('story-crew-slip');
+    expect(slip.className).toMatch(/rotate-\[/);
+    expect(slip.querySelector('[data-story="crew-title"]')?.textContent).toBe(section.rollCallTitle);
+    expect(section.rollCallTitle).toBe('Crew list · Mary Celeste · Nov. 1872');
+    expect(slip.closest('[data-story="page"]')).toBeNull();
+    // Dark ink on paper, never light text straight on the image.
+    for (const name of slip.querySelectorAll<HTMLElement>('[data-story="name"] > span')) {
+      expect(name.className).toMatch(/text-ink/);
+      expect(name.className).not.toMatch(/text-night-ink|text-ghost-night/);
+    }
+    expect(slip.querySelector('[data-roll="quill-body"]')?.getAttribute('class')).toContain('text-ink');
+  });
+
   test('ten names with their roles, in the order of the data', () => {
     const { container } = renderStory();
     const list = chapterOf(container, maryCeleste.story[0]).querySelector('[data-story="roll-call"]') as HTMLElement;
@@ -658,21 +676,30 @@ describe('Story: hooks', () => {
     expect(hookOf(container, 0).style.opacity).toBe('0');
   });
 
-  test('before the hook: the names go out last to first, the page and corners dim, the chart goes quiet', () => {
+  test('before the hook: the names fade off the crew list last to first, the page and corners dim, the chart goes quiet', () => {
     const { container } = renderStory(maryCeleste, READ);
     finishWriting(container);
     const chapter = chapterOf(container, maryCeleste.story[0]);
+    const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
     wheelBurst(stageOf(container));
-    const names = [...chapter.querySelectorAll('[data-story="name"]')];
-    const outAt = (name: Element) => gsap.getTweensOf(name).find(tween => tween.vars.keyframes !== undefined)!.startTime();
+    const names = [...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')];
+    const outAt = (name: Element) => gsap.getTweensOf(name).find(tween => tween.vars.opacity === 0 && tween.vars.ease === 'power2.in')!.startTime();
     expect(outAt(names.at(-1)!)).toBeLessThan(outAt(names[0]));
     const pageOut = gsap.getTweensOf(chapter.querySelector('[data-story="page"]')!).find(tween => tween.vars.opacity === 0)!;
     expect(pageOut.startTime()).toBeGreaterThan(outAt(names[0]));
     expect(gsap.getTweensOf(chapter.querySelector('[data-story="corners"]')!).some(tween => tween.vars.opacity === 0)).toBe(true);
-    const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
     expect(chart.dataset.hushed).toBe('true');
+    // The paper itself stays, and is left empty.
+    const slip = chapter.querySelector<HTMLElement>('[data-story="crew-slip"]')!;
+    expect(gsap.getTweensOf(slip)).toHaveLength(0);
     settleSteps();
     expect(chart.dataset.hushed).toBe('true');
+    expect(names.every(name => name.style.opacity === '0')).toBe(true);
+    expect(slip.style.opacity).toBe('');
+    // Back on the page, the names are there again.
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(names.every(name => name.style.opacity === '1')).toBe(true);
   });
 
   test('story events: each chapter is entered, each hook comes, in order', () => {

@@ -127,29 +127,46 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
           <Quill attribute="data-story" sizeClassName="h-[clamp(2.5rem,4vw,3.75rem)]" />
         </div>
       </div>
-      {/* The roll call, on the other side of the screen from the page: its own quiet column over the image (along the
-          top on phones). The same pen writes it after the body, then the names go out like candles, last to first,
-          at the hook. */}
+      {/* The roll call, on the other side of the screen from the page: a crew list, a small slip of aged paper pinned
+          at a slight angle over the image (along the top on phones). Paper and ink keep it readable whatever the
+          image behind. The same pen writes each name, with the role beside it, after the body; at the hook the names
+          fade off the slip, last to first, and leave the paper empty. */}
       {rollCall !== undefined && rollCall.length > 0 && (
         <div
           data-story="roll-call-column"
-          className="pointer-events-none absolute inset-x-0 top-[calc(var(--case-header)+2.75rem)] z-[3] px-5 sm:px-10 lg:inset-x-auto lg:top-1/2 lg:right-[clamp(1.5rem,4vw,4rem)] lg:w-[min(19rem,24%)] lg:-translate-y-1/2 lg:px-0"
+          className="pointer-events-none absolute inset-x-0 top-[calc(var(--case-header)+2.75rem)] z-[3] flex justify-end px-5 sm:px-10 lg:inset-x-auto lg:top-1/2 lg:right-[clamp(1.5rem,5vw,5rem)] lg:-translate-y-1/2 lg:px-0"
         >
-          <div className="relative">
-            <ul data-story="roll-call" aria-label="The ten aboard" className="pointer-events-auto grid grid-cols-2 gap-x-5 gap-y-1 text-night-ink [text-shadow:0_1px_12px_rgb(0_0_0/0.85)] lg:grid-cols-1 lg:gap-y-2">
-              {rollCall.map(entry => (
-                <li key={entry.name} data-story="name" className="leading-tight">
-                  <span className="font-record text-[0.875rem] lg:text-[1rem]">
-                    <PenText text={entry.name} />
-                  </span>
-                  <span className="font-voice text-[0.625rem] tracking-[0.08em] text-ghost-night lg:text-[0.6875rem]">
-                    {' · '}
-                    <PenText text={entry.role} />
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <Quill attribute="data-roll" sizeClassName="h-[clamp(2rem,3vw,3rem)]" />
+          <div
+            data-story="crew-slip"
+            className="story-crew-slip pointer-events-auto relative w-[min(100%,22rem)] rotate-[1.5deg] rounded-[2px] px-4 pt-4 pb-3.5 text-ink lg:w-[min(17.5rem,22vw)] lg:px-5 lg:pt-5 lg:pb-4"
+          >
+            {/* A brass pin holds it to the scene. */}
+            <span aria-hidden="true" className="desk-pin absolute -top-1 left-1/2 size-2.5 -translate-x-1/2 rounded-full" />
+            {section.rollCallTitle !== undefined && (
+              <p data-story="crew-title" className="border-b border-ink/25 pb-1.5 font-voice text-[0.625rem] tracking-[0.14em] text-ink/80 uppercase lg:text-[0.6875rem]">
+                {section.rollCallTitle}
+              </p>
+            )}
+            <div className="relative">
+              <ul
+                data-story="roll-call"
+                aria-label={section.rollCallTitle ?? 'The roll call'}
+                className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5 lg:grid-cols-1 lg:gap-y-1"
+              >
+                {rollCall.map(entry => (
+                  <li key={entry.name} data-story="name" className="leading-tight">
+                    <span className="font-record text-[0.8125rem] text-ink lg:text-[0.9375rem]">
+                      <PenText text={entry.name} />
+                    </span>
+                    <span className="font-voice text-[0.625rem] tracking-[0.06em] text-ink/75 lg:text-[0.6875rem]">
+                      {' · '}
+                      <PenText text={entry.role} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Quill attribute="data-roll" sizeClassName="h-[clamp(1.75rem,2.6vw,2.5rem)]" toneClassName="text-ink" />
+            </div>
           </div>
         </div>
       )}

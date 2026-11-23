@@ -61,6 +61,7 @@ export const maryCeleste: Case = {
         'The other seven were the crew: first mate {{ref:albert-richardson|Albert Richardson}}, second mate Andrew Gilling, the steward and cook, William Head, and four seamen: the brothers Volkert and Boz Lorenzen, Arian Martens and Gottlieb Goodschaal.',
       ],
       hook: 'Not one of them would ever be seen again.',
+      rollCallTitle: 'Crew list · Mary Celeste · Nov. 1872',
       rollCall: [
         { name: 'Benjamin Briggs', role: 'captain' },
         { name: 'Sarah Briggs', role: 'his wife' },

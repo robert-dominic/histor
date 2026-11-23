@@ -9,9 +9,11 @@ interface QuillProps {
   attribute: string;
   /** Tailwind height class for the drawing. */
   sizeClassName?: string;
+  /** Tailwind colour class for the quill: light at night, dark ink on paper. */
+  toneClassName?: string;
 }
 
-export default function Quill({ attribute, sizeClassName = 'h-[clamp(2.75rem,5.5vw,4.25rem)]' }: QuillProps) {
+export default function Quill({ attribute, sizeClassName = 'h-[clamp(2.75rem,5.5vw,4.25rem)]', toneClassName = 'text-night-ink' }: QuillProps) {
   return (
     <div
       {...{ [attribute]: 'quill' }}
@@ -22,7 +24,7 @@ export default function Quill({ attribute, sizeClassName = 'h-[clamp(2.75rem,5.5
         {...{ [attribute]: 'quill-body' }}
         viewBox="0 0 48 48"
         fill="none"
-        className={`absolute bottom-0 left-0 w-auto origin-bottom-left text-night-ink opacity-0 ${sizeClassName}`}
+        className={`absolute bottom-0 left-0 w-auto origin-bottom-left opacity-0 ${toneClassName} ${sizeClassName}`}
       >
         {/* Vane */}
         <path

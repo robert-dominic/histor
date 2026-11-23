@@ -134,6 +134,8 @@ export interface StorySection {
    * names the first of them, and go out one by one at the chapter's hook.
    */
   rollCall?: RollCallEntry[];
+  /** The heading of the slip the roll call is written on, e.g. "Crew list · Mary Celeste · Nov. 1872". */
+  rollCallTitle?: string;
   /**
    * The weighted words of the chapter: phrases the pen writes after a breath, a touch slower and slightly brighter
    * (no line under them). Each must appear word for word in the chapter's text (a body

@@ -66,16 +66,7 @@ const SCENE = {
   hookMisalign: { x: 5, y: 7, rotate: 12 },
   /** The camera's slow push in. */
   zoomTo: 1.12,
-  /** A name going out like a candle: [opacity, seconds] steps. */
-  candle: [
-    [0.35, 0.07],
-    [0.9, 0.07],
-    [0.5, 0.05],
-    [0, 0.17],
-  ],
 } as const;
-
-const CANDLE_SECONDS = SCENE.candle.reduce((sum, [, seconds]) => sum + seconds, 0);
 
 /** Each chapter's camera pans its own way, as a share of the image (xPercent, yPercent). */
 const PANS = [
@@ -636,18 +627,19 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           if (delta === 1) {
             return moveTo(target, to.kind === 'page', 'forward', timeline => {
               let at = 0;
-              // Leaving a page for its hook: the names go out like candles, last to first; the page and the image's
+              // Leaving a page for its hook: the roll call's names fade off, last to first; the page and the image's
               // corners dim away; the image darkens and the camera creeps closer; then the hook snaps in, whole.
               if (from.kind === 'page' && to.kind === 'hook') {
                 const { page, corners, names, dim, figure, hook } = parts[fromScene];
                 const section = story[fromScene];
+                // The names fade off the crew list, last to first, and leave the paper empty.
                 [...names].reverse().forEach((name, order) => {
                   const when = order * STORY_PACE.nameOutEvery;
-                  timeline.to(name, { keyframes: SCENE.candle.map(([opacity, seconds]) => ({ opacity, duration: seconds })) }, when);
+                  timeline.to(name, { opacity: 0, ...tween('ink.out') }, when);
                   const label = name.querySelector('span')?.textContent ?? '';
                   timeline.call(() => emitStoryEvent({ type: 'roll-call-out', chapter: section.id, name: label, direction: 'forward' }), undefined, when);
                 });
-                at = names.length > 0 ? (names.length - 1) * STORY_PACE.nameOutEvery + CANDLE_SECONDS : 0;
+                at = names.length > 0 ? (names.length - 1) * STORY_PACE.nameOutEvery + MOTION['ink.out'].duration : 0;
                 const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
                 if (quiet.length > 0) {
                   timeline.to(quiet, { opacity: 0, duration: SCENE.pageOut, ease: MOTION['ink.out'].ease }, at);
