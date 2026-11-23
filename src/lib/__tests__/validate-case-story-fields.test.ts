@@ -3,6 +3,7 @@
 // - StorySection.image: when present, its src, alt and credit must be non-empty strings
 // - Case.yearEnd: when present, an integer that is not before year
 // - Case.unsolved: a plain flag, with nothing to check
+// - Case.deskGuideIntro (story-dread 1.5): when present, a non-empty string
 import { describe, expect, test } from 'vitest';
 import { validateCase } from '@/lib/validate-case';
 import type { Case, ImageAsset } from '@/types/case';
@@ -195,5 +196,19 @@ describe('validateCase: ImageAsset.caption', () => {
     expect(validateCase(withImage({ ...validImage, caption: 'A {{ref:thing|thing}}' }))).toEqual([
       'Field story[1].image.caption: portal markup is not allowed in this field',
     ]);
+  });
+});
+
+describe('validateCase: deskGuideIntro', () => {
+  test('may be left out', () => {
+    expect(validateCase(createCase())).toEqual([]);
+  });
+
+  test('a sentence is valid', () => {
+    expect(validateCase(createCase({ deskGuideIntro: 'In 1900 the test case happened.' }))).toEqual([]);
+  });
+
+  test.each(['', '   '])('an empty one (%j) is an error', intro => {
+    expect(validateCase(createCase({ deskGuideIntro: intro }))).toContain('Field deskGuideIntro: Must be a non-empty string when present');
   });
 });

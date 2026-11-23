@@ -202,6 +202,11 @@ export interface Case {
   unsolved?: boolean;
   /** One line for the home page. */
   teaser: string;
+  /**
+   * The first sentence of the desk's guide: what happened, in this case's own words, e.g. "In 1872 the Mary Celeste
+   * was found adrift with no one aboard." Without it the guide starts with its generic lines.
+   */
+  deskGuideIntro?: string;
   legendIntro: LegendIntro;
   story: StorySection[];
   centralQuestion: string;

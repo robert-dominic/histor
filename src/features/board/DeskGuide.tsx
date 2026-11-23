@@ -1,22 +1,42 @@
 // src/features/board/DeskGuide.tsx
-// A small "?" in the corner of the desk. It opens a three-step guide, any time, for anyone who missed the hints.
+// The desk's guide, "How to investigate": what the case is, what the theories and the evidence are, what the stamps
+// mean, how to pin, and when the case can be closed. It opens by itself on the first visit to the desk (remembered
+// in storage), and a small "?" in the corner opens it again any time.
+// The case's own words come from the case data: its intro sentence, its title and how many files close it. On a
+// desktop the files lie on the floor; on the phone desk they are "the files below".
 // A dialog: the focus stays inside, Escape closes it and gives the focus back to the button.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { numberWord } from '@/features/board/hints';
+import { hasSeenDeskGuide, markDeskGuideSeen } from '@/lib/desk-guide-seen';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
 
 gsap.registerPlugin(useGSAP);
 
 interface DeskGuideProps {
+  caseId: string;
+  /** The case's title, e.g. "Mary Celeste". */
+  title: string;
+  /** The case's own first sentence for the guide (`Case.deskGuideIntro`), if it has one. */
+  intro?: string;
   /** How many files must be opened to close the case. */
   threshold: number;
 }
 
-export default function DeskGuide({ threshold }: DeskGuideProps) {
-  const [open, setOpen] = useState(false);
+/** One part of the guide: a bold lead-in, then its text. */
+function Part({ lead, children }: { lead: string; children: ReactNode }) {
+  return (
+    <p className="font-record text-[1.0625rem] leading-normal">
+      <strong className="font-voice font-normal text-ink">{lead}</strong> {children}
+    </p>
+  );
+}
+
+export default function DeskGuide({ caseId, title, intro, threshold }: DeskGuideProps) {
+  // The first visit to the desk: the guide is open from the start, and that is remembered.
+  const [open, setOpen] = useState(() => !hasSeenDeskGuide(caseId));
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const overlayRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
@@ -24,14 +44,11 @@ export default function DeskGuide({ threshold }: DeskGuideProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const steps = [
-    { title: 'Open a file', text: `Take a folder from the ${desktop ? 'floor' : 'pile'}. Read what is inside.` },
-    {
-      title: 'Pin it',
-      text: 'Choose the theory you think it points to, with “Pin to…”. On a desktop you can also drag the folder onto a note. “None of them” is an answer too.',
-    },
-    { title: 'Close the case', text: `Open ${numberWord(threshold)} files, and the seal appears.` },
-  ];
+  useEffect(() => {
+    if (open) {
+      markDeskGuideSeen(caseId);
+    }
+  }, [open, caseId]);
 
   /** Closes the guide: it fades out (quicker than it came in), and the focus goes back to the button at once. */
   const close = () => {
@@ -126,24 +143,54 @@ export default function DeskGuide({ threshold }: DeskGuideProps) {
             aria-modal="true"
             aria-labelledby="desk-guide-title"
             data-hint="guide"
-            className="w-full max-w-md rounded-[2px] bg-paper px-6 pt-6 pb-5 text-ink shadow-2xl shadow-black/70"
+            data-lenis-prevent
+            className="thin-scroll max-h-[88svh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-[2px] bg-paper px-6 pt-6 pb-5 text-ink shadow-2xl shadow-black/70"
           >
             <h2 id="desk-guide-title" className="font-legend text-3xl leading-none">
-              How the desk works
+              How to investigate
             </h2>
-            <ol className="mt-5 flex flex-col gap-4">
-              {steps.map((step, index) => (
-                <li key={step.title} className="flex gap-4">
-                  <span aria-hidden="true" className="font-voice text-lg text-rust tabular-nums">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <p className="font-voice text-[1.0625rem]">{step.title}</p>
-                    <p className="mt-1 font-record text-[1.0625rem] leading-normal">{step.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <div className="mt-4 flex flex-col gap-3.5">
+              <p data-guide="intro" className="font-record text-[1.0625rem] leading-normal italic">
+                {intro !== undefined && `${intro} `}People have argued about why ever since. Your job is to weigh the
+                evidence and decide what really happened.
+              </p>
+              <Part lead="The theories:">
+                the notes on the board. Each one is an explanation people have given for what happened. Some still stand;
+                some fell apart long ago.
+              </Part>
+              <Part lead="The evidence:">
+                {desktop ? 'the folders on the floor.' : 'the files below.'} Each one holds a fact, a claim or a story about
+                the {title}. Open one to read it.
+              </Part>
+              <div>
+                <Part lead="What the stamps mean.">Every file you open is stamped:</Part>
+                <ul data-guide="stamps" className="mt-1.5 flex flex-col gap-1 pl-4 font-record text-[1.0625rem] leading-normal">
+                  <li>
+                    <strong className="font-voice font-normal text-record">Record:</strong> written down at the time, like
+                    the logbook, sworn testimony and official reports. Solid ground.
+                  </li>
+                  <li>
+                    <strong className="font-voice font-normal text-rust">Disputed:</strong> the facts are real, but
+                    historians argue about what they mean.
+                  </li>
+                  <li>
+                    <strong className="font-voice font-normal text-ghost-ink">Legend:</strong> added later by storytellers.
+                    Famous, but it never happened.
+                  </li>
+                </ul>
+              </div>
+              <Part lead="Pin it:">
+                decide which theory the file points to, then drag it onto that note or use “Pin to…”. If it fits none,
+                choose “None of them”. You can move it any time. After you pin, you’ll see what historians think.
+              </Part>
+              <Part lead="Close the case:">
+                open {numberWord(threshold)} files and a wax seal appears. Choose the theory you believe, and get your case
+                report: where you agreed with the historians, and where you didn’t.
+              </Part>
+              <p data-guide="warning" className="font-record text-[1.0625rem] leading-normal italic">
+                A warning: the most famous details are often the ones that never happened.
+              </p>
+            </div>
             <button
               ref={closeRef}
               type="button"

@@ -439,7 +439,14 @@ function DeskScreen() {
         )}
         <Lamp />
       </main>
-      {!fileOpen && <DeskGuide threshold={caseData.closeThreshold} />}
+      {!fileOpen && (
+        <DeskGuide
+          caseId={caseData.id}
+          title={caseData.title}
+          intro={caseData.deskGuideIntro}
+          threshold={caseData.closeThreshold}
+        />
+      )}
       <Outlet />
     </>
   );

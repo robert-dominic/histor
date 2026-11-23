@@ -10,6 +10,7 @@ import { FINE_POINTER_QUERY } from '@/features/board/drag';
 import { forgetShownThisLoad } from '@/features/board/hints';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 import { stubMatchMedia } from '@/test/match-media';
+import { forgetDeskGuideThisLoad } from '@/lib/desk-guide-seen';
 
 vi.setConfig({ testTimeout: 15_000 });
 
@@ -57,6 +58,7 @@ const pinFirstFile = (id: string, themeTitle: string) => {
 };
 
 beforeEach(() => {
+  forgetDeskGuideThisLoad();
   // These tests are about the desk, not the phone gate (which has its own tests): go past it.
   continuePastGate();
   localStorage.clear();
@@ -179,15 +181,48 @@ describe('Hint 2 wording', () => {
 });
 
 describe('The guide', () => {
-  test('the "?" opens a three-step guide, and Escape closes it and gives the focus back', async () => {
+  test('opens by itself on the first visit to the desk, and only then: it is remembered', async () => {
+    localStorage.setItem(FLAG, '1');
+    const first = renderAt(`${BASE}/files`);
+    expect(screen.getByRole('dialog', { name: 'How to investigate' })).toBeDefined();
+    expect(localStorage.getItem(`histor:desk-guide:${CASE.id}`)).toBe('1');
+    first.unmount();
+    forgetDeskGuideThisLoad();
+    renderAt(`${BASE}/files`);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('says how to investigate, in the case\'s own words: its intro, its title and how many files close it', () => {
     localStorage.setItem(FLAG, '1');
     renderAt(`${BASE}/files`);
+    const guide = screen.getByRole('dialog', { name: 'How to investigate' });
+    const text = guide.textContent ?? '';
+    expect(guide.querySelector('[data-guide="intro"]')?.textContent).toBe(
+      `${CASE.deskGuideIntro} People have argued about why ever since. Your job is to weigh the evidence and decide what really happened.`
+    );
+    expect(text).toContain('The theories: the notes on the board.');
+    expect(text).toContain(`a fact, a claim or a story about the ${CASE.title}`);
+    expect([...guide.querySelectorAll('[data-guide="stamps"] li')].map(item => item.textContent?.split(':')[0])).toEqual([
+      'Record',
+      'Disputed',
+      'Legend',
+    ]);
+    expect(text).toContain('If it fits none, choose “None of them”.');
+    expect(text).toContain('open six files and a wax seal appears.');
+    expect(guide.querySelector('[data-guide="warning"]')?.textContent).toBe(
+      'A warning: the most famous details are often the ones that never happened.'
+    );
+  });
+
+  test('the "?" opens the guide again, and Escape closes it and gives the focus back', async () => {
+    localStorage.setItem(FLAG, '1');
+    localStorage.setItem(`histor:desk-guide:${CASE.id}`, '1');
+    renderAt(`${BASE}/files`);
     const button = screen.getByRole('button', { name: 'How the desk works' });
+    expect(screen.queryByRole('dialog')).toBeNull();
 
     fireEvent.click(button);
-    const guide = screen.getByRole('dialog', { name: 'How the desk works' });
-    expect(within(guide).getAllByRole('listitem')).toHaveLength(3);
-    expect(within(guide).getByText('Open six files, and the seal appears.', { exact: false })).toBeDefined();
+    const guide = screen.getByRole('dialog', { name: 'How to investigate' });
     expect(document.activeElement).toBe(within(guide).getByRole('button', { name: 'Close' }));
 
     // Tab cannot leave the dialog.
@@ -202,6 +237,7 @@ describe('The guide', () => {
 
   test('the Close button closes it too', async () => {
     localStorage.setItem(FLAG, '1');
+    localStorage.setItem(`histor:desk-guide:${CASE.id}`, '1');
     renderAt(`${BASE}/files`);
 
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));

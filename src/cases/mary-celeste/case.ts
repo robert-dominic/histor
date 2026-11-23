@@ -28,6 +28,7 @@ export const maryCeleste: Case = {
   yearEnd: 1873,
   unsolved: true,
   teaser: 'A ship found sailing with no one aboard. Ten people, never seen again.',
+  deskGuideIntro: 'In 1872 the Mary Celeste was found adrift with no one aboard.',
 
   legendIntro: {
     lines: [

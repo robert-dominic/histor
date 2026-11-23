@@ -26,6 +26,11 @@ export function validateCase(caseData: Case): string[] {
     errors.push('Field teaser: Must be a non-empty string');
   }
 
+  // Validate the optional deskGuideIntro: when present, a non-empty string
+  if (caseData.deskGuideIntro !== undefined && (typeof caseData.deskGuideIntro !== 'string' || caseData.deskGuideIntro.trim() === '')) {
+    errors.push('Field deskGuideIntro: Must be a non-empty string when present');
+  }
+
   if (!caseData.centralQuestion || caseData.centralQuestion.trim() === '') {
     errors.push('Field centralQuestion: Must be a non-empty string');
   }

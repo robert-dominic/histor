@@ -116,7 +116,10 @@ describe('slips', () => {
 });
 
 describe('the ? guide', () => {
-  beforeEach(() => localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1'));
+  beforeEach(() => {
+    localStorage.setItem(`histor:desk-hints:${CASE.id}`, '1');
+    localStorage.setItem(`histor:desk-guide:${CASE.id}`, '1');
+  });
 
   test('fades out with a quick tween, with the focus back on its button at once', () => {
     stubDesktop();
@@ -133,17 +136,17 @@ describe('the ? guide', () => {
     expect(leaving.vars.duration as number).toBeLessThan(0.2);
   });
 
-  test('says "floor" on a desktop and "pile" on a phone', () => {
+  test('says "floor" on a desktop and "the files below" on a phone', () => {
     stubDesktop();
     const desktop = renderDesk();
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));
-    expect(screen.getByText('Take a folder from the floor. Read what is inside.')).toBeDefined();
+    expect(screen.getByRole('dialog').textContent).toContain('The evidence: the folders on the floor.');
     desktop.unmount();
     vi.unstubAllGlobals();
     stubMatchMedia();
     renderDesk();
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));
-    expect(screen.getByText('Take a folder from the pile. Read what is inside.')).toBeDefined();
+    expect(screen.getByRole('dialog').textContent).toContain('The evidence: the files below.');
   });
 });
 

@@ -154,6 +154,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 27. THE Validator SHALL return an array of strings where each string describes one validation error
 28. WHEN a story section has an image, THE Validator SHALL verify its src, alt and credit are non-empty strings; WHEN case.yearEnd is present, THE Validator SHALL verify it is an integer not before case.year
 29. THE Type_System SHALL define ImageAsset with caption field of type optional string; WHEN an image has a caption, THE Validator SHALL verify it is a non-empty string
+30. THE Type_System SHALL define Case with deskGuideIntro field of type optional string (the first sentence of the desk's guide, in the case's own words); WHEN case.deskGuideIntro is present, THE Validator SHALL verify it is a non-empty string
 
 ### Requirement 8: Source Validation
 
