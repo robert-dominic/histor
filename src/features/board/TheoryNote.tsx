@@ -1,6 +1,8 @@
 // src/features/board/TheoryNote.tsx
-// One theory on the board: a paper note held by a brass pin, slightly tilted (the same tilt for the same theory,
-// every time), showing its title and claim. It is a drop target for a folder in hand.
+// One theory on the board, held by a brass pin, slightly tilted (the same tilt for the same theory, every time),
+// showing its title and claim. It is a drop target for a folder in hand.
+// On the desktop desk it is a slate card written in chalk, like the ship's log slate, so a theory never looks like a
+// manila file; on the phone desk it is still a paper note.
 // Never its historians' standing: that is revealed only in the case report.
 // The tilt sits on the inner paper, so animations of the note itself (GSAP, Flip) never reset it.
 
@@ -31,8 +33,9 @@ export default function TheoryNote({ theory, className = '', fitted = false }: T
     >
       <div
         data-board="paper"
-        className={`desk-note relative flex h-full flex-col rounded-[2px] px-4 text-ink shadow-lg shadow-black/60 ${
-          fitted ? 'gap-1 pt-5 pb-4' : 'gap-2 pt-6 pb-5'
+        data-surface={fitted ? 'slate' : 'paper'}
+        className={`relative flex h-full flex-col rounded-[2px] px-4 shadow-lg shadow-black/60 ${
+          fitted ? 'desk-slate gap-1 pt-5 pb-4 text-chalk' : 'desk-note gap-2 pt-6 pb-5 text-ink'
         }`}
         style={{ rotate: `${rotate}deg` }}
       >
@@ -46,13 +49,13 @@ export default function TheoryNote({ theory, className = '', fitted = false }: T
         <span aria-hidden="true" data-board="pin" className="desk-pin absolute top-2 left-1/2 size-3 -translate-x-1/2 rounded-full" />
         <h3
           id={titleId}
-          className={`font-legend leading-[1.05] text-ink ${fitted ? 'text-[clamp(1.0625rem,2.6svh,1.375rem)]' : 'text-[1.375rem]'}`}
+          className={`font-legend leading-[1.05] ${fitted ? 'text-[clamp(1.0625rem,2.6svh,1.375rem)] text-chalk' : 'text-[1.375rem] text-ink'}`}
         >
           {theory.title}
         </h3>
         <p
           data-board="claim"
-          className={`font-record leading-snug text-ink/85 ${fitted ? 'text-[clamp(0.8125rem,1.8svh,0.9375rem)]' : 'text-[0.9375rem]'}`}
+          className={`font-record leading-snug ${fitted ? 'text-[1rem] text-chalk' : 'text-[0.9375rem] text-ink/85'}`}
         >
           {theory.claim}
         </p>

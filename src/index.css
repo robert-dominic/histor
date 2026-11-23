@@ -20,6 +20,9 @@
   --color-rust-night: #d0574a; /* stamps and warnings on dark backgrounds: 4.58:1 on night */
   --color-record: #2b4767; /* record status: official ink */
   --color-brass: #c49a5a; /* the one warm accent: highlights, focus, small fittings */
+  /* The theories on the desk: slate cards, like the ship's log slate, written in chalk. 9.4:1. */
+  --color-slate: #2f3a3f; /* a theory card on the desktop desk */
+  --color-chalk: #ece6d6; /* writing on slate */
 
   /* Fonts */
   --font-legend: "Grenze Gotisch", "Old Standard TT", Georgia, serif;

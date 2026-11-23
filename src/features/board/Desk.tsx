@@ -390,8 +390,9 @@ function DeskScreen() {
               </div>
               {canClose && <WaxSeal to={`${base}/verdict`} />}
             </header>
-            {/* The board: above the floor, so a slip hanging below a tab can lie over it. */}
-            <div data-desk="board-row" className="relative z-[3] min-h-0 px-4 pb-2">
+            {/* The board: above the floor, so a pile's panel can lie over it, and above the lamp's shadow, so the slate
+                theories keep their full contrast (7:1 or more) wherever the lamp is. */}
+            <div data-desk="board-row" className="relative z-[21] min-h-0 px-4 pb-2">
               <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
             </div>
             {/* The floor, with the tray beside it. */}
