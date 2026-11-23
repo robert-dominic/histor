@@ -176,8 +176,8 @@ const scratch: Voice = {
 const boom: Voice = {
   seconds: 3,
   play: (ctx, out, { at, gain, pitch }) => {
-    tone(ctx, out, { at, frequency: 48 * pitch, glideTo: 31 * pitch, peak: 0.5 * gain, attack: 0.025, release: 2.7 });
-    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 170 * pitch, sweepTo: 70, peak: 0.4 * gain, attack: 0.02, release: 1.9 });
+    tone(ctx, out, { at, frequency: 48 * pitch, glideTo: 31 * pitch, peak: 0.36 * gain, attack: 0.025, release: 2.7 });
+    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 170 * pitch, sweepTo: 70, peak: 0.3 * gain, attack: 0.02, release: 1.9 });
   },
 };
 

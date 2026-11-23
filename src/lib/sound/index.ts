@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react';
 import { Ambience } from '@/lib/sound/ambience';
 import { SoundEngine } from '@/lib/sound/engine';
 import { Narrator } from '@/lib/sound/narration';
+import { MOTION_QUERIES } from '@/lib/motion';
 import { SOUND } from '@/lib/sound/levels';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
@@ -126,7 +127,14 @@ export function startSound(engine: SoundEngine = sound): () => void {
       apply();
     }
   };
-  const gesture = () => engine.unlock();
+  // Any first gesture starts the sound; under reduced motion nothing starts by itself (polish brief, B6): only the
+  // player's own choice does (the header's toggle, or the play modal's "Sound on").
+  const gesture = () => {
+    if (typeof window.matchMedia === 'function' && window.matchMedia(MOTION_QUERIES.reduced).matches) {
+      return;
+    }
+    engine.unlock();
+  };
   const visibility = () => engine.setHidden(document.visibilityState === 'hidden');
   const options = { capture: true, passive: true } as const;
   window.addEventListener('pointerdown', gesture, options);
@@ -178,5 +186,14 @@ export function useSound(engine: SoundEngine = sound): { enabled: boolean; setEn
     () => engine.enabled,
     () => engine.enabled
   );
-  return { enabled, setEnabled: on => engine.setEnabled(on) };
+  return {
+    enabled,
+    // On but not started yet (reduced motion waits for a choice): pressing it starts the sound rather than muting it.
+    setEnabled: on => {
+      if (!on && engine.enabled && !engine.running && engine.unlock()) {
+        return;
+      }
+      engine.setEnabled(on);
+    },
+  };
 }

@@ -90,7 +90,9 @@ A thud is one recipe at three weights (`thud-soft`, `thud`, `thud-heavy`): a sho
 
 - Nothing loud or sudden except the stamps. The master level is modest.
 - No clicks: every sound has an attack and a release envelope (`envelope` in `voices.ts`); gains always glide, never jump.
-- CPU: no more one-shot voices at once than `SOUND.maxVoices` (another is skipped). The pen's scratch is throttled. The ambience and the score use a few long-running nodes, never new ones every frame.
+- CPU: no more one-shot voices at once than `SOUND.maxVoices` (another is skipped). The pen's scratch is throttled. The ambience and the score use a few long-running nodes, never new ones every frame. The context rests (suspends) once the tab is hidden and faded.
+- Under reduced motion, sound still works (it is separate from motion), but nothing starts by itself: a gesture alone does not start it, only the player's own choice (the header's toggle, or the play modal with "Sound on" ticked), and narration never plays without "Listen".
+- A test holds the bar: the heavy stamp is the loudest recipe and every non-stamp sound peaks at 70% of it or less; every recipe starts and ends in silence; every source stops.
 
 ## Testing
 
