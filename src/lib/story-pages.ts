@@ -3,7 +3,12 @@
 // tuned by feel. Timeline seconds are seconds of scroll: one of them is `pxPerSecond()` pixels.
 import { parseRefs } from '@/lib/parse-refs';
 
+/**
+ * The story's pace: every timing to tune by feel, in one place. Seconds are real seconds for the pen (it writes on
+ * its own timer) and seconds of scroll for everything scrubbed (`pxPerSecond()` pixels each).
+ */
 export const STORY_PACE = {
+  // ---- Writing speed: the pen.
   /** The pen writes at about 3× reading pace (240 words a minute), so it leads the eye. */
   penWordsPerMinute: 720,
   /** No page's body takes longer than this to write, in seconds; a long one is written a whole word at a time. */
@@ -17,20 +22,38 @@ export const STORY_PACE = {
   /** Before a weighted phrase the pen pauses this long (seconds), then writes it this many times slower. */
   weightedBreath: 0.35,
   weightedSlowdown: 1.5,
-  /** Scrolling onward this far into a page (timeline seconds) finishes its writing at once. */
+  /** Scrolling onward this far into a page (scroll seconds) finishes its writing at once. */
   skipAfter: 0.25,
-  /** The hold before a hook: how much scroll the written page holds, in timeline seconds, before the hook begins. */
+
+  // ---- The hold before a hook, and the hook.
+  /** How much scroll the written page holds before the hook begins (scroll seconds). */
   pageHold: 3,
-  /** The hook hold: how long the hook line holds, whole, before it decays, in timeline seconds. */
+  /** The hook arrives a word every so many scroll seconds: slower than anything else. */
+  hookWordEvery: 0.55,
+  /** The hook hold: how long the hook line holds, whole, before it decays (scroll seconds). */
   hookHold: 4,
+  /** The hook decays letter by letter over this long (scroll seconds). */
+  hookDecay: 1.8,
+  /** Stillness after the hook, then the next image cross-dissolves in over this long (scroll seconds). */
+  stillness: 1.6,
+  dissolve: 1.4,
+
+  // ---- Auto-play reading time.
   /**
-   * The auto-play reading time: once a page is written, "Play the story" waits for the rest of its reading time
-   * (the page read at `readWordsPerMinute`, less the time the pen took), and at least this long, in seconds.
+   * Once a page is written, "Play the story" waits for the rest of its reading time (the page read at
+   * `readWordsPerMinute`, less the time the pen took), and at least this long, in seconds.
    */
   playHoldAtLeast: 2,
   /** Reading pace, for the time a reader is given to read: words a minute, and the least time for anything. */
   readWordsPerMinute: 240,
   readAtLeast: 1.6,
+
+  // ---- The central question.
+  /** Black before its first phrase, and the hold on the whole question before the fork (scroll seconds). */
+  questionLead: 0.6,
+  beforeFork: 2.4,
+
+  // ---- The scroll itself.
   /**
    * Pixels of scroll for one second of the story's timeline, as a share of the screen's height, within limits.
    * "Play the story" scrolls at the same rate, so its pace does not change when this does.

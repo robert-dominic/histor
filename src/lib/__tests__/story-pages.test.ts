@@ -7,6 +7,15 @@ import { STORY_PACE, penPlan, readingSeconds } from '@/lib/story-pages';
 
 const plain = (text: string) => parseRefs(text).map(segment => (segment.kind === 'text' ? segment.text : segment.label)).join('');
 
+describe('STORY_PACE: one object to tune', () => {
+  test('writing speed, the hold before a hook, the hook hold and the auto-play reading time are all here', () => {
+    expect(STORY_PACE.penWordsPerMinute).toBeGreaterThan(STORY_PACE.readWordsPerMinute);
+    for (const key of ['pageHold', 'hookHold', 'playHoldAtLeast', 'readWordsPerMinute', 'hookDecay', 'dissolve'] as const) {
+      expect(STORY_PACE[key], key).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('STORY_PACE: the scroll', () => {
   test('about twice the old scroll per second of story (0.15 of the screen, 80 to 140px), and a wheel at 0.8', () => {
     expect(STORY_PACE.pxPerSecond).toEqual({ share: 0.3, min: 160, max: 280 });

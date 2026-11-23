@@ -38,28 +38,20 @@ import type { Reference, Source, StorySection, Voyage } from '@/types/case';
 gsap.registerPlugin(useGSAP, ScrollToPlugin);
 
 /**
- * The scenes' timeline, in seconds of reading. One second takes pxPerSecond() pixels of scroll, so playing the
- * story at that speed gives each beat its reading time.
+ * How the scenes look as they move: the camera, the hook's letters, the candles. Their pace is `STORY_PACE`
+ * (src/lib/story-pages.ts), the one place to tune the story's timing.
  */
 const SCENE = {
-  /** The next image cross-dissolves in over the old one. */
-  dissolve: 1.4,
   /** The page's panel dims away before the hook takes the screen. */
   pageOut: 0.45,
   nameOut: 0.36,
   hookDim: 0.92,
-  /** A beat of stillness: nothing changes before the next scene. */
-  stillness: 1.6,
   /** Weighted words in the central question: the breath before a phrase lands on its own. */
   weightBeat: STEP.slow,
   /** The breath before a hook: the camera creeps this much closer, over `story.breath`. */
   creepTo: 1.05,
-  /** A hook comes in word by word, one every so many seconds of scroll: slower than anything else. */
-  hookWordEvery: 0.55,
   /** Where a hook's letters start: up to this far out of line, in px and degrees, then they snap into place. */
   hookMisalign: { x: 5, y: 7, rotate: 12 },
-  /** A hook decays letter by letter over this long, in a random order. */
-  decay: 1.8,
   /** A chapter without a hook still pauses before the next. */
   restWithoutHook: 1,
   /** The camera's slow push in. */
@@ -75,13 +67,6 @@ const SCENE = {
   ],
 } as const;
 
-/** The central question, in seconds of the scrubbed timeline: black before the first phrase, the least a phrase
- * holds, and the hold on the whole question before the fork. */
-const QUESTION = {
-  lead: 0.6,
-  holdAtLeast: 1.6,
-  beforeFork: STEP.scene * 2,
-} as const;
 
 /** Each chapter's camera pans its own way, as a share of the image (xPercent, yPercent). */
 const PANS = [
@@ -313,8 +298,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
 
             timeline.addLabel(`chapter-${index}`, start);
             if (index > 0) {
-              timeline.fromTo(scene, { opacity: 0 }, { opacity: 1, duration: SCENE.dissolve, immediateRender: false }, start);
-              t += SCENE.dissolve;
+              timeline.fromTo(scene, { opacity: 0 }, { opacity: 1, duration: STORY_PACE.dissolve, immediateRender: false }, start);
+              t += STORY_PACE.dissolve;
             }
             timeline.call(
               () => {
@@ -503,10 +488,10 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                     rotation: index => offset(first + index, 'r', SCENE.hookMisalign.rotate),
                   },
                   { opacity: 1, x: 0, y: 0, rotation: 0, ...tween('story.hook'), immediateRender: false },
-                  t + wordIndex * SCENE.hookWordEvery
+                  t + wordIndex * STORY_PACE.hookWordEvery
                 );
               });
-              t += Math.max(0, hookWords.length - 1) * SCENE.hookWordEvery + MOTION['story.hook'].duration + STORY_PACE.hookHold;
+              t += Math.max(0, hookWords.length - 1) * STORY_PACE.hookWordEvery + MOTION['story.hook'].duration + STORY_PACE.hookHold;
               // The ending decays: its letters disappear unevenly, one at a time in a random order, like ink drying.
               const decaying = [...hookChars].sort(
                 (a, b) => hashUnit(`${section.id}:${hookChars.indexOf(a)}`, 'decay') - hashUnit(`${section.id}:${hookChars.indexOf(b)}`, 'decay')
@@ -518,15 +503,15 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   {
                     opacity: 0,
                     ...tween('story.decay'),
-                    stagger: Math.max(0, SCENE.decay - decayFade) / Math.max(1, decaying.length - 1),
+                    stagger: Math.max(0, STORY_PACE.hookDecay - decayFade) / Math.max(1, decaying.length - 1),
                     immediateRender: false,
                   },
                   t
                 );
               }
-              t += SCENE.decay;
+              t += STORY_PACE.hookDecay;
               timeline.set(hook, { pointerEvents: 'none' }, t);
-              t += SCENE.stillness;
+              t += STORY_PACE.stillness;
               hooks.push({ from: hushFrom, to: t });
             } else {
               t += SCENE.restWithoutHook;
@@ -540,7 +525,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               timeline.fromTo(
                 image,
                 { scale: 1, xPercent: 0, yPercent: 0 },
-                { scale: SCENE.zoomTo, xPercent: pan.x, yPercent: pan.y, duration: t - cameraFrom + SCENE.dissolve },
+                { scale: SCENE.zoomTo, xPercent: pan.x, yPercent: pan.y, duration: t - cameraFrom + STORY_PACE.dissolve },
                 cameraFrom
               );
             }
@@ -592,8 +577,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           const cameraOn = images.map(() => false);
           const syncWillChange = (time: number) => {
             spans.forEach((span, index) => {
-              const from = span.start - SCENE.dissolve;
-              const on = time >= from && time <= span.end + SCENE.dissolve;
+              const from = span.start - STORY_PACE.dissolve;
+              const on = time >= from && time <= span.end + STORY_PACE.dissolve;
               if (on !== cameraOn[index] && images[index] !== null) {
                 cameraOn[index] = on;
                 images[index].style.willChange = on ? 'transform' : '';
@@ -620,7 +605,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               if (time < span.start || index === 0) {
                 return;
               }
-              const into = Math.min(1, (time - span.start) / SCENE.dissolve);
+              const into = Math.min(1, (time - span.start) / STORY_PACE.dissolve);
               mix = steps[index - 1].mix + (steps[index].mix - steps[index - 1].mix) * into;
             });
             return mix;
@@ -766,7 +751,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           } else {
             const chokepoint = gsap.timeline({ defaults: { ease: LINEAR } });
             gsap.set([...phrases, ...questionWeighted], { opacity: 0 });
-            let at: number = QUESTION.lead;
+            let at: number = STORY_PACE.questionLead;
             phrases.forEach((phrase, index) => {
               chokepoint.fromTo(
                 phrase,
@@ -787,11 +772,11 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               });
               // The stop: the scroll settles here, with the phrase written in, and holds it for its reading time.
               chokepoint.addLabel(`phrase-${index}`, at);
-              at += Math.max(QUESTION.holdAtLeast, readingSeconds(phrase.textContent ?? ''));
+              at += Math.max(STORY_PACE.readAtLeast, readingSeconds(phrase.textContent ?? ''));
             });
             // The whole question, held a moment before the fork.
             chokepoint.addLabel('whole', at);
-            chokepoint.to({}, { duration: QUESTION.beforeFork }, at);
+            chokepoint.to({}, { duration: STORY_PACE.beforeFork }, at);
             const settle = MOTION['story.settle'];
             const questionPin = ScrollTrigger.create({
               trigger: question,
@@ -822,7 +807,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 })),
                 {
                   y: questionPin.start + chokepoint.labels.whole * px,
-                  hold: QUESTION.beforeFork,
+                  hold: STORY_PACE.beforeFork,
                   then: () => setForkOpen(true),
                 },
               ];
