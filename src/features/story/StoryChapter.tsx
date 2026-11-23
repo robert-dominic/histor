@@ -92,20 +92,25 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
                   <PortalText text={paragraph} />
                 </p>
               ))}
-              {rollCall !== undefined && rollCall.length > 0 && (
-                <ul data-story="roll-call" aria-label="The ten aboard" className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-                  {rollCall.map(entry => (
-                    <li key={entry.name} data-story="name" className="leading-tight">
-                      {entry.name}
-                      <span className="font-voice text-[0.75rem] tracking-[0.08em] text-ghost-night"> · {entry.role}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
               {hasChartPoint && <VoyageChart route={route} variant="still" upTo={index} />}
             </div>
           </div>
         </div>
+        {/* The roll call: its own quiet column on the other side of the image from the page (below it on phones). */}
+        {rollCall !== undefined && rollCall.length > 0 && (
+          <ul
+            data-story="roll-call"
+            aria-label="The ten aboard"
+            className="grid grid-cols-2 gap-x-5 gap-y-1 px-5 pb-12 text-night-ink [text-shadow:0_1px_12px_rgb(0_0_0/0.85)] sm:px-10 lg:absolute lg:top-1/2 lg:right-[clamp(1.5rem,4vw,4rem)] lg:w-[min(19rem,24%)] lg:-translate-y-1/2 lg:grid-cols-1 lg:gap-y-2 lg:px-0 lg:pb-0"
+          >
+            {rollCall.map(entry => (
+              <li key={entry.name} data-story="name" className="font-record leading-tight">
+                {entry.name}
+                <span className="font-voice text-[0.75rem] tracking-[0.08em] text-ghost-night"> · {entry.role}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Then the hook, as plain text, on the chapter's sky. */}

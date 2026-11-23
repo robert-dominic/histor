@@ -1,7 +1,8 @@
 // src/features/story/StoryScene.tsx
 // One chapter as a full-screen cinematic scene (story v3): the image fills the screen under a slow camera, and a
-// dark, softly faded panel on one side holds the chapter's page: the kicker, the heading, the body and the roll call,
-// all written by the pen (Story.tsx). Then the hook takes the centre of the screen.
+// dark, softly faded panel on one side holds the chapter's page: the kicker, the heading and the body, written by the
+// pen (Story.tsx). A roll call, when the chapter has one, has its own quiet column on the other side. Then the hook
+// takes the centre of the screen.
 // The scenes lie on top of each other in one pinned stage; Story.tsx scrubs a timeline that plays them in turn.
 //
 // Screen readers and search engines get the full text: every paragraph is in the DOM, whole, in `data-story="text"`,
@@ -93,7 +94,7 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
 
       {/* The page: a dark, softly faded panel on the left (along the bottom on phones) holding the chapter's text.
           The image stays visible on the rest of the screen. The kicker is typed small, the heading written large at
-          the top, then the body in Old Standard TT at about 18 to 19px, and the roll call after it. The pen writes it
+          the top, then the body in Old Standard TT at about 18 to 19px. The pen writes it
           all (Story.tsx); a click on the panel finishes the writing at once. Portals stay tappable, out of the Tab
           order: the full text below has them for the keyboard and screen readers. */}
       <div
@@ -123,25 +124,35 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
               </p>
             ))}
           </div>
-          {/* The roll call: a short list after the body. The names go out like candles, last to first, at the hook. */}
-          {rollCall !== undefined && rollCall.length > 0 && (
-            <ul data-story="roll-call" aria-label="The ten aboard" className="mt-5 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+          <Quill attribute="data-story" sizeClassName="h-[clamp(2.5rem,4vw,3.75rem)]" />
+        </div>
+      </div>
+      {/* The roll call, on the other side of the screen from the page: its own quiet column over the image (along the
+          top on phones). The same pen writes it after the body, then the names go out like candles, last to first,
+          at the hook. */}
+      {rollCall !== undefined && rollCall.length > 0 && (
+        <div
+          data-story="roll-call-column"
+          className="pointer-events-none absolute inset-x-0 top-[calc(var(--case-header)+2.75rem)] z-[3] px-5 sm:px-10 lg:inset-x-auto lg:top-1/2 lg:right-[clamp(1.5rem,4vw,4rem)] lg:w-[min(19rem,24%)] lg:-translate-y-1/2 lg:px-0"
+        >
+          <div className="relative">
+            <ul data-story="roll-call" aria-label="The ten aboard" className="pointer-events-auto grid grid-cols-2 gap-x-5 gap-y-1 text-night-ink [text-shadow:0_1px_12px_rgb(0_0_0/0.85)] lg:grid-cols-1 lg:gap-y-2">
               {rollCall.map(entry => (
                 <li key={entry.name} data-story="name" className="leading-tight">
-                  <span className="font-record text-[1rem]">
+                  <span className="font-record text-[0.875rem] lg:text-[1rem]">
                     <PenText text={entry.name} />
                   </span>
-                  <span className="font-voice text-[0.6875rem] tracking-[0.08em] text-ghost-night">
+                  <span className="font-voice text-[0.625rem] tracking-[0.08em] text-ghost-night lg:text-[0.6875rem]">
                     {' · '}
                     <PenText text={entry.role} />
                   </span>
                 </li>
               ))}
             </ul>
-          )}
-          <Quill attribute="data-story" sizeClassName="h-[clamp(2.5rem,4vw,3.75rem)]" />
+            <Quill attribute="data-roll" sizeClassName="h-[clamp(2rem,3vw,3rem)]" />
+          </div>
         </div>
-      </div>
+      )}
       {section.hook !== undefined && (
         <p
           aria-hidden="true"

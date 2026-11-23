@@ -349,9 +349,14 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 const headingLetters = split.chars as HTMLElement[];
                 at += pen.write(writing, headingLetters, at, headingLetters.length / STORY_PACE.headingSeconds);
               }
-              // The body and the roll call: letters, or whole words for a long page.
+              // The body, then the roll call: letters, or whole words for a long page.
               const written = quote('[data-story="body"] [data-pen="char"], [data-story="roll-call"] [data-pen="char"]');
               const wordUnits = quote('[data-story="body"] [data-pen="word"], [data-story="roll-call"] [data-pen="word"]');
+              // The roll call has its own column on the other side of the screen, and its own pen there.
+              const rollPoint = one('[data-roll="quill"]', scene);
+              const rollBody = one('[data-roll="quill-body"]', scene);
+              const rollPen = rollPoint !== null && rollBody !== null ? createQuillWriter(rollPoint, rollBody) : pen;
+              const penFor = (units: HTMLElement[]) => (units[0]?.closest('[data-story="roll-call"]') ? rollPen : pen);
               const plan = penPlan(written.length, wordUnits.length);
               const units = plan.unit === 'letter' ? written : wordUnits;
               gsap.set(units, { opacity: 0 });
@@ -359,7 +364,15 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               let run: HTMLElement[] = [];
               const flush = () => {
                 if (run.length > 0) {
-                  at += pen.write(writing, run, at, plan.rate);
+                  // A run never spans the body and the roll call: each is written by the pen in its own column.
+                  const inRoll = (unit: HTMLElement) => unit.closest('[data-story="roll-call"]') !== null;
+                  const body = run.filter(unit => !inRoll(unit));
+                  const roll = run.filter(inRoll);
+                  [body, roll].forEach(part => {
+                    if (part.length > 0) {
+                      at += penFor(part).write(writing, part, at, plan.rate);
+                    }
+                  });
                   run = [];
                 }
               };
@@ -407,6 +420,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   if (writing.progress() < 1) {
                     writing.progress(1);
                     pen.hide();
+                    rollPen.hide();
                   }
                 },
                 written: () => writing.progress() === 1,
@@ -416,6 +430,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             }
             headingTimelines.push(writing);
             pageEl?.addEventListener('click', () => pageWriters[index]?.finish());
+            one('[data-story="roll-call"]', scene)?.addEventListener('click', () => pageWriters[index]?.finish());
 
             // The page: the chapter's text, in its panel on one side of the image. It holds for a stretch of scroll
             // (`STORY_PACE.pageHold`) before the hook can begin.

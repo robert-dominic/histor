@@ -116,7 +116,7 @@ describe('Story: the full text is in the DOM', () => {
 describe('Story: a page per chapter', () => {
   const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
 
-  test('each chapter has a page on one side of its image: kicker, heading, every paragraph and the roll call', () => {
+  test('each chapter has a page on one side of its image: kicker, heading and every paragraph, and only those', () => {
     const { container } = renderStory();
     for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
@@ -127,8 +127,24 @@ describe('Story: a page per chapter', () => {
       expect(page.querySelector('[data-story="heading"]')?.textContent).toBe(section.heading);
       const paragraphs = [...page.querySelectorAll('[data-story="paragraph"]')].map(paragraph => paragraph.textContent);
       expect(paragraphs).toEqual(section.body.map(plainText));
-      expect(page.querySelectorAll('[data-story="name"]')).toHaveLength(section.rollCall?.length ?? 0);
+      // The roll call is never in the page: it has its own column on the other side.
+      expect(page.querySelectorAll('[data-story="name"]')).toHaveLength(0);
     }
+  });
+
+  test('the roll call has its own quiet column on the other side of the screen from the page', () => {
+    const { container } = renderStory();
+    const section = maryCeleste.story.find(entry => entry.rollCall !== undefined)!;
+    const chapter = chapterOf(container, section);
+    const column = chapter.querySelector<HTMLElement>('[data-story="roll-call-column"]')!;
+    expect(column.closest('[data-story="page"]')).toBeNull();
+    expect(column.querySelectorAll('[data-story="name"]')).toHaveLength(section.rollCall!.length);
+    // The page is on the left; the column on the right (along the top on phones, with the page at the bottom).
+    expect(column.className).toContain('lg:right-[');
+    expect(column.className).toContain('lg:inset-x-auto');
+    expect(column.className).toContain('top-[');
+    // Its own pen, in its own column.
+    expect(column.querySelector('[data-roll="quill"]')).not.toBeNull();
   });
 
   test('the body is set in Old Standard TT at about 18 to 19px, the heading large, the kicker small', () => {
@@ -1012,10 +1028,10 @@ describe('Story: the pen writes the whole page', () => {
     expect(before).toBeDefined();
   });
 
-  test('the roll call is written as a short list in the page, after the body', () => {
+  test('the roll call is written after the body, by the pen in its own column', () => {
     const { container } = renderStory();
     const voyage = maryCeleste.story.find(section => section.rollCall !== undefined)!;
-    const page = pageOf(container, voyage);
+    const page = chapterOf(container, voyage);
     const lastBody = [...page.querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="word"]')].at(-1)!;
     const firstName = page.querySelector<HTMLElement>('[data-story="roll-call"] [data-pen="word"]')!;
     const at = (element: HTMLElement) =>
