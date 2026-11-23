@@ -1,6 +1,6 @@
 # Proposed steering updates (from Claude Code)
 
-The briefs `desk-fixes.md` and `story-dread.md` ask for the steering docs to describe what was built. Claude Code may not edit `.kiro/` (CLAUDE.md rule 1, and the edit was blocked), so the new text is collected here, ready to paste in. Each block says which file and which part it replaces.
+The briefs `desk-fixes.md` and `story-dread.md` ask for the steering docs to describe what was built. These notes were collected while `.kiro/` edits were blocked; the main points have since been written into `design.md` and `motion.md`. `product.md` was not changed and still says a sealed folder dropped on a theory is "read first and then pinned".
 
 ## design.md
 
