@@ -30,9 +30,7 @@ Every GSAP tween spreads a token: `gsap.to(el, { ...tween('ink.in'), opacity: 1 
 | `story.breath` | `sine.inOut` | 2.4s | Before a hook: the page has dimmed away, the image darkens, the camera creeps closer (1.05); nothing new appears |
 | `story.hook` | `back.out(2.2)` | 0.45s per letter | A hook snapping in whole on a timer once reached (not scrubbed): its letters settle from slightly out of line, staggered over `STORY_PACE.hookIn` (about 0.8s) |
 | `story.decay` | `power1.in` | 0.35s per letter | A hook leaving: letters go one at a time in a fixed random order |
-| `story.settle` | `power2.inOut` | 0.6s | The central question's stops: ScrollTrigger snaps to the next phrase (`labelsDirectional`); each phrase then plays in on a timer (`STORY_PACE.questionPhrase`, about 0.6s) |
-
-**The pen** writes each chapter's page on its own timer (the quill writer, `src/lib/quill-writing.ts`), not on the scroll: a click or scrolling onward finishes it at once. Its words and letters are split by React (`PenText.tsx`, `StoryWords.tsx` for hooks), so portals stay whole; screen readers get the full text once. **Every timing of the story** (writing speed, the hold before a hook, the hook hold, auto-play reading time, the scroll per second and the story page's Lenis wheel multiplier) is in one commented object, `STORY_PACE` in `src/lib/story-pages.ts`.
+**The story moves in steps, not on the scroll** (`docs/briefs/story-steps.md`): nothing in it is scrubbed. GSAP **Observer** turns one gesture into one step (`src/features/story/story-steps.ts`), and each step plays its own short timeline; input is ignored while it plays. Every step ends by setting that step's exact state. **The pen** writes each chapter's page on its own timer (`page-writer.ts`, using the quill writer in `src/lib/quill-writing.ts`): a click or a forward gesture finishes it at once. Its words and letters are split by React (`PenText.tsx`, `StoryWords.tsx` for hooks), so portals stay whole; screen readers get the full text once. **Every timing of the story** (writing speed, the gesture gap, each step's animation, the camera drift, and how long "Play the story" holds each step) is in one commented object, `STORY_PACE` in `src/lib/story-pages.ts`.
 
 `QUICK_OUT` (the `ink.out` ease over half a fast step) is the exit for small things: a menu, a slip, a panel. **Duration steps** for everything that is not a token (delays, holds, staggers): `STEP.fast` 0.2s, `STEP.base` 0.45s, `STEP.slow` 0.9s, `STEP.scene` 1.2s.
 
@@ -69,10 +67,10 @@ Every visible change of state animates: menus opening, items moving, slips appea
 ## 6. GSAP and smooth scrolling
 
 - Set up and clean up every animation with `useGSAP` from `@gsap/react`, scoped to the component.
-- The story uses ScrollTrigger with `scrub` for scroll-linked text and `pin` only where a scene needs to hold.
+- The story is a stage of steps driven by GSAP Observer, not ScrollTrigger: no scrub and no pin. ScrollTrigger stays for the reduced-motion story page and for anything that scrolls normally.
 - Use `gsap.matchMedia()` to give every scroll and entrance animation a reduced-motion version.
 - Never store tween progress or scroll position in React state.
-- **Lenis** (`lenis`) gives smooth scrolling, driven by GSAP's ticker and synced with ScrollTrigger. It is off under reduced motion. Inner scrolling areas (such as an open file's document) carry `data-lenis-prevent` and scroll natively.
+- **Lenis** (`lenis`) gives smooth scrolling, driven by GSAP's ticker and synced with ScrollTrigger. It is off under reduced motion, and held off while the story's stage has the screen (`holdSmoothScroll`). Inner scrolling areas (such as an open file's document) carry `data-lenis-prevent` and scroll natively.
 
 ## 7. Check before shipping
 

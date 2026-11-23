@@ -10,7 +10,7 @@ const plain = (text: string) => parseRefs(text).map(segment => (segment.kind ===
 describe('STORY_PACE: one object to tune', () => {
   test('writing speed, the hold before a hook, the hook hold and the auto-play reading time are all here', () => {
     expect(STORY_PACE.penWordsPerMinute).toBeGreaterThan(STORY_PACE.readWordsPerMinute);
-    for (const key of ['pageHold', 'hookHold', 'playHoldAtLeast', 'readWordsPerMinute', 'hookDecay', 'dissolve'] as const) {
+    for (const key of ['hookHold', 'playHoldAtLeast', 'readWordsPerMinute', 'hookDecay', 'dissolve', 'beforeFork'] as const) {
       expect(STORY_PACE[key], key).toBeGreaterThan(0);
     }
   });
@@ -22,10 +22,21 @@ describe('STORY_PACE: one object to tune', () => {
   });
 });
 
-describe('STORY_PACE: the scroll', () => {
-  test('about twice the old scroll per second of story (0.15 of the screen, 80 to 140px), and a wheel at 0.8', () => {
-    expect(STORY_PACE.pxPerSecond).toEqual({ share: 0.3, min: 160, max: 280 });
-    expect(STORY_PACE.wheelMultiplier).toBe(0.8);
+describe('STORY_PACE: steps, not scroll', () => {
+  test('the scroll-distance constants are gone: a step is one gesture, not a stretch of scroll', () => {
+    for (const gone of ['pxPerSecond', 'wheelMultiplier', 'scrub', 'skipAfter', 'pageHold', 'stillness', 'questionLead']) {
+      expect(gone in STORY_PACE, gone).toBe(false);
+    }
+  });
+
+  test('a burst of wheel events closer than the gap is one gesture; every step animation is short', () => {
+    expect(STORY_PACE.gestureGapMs).toBeGreaterThan(100);
+    expect(STORY_PACE.gestureTolerance).toBeGreaterThan(0);
+    // Input is ignored while a step animates: none of them may keep the reader waiting long.
+    const longest = STORY_PACE.hookDecay + STORY_PACE.dissolve;
+    expect(longest).toBeLessThanOrEqual(2.5);
+    expect(STORY_PACE.backDissolve).toBeLessThan(STORY_PACE.dissolve);
+    expect(STORY_PACE.jumpDissolve).toBeLessThan(STORY_PACE.backDissolve);
   });
 });
 

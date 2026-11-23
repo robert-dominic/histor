@@ -303,3 +303,9 @@
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-ink) 45%, transparent) transparent;
 }
+
+/* The story's stage holds the screen once the story begins (Story.tsx): the page behind it never scrolls. A data
+   attribute, not an inline style, so a modal that saves and restores the page's overflow cannot undo it. */
+html[data-story-stage='held'] {
+  overflow: hidden;
+}

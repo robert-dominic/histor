@@ -1,7 +1,7 @@
 // src/features/story/PlayControl.tsx
 // The small floating play/pause control, shown while the story is on screen (Story.tsx sets `data-visible`).
 
-import type { StoryPlayer } from '@/features/story/use-story-player';
+import type { StoryPlayer } from '@/features/story/use-step-player';
 
 export default function PlayControl({ player }: { player: StoryPlayer }) {
   return (

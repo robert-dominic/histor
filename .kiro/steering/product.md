@@ -33,10 +33,10 @@ A list of cases. V1 has one open case, the Mary Celeste (1872); other cases appe
 The case's most famous legend, told dramatically. For the Mary Celeste this is the version later storytellers made famous: breakfast half-eaten, tea still warm. The legend is written out as if by a quill; then one stamp lands: "Legend". The app answers, typed like a typewriter: "Well... that part never happened.", then explains what really happened. It makes its point quickly and is always skippable. Job: hook the user and show the product's point.
 
 ### 3. The real story
-A scroll-driven telling of what the record says, built with GSAP ScrollTrigger.
-- Told in short sections. Each section ends on a moment of curiosity that pulls the user to keep scrolling.
+A telling of what the record says, in steps: one gesture (a scroll, a swipe, a key) moves exactly one step, built with GSAP Observer. A rail on the left shows where the reader is and jumps to any chapter.
+- Told in short sections. Each section ends on a moment of curiosity (its hook) that pulls the user on.
 - The screen grows darker as the story goes on.
-- Before chapter 1 the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. It opens once per page load however the reader arrives (after the legend intro, on a return visit, a reload or a direct link), and each time the intro's scroll cue is pressed. The case header carries the title. Each chapter is a page beside its image, written by a pen; scrolling on brings the chapter's hook, then the next chapter.
+- Before chapter 1 the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. It opens once per page load however the reader arrives (after the legend intro, on a return visit, a reload or a direct link), and each time the intro's scroll cue is pressed. The case header carries the title. No gesture moves past the modal. Each chapter is a page beside its image, written by a pen; the next step brings the chapter's hook, then the next chapter.
 - Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
 - Job: give a newcomer full context, so nobody finishes the story confused.
 
@@ -45,7 +45,7 @@ The story ends on the case's central question, stated plainly:
 
 > Why would Captain Briggs abandon a sound ship, one he partly owned, and put his wife, his two-year-old daughter and his crew into a small lifeboat in the middle of the Atlantic?
 
-Then, as the reader scrolls on, the app speaks in a modal over the question: "Most people stop here. Want to see what the evidence says?"
+The question builds one line per step. Then, at the next step, the app speaks in a modal over the question: "Most people stop here. Want to see what the evidence says?"
 - **Open the case files:** continue to the board.
 - **I've heard enough:** a short close with where historians stand. The casual reader leaves satisfied.
 

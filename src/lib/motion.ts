@@ -21,8 +21,7 @@ export type TokenName =
   | 'story.weighted'
   | 'story.breath'
   | 'story.hook'
-  | 'story.decay'
-  | 'story.settle';
+  | 'story.decay';
 
 export interface MotionToken {
   ease: string;
@@ -32,10 +31,7 @@ export interface MotionToken {
   y?: number;
 }
 
-/**
- * The story's moments: a weighted phrase, the breath before a hook, the hook's snap and decay, the central
- * question's stops. Those on the scrubbed timeline have durations in seconds of scroll.
- */
+/** The story's moments: a weighted phrase, the breath before a hook, the hook's snap and its decay. */
 
 /** The tokens, with their starting values (to be tuned by eye). Exits are quicker than entrances. */
 export const MOTION: Record<TokenName, MotionToken> = {
@@ -62,7 +58,7 @@ export const MOTION: Record<TokenName, MotionToken> = {
   /** A weighted phrase landing on its own after a breath: it drops into its held space and settles, slightly
    * brighter than the words around it. No line is drawn under it. */
   'story.weighted': { ease: 'power4.out', duration: 0.7 },
-  /** The breath before a hook: the column has cleared; the image darkens further and the camera creeps closer, and
+  /** The breath before a hook: the page has dimmed away; the image darkens further and the camera creeps closer, and
    * nothing new appears. */
   'story.breath': { ease: 'sine.inOut', duration: 2.4 },
   /** A hook snapping in on a timer: its letters start a little out of line and settle into place, staggered over
@@ -71,8 +67,6 @@ export const MOTION: Record<TokenName, MotionToken> = {
   /** A hook leaving: its letters go one at a time, in a random order, like ink drying away. `duration` is one
    * letter's fade. */
   'story.decay': { ease: 'power1.in', duration: 0.35 },
-  /** The central question's stops: the scroll settles on the next phrase like a magnet (ScrollTrigger's snap). */
-  'story.settle': { ease: 'power2.inOut', duration: 0.6 },
 };
 
 /** How far text rises, in px, while it fades in (`ink.in`). */

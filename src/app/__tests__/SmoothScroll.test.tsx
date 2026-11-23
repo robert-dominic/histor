@@ -5,7 +5,7 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import SmoothScroll from '@/app/SmoothScroll';
-import { getLenis, pauseSmoothScroll, resumeSmoothScroll, setWheelMultiplier } from '@/lib/smooth-scroll';
+import { getLenis, holdSmoothScroll, pauseSmoothScroll, releaseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { stubMatchMedia } from '@/test/match-media';
 
 afterEach(() => {
@@ -44,21 +44,16 @@ describe('SmoothScroll', () => {
       stubResizeObserver();
     });
 
-    test('a page can slow the wheel: each wheel movement is scaled before Lenis uses it, and touch is left alone', () => {
+    test('a hold keeps it stopped, whatever pauses and resumes it meanwhile, until it is released', () => {
       render(<SmoothScroll>x</SmoothScroll>);
-      const hook = getLenis()!.options.virtualScroll as (data: { deltaX: number; deltaY: number; event: Event }) => boolean;
-      const wheel = { deltaX: 10, deltaY: 100, event: new Event('wheel') };
-      setWheelMultiplier(0.8);
-      expect(hook(wheel)).toBe(true);
-      expect(wheel.deltaY).toBeCloseTo(80, 6);
-      expect(wheel.deltaX).toBeCloseTo(8, 6);
-      const touch = { deltaX: 0, deltaY: 100, event: new Event('touchmove') };
-      hook(touch);
-      expect(touch.deltaY).toBe(100);
-      setWheelMultiplier(1);
-      const plain = { deltaX: 0, deltaY: 100, event: new Event('wheel') };
-      hook(plain);
-      expect(plain.deltaY).toBe(100);
+      const lenis = getLenis()!;
+      act(() => holdSmoothScroll());
+      expect(lenis.isStopped).toBe(true);
+      // A modal closing over the story resumes smooth scrolling: the hold wins.
+      act(() => resumeSmoothScroll());
+      expect(lenis.isStopped).toBe(true);
+      act(() => releaseSmoothScroll());
+      expect(lenis.isStopped).toBe(false);
     });
 
     test('creates one instance, driven by GSAP rather than its own loop, and removes it on unmount', () => {

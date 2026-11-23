@@ -19,7 +19,6 @@ const NAMES: TokenName[] = [
   'story.breath',
   'story.hook',
   'story.decay',
-  'story.settle',
 ];
 
 describe('motion tokens', () => {

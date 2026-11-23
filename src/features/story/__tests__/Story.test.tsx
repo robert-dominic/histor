@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // src/features/story/__tests__/Story.test.tsx
-// The cinematic story (docs/briefs/story-redesign.md): every chapter's full text is in the DOM, the text column is for
-// the eyes only, the roll call and the chart come from the data, playing can be paused, and reduced motion gives
-// plain stacked sections.
+// The story in steps (docs/briefs/story-steps.md): every chapter's full text is in the DOM, the written page is for
+// the eyes only, one gesture moves exactly one step, the play modal comes first, playing can be paused, and reduced
+// motion gives plain stacked sections on a normal page.
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -12,7 +12,6 @@ import maryCeleste from '@/cases/mary-celeste/case';
 import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
 import { parseRefs } from '@/lib/parse-refs';
-import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { STORY_PACE } from '@/lib/story-pages';
 import { splitQuestion } from '@/lib/phrases';
@@ -30,7 +29,9 @@ const plainText = (text: string) =>
 
 type StoryData = Pick<Case, 'story' | 'centralQuestion' | 'references' | 'sources' | 'voyage'>;
 
-function renderStory(caseData: StoryData = maryCeleste) {
+type Start = { mode: 'play' | 'read'; token: number } | null;
+
+function renderStory(caseData: StoryData = maryCeleste, start: Start = null) {
   return render(
     <Story
       story={caseData.story}
@@ -38,9 +39,50 @@ function renderStory(caseData: StoryData = maryCeleste) {
       references={caseData.references}
       sources={caseData.sources}
       voyage={caseData.voyage}
+      start={start}
     />
   );
 }
+
+/** The story, begun: the reader has chosen "Read at my pace" (or "Play the story") in the play modal. */
+const READ: Start = { mode: 'read', token: 1 };
+const PLAY: Start = { mode: 'play', token: 1 };
+
+/** Runs every step animation now under way to its end (they are marked `data: 'story-step'`). */
+function settleSteps() {
+  act(() => {
+    for (let pass = 0; pass < 3; pass += 1) {
+      gsap.globalTimeline
+        .getChildren(false, false, true)
+        .filter(child => child.data === 'story-step')
+        .forEach(child => child.progress(1));
+    }
+  });
+}
+
+/** Writes the page on screen at once (a click on its panel). */
+function finishWriting(container: HTMLElement) {
+  act(() => {
+    container.querySelectorAll<HTMLElement>('[data-story="chapter"][data-active="true"] [data-story="page"]').forEach(page => fireEvent.click(page));
+  });
+}
+
+let wheelClock = 1_000;
+/** A burst of wheel events, `apart` ms from each other, starting `after` ms after the last one: one flick. */
+function wheelBurst(target: Element, { count = 1, deltaY = 60, apart = 8, after = 1_000 } = {}) {
+  wheelClock += after;
+  act(() => {
+    for (let index = 0; index < count; index += 1) {
+      const event = new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'timeStamp', { value: wheelClock });
+      target.dispatchEvent(event);
+      wheelClock += apart;
+    }
+  });
+}
+
+const stepOf = (container: HTMLElement) => (container.querySelector('[data-story="root"]') as HTMLElement).dataset.step;
+const stageOf = (container: HTMLElement) => container.querySelector('[data-story="stage"]') as HTMLElement;
 
 const chapterOf = (container: HTMLElement, section: StorySection) =>
   container.querySelector(`[data-story="chapter"][data-chapter="${section.id}"]`) as HTMLElement;
@@ -75,6 +117,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   document.documentElement.style.removeProperty('background-color');
 });
 
@@ -98,11 +141,6 @@ describe('Story: the full text is in the DOM', () => {
 
 
 
-  test('the scroll is scrubbed with smoothing, so the text glides', () => {
-    renderStory(testCase);
-    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin !== undefined && trigger.pin !== null);
-    expect(pinned?.vars.scrub).toBe(STORY_PACE.scrub);
-  });
   test('ends on the central question, whole for screen readers and in phrases for the eyes', () => {
     const { container } = renderStory();
 
@@ -114,7 +152,6 @@ describe('Story: the full text is in the DOM', () => {
 });
 
 describe('Story: a page per chapter', () => {
-  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
 
   test('each chapter has a page on one side of its image: kicker, heading and every paragraph, and only those', () => {
     const { container } = renderStory();
@@ -193,42 +230,6 @@ describe('Story: a page per chapter', () => {
     expect(screen.getByRole('dialog', { name: 'The thing' })).toBeDefined();
   });
 
-  test('the page holds for a stretch of scroll before the hook, and is the same page all the while', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[0]);
-    const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
-    const leave = gsap.getTweensOf(page)[0];
-    expect(leave.vars).toMatchObject({ opacity: 0, ease: 'power2.in' });
-    expect(leave.startTime()).toBeGreaterThanOrEqual(STORY_PACE.pageHold);
-    expect(stageTimeline().labels['chapter-1']).toBeGreaterThan(leave.startTime());
-  });
-
-  test('a chapter without a hook keeps its page until the next scene dissolves in', () => {
-    const { container } = renderStory(testCase);
-    const chapter = chapterOf(container, testCase.story[1]);
-    expect(gsap.getTweensOf(chapter.querySelector('[data-story="page"]')!)).toHaveLength(0);
-    expect(chapter.querySelector('[data-story="hook-moment"]')).toBeNull();
-  });
-
-  test('story events: each chapter is entered, its page comes, each hook comes, in order', () => {
-    renderStory(testCase);
-    const events: StoryEvent[] = [];
-    const stop = onStoryEvent(event => events.push(event));
-    try {
-      const timeline = stageTimeline();
-      timeline.time(timeline.duration(), false);
-    } finally {
-      stop();
-    }
-    expect(events.map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)).toEqual([
-      'chapter-enter:s-one',
-      'beat:s-one',
-      'hook:s-one',
-      'chapter-enter:s-two',
-      'beat:s-two',
-    ]);
-  });
-
   test('on a phone-width screen each page lies along the bottom, over the image', () => {
     const { container } = renderStory();
     const page = container.querySelector<HTMLElement>('[data-story="page"]')!;
@@ -239,7 +240,7 @@ describe('Story: a page per chapter', () => {
 });
 
 describe('Story: scenes', () => {
-  test('one full-screen scene per chapter, in one pinned stage, in the order of the case data', () => {
+  test('one full-screen scene per chapter, in one fixed stage, in the order of the case data', () => {
     const { container } = renderStory();
 
     const root = container.querySelector('[data-story="root"]') as HTMLElement;
@@ -360,153 +361,6 @@ describe('Story: the voyage chart', () => {
   });
 });
 
-describe('Story: play the story', () => {
-  // jsdom lays nothing out: give the page a height, so there is something to play through.
-  beforeEach(() => {
-    Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 20_000 });
-  });
-  afterEach(() => {
-    Reflect.deleteProperty(document.documentElement, 'scrollHeight');
-  });
-
-  test('past its last stop, play does not start', () => {
-    const { container } = renderStory();
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    const real = Object.getOwnPropertyDescriptor(window, 'scrollY');
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1_000_000 });
-    try {
-      act(() => {
-        fireEvent.click(control);
-      });
-      expect(control.getAttribute('aria-pressed')).toBe('false');
-    } finally {
-      if (real !== undefined) {
-        Object.defineProperty(window, 'scrollY', real);
-      }
-    }
-  });
-
-  test('play has a stop at every page: it waits for the pen, then gives the page its reading time; then the question', async () => {
-    const { container } = renderStory(testCase);
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    const writing = (index: number) =>
-      gsap
-        .getTweensOf(chapterOf(container, testCase.story[index]).querySelector('[data-pen="char"]')!)
-        .find(tween => tween.parent !== gsap.globalTimeline)!.parent as gsap.core.Timeline;
-    const delayed = vi.spyOn(gsap, 'delayedCall');
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    // At the first page: waiting for the pen, no hold yet.
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(delayed).not.toHaveBeenCalled();
-    // The pen finishes: now the reading time.
-    act(() => {
-      writing(0).progress(1);
-    });
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(delayed).toHaveBeenCalledTimes(1);
-    expect(delayed.mock.calls[0][0]).toBeGreaterThanOrEqual(STORY_PACE.playHoldAtLeast);
-  });
-
-  test('while the story is on the page the wheel is slower, and it is normal again once the story goes', () => {
-    const { unmount } = renderStory();
-    expect(wheelMultiplier()).toBe(0.8);
-    unmount();
-    expect(wheelMultiplier()).toBe(1);
-  });
-  test('play and pause toggle from the floating control', () => {
-    const { container } = renderStory();
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    expect(control.getAttribute('aria-label')).toBe('Play the story');
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-label')).toBe('Pause the story');
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-label')).toBe('Play the story');
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-label')).toBe('Pause the story');
-  });
-  test('smooth scrolling steps aside while the story plays and comes back when it pauses', () => {
-    const fake = { stop: vi.fn(), start: vi.fn() };
-    setLenis(fake as never);
-    try {
-      const { container } = renderStory();
-      const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-      act(() => {
-        fireEvent.click(control);
-      });
-      expect(fake.stop).toHaveBeenCalledTimes(1);
-      expect(control.getAttribute('aria-pressed')).toBe('true');
-      act(() => {
-        fireEvent.click(control);
-      });
-      expect(fake.start).toHaveBeenCalled();
-      expect(control.getAttribute('aria-pressed')).toBe('false');
-    } finally {
-      setLenis(null);
-    }
-  });
-  test('only the scene on screen takes clicks: the first is active, the others are not', () => {
-    const { container } = renderStory();
-    const scenes = [...container.querySelectorAll<HTMLElement>('[data-story="chapter"]')];
-    expect(scenes.map(scene => scene.dataset.active)).toEqual(scenes.map((_, index) => String(index === 0)));
-  });
-  test('a tap on a portal name in the active scene opens its card and pauses playback', () => {
-    const { container } = renderStory();
-    const first = container.querySelector('[data-story="chapter"][data-active="true"]') as HTMLElement;
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-    act(() => {
-      fireEvent.click(control);
-    });
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    act(() => {
-      fireEvent.click(first.querySelector('[data-story="page"] [data-portal-trigger]') as HTMLElement);
-    });
-    expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
-    expect(control.getAttribute('aria-pressed')).toBe('false');
-  });
-  test('opening a portal pauses playback', () => {
-    const { container } = renderStory(testCase);
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-
-    act(() => {
-      fireEvent.click(control);
-    });
-    act(() => {
-      fireEvent.click(container.querySelector('[data-story="page"] [data-portal-trigger="thing"]') as HTMLElement);
-    });
-
-    expect(control.getAttribute('aria-pressed')).toBe('false');
-  });
-
-  test('a key pressed on the control itself does not count as taking over', () => {
-    const { container } = renderStory();
-    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
-
-    act(() => {
-      fireEvent.click(control);
-    });
-    act(() => {
-      fireEvent.keyDown(control, { key: 'Enter' });
-    });
-
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-  });
-});
-
 describe('Story: reduced motion', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
@@ -587,19 +441,6 @@ describe('Story: without matchMedia', () => {
   });
 });
 
-describe('Story: will-change only while a scene moves', () => {
-  test('no scene image carries a permanent will-change', () => {
-    const { container } = renderStory();
-    const images = [...container.querySelectorAll<HTMLElement>('[data-story="image"]')];
-    expect(images.length).toBeGreaterThan(0);
-    for (const image of images) {
-      expect(image.className).not.toContain('will-change');
-    }
-    // Before any scrolling, only the first scene could be about to move; the rest are clear.
-    expect(images.slice(1).every(image => image.style.willChange === '')).toBe(true);
-  });
-});
-
 describe('Story: sized images', () => {
   test('every scene image has a srcset with sizes', () => {
     const { container } = renderStory();
@@ -609,321 +450,6 @@ describe('Story: sized images', () => {
     expect(images[0].getAttribute('srcset')).toMatch(/ 828w, .+ \d+w$/);
     expect(images[0].getAttribute('sizes')).toBe('100vw');
     expect(images[1].getAttribute('srcset')).toBeNull();
-  });
-});
-
-describe('Story: the four entrances', () => {
-  const voyage = maryCeleste.story.find(section => section.id === 's-voyage')!;
-
-
-
-  test('a hook snaps in whole on a timer once reached, its letters settling from out of line in about 0.8s', () => {
-    const { container } = renderStory();
-    const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
-    const words = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-word"]')];
-    expect(words.map(word => word.textContent).join(' ')).toBe(voyage.hook);
-    const letters = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
-    const snap = gsap.getTweensOf(letters[0]).find(tween => tween.vars.opacity === 1)!;
-    expect(snap.vars).toMatchObject({ opacity: 1, x: 0, y: 0, rotation: 0, ease: 'back.out(2.2)' });
-    // One timed tween for the whole line, not scrubbed: it lives on its own paused timeline, not the stage's.
-    expect(letters.every(letter => gsap.getTweensOf(letter).includes(snap))).toBe(true);
-    const stage = ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
-    expect(snap.parent).not.toBe(stage);
-    expect(snap.parent!.paused()).toBe(true);
-    expect(snap.parent!.duration()).toBeCloseTo(STORY_PACE.hookIn, 5);
-    // Each letter starts its own way out of line (within a few px and degrees), the same every time.
-    const from = snap.vars.startAt as { rotation: (index: number) => number; x: (index: number) => number };
-    const turns = letters.map((_, index) => from.rotation(index));
-    expect(new Set(turns.map(value => value.toFixed(3))).size).toBeGreaterThan(letters.length / 2);
-    expect(turns.every(value => Math.abs(value) <= 12)).toBe(true);
-    expect(letters.map((_, index) => from.x(index))).toEqual(letters.map((_, index) => from.x(index)));
-  });
-
-  test('reaching the hook plays its snap; going back over it reverses it', () => {
-    const { container } = renderStory();
-    const index = maryCeleste.story.indexOf(voyage);
-    const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
-    const letter = hook.querySelector<HTMLElement>('[data-story="hook-char"]')!;
-    const snap = gsap.getTweensOf(letter).find(tween => tween.vars.opacity === 1)!.parent as gsap.core.Timeline;
-    const stage = ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
-    const at = stage.labels[`hook-${index}`];
-    stage.time(at - 0.1);
-    stage.time(at + 0.1);
-    expect(snap.paused()).toBe(false);
-    expect(snap.reversed()).toBe(false);
-    stage.time(at - 0.1);
-    expect(snap.reversed()).toBe(true);
-  });
-
-  test('when a hook leaves, its letters decay one at a time, in an uneven order', () => {
-    const { container } = renderStory();
-    const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
-    const letters = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
-    const decay = gsap.getTweensOf(letters[0]).find(tween => tween.vars.opacity === 0)!;
-    expect(decay.vars.ease).toBe('power1.in');
-    // One tween for all of them, staggered: one letter at a time...
-    expect(letters.every(letter => gsap.getTweensOf(letter).includes(decay))).toBe(true);
-    expect(decay.vars.stagger as number).toBeGreaterThan(0);
-    // ...in an uneven order, not the reading order, and always the same one.
-    const order = (decay.targets() as HTMLElement[]).map(target => letters.indexOf(target));
-    expect([...order].sort((a, b) => a - b)).toEqual(letters.map((_, index) => index));
-    expect(order).not.toEqual(letters.map((_, index) => index));
-  });
-
-});
-
-describe('Story: the hook between chapters', () => {
-  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
-
-  test('names go out, the panel dims, the image darkens and creeps, the hook snaps in, holds, decays, then the next image', () => {
-    const { container } = renderStory();
-    const index = maryCeleste.story.findIndex(section => section.rollCall !== undefined);
-    const section = maryCeleste.story[index];
-    const chapter = chapterOf(container, section);
-    const start = (element: Element, match: (tween: gsap.core.Tween) => boolean = () => true) =>
-      gsap.getTweensOf(element).filter(tween => tween.parent !== gsap.globalTimeline).find(match)!.startTime();
-    const names = [...chapter.querySelectorAll('[data-story="name"]')];
-    const lastNameOut = start(names[names.length - 1], tween => tween.vars.keyframes !== undefined);
-    const firstNameOut = start(names[0], tween => tween.vars.keyframes !== undefined);
-    const pageOut = start(chapter.querySelector('[data-story="page"]')!, tween => tween.vars.opacity === 0);
-    const creep = start(chapter.querySelector('[data-story="figure"]')!);
-    const hook = chapter.querySelector('[data-story="hook-moment"]')!;
-    const letter = hook.querySelector('[data-story="hook-char"]')!;
-    const snap = stageTimeline().labels[`hook-${index}`];
-    const decay = start(letter, tween => tween.vars.opacity === 0);
-    expect(lastNameOut).toBeLessThan(firstNameOut);
-    expect(firstNameOut).toBeLessThan(pageOut);
-    expect(pageOut).toBeLessThan(creep);
-    expect(creep).toBeLessThan(snap);
-    expect(decay - snap).toBeCloseTo(STORY_PACE.hookIn + STORY_PACE.hookHold, 5);
-    expect(stageTimeline().labels[`chapter-${index + 1}`]).toBeGreaterThan(decay);
-  });
-
-  test('nothing else on screen while it is there: the corners go with the panel, the chart inset goes quiet', () => {
-    const { container } = renderStory();
-    const chapter = chapterOf(container, maryCeleste.story[0]);
-    const corners = chapter.querySelector('[data-story="corners"]')!;
-    expect(gsap.getTweensOf(corners).some(tween => tween.vars.opacity === 0)).toBe(true);
-    const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
-    const timeline = stageTimeline();
-    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
-    timeline.time(timeline.labels['hook-0'] + 0.5, false);
-    act(() => pinned.vars.onUpdate?.(pinned));
-    expect(chart.dataset.hushed).toBe('true');
-    timeline.time(0, false);
-    act(() => pinned.vars.onUpdate?.(pinned));
-    expect(chart.dataset.hushed).toBe('false');
-  });
-});
-
-describe('Story: the central question as a chokepoint', () => {
-  function renderQuestion() {
-    return render(
-      <Story
-        story={maryCeleste.story}
-        centralQuestion={maryCeleste.centralQuestion}
-        centralQuestionEmphasis={maryCeleste.centralQuestionEmphasis}
-        references={maryCeleste.references}
-        sources={maryCeleste.sources}
-      />
-    );
-  }
-  const questionTrigger = () =>
-    ScrollTrigger.getAll().find(trigger => (trigger.vars.trigger as Element | undefined)?.matches?.('[data-story="question"]') && trigger.pin)!;
-
-  test('a pinned, full-black screen, scrubbed, snapping to each phrase like a magnet, never locking the scroll', () => {
-    const { container } = renderQuestion();
-    const question = container.querySelector<HTMLElement>('[data-story="question"]')!;
-    expect(question.className).toContain('bg-black');
-    const trigger = questionTrigger();
-    expect(trigger).toBeDefined();
-    expect(trigger.vars.scrub).toBe(STORY_PACE.scrub);
-    expect(trigger.vars.snap).toMatchObject({ snapTo: 'labelsDirectional', ease: 'power2.inOut', inertia: false });
-    // Snapping is a nudge after the reader stops: nothing stops the reader scrolling on.
-    expect(document.documentElement.style.overflow).toBe('');
-  });
-
-  test('each phrase is a stop; reaching it plays the phrase in on a timer, then the whole question and a hold', () => {
-    const { container } = renderQuestion();
-    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
-    expect(phrases).toHaveLength(5);
-    const timeline = questionTrigger().animation as gsap.core.Timeline;
-    const labels = Object.keys(timeline.labels);
-    expect(labels).toEqual([...phrases.map((_, index) => `phrase-${index}`), 'whole']);
-    const ins = phrases.map(phrase => gsap.getTweensOf(phrase)[0]);
-    // Timed, not scrubbed: each phrase's tween is on its own paused timeline, about 0.6s long.
-    ins.forEach(tween => {
-      expect(tween.vars).toMatchObject({ opacity: 1, ease: 'power3.out', duration: STORY_PACE.questionPhrase });
-      expect(tween.parent).not.toBe(timeline);
-      expect(tween.parent!.paused()).toBe(true);
-    });
-    // Reaching the stop plays it; going back over it reverses it.
-    const second = ins[1].parent as gsap.core.Timeline;
-    timeline.time(timeline.labels['phrase-1'] - 0.1);
-    timeline.time(timeline.labels['phrase-1'] + 0.1);
-    expect(second.paused()).toBe(false);
-    expect(second.reversed()).toBe(false);
-    timeline.time(timeline.labels['phrase-1'] - 0.1);
-    expect(second.reversed()).toBe(true);
-    // The fork waits: the timeline holds on the whole question before the pin lets go.
-    expect(timeline.duration()).toBeGreaterThan(timeline.labels.whole + 2);
-  });
-
-  test('its weighted parts land on their own after their phrase, slightly brighter, and no red line anywhere', () => {
-    const { container } = renderQuestion();
-    const weighted = [...container.querySelectorAll<HTMLElement>('[data-story="question"] [data-story="weighted"]')];
-    expect(weighted.map(span => span.textContent)).toEqual(maryCeleste.centralQuestionEmphasis);
-    const land = gsap.getTweensOf(weighted[1])[0];
-    expect(land.vars).toMatchObject({ opacity: 1, ease: 'power4.out' });
-    const phraseIn = gsap.getTweensOf(weighted[1].closest('[data-story="phrase"]')!)[0];
-    expect(land.parent).toBe(phraseIn.parent);
-    expect(land.startTime()).toBeGreaterThan(phraseIn.startTime() + phraseIn.duration());
-    expect(weighted[1].className).toContain('text-night-ink');
-    expect(container.querySelector('[data-story="weight-line"]')).toBeNull();
-    expect(container.querySelector('[class*="bg-rust"]')).toBeNull();
-  });
-
-  test('screen readers get the whole question at once', () => {
-    const { container } = renderQuestion();
-    const question = container.querySelector<HTMLElement>('[data-story="question"]')!;
-    expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
-  });
-
-  test('reduced motion: no pin and no stops; the question is shown whole', () => {
-    vi.unstubAllGlobals();
-    stubMatchMedia({ reducedMotion: true });
-    vi.stubGlobal('scrollTo', vi.fn());
-    const { container } = renderQuestion();
-    expect(questionTrigger()).toBeUndefined();
-    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
-    // jsdom has no layout, so the question is already in view: one fade for the whole question, all at once.
-    const tweens = new Set(phrases.map(phrase => gsap.getTweensOf(phrase)[0]));
-    expect(tweens.size).toBe(1);
-  });
-});
-
-describe('Story: the fork as a modal over the question', () => {
-  const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/case/mary-celeste/files' };
-  function renderWithFork() {
-    return render(
-      <MemoryRouter>
-        <Story
-          story={testCase.story}
-          centralQuestion={maryCeleste.centralQuestion}
-          references={testCase.references}
-          sources={testCase.sources}
-          fork={FORK}
-        />
-      </MemoryRouter>
-    );
-  }
-  const questionPin = () =>
-    ScrollTrigger.getAll().find(trigger => (trigger.vars.trigger as Element | undefined)?.matches?.('[data-story="question"]') && trigger.pin)!;
-  /** Runs the fork's entrance to its end: the prompt typed, the choices shown. */
-  const settleFork = () =>
-    act(() => {
-      const choices = document.querySelector('[data-fork="choices"]');
-      gsap.getTweensOf(choices).forEach(tween => (tween.parent ?? tween).progress(1));
-    });
-
-  test('there is no fork section under the question: one solid black screen, and black to scroll into', () => {
-    const { container } = renderWithFork();
-    expect(container.querySelector('[data-fork="root"]')).toBeNull();
-    expect(container.querySelector('[data-story="question"]')?.className).toContain('min-h-svh');
-    expect(container.querySelector('[data-story="question"]')?.className).toContain('bg-black');
-    expect(container.querySelector('[data-story="after-question"]')?.className).toContain('bg-black');
-  });
-
-  test('scrolling on past the whole question opens it: rising, then settling, over a dark backdrop', () => {
-    renderWithFork();
-    const pin = questionPin();
-    act(() => pin.vars.onLeave?.(pin));
-    const dialog = screen.getByRole('dialog', { name: 'What next' });
-    const moves = gsap.getTweensOf(dialog);
-    expect(moves.map(tween => tween.vars.ease)).toEqual(['power2.out', 'back.out(1.15)']);
-    settleFork();
-    expect(dialog.textContent).toContain(maryCeleste.fork.prompt);
-    expect(within(dialog).getByRole('link', { name: maryCeleste.fork.investigateLabel }).getAttribute('href')).toBe(FORK.filesHref);
-    expect(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel })).toBeDefined();
-    expect(document.activeElement).toBe(dialog);
-  });
-
-  test('"I\'ve heard enough" shows where historians stand, with two quiet links', () => {
-    renderWithFork();
-    const pin = questionPin();
-    act(() => pin.vars.onLeave?.(pin));
-    const dialog = screen.getByRole('dialog', { name: 'What next' });
-    settleFork();
-    fireEvent.click(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel }));
-    for (const paragraph of maryCeleste.historiansSummary) {
-      expect(within(dialog).getByText(paragraph)).toBeDefined();
-    }
-    expect(within(dialog).getByRole('link', { name: 'Back to all cases' }).getAttribute('href')).toBe('/');
-  });
-
-  test('Tab stays inside; Escape, or scrolling back up, closes it', async () => {
-    renderWithFork();
-    const pin = questionPin();
-    act(() => pin.vars.onLeave?.(pin));
-    const dialog = screen.getByRole('dialog', { name: 'What next' });
-    const stops = [...dialog.querySelectorAll<HTMLElement>('a[href], button')];
-    stops[stops.length - 1].focus();
-    fireEvent.keyDown(stops[stops.length - 1], { key: 'Tab' });
-    expect(document.activeElement).toBe(stops[0]);
-    fireEvent.keyDown(dialog, { key: 'Escape' });
-    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    act(() => pin.vars.onLeave?.(pin));
-    expect(screen.getByRole('dialog')).toBeDefined();
-    act(() => pin.vars.onEnterBack?.(pin));
-    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  });
-
-
-  test('"Play the story" reads through to the end of the question, holds, then opens it', async () => {
-    const { container } = renderWithFork();
-    // The scroll and the holds happen at once here; the pen finishes when asked.
-    const realTo = gsap.to.bind(gsap);
-    vi.spyOn(gsap, 'to').mockImplementation(((target: unknown, vars: gsap.TweenVars) => {
-      if (target === window) {
-        (vars.onComplete as (() => void) | undefined)?.();
-        return realTo({}, {});
-      }
-      return realTo(target as gsap.TweenTarget, vars);
-    }) as typeof gsap.to);
-    vi.spyOn(gsap, 'delayedCall').mockImplementation(((_seconds: number, callback: () => void) => {
-      callback();
-      return realTo({}, {});
-    }) as typeof gsap.delayedCall);
-    act(() => {
-      fireEvent.click(container.querySelector('[data-story="play-control"]') as HTMLButtonElement);
-    });
-    for (let round = 0; round < 6; round += 1) {
-      await act(async () => {
-        container.querySelectorAll<HTMLElement>('[data-pen="char"]').forEach(char => {
-          gsap
-            .getTweensOf(char)
-            .filter(tween => tween.parent !== gsap.globalTimeline)
-            .forEach(tween => (tween.parent as gsap.core.Timeline).progress(1));
-        });
-        await new Promise(resolve => setTimeout(resolve, 0));
-      });
-    }
-    try {
-      await vi.waitFor(() => expect(screen.getByRole('dialog', { name: 'What next' })).toBeDefined());
-    } finally {
-      vi.restoreAllMocks();
-    }
-  });
-
-  test('reduced motion: it appears without animation once the reader scrolls on', () => {
-    vi.unstubAllGlobals();
-    stubMatchMedia({ reducedMotion: true });
-    vi.stubGlobal('scrollTo', vi.fn());
-    renderWithFork();
-    const opener = ScrollTrigger.getAll().find(trigger => trigger.vars.start === 'bottom 60%')!;
-    act(() => opener.vars.onEnter?.(opener));
-    const dialog = screen.getByRole('dialog', { name: 'What next' });
-    expect(gsap.getTweensOf(dialog)).toHaveLength(0);
   });
 });
 
@@ -952,170 +478,603 @@ describe('Story: no opening scene; the header shows the title once the story sta
   });
 });
 
-describe('Story: the pen writes the whole page', () => {
-  /** The scrubbed timeline of the pinned stage. */
-  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
-  /** The letters the quill writes for a chapter's heading. */
+describe('Story: step 0 is the play modal', () => {
+  test('before the reader has chosen, no gesture moves the story, and the page still scrolls', () => {
+    const { container } = renderStory(testCase);
+    expect(stepOf(container)).toBe('none');
+    wheelBurst(stageOf(container), { count: 20 });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(stepOf(container)).toBe('none');
+    expect(document.documentElement.dataset.storyStage).toBeUndefined();
+    expect(container.querySelector<HTMLElement>('[data-story="rail"]')?.dataset.visible).toBe('false');
+  });
+
+  test('once chosen, the story begins on the first page: the stage holds the screen and the pen starts writing', () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    const { container } = renderStory(testCase, READ);
+    expect(stepOf(container)).toBe('page-0');
+    expect(document.documentElement.dataset.storyStage).toBe('held');
+    // The page is put at the story's top at once.
+    expect(scrollTo).toHaveBeenCalled();
+    const page = container.querySelector<HTMLElement>('[data-story="page"]')!;
+    expect(page.dataset.written).toBeUndefined();
+    expect(container.querySelector<HTMLElement>('[data-story="rail"]')?.dataset.visible).toBe('true');
+  });
+
+  test('when the story leaves the page, the screen scrolls again', () => {
+    const { unmount } = renderStory(testCase, READ);
+    unmount();
+    expect(document.documentElement.dataset.storyStage).toBeUndefined();
+  });
+});
+
+describe('Story: one gesture, one step', () => {
+  test('a burst of 50 wheel events moves exactly one step', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    wheelBurst(stageOf(container), { count: 50 });
+    expect(stepOf(container)).toBe('hook-0');
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-0');
+  });
+
+  test('while a step animates, input is ignored, and a burst that met it is swallowed, tail and all', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    expect((container.querySelector('[data-story="root"]') as HTMLElement).dataset.animating).toBe('true');
+    // A new flick while the hook comes in: nothing.
+    wheelBurst(stageOf(container), { count: 10, after: 400 });
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    expect(stepOf(container)).toBe('hook-0');
+    settleSteps();
+    // The same flick's tail, after the step is done: still nothing.
+    wheelBurst(stageOf(container), { count: 5, after: 20 });
+    expect(stepOf(container)).toBe('hook-0');
+    // A new flick: the next step.
+    wheelBurst(stageOf(container));
+    expect(stepOf(container)).toBe('page-1');
+  });
+
+  test('a forward gesture while the pen writes finishes the page and stays; the next one moves on', () => {
+    const { container } = renderStory(testCase, READ);
+    const page = container.querySelector<HTMLElement>('[data-story="page"]')!;
+    wheelBurst(stageOf(container));
+    expect(stepOf(container)).toBe('page-0');
+    expect(page.dataset.written).toBe('true');
+    wheelBurst(stageOf(container));
+    expect(stepOf(container)).toBe('hook-0');
+  });
+
+  test('back works the same way, one step at a time, and a page returned to is already written', () => {
+    const { container } = renderStory(testCase, READ);
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    wheelBurst(stageOf(container));
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-0');
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    expect(container.querySelector<HTMLElement>('[data-story="page"]')?.dataset.written).toBe('true');
+    // Before the first page there is only the play modal: back goes nowhere.
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+  });
+
+  test('the keyboard: ↓, PageDown and Space forward; ↑ and PageUp back; Home to the start', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-0');
+    fireEvent.keyDown(window, { key: 'PageDown' });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    finishWriting(container);
+    fireEvent.keyDown(window, { key: ' ' });
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-1');
+    fireEvent.keyDown(window, { key: 'ArrowUp' });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    fireEvent.keyDown(window, { key: 'PageUp' });
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-0');
+    fireEvent.keyDown(window, { key: 'Home' });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+  });
+
+  test('the keys do nothing while a portal card is open', () => {
+    const { container } = renderStory(testCase, READ);
+    finishWriting(container);
+    fireEvent.click(container.querySelector('[data-story="page"] [data-portal-trigger="thing"]') as HTMLElement);
+    expect(screen.getByRole('dialog', { name: 'The thing' })).toBeDefined();
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    wheelBurst(stageOf(container));
+    expect(stepOf(container)).toBe('page-0');
+  });
+});
+
+describe('Story: hooks', () => {
+  const hookOf = (container: HTMLElement, index: number) =>
+    chapterOf(container, maryCeleste.story[index]).querySelector<HTMLElement>('[data-story="hook-moment"]')!;
+  const lettersOf = (hook: HTMLElement) => [...hook.querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
+
+  test('a hook snaps in whole on a timer once its step is reached, its letters settling from out of line', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    const hook = hookOf(container, 0);
+    expect(hook.textContent?.replace(/\s+/g, ' ').trim()).toBe(maryCeleste.story[0].hook);
+    const letters = lettersOf(hook);
+    const snap = gsap.getTweensOf(letters[0]).find(tween => tween.vars.opacity === 1 && tween.vars.ease === 'back.out(2.2)')!;
+    expect(snap.parent!.duration()).toBeCloseTo(STORY_PACE.hookIn, 5);
+    const from = snap.vars.startAt as { rotation: (index: number) => number };
+    expect(letters.map((_, index) => Math.abs(from.rotation(index))).every(value => value <= 12)).toBe(true);
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    expect(hook.style.opacity).toBe('1');
+    expect(letters.every(letter => letter.style.opacity === '1')).toBe(true);
+  });
+
+  test('only the current step\'s hook can be visible: entering a step hides every other hook and page at once', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    // A stray fragment of another chapter's hook, left on screen.
+    const stray = hookOf(container, 3);
+    gsap.set([stray, ...lettersOf(stray)], { opacity: 1 });
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    expect(stray.style.opacity).toBe('0');
+    expect(lettersOf(stray).every(letter => letter.style.opacity === '0')).toBe(true);
+    settleSteps();
+    const scenes = [...container.querySelectorAll<HTMLElement>('[data-story="chapter"]')];
+    expect(scenes.map(scene => scene.style.opacity)).toEqual(scenes.map((_, index) => (index === 0 ? '1' : '0')));
+    expect(scenes.map(scene => scene.dataset.active)).toEqual(scenes.map((_, index) => String(index === 0)));
+  });
+
+  test('leaving a hook, its letters decay one at a time in an uneven order; then the next image dissolves in', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    wheelBurst(stageOf(container));
+    const letters = lettersOf(hookOf(container, 0));
+    const decay = gsap.getTweensOf(letters[0]).find(tween => tween.vars.opacity === 0 && tween.vars.ease === 'power1.in')!;
+    expect(decay).toBeDefined();
+    const order = (decay.targets() as HTMLElement[]).map(target => letters.indexOf(target));
+    expect(order).not.toEqual(letters.map((_, index) => index));
+    const next = chapterOf(container, maryCeleste.story[1]);
+    const dissolve = gsap.getTweensOf(next).find(tween => tween.vars.opacity === 1)!;
+    expect(dissolve.startTime()).toBeGreaterThanOrEqual(decay.startTime());
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    expect(hookOf(container, 0).style.opacity).toBe('0');
+  });
+
+  test('before the hook: the names go out last to first, the page and corners dim, the chart goes quiet', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    const chapter = chapterOf(container, maryCeleste.story[0]);
+    wheelBurst(stageOf(container));
+    const names = [...chapter.querySelectorAll('[data-story="name"]')];
+    const outAt = (name: Element) => gsap.getTweensOf(name).find(tween => tween.vars.keyframes !== undefined)!.startTime();
+    expect(outAt(names.at(-1)!)).toBeLessThan(outAt(names[0]));
+    const pageOut = gsap.getTweensOf(chapter.querySelector('[data-story="page"]')!).find(tween => tween.vars.opacity === 0)!;
+    expect(pageOut.startTime()).toBeGreaterThan(outAt(names[0]));
+    expect(gsap.getTweensOf(chapter.querySelector('[data-story="corners"]')!).some(tween => tween.vars.opacity === 0)).toBe(true);
+    const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
+    expect(chart.dataset.hushed).toBe('true');
+    settleSteps();
+    expect(chart.dataset.hushed).toBe('true');
+  });
+
+  test('story events: each chapter is entered, each hook comes, in order', () => {
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
+    try {
+      const { container } = renderStory(testCase, READ);
+      finishWriting(container);
+      for (let step = 0; step < 2; step += 1) {
+        wheelBurst(stageOf(container));
+        settleSteps();
+        finishWriting(container);
+      }
+    } finally {
+      stop();
+    }
+    expect(events.filter(event => event.type !== 'beat').map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)).toEqual([
+      'chapter-enter:s-one',
+      'hook:s-one',
+      'chapter-enter:s-two',
+    ]);
+  });
+});
+
+describe('Story: the pen writes the page', () => {
+  const pageOf = (container: HTMLElement, section: StorySection) => chapterOf(container, section).querySelector<HTMLElement>('[data-story="page"]')!;
   const lettersOf = (container: HTMLElement, section: StorySection) =>
-    [...chapterOf(container, section).querySelectorAll<HTMLElement>('[data-story="heading"] *')].filter(
-      element => element.children.length === 0
-    );
-  /** The page's own writing timeline: the parent of the letter's tweens that is not GSAP's global one. */
+    [...chapterOf(container, section).querySelectorAll<HTMLElement>('[data-story="heading"] *')].filter(element => element.children.length === 0);
   const writingOf = (letter: HTMLElement) =>
     gsap.getTweensOf(letter).find(tween => tween.parent !== gsap.globalTimeline)!.parent as gsap.core.Timeline;
-
-  test('the heading is not part of the scrubbed timeline: its own timeline writes it, paused until the scene starts', () => {
-    const { container } = renderStory(testCase);
-    const letters = lettersOf(container, testCase.story[1]);
-    expect(letters.length).toBeGreaterThan(0);
-    const writing = writingOf(letters[0]);
-    expect(writing).not.toBe(stageTimeline());
-    expect(writing.paused()).toBe(true);
-    // Nothing the scroll scrubs touches the letters.
-    expect(stageTimeline().getTweensOf(letters[0])).toHaveLength(0);
-  });
-
-
-  test('entering the scene starts the writing, once the scroll crosses its start', () => {
-    const { container } = renderStory(testCase);
-    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
-    const timeline = stageTimeline();
-    expect(writing.paused()).toBe(true);
-    timeline.time(timeline.labels['chapter-1'] + 0.5, false);
-    expect(writing.paused()).toBe(false);
-    expect(writing.time()).toBeLessThan(1);
-  });
-
-
-
-  const pageOf = (container: HTMLElement, section: StorySection) => chapterOf(container, section).querySelector<HTMLElement>('[data-story="page"]')!;
   const unitsOf = (container: HTMLElement, section: StorySection) =>
     [...pageOf(container, section).querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="char"]')];
 
-  test('the same pen writes the heading, then carries on and writes the whole body, after the kicker is typed', () => {
+  test('each page has its own timed writing, paused until its step is reached', () => {
+    const { container } = renderStory(testCase);
+    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
+    expect(writing.paused()).toBe(true);
+    expect(writing.data).not.toBe('story-step');
+  });
+
+  test('reaching a page starts its pen', () => {
+    const { container } = renderStory(testCase, READ);
+    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    wheelBurst(stageOf(container));
+    // The dissolve: the pen waits for it.
+    expect(writing.paused()).toBe(true);
+    act(() => {
+      gsap.globalTimeline
+        .getChildren(false, false, true)
+        .filter(child => child.data === 'story-step')
+        .forEach(child => child.progress(1));
+    });
+    expect(writing.paused()).toBe(false);
+    expect(writing.progress()).toBeLessThan(1);
+  });
+
+  test('the same pen writes the heading, then the whole body, after the kicker is typed', () => {
     const { container } = renderStory(testCase);
     const heading = lettersOf(container, testCase.story[1]);
     const body = unitsOf(container, testCase.story[1]);
     expect(body.length).toBeGreaterThan(0);
-    const writing = writingOf(heading[0]);
-    expect(writingOf(body[0])).toBe(writing);
+    expect(writingOf(body[0])).toBe(writingOf(heading[0]));
     const lastHeading = gsap.getTweensOf(heading.at(-1)!)[0];
     expect(gsap.getTweensOf(body[0])[0].startTime()).toBeGreaterThanOrEqual(lastHeading.startTime());
-    // Hidden until written.
     expect(body.every(unit => unit.style.opacity === '0')).toBe(true);
   });
 
   test('it writes at a steady pace that leads the eye, and is done in seconds', () => {
     const { container } = renderStory();
     for (const section of maryCeleste.story) {
-      const writing = writingOf(lettersOf(container, section)[0]);
-      expect(writing.duration()).toBeLessThanOrEqual(11);
+      expect(writingOf(lettersOf(container, section)[0]).duration()).toBeLessThanOrEqual(11);
     }
   });
 
-  test('once written the text stays: going back over the scene finishes the writing, it never unwrites', () => {
-    const { container } = renderStory(testCase);
-    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
-    const timeline = stageTimeline();
-    timeline.time(timeline.labels['chapter-1'] + 0.1, false);
-    // It has started (in jsdom GSAP's clock does not tick, so it stays at its start).
-    expect(writing.paused()).toBe(false);
-    timeline.time(timeline.labels['chapter-1'] - 1, false);
-    expect(writing.progress()).toBe(1);
-    expect(unitsOf(container, testCase.story[1]).every(unit => unit.style.opacity === '1')).toBe(true);
-    expect(pageOf(container, testCase.story[1]).dataset.written).toBe('true');
-  });
-
   test('a click on the panel finishes the writing at once', () => {
-    const { container } = renderStory(testCase);
-    const writing = writingOf(lettersOf(container, testCase.story[1])[0]);
-    const timeline = stageTimeline();
-    timeline.time(timeline.labels['chapter-1'] + 0.1, false);
-    fireEvent.click(pageOf(container, testCase.story[1]));
-    expect(writing.progress()).toBe(1);
-  });
-
-  test('scrolling onward finishes the writing at once: the reader is never stuck waiting', () => {
-    const { container } = renderStory(testCase);
+    const { container } = renderStory(testCase, READ);
     const writing = writingOf(lettersOf(container, testCase.story[0])[0]);
-    const timeline = stageTimeline();
-    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
-    act(() => pinned.vars.onEnter?.(pinned));
     expect(writing.progress()).toBeLessThan(1);
-    timeline.time(STORY_PACE.skipAfter + 0.1, false);
-    act(() => pinned.vars.onUpdate?.(Object.assign(Object.create(pinned), { direction: 1 })));
+    fireEvent.click(pageOf(container, testCase.story[0]));
     expect(writing.progress()).toBe(1);
+    expect(pageOf(container, testCase.story[0]).dataset.written).toBe('true');
   });
 
-  test('weighted phrases get a breath before them and are written slower, slightly brighter, with no line', () => {
+  test('a jump from the rail: the pages before it count as written, with no pen', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    const ticks = [...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
+    fireEvent.click(ticks[3]);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-3');
+    for (const section of maryCeleste.story.slice(0, 3)) {
+      expect(pageOf(container, section).dataset.written).toBe('true');
+    }
+  });
+
+  test('weighted phrases are written slightly brighter, with no line', () => {
     const { container } = renderStory();
     const voyage = maryCeleste.story.find(section => section.id === 's-voyage')!;
-    const page = pageOf(container, voyage);
-    const weighted = [...page.querySelectorAll<HTMLElement>('[data-pen="weighted"]')];
+    const weighted = [...pageOf(container, voyage).querySelectorAll<HTMLElement>('[data-pen="weighted"]')];
     expect(weighted.map(span => span.textContent)).toEqual(voyage.emphasis);
     expect(weighted[0].className).toContain('text-night-ink');
-    expect(page.querySelector('[data-story="weight-line"]')).toBeNull();
-    const first = weighted[0].querySelector<HTMLElement>('[data-pen]:not([data-pen="weighted"])')!;
-    const unit = first.dataset.pen === 'word' ? first : first;
-    const before = gsap.getTweensOf(unit)[0];
-    expect(before).toBeDefined();
+    expect(container.querySelector('[data-story="weight-line"]')).toBeNull();
   });
 
-  test('the roll call is written after the body, by the pen in its own column', () => {
+  test('the roll call is written after the body, by the pen in its own place', () => {
     const { container } = renderStory();
-    const voyage = maryCeleste.story.find(section => section.rollCall !== undefined)!;
-    const page = chapterOf(container, voyage);
-    const lastBody = [...page.querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="word"]')].at(-1)!;
-    const firstName = page.querySelector<HTMLElement>('[data-story="roll-call"] [data-pen="word"]')!;
+    const chapter = chapterOf(container, maryCeleste.story.find(section => section.rollCall !== undefined)!);
+    const lastBody = [...chapter.querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="word"]')].at(-1)!;
+    const firstName = chapter.querySelector<HTMLElement>('[data-story="roll-call"] [data-pen="word"]')!;
     const at = (element: HTMLElement) =>
       gsap.getTweensOf(element)[0]?.startTime() ?? gsap.getTweensOf(element.querySelector('[data-pen="char"]')!)[0].startTime();
     expect(at(firstName)).toBeGreaterThan(at(lastBody));
   });
+});
 
-  test('reduced motion: plain stacked chapters show the heading whole and still', () => {
-    vi.unstubAllGlobals();
-    stubMatchMedia({ reducedMotion: true });
-    vi.stubGlobal('scrollTo', vi.fn());
-    const { container } = renderStory(testCase);
-    const heading = container.querySelector('[data-story="heading"]') ?? container.querySelector('h2');
-    expect(heading?.textContent).toContain('First test heading');
-    expect(container.querySelectorAll('[data-story="quill"]')).toHaveLength(0);
+describe('Story: the progress rail', () => {
+  test('one tick per chapter and one for the question, each named by its heading; the current one is lit', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    const ticks = [...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
+    expect(ticks).toHaveLength(maryCeleste.story.length + 1);
+    expect(ticks.slice(0, -1).map(tick => tick.getAttribute('aria-label'))).toEqual(maryCeleste.story.map(section => section.heading));
+    expect(ticks.map(tick => tick.dataset.current)).toEqual(ticks.map((_, index) => String(index === 0)));
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    // The hook is still chapter 1's.
+    expect(ticks[0].dataset.current).toBe('true');
+  });
+
+  test('clicking the question tick goes to its first line; the rail hides while the fork is open', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Story
+          story={testCase.story}
+          centralQuestion={maryCeleste.centralQuestion}
+          references={testCase.references}
+          sources={testCase.sources}
+          fork={{ fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/files' }}
+          start={READ}
+        />
+      </MemoryRouter>
+    );
+    const ticks = [...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
+    fireEvent.click(ticks.at(-1)!);
+    settleSteps();
+    expect(stepOf(container)).toBe('line-0');
+    expect(ticks.at(-1)?.dataset.current).toBe('true');
   });
 });
 
-describe('Story: the other parts, with the column', () => {
-  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
-  const pinned = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!;
+describe('Story: the central question, one line per step', () => {
+  const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/case/mary-celeste/files' };
+  function renderQuestion(start: Start = READ) {
+    return render(
+      <MemoryRouter>
+        <Story
+          story={testCase.story}
+          centralQuestion={maryCeleste.centralQuestion}
+          centralQuestionEmphasis={maryCeleste.centralQuestionEmphasis}
+          references={testCase.references}
+          sources={testCase.sources}
+          fork={FORK}
+          start={start}
+        />
+      </MemoryRouter>
+    );
+  }
+  /** To the question's first line, by the rail. */
+  const toQuestion = (container: HTMLElement) => {
+    fireEvent.click([...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')].at(-1)!);
+    settleSteps();
+  };
+  const settleFork = () =>
+    act(() => {
+      const choices = document.querySelector('[data-fork="choices"]');
+      gsap.getTweensOf(choices).forEach(tween => (tween.parent ?? tween).progress(1));
+    });
 
-
-
-
-
-
-  test('the voyage chart draws its route in order as the story goes', () => {
-    const { container } = renderStory();
-    const reveals = [...container.querySelectorAll<HTMLElement | SVGElement>('[data-chart="frame"][data-variant="live"] [data-chart="reveal"]')];
-    expect(reveals.length).toBeGreaterThan(0);
-    const starts = reveals.map(reveal => gsap.getTweensOf(reveal)[0].startTime());
-    expect(starts).toEqual([...starts].sort((a, b) => a - b));
-    const timeline = stageTimeline();
-    expect(starts.every(start => start >= 0 && start <= timeline.duration())).toBe(true);
+  test('a full-black screen over the stage; screen readers get the whole question at once', () => {
+    const { container } = renderQuestion(null);
+    const layer = container.querySelector<HTMLElement>('[data-story="question-layer"]')!;
+    expect(stageOf(container).contains(layer)).toBe(true);
+    expect(layer.querySelector('[data-story="question"]')?.className).toContain('bg-black');
+    expect(within(layer).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
+    expect(container.querySelector('[data-story="after-question"]')).toBeNull();
   });
 
-  test('day into night: the sky follows the timeline from the first scene to full night', () => {
+  test('each line is a step: it plays in on a timer when reached, and leaves when the reader goes back', () => {
+    const { container } = renderQuestion();
+    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
+    toQuestion(container);
+    expect(phrases.map(phrase => phrase.style.opacity)).toEqual(phrases.map((_, index) => (index === 0 ? '1' : '0')));
+    wheelBurst(stageOf(container));
+    const playIn = gsap.getTweensOf(phrases[1]).find(tween => tween.vars.ease === 'power3.out')!;
+    expect(playIn.vars.duration).toBe(STORY_PACE.questionPhrase);
+    settleSteps();
+    expect(stepOf(container)).toBe('line-1');
+    expect(phrases[1].style.opacity).toBe('1');
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(stepOf(container)).toBe('line-0');
+    expect(phrases[1].style.opacity).toBe('0');
+  });
+
+  test('its weighted parts land on their own after their line, slightly brighter, and no red line anywhere', () => {
+    const { container } = renderQuestion();
+    const weighted = [...container.querySelectorAll<HTMLElement>('[data-story="question"] [data-story="weighted"]')];
+    expect(weighted.map(span => span.textContent)).toEqual(maryCeleste.centralQuestionEmphasis);
+    const land = gsap.getTweensOf(weighted[1])[0];
+    expect(land.vars).toMatchObject({ opacity: 1, ease: 'power4.out' });
+    const phraseIn = gsap.getTweensOf(weighted[1].closest('[data-story="phrase"]')!)[0];
+    expect(land.parent).toBe(phraseIn.parent);
+    expect(land.startTime()).toBeGreaterThan(phraseIn.startTime() + phraseIn.duration());
+    expect(weighted[1].className).toContain('text-night-ink');
+    expect(container.querySelector('[class*="bg-rust"]')).toBeNull();
+  });
+
+  test('after the last line, the next step opens the fork: rising, then settling', () => {
+    const { container } = renderQuestion();
+    toQuestion(container);
+    const lines = container.querySelectorAll('[data-story="phrase"]').length;
+    for (let line = 1; line < lines; line += 1) {
+      wheelBurst(stageOf(container));
+      settleSteps();
+    }
+    expect(screen.queryByRole('dialog', { name: 'What next' })).toBeNull();
+    wheelBurst(stageOf(container));
+    settleSteps();
+    expect(stepOf(container)).toBe('fork');
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    expect(gsap.getTweensOf(dialog).map(tween => tween.vars.ease)).toEqual(['power2.out', 'back.out(1.15)']);
+    settleFork();
+    expect(within(dialog).getByRole('link', { name: maryCeleste.fork.investigateLabel }).getAttribute('href')).toBe(FORK.filesHref);
+    // No gesture moves on past the fork.
+    wheelBurst(stageOf(container));
+    expect(stepOf(container)).toBe('fork');
+  });
+
+  test('Escape on the fork closes it, back to the whole question; so does a gesture back', async () => {
+    const { container } = renderQuestion();
+    toQuestion(container);
+    const lines = container.querySelectorAll('[data-story="phrase"]').length;
+    for (let line = 0; line < lines; line += 1) {
+      wheelBurst(stageOf(container));
+      settleSteps();
+    }
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    settleSteps();
+    expect(stepOf(container)).toBe(`line-${lines - 1}`);
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    wheelBurst(stageOf(container));
+    settleSteps();
+    expect(screen.getByRole('dialog', { name: 'What next' })).toBeDefined();
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(stepOf(container)).toBe(`line-${lines - 1}`);
+  });
+
+  test('"I\'ve heard enough" shows where historians stand, with two quiet links', () => {
+    const { container } = renderQuestion();
+    toQuestion(container);
+    const lines = container.querySelectorAll('[data-story="phrase"]').length;
+    for (let line = 0; line < lines; line += 1) {
+      wheelBurst(stageOf(container));
+      settleSteps();
+    }
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    settleFork();
+    fireEvent.click(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel }));
+    for (const paragraph of maryCeleste.historiansSummary) {
+      expect(within(dialog).getByText(paragraph)).toBeDefined();
+    }
+    expect(within(dialog).getByRole('link', { name: 'Back to all cases' }).getAttribute('href')).toBe('/');
+  });
+
+  test('reduced motion: on a normal page the question is shown whole, and the fork appears without animation', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    vi.stubGlobal('scrollTo', vi.fn());
+    const { container } = renderQuestion(null);
+    expect(container.querySelector('[data-story="stage"]')).toBeNull();
+    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
+    expect(new Set(phrases.map(phrase => gsap.getTweensOf(phrase)[0])).size).toBe(1);
+    expect(container.querySelector('[data-story="after-question"]')?.className).toContain('bg-black');
+    const opener = ScrollTrigger.getAll().find(trigger => trigger.vars.start === 'bottom 60%')!;
+    act(() => opener.vars.onEnter?.(opener));
+    expect(gsap.getTweensOf(screen.getByRole('dialog', { name: 'What next' }))).toHaveLength(0);
+  });
+});
+
+describe('Story: play the story', () => {
+  test('it waits for the pen, then holds the page for its reading time, then moves one step on', async () => {
+    const { container } = renderStory(testCase, PLAY);
+    // Spied after render, so only the player's holds are seen (GSAP's Observer keeps a timer of its own).
+    const delayed = vi.spyOn(gsap, 'delayedCall');
+    const flush = () =>
+      act(async () => {
+        for (let tick = 0; tick < 4; tick += 1) {
+          await Promise.resolve();
+        }
+      });
+    /** Ends the hold now under way. */
+    const endHold = () =>
+      act(() => {
+        (delayed.mock.results.at(-1)?.value as gsap.core.Tween | undefined)?.progress(1);
+      });
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    await flush();
+    // The pen is still writing: no hold yet.
+    expect(delayed).not.toHaveBeenCalled();
+    expect(stepOf(container)).toBe('page-0');
+    const writing = gsap
+      .getTweensOf(container.querySelector('[data-story="page"] [data-pen="char"]')!)
+      .find(tween => tween.parent !== gsap.globalTimeline)!.parent as gsap.core.Timeline;
+    act(() => {
+      writing.progress(1);
+    });
+    await flush();
+    expect(delayed).toHaveBeenCalledTimes(1);
+    expect(delayed.mock.calls[0][0]).toBeGreaterThanOrEqual(STORY_PACE.playHoldAtLeast);
+    endHold();
+    await flush();
+    expect(stepOf(container)).toBe('hook-0');
+    settleSteps();
+    await flush();
+    expect(delayed.mock.calls[1][0]).toBe(STORY_PACE.hookHold);
+  });
+
+  test('any wheel, touch, pointer or key input pauses it; the floating control plays and pauses it', () => {
+    const { container } = renderStory(testCase, PLAY);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    wheelBurst(stageOf(container));
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+    act(() => {
+      fireEvent.click(control);
+    });
+    expect(control.getAttribute('aria-label')).toBe('Pause the story');
+    act(() => {
+      fireEvent.keyDown(window, { key: 'ArrowDown' });
+    });
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('a key pressed on the control itself does not count as taking over', () => {
+    const { container } = renderStory(testCase, PLAY);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    act(() => {
+      fireEvent.keyDown(control, { key: 'Enter' });
+    });
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  test('opening a portal pauses it', () => {
+    const { container } = renderStory(testCase, PLAY);
+    const control = container.querySelector('[data-story="play-control"]') as HTMLButtonElement;
+    act(() => {
+      fireEvent.click(container.querySelector('[data-story="page"] [data-portal-trigger="thing"]') as HTMLElement);
+    });
+    expect(control.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('only the scene on screen takes clicks: the first is active, the others are not', () => {
     const { container } = renderStory();
+    const scenes = [...container.querySelectorAll<HTMLElement>('[data-story="chapter"]')];
+    expect(scenes.map(scene => scene.dataset.active)).toEqual(scenes.map((_, index) => String(index === 0)));
+  });
+});
+
+describe('Story: the chart and the sky follow the steps', () => {
+  test('each stretch of the voyage is drawn once its chapter\'s page is on screen, in order', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    const reveals = [...container.querySelectorAll<SVGElement>('[data-chart="frame"][data-variant="live"] [data-chart="reveal"]')];
+    expect(reveals.length).toBeGreaterThan(0);
+    const offsets = () => reveals.map(reveal => reveal.getAttribute('stroke-dashoffset'));
+    fireEvent.click([...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')].at(-2)!);
+    settleSteps();
+    // Every stretch that ends before the last chapter is drawn.
+    expect(offsets().slice(0, -1).every(offset => offset === '0')).toBe(true);
+  });
+
+  test('day into night: the sky darkens chapter by chapter, and the question is full night', () => {
+    const { container } = renderStory(maryCeleste, READ);
     const root = container.querySelector('[data-story="root"]') as HTMLElement;
-    const timeline = stageTimeline();
-    const trigger = pinned();
-    timeline.time(0, false);
-    act(() => trigger.vars.onUpdate?.(trigger));
     const morning = root.style.getPropertyValue('--story-sky');
-    timeline.time(timeline.duration(), false);
-    act(() => trigger.vars.onUpdate?.(trigger));
-    const night = root.style.getPropertyValue('--story-sky');
-    expect(morning).not.toBe('');
-    expect(night).not.toBe(morning);
+    const ticks = [...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
+    fireEvent.click(ticks.at(-1)!);
+    settleSteps();
+    expect(root.style.getPropertyValue('--story-sky')).not.toBe(morning);
     expect(root.dataset.tone).toBe('night-ink');
   });
 
+  test('no scene image carries a permanent will-change; only the one on screen moves', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    const images = [...container.querySelectorAll<HTMLElement>('[data-story="image"]')];
+    for (const image of images) {
+      expect(image.className).not.toContain('will-change');
+    }
+    expect(images.slice(1).every(image => image.style.willChange === '')).toBe(true);
+  });
 });

@@ -1,12 +1,9 @@
 // src/lib/story-pages.ts
-// Story v3: one page per chapter, written by the pen (night-run brief). The pace of the story, in one place, to be
-// tuned by feel. Timeline seconds are seconds of scroll: one of them is `pxPerSecond()` pixels.
+// The story in steps (story-steps brief): one gesture, one step; each chapter's page is written by the pen. The pace
+// of the story, in one place, to be tuned by feel. Every value is in real seconds unless it says otherwise.
 import { parseRefs } from '@/lib/parse-refs';
 
-/**
- * The story's pace: every timing to tune by feel, in one place. Seconds are real seconds for the pen (it writes on
- * its own timer) and seconds of scroll for everything scrubbed (`pxPerSecond()` pixels each).
- */
+/** The story's pace: every timing to tune by feel, in one place. */
 export const STORY_PACE = {
   // ---- Writing speed: the pen.
   /** The pen writes at about 3× reading pace (240 words a minute), so it leads the eye. */
@@ -22,52 +19,51 @@ export const STORY_PACE = {
   /** Before a weighted phrase the pen pauses this long (seconds), then writes it this many times slower. */
   weightedBreath: 0.35,
   weightedSlowdown: 1.5,
-  /** Scrolling onward this far into a page (scroll seconds) finishes its writing at once. */
-  skipAfter: 0.25,
 
-  // ---- The hold before a hook, and the hook.
-  /** How much scroll the written page holds before the hook begins (scroll seconds). */
-  pageHold: 3,
-  /**
-   * Once the reader reaches a hook, the whole line snaps in on a timer, not scrubbed: its letters settle from out of
-   * line over this long, in real seconds. The hook's stretch of scroll is this plus `hookHold`.
-   */
+  // ---- Gestures: one gesture, one step.
+  /** Wheel events closer together than this (ms) are one gesture: a flick and its trackpad momentum. */
+  gestureGapMs: 220,
+  /** How far a wheel, a finger or a pointer must move (px) before it counts as a gesture (GSAP Observer). */
+  gestureTolerance: 10,
+
+  // ---- The steps' own animations. Input is ignored while one plays.
+  /** The next chapter's image cross-dissolves in over the last. Going back is quicker. */
+  dissolve: 1,
+  backDissolve: 0.5,
+  /** A jump from the progress rail: a quick dissolve. */
+  jumpDissolve: 0.35,
+  /** Before a hook, the roll call's names go out one after another, this far apart (last to first). */
+  nameOutEvery: 0.09,
+  /** The breath before a hook: the page has dimmed away; the image darkens and the camera creeps closer. */
+  breath: 0.7,
+  /** The hook line snaps in whole, its letters settling from out of line over this long. */
   hookIn: 0.8,
-  /** The hook hold: how long the hook line holds, whole, before it decays (scroll seconds). */
-  hookHold: 2.4,
-  /** The hook decays letter by letter over this long (scroll seconds). */
-  hookDecay: 1.8,
-  /** Stillness after the hook, then the next image cross-dissolves in over this long (scroll seconds). */
-  stillness: 1.6,
-  dissolve: 1.4,
+  /** Leaving a hook, its letters decay one at a time over this long, then the next image dissolves in. */
+  hookDecay: 1,
+  /** Each line of the central question plays in over this long. */
+  questionPhrase: 0.6,
+  /** A step with nothing to animate (the fork's own modal) still settles after this long, so a burst cannot slip by. */
+  settleAtLeast: 0.05,
 
-  // ---- Auto-play reading time.
+  // ---- Slow motion that never holds up a step.
+  /** The camera's slow push in and pan across a page. */
+  cameraDrift: 18,
+  /** The chart draws the stretch of the voyage that ends in a chapter over this long, once its page is on screen. */
+  chartDraw: 2.4,
+
+  // ---- "Play the story": how long it holds each step before it moves on.
   /**
-   * Once a page is written, "Play the story" waits for the rest of its reading time (the page read at
-   * `readWordsPerMinute`, less the time the pen took), and at least this long, in seconds.
+   * Once a page is written, it waits for the rest of its reading time (the page read at `readWordsPerMinute`, less
+   * the time the pen took), and at least this long, in seconds.
    */
   playHoldAtLeast: 2,
   /** Reading pace, for the time a reader is given to read: words a minute, and the least time for anything. */
   readWordsPerMinute: 240,
   readAtLeast: 1.6,
-
-  // ---- The central question.
-  /** Black before its first phrase, and the hold on the whole question before the fork (scroll seconds). */
-  questionLead: 0.6,
+  /** A hook is held this long. */
+  hookHold: 2.4,
+  /** The whole question is held this long before the fork. */
   beforeFork: 2.4,
-  /** Each phrase plays in on a timer over this long (real seconds) as soon as the scroll reaches its stop. */
-  questionPhrase: 0.6,
-
-  // ---- The scroll itself.
-  /**
-   * Pixels of scroll for one second of the story's timeline, as a share of the screen's height, within limits.
-   * "Play the story" scrolls at the same rate, so its pace does not change when this does.
-   */
-  pxPerSecond: { share: 0.3, min: 160, max: 280 },
-  /** Lenis's wheel multiplier while the story is on the page (1 elsewhere): below 1 a flick moves the page less. */
-  wheelMultiplier: 0.8,
-  /** ScrollTrigger `scrub` smoothing in seconds: the scrubbed parts glide instead of jumping. */
-  scrub: 1.2,
 } as const;
 
 /** Seconds a reader needs for `text` (markup read as its label): its words at reading pace, and at least the least. */

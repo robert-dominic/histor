@@ -10,25 +10,15 @@ gsap.registerPlugin(ScrollToPlugin);
 
 let instance: Lenis | null = null;
 
-/** What every wheel or trackpad movement is multiplied by: 1, or less while a page asks for a slower scroll. */
-let wheelScale = 1;
-
-/**
- * Makes wheel and trackpad scrolling slower (below 1) or back to normal (1), for the page now on screen. Read on
- * every wheel event, so it takes effect at once, with or without a smooth scroller yet.
- */
-export function setWheelMultiplier(multiplier: number): void {
-  wheelScale = multiplier;
-}
-
-/** The wheel multiplier now asked for. */
-export function wheelMultiplier(): number {
-  return wheelScale;
-}
+/** How many holds keep smooth scrolling stopped (the story's stage holds it while it is on screen). */
+let holds = 0;
 
 /** Called by SmoothScroll only. */
 export function setLenis(lenis: Lenis | null): void {
   instance = lenis;
+  if (holds > 0) {
+    instance?.stop();
+  }
 }
 
 /** The smooth scroller, or null under reduced motion (or before it is created). */
@@ -56,7 +46,35 @@ export function pauseSmoothScroll(): void {
   instance?.stop();
 }
 
-/** Starts smooth scrolling again, from wherever the page now is. */
+/** Starts smooth scrolling again, from wherever the page now is, unless something holds it stopped. */
 export function resumeSmoothScroll(): void {
-  instance?.start();
+  if (holds === 0) {
+    instance?.start();
+  }
+}
+
+/**
+ * Keeps smooth scrolling stopped until `releaseSmoothScroll`, whatever pauses and resumes it meanwhile: for a
+ * screen that never scrolls while it is there (the story's stage). Pair every call with `releaseSmoothScroll`.
+ */
+export function holdSmoothScroll(): void {
+  holds += 1;
+  instance?.stop();
+}
+
+/** Lets go of one `holdSmoothScroll`; smooth scrolling starts again once nothing holds it. */
+export function releaseSmoothScroll(): void {
+  holds = Math.max(0, holds - 1);
+  if (holds === 0) {
+    instance?.start();
+  }
+}
+
+/** Puts the page at `y` at once, with no glide. */
+export function jumpToY(y: number): void {
+  if (instance !== null) {
+    instance.scrollTo(y, { immediate: true, force: true });
+    return;
+  }
+  window.scrollTo(0, y);
 }
