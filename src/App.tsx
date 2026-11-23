@@ -1,5 +1,6 @@
 // src/App.tsx
 // The router: the home page, one page per case and its investigation, and a fallback for any other address.
+import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import CaseInvestigation from '@/app/CaseInvestigation';
 import SmoothScroll from '@/app/SmoothScroll';
@@ -10,8 +11,11 @@ import Verdict from '@/features/verdict/Verdict';
 import Case from '@/pages/Case';
 import Home from '@/pages/Home';
 import NotFound from '@/pages/NotFound';
+import { startSound } from '@/lib/sound';
 
 export default function App() {
+  // The sound listens from the start, and sounds only after the first gesture (src/lib/sound).
+  useEffect(() => startSound(), []);
   return (
     <SmoothScroll>
       <BrowserRouter>

@@ -2,7 +2,8 @@
 // The slim header of a case page: the case title and its years, fixed to the top for the whole page.
 // It is the page's heading. It shows once the story starts (features/story/Story.tsx finds it by its
 // `data-case-header` attribute), and the story's images start below it, so it never covers them.
-// Its height is the `--case-header` variable in src/index.css.
+// Its height is the `--case-header` variable in src/index.css. The sound toggle sits at its right end.
+import SoundToggle from '@/components/SoundToggle';
 
 interface CaseHeaderProps {
   title: string;
@@ -27,18 +28,21 @@ export default function CaseHeader({ title, years, unsolved = false, startHidden
           {title}
         </span>
       </h1>
-      <p className="shrink-0 font-voice text-[0.6875rem] leading-none tracking-[0.18em] text-ghost-night tabular-nums lg:text-xs">
-        <span data-case-header="years">{years}</span>
-        {/* A small typed tag beside the years, for a case with no accepted answer. */}
-        {unsolved && (
-          <span
-            data-case-header="unsolved"
-            className="ml-2.5 inline-block -rotate-2 rounded-[0.14em] border border-rust-night px-1.5 pt-[0.3em] pb-[0.2em] text-rust-night uppercase"
-          >
-            <span className="sr-only">. </span>Unsolved
-          </span>
-        )}
-      </p>
+      <div className="flex shrink-0 items-center gap-3 lg:gap-4">
+        <p className="shrink-0 font-voice text-[0.6875rem] leading-none tracking-[0.18em] text-ghost-night tabular-nums lg:text-xs">
+          <span data-case-header="years">{years}</span>
+          {/* A small typed tag beside the years, for a case with no accepted answer. */}
+          {unsolved && (
+            <span
+              data-case-header="unsolved"
+              className="ml-2.5 inline-block -rotate-2 rounded-[0.14em] border border-rust-night px-1.5 pt-[0.3em] pb-[0.2em] text-rust-night uppercase"
+            >
+              <span className="sr-only">. </span>Unsolved
+            </span>
+          )}
+        </p>
+        <SoundToggle />
+      </div>
     </header>
   );
 }

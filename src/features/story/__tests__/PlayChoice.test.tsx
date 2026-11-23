@@ -6,6 +6,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import gsap from 'gsap';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import PlayChoice from '@/features/story/PlayChoice';
+import { sound } from '@/lib/sound';
 import { stubMatchMedia } from '@/test/match-media';
 
 afterEach(() => {
@@ -36,6 +37,19 @@ describe('PlayChoice', () => {
     expect(document.activeElement).toBe(play);
   });
 
+  test('a small "Sound on" switch, ticked by default; the choice keeps what it says (the click is the gesture)', () => {
+    renderChoice();
+    const soundSwitch = screen.getByRole('switch', { name: 'Sound on' }) as HTMLInputElement;
+    expect(soundSwitch.checked).toBe(true);
+    fireEvent.click(soundSwitch);
+    expect(soundSwitch.checked).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Read at my pace' }));
+    expect(sound.enabled).toBe(false);
+    expect(localStorage.getItem('histor:sound')).toBe('0');
+    sound.setEnabled(true);
+    localStorage.clear();
+  });
+
   test('the page does not scroll while it is open: the story waits for the choice', () => {
     renderChoice();
     expect(document.documentElement.style.overflow).toBe('hidden');
@@ -51,14 +65,19 @@ describe('PlayChoice', () => {
     expect(second.onChoose).toHaveBeenCalledWith('read');
   });
 
-  test('Tab stays on the two choices, and the focus goes back where it was when it closes', () => {
+  test('Tab stays on the two choices and the sound switch, and the focus goes back where it was when it closes', () => {
     const { unmount, before } = renderChoice();
     const play = screen.getByRole('button', { name: 'Play the story' });
     const read = screen.getByRole('button', { name: 'Read at my pace' });
+    const soundSwitch = screen.getByRole('switch', { name: 'Sound on' });
     fireEvent.keyDown(play, { key: 'Tab' });
     expect(document.activeElement).toBe(read);
     fireEvent.keyDown(read, { key: 'Tab' });
+    expect(document.activeElement).toBe(soundSwitch);
+    fireEvent.keyDown(soundSwitch, { key: 'Tab' });
     expect(document.activeElement).toBe(play);
+    fireEvent.keyDown(play, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(soundSwitch);
     unmount();
     expect(document.activeElement).toBe(before);
     expect(document.documentElement.style.overflow).toBe('');
