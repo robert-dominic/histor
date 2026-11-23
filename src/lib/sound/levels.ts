@@ -46,5 +46,26 @@ export const AMBIENCE = {
   darkGlide: 6,
 } as const;
 
+/** The score (score.ts): a quiet pad of long minor chords. Its bus level is `SOUND.bus.score`. */
+export const SCORE = {
+  /** The pad's low-pass, at day and deep in the night. */
+  cutoff: 560,
+  darkCutoff: 330,
+  /** How many semitones lower the chords sit at the darkest chapter. */
+  darkSemitones: 2,
+  /** A new chord every 10 to 20 seconds, crossfaded over `crossfade`. */
+  change: [10, 20],
+  crossfade: 5,
+  /** At the desk: one low tone that moves rarely. */
+  deskChange: [20, 40],
+  /** Each voice of a chord (root, root detuned, third, fifth), and the detune between the two roots, in cents. */
+  voices: [0.3, 0.3, 0.2, 0.17],
+  detune: 7,
+  /** The whole pad's level in each mood. */
+  mood: { story: 1, hook: 0.75, question: 0.12, desk: 0.6 },
+  /** How quickly the pad moves to a new mood. */
+  moodGlide: 2.5,
+} as const;
+
 /** Where the choice to have sound on or off is kept. Absent means on. */
 export const SOUND_STORAGE_KEY = 'histor:sound';

@@ -581,6 +581,13 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               drawStretches(step.chapter);
             }
           }
+          // Stepping back onto a hook, or a line of the question: the sound follows (src/lib/sound).
+          if (direction === 'backward' && step?.kind === 'hook') {
+            emitStoryEvent({ type: 'hook', chapter: story[step.chapter].id, direction });
+          }
+          if (direction === 'backward' && step?.kind === 'line') {
+            emitStoryEvent({ type: 'question-line', index: step.line, direction });
+          }
           const waiting = settled;
           settled = [];
           waiting.forEach(resolve => resolve());
@@ -717,7 +724,14 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               }
               if (to.kind === 'line') {
                 const line = to.line;
-                timeline.call(() => phraseIns[line]?.timeScale(1).restart(), undefined, at);
+                timeline.call(
+                  () => {
+                    phraseIns[line]?.timeScale(1).restart();
+                    emitStoryEvent({ type: 'question-line', index: line, direction: 'forward' });
+                  },
+                  undefined,
+                  at
+                );
                 timeline.to({}, { duration: phraseIns[line]?.duration() ?? 0 }, at);
               }
               // The fork has its own entrance (Fork.tsx).

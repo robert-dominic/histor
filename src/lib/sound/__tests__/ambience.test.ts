@@ -59,7 +59,10 @@ describe('the ambience follows the place', () => {
     engine.unlock();
     const ctx = made[0];
     vi.advanceTimersByTime(AMBIENCE.timber.every[1] * 1000 + 10);
-    const creaks = sources(ctx).filter(source => source.kind === 'oscillator' && source.type === 'sawtooth');
+    // A creak bends in pitch and stops by itself (the score's long-running voices do neither).
+    const creaks = sources(ctx).filter(
+      source => source.kind === 'oscillator' && source.type === 'sawtooth' && source.frequency.events.some(event => event.kind === 'exponential')
+    );
     expect(creaks.length).toBeGreaterThanOrEqual(1);
     expect((creaks[0] as FakeSource).stoppedAt).not.toBeNull();
     stop();

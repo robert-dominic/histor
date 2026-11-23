@@ -19,7 +19,10 @@ export type StoryEvent =
   | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number }
   // A sentence of the text column starts to rise into view. `index` is its place in the chapter.
   | { type: 'beat'; chapter: string; index: number; direction: StoryDirection }
+  // Forward: as the hook snaps in. Backward: on stepping back onto a hook.
   | { type: 'hook'; chapter: string; direction: StoryDirection }
+  // A line of the central question plays in (forward), or is returned to (backward).
+  | { type: 'question-line'; index: number; direction: StoryDirection }
   | { type: 'roll-call-out'; chapter: string; name: string; direction: StoryDirection }
   // The desk
   | { type: 'pile-hover' }

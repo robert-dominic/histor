@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react';
 import { Ambience } from '@/lib/sound/ambience';
 import { SoundEngine } from '@/lib/sound/engine';
 import { SOUND } from '@/lib/sound/levels';
+import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { VOICES, vary, type Voice } from '@/lib/sound/voices';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
@@ -47,6 +48,9 @@ export function startSound(engine: SoundEngine = sound): () => void {
   // the master has faded, so nothing clicks).
   const ambience = new Ambience();
   const ambienceBus = () => engine.bus('ambience');
+  // The score: its mood follows the story, the desk, the hooks and the question.
+  const score = new Score();
+  const scoreBus = () => engine.bus('score');
   let stopTimer: ReturnType<typeof setTimeout> | null = null;
   // "Away" waits a moment: going from one page of a case to another sends "away" then the new place at once, and the
   // layers both share should play on unbroken.
@@ -57,6 +61,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
       stopTimer = null;
     }
     ambience.restart(ctx, ambienceBus());
+    score.restart(ctx, scoreBus());
   });
   const stopChange = engine.subscribe(() => {
     if (!engine.running && stopTimer === null) {
@@ -64,6 +69,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
         stopTimer = null;
         if (!engine.running) {
           ambience.stopAll();
+          score.stop();
         }
       }, (SOUND.toggleFade + 0.1) * 1000);
     }
@@ -79,6 +85,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
         ambience.setDarkness(null, 0);
       }
       ambience.set(engine.context, ambienceBus(), layers);
+      score.set(engine.context, scoreBus(), event.place);
     };
     if (event.place === 'away') {
       awayTimer = setTimeout(apply, 50);
@@ -98,8 +105,17 @@ export function startSound(engine: SoundEngine = sound): () => void {
       place(event);
       return;
     }
-    if (event.type === 'chapter-enter' && event.depth !== undefined) {
-      ambience.setDarkness(engine.context, event.depth);
+    if (event.type === 'chapter-enter') {
+      if (event.depth !== undefined) {
+        ambience.setDarkness(engine.context, event.depth);
+      }
+      score.set(engine.context, scoreBus(), 'story', event.depth);
+    }
+    if (event.type === 'hook') {
+      score.set(engine.context, scoreBus(), 'hook');
+    }
+    if (event.type === 'question-line') {
+      score.set(engine.context, scoreBus(), 'question');
     }
     if (!engine.running) {
       return;
@@ -118,6 +134,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
     stopChange();
     [stopTimer, awayTimer].forEach(timer => timer !== null && clearTimeout(timer));
     ambience.stopAll();
+    score.stop();
   };
 }
 

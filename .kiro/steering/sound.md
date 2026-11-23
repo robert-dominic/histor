@@ -34,6 +34,20 @@ Each case names its ambience in its theme: `CaseTheme.ambience = { story: Ambien
 
 **Day into night:** as the story darkens (`chapter-enter`'s `depth`), the sea gets lower and duller, and the wind louder. The Mary Celeste: `story: ['sea', 'wind', 'timber']`, `desk: ['room-tone', 'lamp-hum', 'distant-sea']`. A later case adds its own layers (rain, fog, distant carriages) to `AmbienceLayer`, `ambience.ts` and the validator.
 
+## The score (`score.ts`)
+
+Background music, generated: a quiet, slowly evolving **pad** under the whole story. A few soft, detuned oscillators (two sawtooth roots a few cents apart, a triangle third and fifth) through a low-pass, playing long **minor chords** that change rarely (every 10–20s, crossfaded between two groups of oscillators that run all the time). No melody and no beat; it sits just above silence.
+
+| Moment | The score |
+| --- | --- |
+| A chapter enters | The chord shifts slightly darker with the chapter's depth: lower (up to 2 semitones) and duller |
+| A hook | Thinned to the drone: only the roots |
+| The question | Dropped to almost nothing |
+| The desk | Thinner still: a single low held tone that moves rarely (every 20–40s) |
+| Away from a case | Fades out |
+
+It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned down without losing the effects; its moods and timings are `SCORE` in `levels.ts`.
+
 ## Quality bar
 
 - Nothing loud or sudden except the stamps. The master level is modest.
