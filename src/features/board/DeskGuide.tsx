@@ -3,7 +3,7 @@
 // stamps mean, how to pin, and when the case can be closed. It is the first thing the player sees every time they
 // arrive on the desk, until they close it; after the first visit it offers "Don't show this again" (remembered in
 // storage). A small "?" in the corner opens it again any time. It always opens at the top.
-// The case's own words come from the case data: its intro sentence, its title and how many files close it. On a
+// The case's own words come from the case data: its intro sentence and how many files close it. On a
 // desktop the files lie on the floor; on the phone desk they are "the files below".
 // A dialog: the focus stays inside, Escape closes it and gives the focus back to the button.
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
@@ -18,8 +18,6 @@ gsap.registerPlugin(useGSAP);
 
 interface DeskGuideProps {
   caseId: string;
-  /** The case's title, e.g. "Mary Celeste". */
-  title: string;
   /** The case's own first sentence for the guide (`Case.deskGuideIntro`), if it has one. */
   intro?: string;
   /** How many files must be opened to close the case. */
@@ -39,7 +37,7 @@ function Part({ lead, children }: { lead: string; children: ReactNode }) {
   );
 }
 
-export default function DeskGuide({ caseId, title, intro, threshold, startOpen, onShown }: DeskGuideProps) {
+export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown }: DeskGuideProps) {
   // Every arrival on the desk: the guide is the first thing the player sees, until they close it.
   const [open, setOpen] = useState(startOpen);
   // After the first visit it offers "Don't show this again".
@@ -174,45 +172,44 @@ export default function DeskGuide({ caseId, title, intro, threshold, startOpen, 
               How to investigate
             </h2>
             <div className="mt-4 flex flex-col gap-3.5">
-              <p data-guide="intro" className="font-record text-[1.0625rem] leading-normal italic">
-                {intro !== undefined && `${intro} `}People have argued about why ever since. Your job is to weigh the
-                evidence and decide what really happened.
-              </p>
-              <Part lead="The theories:">
-                the notes on the board. Each one is an explanation people have given for what happened. Some still stand;
-                some fell apart long ago.
+              {intro !== undefined && (
+                <p data-guide="intro" className="font-record text-[1.0625rem] leading-normal italic">
+                  {intro}
+                </p>
+              )}
+              <Part lead="The theories are on the board.">
+                Each one is an explanation people have given for what happened. Some still hold up. Some fell apart long
+                ago.
               </Part>
-              <Part lead="The evidence:">
-                {desktop ? 'the folders on the floor.' : 'the files below.'} Each one holds a fact, a claim or a story about
-                the {title}. Open one to read it.
+              <Part lead={desktop ? 'The case files are on the floor.' : 'The case files are below.'}>
+                Each file is one thing we know, or think we know. Open one and read it.
               </Part>
               <div>
-                <Part lead="What the stamps mean.">Every file you open is stamped:</Part>
+                <Part lead="Every file you open gets a stamp:">{null}</Part>
                 <ul data-guide="stamps" className="mt-1.5 flex flex-col gap-1 pl-4 font-record text-[1.0625rem] leading-normal">
                   <li>
-                    <strong className="font-voice font-normal text-record">Record:</strong> written down at the time, like
-                    the logbook, sworn testimony and official reports. Solid ground.
+                    <strong className="font-voice font-normal text-record">Record:</strong> written down at the time. The
+                    logbook, sworn testimony, official papers. You can trust it.
                   </li>
                   <li>
-                    <strong className="font-voice font-normal text-rust">Disputed:</strong> the facts are real, but
-                    historians argue about what they mean.
+                    <strong className="font-voice font-normal text-rust">Disputed:</strong> real, but historians argue over
+                    what it means.
                   </li>
                   <li>
                     <strong className="font-voice font-normal text-ghost-ink">Legend:</strong> added later by storytellers.
-                    Famous, but it never happened.
+                    Famous, and false.
                   </li>
                 </ul>
               </div>
-              <Part lead="Pin it:">
-                decide which theory the file points to, then drag it onto that note or use “Pin to…”. If it fits none,
-                choose “None of them”. You can move it any time. After you pin, you’ll see what historians think.
+              <Part lead="Think a file points to a theory?">
+                Drag it onto that theory. If it points to none of them, drop it on “None of them”. You can change your mind
+                any time.
               </Part>
-              <Part lead="Close the case:">
-                open {numberWord(threshold)} files and a wax seal appears. Choose the theory you believe, and get your case
-                report: where you agreed with the historians, and where you didn’t.
+              <Part lead={`Open ${numberWord(threshold)} files and a wax seal appears.`}>
+                Use it to close the case: choose the theory you believe, and see where you agree with the historians.
               </Part>
               <p data-guide="warning" className="font-record text-[1.0625rem] leading-normal italic">
-                A warning: the most famous details are often the ones that never happened.
+                One warning: the details everyone remembers are often the ones that never happened.
               </p>
             </div>
             {!firstVisit && (

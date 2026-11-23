@@ -394,7 +394,7 @@ function DeskScreen() {
                     shadow. */}
                 <div className="flex min-h-0 min-w-0 flex-col">
                   <p data-desk="floor-label" className="relative z-[21] h-5 shrink-0 pl-1 font-voice text-[0.6875rem] tracking-[0.2em] text-night-ink/65 uppercase">
-                    Evidence · {caseData.evidence.length} files
+                    Case files · {caseData.evidence.length}
                   </p>
                   <div className="min-h-0 flex-1">
                     <Floor
@@ -445,7 +445,6 @@ function DeskScreen() {
           caseId={caseData.id}
           startOpen={guideOnArrival && !guideShown}
           onShown={() => setGuideShown(true)}
-          title={caseData.title}
           intro={caseData.deskGuideIntro}
           threshold={caseData.closeThreshold}
         />

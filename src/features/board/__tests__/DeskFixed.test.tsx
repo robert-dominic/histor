@@ -90,12 +90,12 @@ describe('the desktop desk', () => {
     expect(desk().querySelector('header')?.textContent).not.toContain('You can close the case');
   });
 
-  test('two quiet labels: "Theories" above the board and "Evidence · 23 files" over the floor, from the data', () => {
+  test('two quiet labels: "Theories" above the board and "Case files · 23" over the floor, from the data', () => {
     renderDesk();
     const theories = desk().querySelector<HTMLElement>('[data-desk="board-row"] [data-board="label"]')!;
     expect(theories.textContent).toBe('Theories');
     const evidence = desk().querySelector<HTMLElement>('[data-desk="floor-row"] [data-desk="floor-label"]')!;
-    expect(evidence.textContent).toBe(`Evidence · ${maryCeleste.evidence.length} files`);
+    expect(evidence.textContent).toBe(`Case files · ${maryCeleste.evidence.length}`);
     for (const label of [theories, evidence]) {
       expect(label.className).toContain('font-voice');
       expect(label.className).toContain('text-night-ink/65');

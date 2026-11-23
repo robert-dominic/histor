@@ -218,26 +218,28 @@ describe('The guide', () => {
   });
 
 
-  test('says how to investigate, in the case\'s own words: its intro, its title and how many files close it', () => {
+  test('says how to investigate in one set of names, "file" and "theory", with the case\'s own intro', () => {
     localStorage.setItem(FLAG, '1');
     renderAt(`${BASE}/files`);
     const guide = screen.getByRole('dialog', { name: 'How to investigate' });
     const text = guide.textContent ?? '';
-    expect(guide.querySelector('[data-guide="intro"]')?.textContent).toBe(
-      `${CASE.deskGuideIntro} People have argued about why ever since. Your job is to weigh the evidence and decide what really happened.`
-    );
-    expect(text).toContain('The theories: the notes on the board.');
-    expect(text).toContain(`a fact, a claim or a story about the ${CASE.title}`);
+    expect(guide.querySelector('[data-guide="intro"]')?.textContent).toBe(CASE.deskGuideIntro);
+    expect(CASE.deskGuideIntro).toBe('In 1872 the Mary Celeste was found drifting with no one aboard. Nobody knows why.');
+    expect(text).toContain('The theories are on the board.');
+    // This desk is the phone one: the files are below.
+    expect(text).toContain('The case files are below.');
     expect([...guide.querySelectorAll('[data-guide="stamps"] li')].map(item => item.textContent?.split(':')[0])).toEqual([
       'Record',
       'Disputed',
       'Legend',
     ]);
-    expect(text).toContain('If it fits none, choose “None of them”.');
-    expect(text).toContain('open six files and a wax seal appears.');
+    expect(text).toContain('Drag it onto that theory.');
+    expect(text).toContain('Open six files and a wax seal appears.');
     expect(guide.querySelector('[data-guide="warning"]')?.textContent).toBe(
-      'A warning: the most famous details are often the ones that never happened.'
+      'One warning: the details everyone remembers are often the ones that never happened.'
     );
+    // One name for each thing.
+    expect(text).not.toMatch(/\b(evidence|folders?|notes?)\b/i);
   });
 
   test('the "?" opens the guide again, and Escape closes it and gives the focus back', async () => {

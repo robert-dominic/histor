@@ -136,17 +136,17 @@ describe('the ? guide', () => {
     expect(leaving.vars.duration as number).toBeLessThan(0.2);
   });
 
-  test('says "floor" on a desktop and "the files below" on a phone', () => {
+  test('says "on the floor" on a desktop and "below" on a phone', () => {
     stubDesktop();
     const desktop = renderDesk();
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));
-    expect(screen.getByRole('dialog').textContent).toContain('The evidence: the folders on the floor.');
+    expect(screen.getByRole('dialog').textContent).toContain('The case files are on the floor.');
     desktop.unmount();
     vi.unstubAllGlobals();
     stubMatchMedia();
     renderDesk();
     fireEvent.click(screen.getByRole('button', { name: 'How the desk works' }));
-    expect(screen.getByRole('dialog').textContent).toContain('The evidence: the files below.');
+    expect(screen.getByRole('dialog').textContent).toContain('The case files are below.');
   });
 });
 
