@@ -20,7 +20,7 @@ import PinMenu from '@/features/board/PinMenu';
 import { useDeskHints } from '@/features/board/hints';
 import type { PinnedState } from '@/features/board/Desk';
 import { Draggable, canDrag, clearHotTargets, dropOutcome, dropTargetFor, dropTargets, markHotTarget } from '@/features/board/drag';
-import { Flip, canFly, flightFor, recordFlight } from '@/features/board/flight';
+import { Flip, canFly, flightFor, recordFlight, settleOpenFolder } from '@/features/board/flight';
 import { READING_LABEL, fileNumber, nextUnopenedId, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { coverLabel } from '@/lib/desk';
@@ -198,13 +198,27 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           const flight = flightFor(evidence.id, 'in');
           let flipAt: number = TIMING.arrive;
           if (flight?.state != null && folder !== null) {
+            // The end of the flight is the folder's own place: full size, straight. Anything left on it from an
+            // earlier run (StrictMode runs this twice) would be measured as the end, so it is cleared first, and
+            // cleared again when the flight lands, so no scale or tilt from the Flip is left behind.
+            gsap.set(folder, { clearProps: 'transform' });
             timeline.add(
-              Flip.from(flight.state, { targets: folder, scale: true, ...tween('paper.move') }),
+              Flip.from(flight.state, {
+                targets: folder,
+                scale: true,
+                ...tween('paper.move'),
+                onComplete: () => settleOpenFolder(folder),
+              }),
               0
             );
             flipAt = TIMING.flight;
           } else {
-            timeline.fromTo(folder, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: TIMING.arrive }, 0);
+            timeline.fromTo(
+              folder,
+              { opacity: 0, scale: 0.95, rotation: 0 },
+              { opacity: 1, scale: 1, duration: TIMING.arrive, onComplete: () => settleOpenFolder(folder) },
+              0
+            );
           }
           // Then the cover swings open around its left edge. A file read before then shows itself at once, already
           // stamped; the writing reveal below is for a first opening only.
@@ -522,12 +536,17 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       <div data-file="backdrop" aria-hidden="true" className="fixed inset-0 bg-night/90" />
 
       {/* Desktop: two halves, the cover swings open into the left one. */}
-      <div className="relative mx-auto max-w-3xl lg:grid lg:w-full lg:max-w-6xl lg:grid-cols-2">
+      {/* Desktop: big and straight. Both covers together are 80% of the screen wide (at most 75rem), and the folder
+          is between 70% and 86% of the screen high; a long document scrolls inside the paper. */}
+      <div
+        data-file="frame"
+        className="relative mx-auto max-w-3xl lg:grid lg:w-[min(80vw,75rem)] lg:max-w-none lg:grid-cols-2"
+      >
         <div
           ref={folderRef}
           data-file="folder"
           data-flip-id={`file-${evidence.id}`}
-          className="lg:col-start-2 lg:grid lg:max-h-[86svh] lg:grid-rows-[minmax(0,1fr)] lg:[perspective-origin:0%_50%] lg:[perspective:1800px]"
+          className="lg:col-start-2 lg:grid lg:min-h-[70svh] lg:max-h-[86svh] lg:grid-rows-[minmax(0,1fr)] lg:[perspective-origin:0%_50%] lg:[perspective:1800px]"
         >
           {/* The front cover. Its outside shows only while it is closed; its inside is the inner cover. */}
           <div

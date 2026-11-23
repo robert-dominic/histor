@@ -203,7 +203,7 @@ export default function FileDocument({ evidence, number, headingRef, revealed, c
             <h3 id="file-origin" className="font-voice text-xs tracking-[0.18em] text-ink/75 uppercase">
               Where this came from
             </h3>
-            <p className="mt-1.5 font-voice text-[0.9375rem] leading-normal">{evidence.origin}</p>
+            <p className="mt-1.5 font-voice text-[1.0625rem] leading-normal">{evidence.origin}</p>
           </section>
         </div>
       )}

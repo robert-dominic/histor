@@ -71,6 +71,15 @@ export function takeTabs(): FlipState | null {
   tabsBefore = null;
   return recorded;
 }
+/**
+ * The open folder at rest after its flight: its natural size, at exactly 0°, with no scale or tilt left over from
+ * the Flip.
+ */
+export function settleOpenFolder(folder: HTMLElement | null): void {
+  if (folder !== null) {
+    gsap.set(folder, { clearProps: 'transform,transformOrigin' });
+  }
+}
 /** Forgets the recorded flight, once it has been flown. */
 export function clearFlight(): void {
   pending = null;

@@ -123,6 +123,41 @@ describe('the open file fits the screen', () => {
   });
 });
 
+describe('the open file is big and straight', () => {
+  test('both covers are 80% of the screen wide (at most 75rem), the folder 70% to 86% of the screen high', () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+    const frame = document.querySelector('[data-file="frame"]') as HTMLElement;
+    expect(frame.className).toContain('lg:w-[min(80vw,75rem)]');
+    expect(frame.className).toContain('lg:grid-cols-2');
+    const folder = document.querySelector('[data-file="folder"]') as HTMLElement;
+    expect(folder.className).toContain('lg:min-h-[70svh]');
+    expect(folder.className).toContain('lg:max-h-[86svh]');
+  });
+
+  test('the flight ends at full size and exactly 0°, with nothing left over from the Flip', () => {
+    const from = vi.spyOn(Flip, 'from');
+    renderAt(`${BASE}/files`);
+    fireEvent.click(folderLink('e-lifeboat'));
+    const flightTimeline = from.mock.results[0].value as gsap.core.Timeline;
+    const folder = document.querySelector('[data-file="folder"]') as HTMLElement;
+    // Mid-flight the folder is still tilted and scaled like the one on the floor.
+    gsap.set(folder, { rotation: 7, scale: 0.4 });
+    act(() => {
+      flightTimeline.progress(1);
+    });
+    expect(gsap.getProperty(folder, 'rotation')).toBe(0);
+    expect(gsap.getProperty(folder, 'scale')).toBe(1);
+    expect(folder.style.transform).toBe('');
+  });
+
+  test('the text is readable: the title at least 28px, the document text at least 17px', () => {
+    renderAt(`${BASE}/files/e-lifeboat`);
+    expect(document.querySelector('#file-title')?.className).toContain('text-[clamp(2rem,');
+    const paragraphs = document.querySelector('[data-file-ink]')?.parentElement as HTMLElement;
+    expect(paragraphs.className).toContain('text-[1.125rem]');
+  });
+});
+
 describe('closing a file', () => {
   test('Escape closes it', () => {
     renderAt(`${BASE}/files/e-lifeboat`);

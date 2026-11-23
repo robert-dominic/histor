@@ -31,7 +31,7 @@ export default function InnerCover({ label, sources }: InnerCoverProps) {
           <h3 id="file-sources" className="font-voice text-[0.6875rem] tracking-[0.18em] text-rust uppercase">
             Sources
           </h3>
-          <ul className="mt-2 flex flex-col gap-1.5 font-record text-[0.9375rem] leading-snug">
+          <ul className="mt-2 flex flex-col gap-1.5 font-record text-[0.9375rem] leading-snug lg:text-[1.0625rem]">
             {sources.map(source => (
               <li key={source.id}>
                 {source.url !== undefined && source.url.trim() !== '' ? (
