@@ -52,11 +52,15 @@ export interface FloorLayout {
 export const MAX_TILT = 6;
 /** The most a folder strays from the middle of its cell, in px on screen. */
 export const MAX_JITTER = 12;
+/** A floor folder's typed label, in px at the folder's natural size (Folder.tsx: `lg:text-[0.875rem]`). */
+export const LABEL_PX = 14;
+/** The smallest a floor label is ever drawn, in px (story-steps brief, 5.2). */
+export const MIN_LABEL_PX = 12;
 /**
- * Smallest the folders are drawn before the layout gives up keeping them apart. The floor has 40% of the desk
- * (quick-fixes brief, item 6), so at 1366×768 the 23 folders are drawn at about 65%.
+ * Smallest the folders are drawn before the layout gives up keeping them apart: the size at which their labels are
+ * `MIN_LABEL_PX`. The desk gives the floor the height it needs for that (`floorHeightFor`).
  */
-export const MIN_SCALE = 0.6;
+export const MIN_SCALE = MIN_LABEL_PX / LABEL_PX;
 /** Room kept around the most tilted folder in its cell, in px, so that even it can stray a little. */
 const SLACK = 8;
 
@@ -232,4 +236,24 @@ export function placeOnFloor(
 export function droppedSpot(cx: number, cy: number, floor: FloorSize): DroppedSpot {
   const share = (value: number, size: number) => (size > 0 ? Math.min(1, Math.max(0, value / size)) : 0.5);
   return { fx: Math.round(share(cx, floor.width) * 10000) / 10000, fy: Math.round(share(cy, floor.height) * 10000) / 10000 };
+}
+
+/**
+ * The floor height that `count` folders need to lie apart, in rows, at `scale` or larger, on a floor `width` wide:
+ * the fewest rows whose cells are wide enough, each row as tall as the most tilted folder plus its slack. The desk
+ * works out its split floor-first from this (story-steps brief, 5.2).
+ */
+export function floorHeightFor(count: number, width: number, folder: Pick<FolderBox, 'width' | 'height'>, scale = MIN_SCALE): number {
+  if (count <= 0 || width <= 0) {
+    return 0;
+  }
+  const unit = tiltedExtent(folder.width * scale, folder.height * scale, MAX_TILT);
+  const rowHeight = unit.height + SLACK;
+  for (let rows = 1; rows <= count; rows += 1) {
+    const columns = Math.ceil(count / rows);
+    if (width / columns - SLACK >= unit.width) {
+      return Math.ceil(rows * rowHeight) + 1;
+    }
+  }
+  return Math.ceil(count * rowHeight) + 1;
 }

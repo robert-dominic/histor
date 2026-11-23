@@ -32,6 +32,7 @@ import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { READING_LABEL } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
 import { deskLayout } from '@/lib/desk';
+import { deskSplit } from '@/lib/desk-split';
 import { droppedSpot, type DroppedSpot } from '@/lib/floor';
 import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
@@ -149,6 +150,30 @@ function DeskScreen() {
       window.removeEventListener('keydown', handleAction, true);
     };
   }, [openSlip, fileOpen, location.key]);
+
+  // ---- The split between the board and the floor, worked out floor-first, on arrival and whenever the screen changes.
+  const [floorRow, setFloorRow] = useState<number | null>(null);
+  const fileCount = caseData.evidence.length;
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!desktop || root === null) {
+      return;
+    }
+    const measure = () => {
+      const floor = root.querySelector<HTMLElement>('[data-board="floor"]');
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const room = root.clientHeight - (parseFloat(getComputedStyle(root).paddingTop) || 0) - 3.5 * rem;
+      const width = floor?.clientWidth ?? 0;
+      if (room <= 0 || width <= 0) {
+        return;
+      }
+      const next = deskSplit(room, width, fileCount, { width: 7.75 * rem, height: 6 * rem }).floorRow;
+      setFloorRow(current => (current === next ? current : next));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [desktop, fileCount]);
 
   // The desktop desk never scrolls: the page's own scroll is off, and smooth scrolling steps aside, while it is here.
   useEffect(() => {
@@ -377,9 +402,12 @@ function DeskScreen() {
         inert={fileOpen}
         onClickCapture={handleClickCapture}
         aria-labelledby="board-title"
+        // Floor-first: the floor gets the height its folders need at their smallest (labels at 12px), the board the
+        // rest (desk-split.ts). Until it is measured, about 55/45.
+        style={desktop && floorRow !== null ? { gridTemplateRows: `3.5rem minmax(0, 1fr) ${floorRow}px` } : undefined}
         className={
           desktop
-            ? 'relative isolate grid h-svh grid-rows-[3.5rem_minmax(0,60fr)_minmax(0,40fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
+            ? 'relative isolate grid h-svh grid-rows-[3.5rem_minmax(0,55fr)_minmax(0,45fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
             : 'relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink'
         }
       >

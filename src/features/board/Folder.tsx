@@ -61,7 +61,7 @@ export default function Folder({ evidence, number, href, opened, pin }: FolderPr
         </span>
         <span className="desk-manila relative flex min-h-[6.5rem] flex-col justify-between gap-2 rounded-[3px] rounded-tl-none px-3.5 pt-3 pb-3 shadow-[0_2px_6px] shadow-black/60 lg:h-full lg:min-h-0 lg:gap-1 lg:px-2 lg:pt-2 lg:pb-2">
           {/* The typed title label. */}
-          <span data-folder="label" className="self-start rounded-[1px] bg-paper/80 px-2 py-1 font-voice text-[0.8125rem] leading-snug text-ink lg:line-clamp-3 lg:px-1.5 lg:py-0.5 lg:text-[0.75rem] lg:leading-[1.25]">
+          <span data-folder="label" className="self-start rounded-[1px] bg-paper/80 px-2 py-1 font-voice text-[0.8125rem] leading-snug text-ink lg:line-clamp-3 lg:px-1.5 lg:py-0.5 lg:text-[0.875rem] lg:leading-[1.2]">
             {evidence.title}
           </span>
           {opened && (

@@ -5,19 +5,19 @@ import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { MAX_JITTER, MAX_TILT, MIN_SCALE, droppedSpot, floorLayout, placeOnFloor, polygonsOverlap } from '@/lib/floor';
 import type { FolderBox } from '@/lib/floor';
+import { deskSplit } from '@/lib/desk-split';
 
 /** A folder on the desktop floor: 7.75rem by 6rem, its tab and label across the top left. */
 export const FOLDER: FolderBox = { width: 124, height: 96, label: { x: 8, y: 0, width: 100, height: 60 } };
 const IDS = maryCeleste.evidence.map(evidence => evidence.id);
 
 /**
- * The floor's size on the desk at a given screen: the screen minus the case header (2.75rem), the desk's header
- * (3.5rem), the board's 60 parts of the rest (the floor's 40), the floor row's padding and its label (1.25rem), the tray (13rem) and
- * the gap beside it.
+ * The floor's size on the desk at a given screen: the screen less the case header (2.75rem) and the desk's header
+ * (3.5rem) is shared floor-first (desk-split.ts); across, less the padding, the tray (13rem) and the gap beside it.
  */
 function floorAt(screenWidth: number, screenHeight: number) {
-  const rows = screenHeight - 44 - 56;
-  return { width: screenWidth - 32 - 208 - 16, height: Math.floor((rows * 40) / 100) - 12 - 20 };
+  const width = screenWidth - 32 - 208 - 16;
+  return { width, height: deskSplit(screenHeight - 44 - 56, width, IDS.length, FOLDER).floor };
 }
 
 describe('floorLayout with the Mary Celeste files', () => {
@@ -67,7 +67,7 @@ describe('floorLayout with the Mary Celeste files', () => {
   });
 
   test('a tight floor shrinks the folders, but never below MIN_SCALE', () => {
-    const { scale } = floorLayout(IDS, { width: 800, height: 250 }, FOLDER);
+    const { scale } = floorLayout(IDS, { width: 1100, height: 300 }, FOLDER);
     expect(scale).toBeLessThan(1);
     expect(scale).toBeGreaterThanOrEqual(MIN_SCALE);
   });
