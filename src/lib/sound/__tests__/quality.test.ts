@@ -4,7 +4,7 @@
 // voices, long-running ambience, and under reduced motion nothing that starts by itself.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
-import { startSound, useSound } from '@/lib/sound';
+import { startSound, useSoundChannel } from '@/lib/sound';
 import { SoundEngine } from '@/lib/sound/engine';
 import { SOUND } from '@/lib/sound/levels';
 import { VOICES } from '@/lib/sound/voices';
@@ -56,7 +56,7 @@ describe('nothing loud or sudden except the stamps', () => {
     emitStoryEvent({ type: 'place', place: 'story', ambience: maryCeleste.theme.ambience });
     engine.unlock();
     const ctx = maker.made[0];
-    const ambienceBus = ctx.nodes.filter(node => node.kind === 'gain')[3];
+    const ambienceBus = engine.nodes!.bus.ambience as unknown as (typeof ctx.nodes)[number];
     const layers = ctx.nodes.filter(node => node.kind === 'gain' && node.connections.includes(ambienceBus)) as FakeGain[];
     expect(layers.length).toBe(3);
     for (const layer of layers) {
@@ -91,8 +91,8 @@ describe('reduced motion: sound still works, but nothing starts by itself', () =
     window.dispatchEvent(new Event('keydown'));
     expect(maker.made).toHaveLength(0);
     // The header's toggle, pressed while on but not yet started: it starts the sound (it does not mute it).
-    const { result } = renderHook(() => useSound(engine));
-    result.current.setEnabled(false);
+    const { result } = renderHook(() => useSoundChannel('effects', engine));
+    result.current.setOn(false);
     expect(maker.made).toHaveLength(1);
     expect(engine.enabled).toBe(true);
     expect(engine.running).toBe(true);

@@ -1,24 +1,35 @@
 // @vitest-environment jsdom
 // src/lib/sound/__tests__/engine.test.ts
-// The sound engine (polish brief, B1), on a fake AudioContext: no sound before a gesture, the choice remembered,
-// the ambience and the score ducking, the cap on voices, the tab's visibility, and the table from events to sounds.
+// The sound engine (polish brief, B1; music brief, 1), on a fake AudioContext: no sound before a gesture, music and
+// effects each on or off with a volume, remembered; the music side ducking, the cap on voices, the tab's visibility,
+// and the table from events to sounds.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { SoundEngine } from '@/lib/sound/engine';
 import { startSound } from '@/lib/sound';
-import { SOUND, SOUND_STORAGE_KEY } from '@/lib/sound/levels';
+import { SOUND, SOUND_KEYS } from '@/lib/sound/levels';
 import { SOUND_TABLE, freshMemory, soundFor } from '@/lib/sound/sound-map';
 import { emitStoryEvent } from '@/lib/story-events';
-import { FakeAudioContext, type FakeGain, fakeContextMaker } from '@/test/fake-audio';
+import { type FakeGain, fakeContextMaker } from '@/test/fake-audio';
 
 function engineWithFake() {
   const maker = fakeContextMaker();
   const engine = new SoundEngine({ createContext: maker.create });
   return { engine, made: maker.made };
 }
-/** The engine's gains, in the order it builds them: master, then the two ducks, then the three buses. */
-function gains(ctx: FakeAudioContext) {
-  const [master, duckAmbience, duckScore, ambience, score, effects] = ctx.nodes.filter(node => node.kind === 'gain') as FakeGain[];
-  return { master, duckAmbience, duckScore, ambience, score, effects };
+/** The engine's gains, by name. */
+function gains(engine: SoundEngine) {
+  const graph = engine.nodes!;
+  const as = (node: GainNode) => node as unknown as FakeGain;
+  return {
+    master: as(graph.master),
+    music: as(graph.gate.music),
+    effectsGate: as(graph.gate.effects),
+    duck: as(graph.duck),
+    musicBus: as(graph.bus.music),
+    ambience: as(graph.bus.ambience),
+    score: as(graph.bus.score),
+    effects: as(graph.bus.effects),
+  };
 }
 
 beforeEach(() => localStorage.clear());
@@ -53,8 +64,9 @@ describe('no sound before a gesture', () => {
     stop();
   });
 
-  test('with the sound off, a gesture starts nothing', () => {
-    localStorage.setItem(SOUND_STORAGE_KEY, '0');
+  test('with music and effects both off, a gesture starts nothing', () => {
+    localStorage.setItem(SOUND_KEYS.music, '0');
+    localStorage.setItem(SOUND_KEYS.effects, '0');
     const { engine, made } = engineWithFake();
     expect(engine.enabled).toBe(false);
     expect(engine.unlock()).toBe(false);
@@ -68,32 +80,70 @@ describe('no sound before a gesture', () => {
   });
 });
 
-describe('on and off, remembered', () => {
-  test('on by default; turning it off is kept in histor:sound, and read back next time', () => {
+describe('two controls: music and effects, each on or off with a volume, remembered', () => {
+  test('both on by default; each is kept apart, in histor:music and histor:effects, and read back next time', () => {
     const first = engineWithFake().engine;
-    expect(first.enabled).toBe(true);
-    first.setEnabled(false);
-    expect(localStorage.getItem(SOUND_STORAGE_KEY)).toBe('0');
-    expect(new SoundEngine().enabled).toBe(false);
-    first.setEnabled(true);
-    expect(localStorage.getItem(SOUND_STORAGE_KEY)).toBe('1');
-    expect(new SoundEngine().enabled).toBe(true);
+    expect([first.isOn('music'), first.isOn('effects')]).toEqual([true, true]);
+    first.setOn('music', false);
+    expect(localStorage.getItem(SOUND_KEYS.music)).toBe('0');
+    expect(localStorage.getItem(SOUND_KEYS.effects)).toBeNull();
+    const second = new SoundEngine();
+    expect([second.isOn('music'), second.isOn('effects')]).toEqual([false, true]);
+    second.setOn('effects', false);
+    second.setOn('music', true);
+    const third = new SoundEngine();
+    expect([third.isOn('music'), third.isOn('effects')]).toEqual([true, false]);
   });
 
-  test('off fades the master out (no click); on fades it back; a listener hears each change', () => {
-    const { engine, made } = engineWithFake();
+  test('the old single switch, off, is read as both off until a new choice is made', () => {
+    localStorage.setItem(SOUND_KEYS.legacy, '0');
+    const engine = new SoundEngine();
+    expect([engine.isOn('music'), engine.isOn('effects')]).toEqual([false, false]);
+  });
+
+  test('each volume is remembered, kept between 0 and 1, and sets its gate', () => {
+    const { engine } = engineWithFake();
+    expect(engine.volume('music')).toBe(SOUND.defaultVolume);
     engine.unlock();
-    const { master } = gains(made[0]);
-    expect(master.gain.target).toBeCloseTo(SOUND.master);
+    engine.setVolume('music', 0.3);
+    engine.setVolume('effects', 7);
+    expect(localStorage.getItem(SOUND_KEYS.musicVolume)).toBe('0.3');
+    expect(new SoundEngine().volume('music')).toBe(0.3);
+    expect(new SoundEngine().volume('effects')).toBe(1);
+    expect(gains(engine).music.gain.target).toBe(0.3);
+    expect(gains(engine).effectsGate.gain.target).toBe(1);
+  });
+
+  test('music off fades only the music; effects off fades only the effects (and the cues stop); no clicks', () => {
+    const { engine } = engineWithFake();
+    engine.unlock();
+    const g = gains(engine);
     const heard = vi.fn();
     engine.subscribe(heard);
-    engine.setEnabled(false);
-    expect(master.gain.target).toBe(0);
-    expect(master.gain.events.some(event => event.kind === 'linear')).toBe(true);
+    engine.setOn('music', false);
+    expect(g.music.gain.target).toBe(0);
+    expect(g.music.gain.events.some(event => event.kind === 'linear')).toBe(true);
+    expect(g.effectsGate.gain.target).toBe(SOUND.defaultVolume);
+    expect(engine.bus('music')).toBeNull();
+    expect(engine.bus('effects')).not.toBeNull();
+    engine.setOn('effects', false);
+    expect(g.effectsGate.gain.target).toBe(0);
+    expect(engine.voice(1)).toBe(false);
     expect(engine.running).toBe(false);
-    engine.setEnabled(true);
-    expect(master.gain.target).toBeCloseTo(SOUND.master);
-    expect(heard).toHaveBeenCalledTimes(2);
+    engine.setOn('music', true);
+    expect(g.music.gain.target).toBe(SOUND.defaultVolume);
+    expect(heard).toHaveBeenCalledTimes(3);
+  });
+
+  test('a channel coming back on tells the listeners which one', () => {
+    const { engine } = engineWithFake();
+    const started = vi.fn();
+    engine.onStart(started);
+    engine.unlock();
+    expect(started).toHaveBeenLastCalledWith(expect.anything(), null);
+    engine.setOn('music', false);
+    engine.setOn('music', true);
+    expect(started).toHaveBeenLastCalledWith(expect.anything(), 'music');
   });
 
   test('storage that fails: on, and nothing breaks', () => {
@@ -105,64 +155,68 @@ describe('on and off, remembered', () => {
     });
     const engine = new SoundEngine({ createContext: () => null });
     expect(engine.enabled).toBe(true);
-    expect(() => engine.setEnabled(false)).not.toThrow();
+    expect(() => engine.setOn('music', false)).not.toThrow();
+    expect(() => engine.setVolume('effects', 0.2)).not.toThrow();
   });
 });
 
 describe('buses and ducking', () => {
-  test('master, then ambience and score (each through a duck) and effects, at their levels', () => {
+  test('master, then the music side (through a duck and the music gate) and the effects (through theirs)', () => {
     const { engine, made } = engineWithFake();
     engine.unlock();
     const ctx = made[0];
-    const g = gains(ctx);
+    const g = gains(engine);
     expect(g.master.connections).toContain(ctx.destination);
-    expect(g.ambience.connections).toContain(g.duckAmbience);
-    expect(g.score.connections).toContain(g.duckScore);
-    expect(g.duckAmbience.connections).toContain(g.master);
-    expect(g.effects.connections).toContain(g.master);
+    for (const bus of [g.musicBus, g.ambience, g.score]) {
+      expect(bus.connections).toContain(g.duck);
+    }
+    expect(g.duck.connections).toContain(g.music);
+    expect(g.music.connections).toContain(g.master);
+    expect(g.effects.connections).toContain(g.effectsGate);
+    expect(g.effectsGate.connections).toContain(g.master);
+    expect(g.musicBus.gain.value).toBe(SOUND.bus.music);
     expect(g.ambience.gain.value).toBe(SOUND.bus.ambience);
     expect(g.score.gain.value).toBe(SOUND.bus.score);
     expect(g.effects.gain.value).toBe(SOUND.bus.effects);
   });
 
-  test('the ambience and the score dip under a stamp and come back after its hold; the effects never dip', () => {
+  test('the music side dips under a stamp and comes back after its hold; the effects never dip', () => {
     vi.useFakeTimers();
-    const { engine, made } = engineWithFake();
+    const { engine } = engineWithFake();
     engine.unlock();
-    const g = gains(made[0]);
+    const g = gains(engine);
     engine.duck('stamp');
-    expect(g.duckAmbience.gain.target).toBe(SOUND.duck.stamp.to);
-    expect(g.duckScore.gain.target).toBe(SOUND.duck.stamp.to);
+    expect(g.duck.gain.target).toBe(SOUND.duck.stamp.to);
     expect(g.effects.gain.events).toHaveLength(0);
     expect(engine.ducked).toBe(SOUND.duck.stamp.to);
     vi.advanceTimersByTime(SOUND.duck.stamp.hold * 1000);
-    expect(g.duckAmbience.gain.target).toBe(1);
+    expect(g.duck.gain.target).toBe(1);
   });
 
   test('overlapping ducks: the deepest dip, until the latest end', () => {
     vi.useFakeTimers();
-    const { engine, made } = engineWithFake();
+    const { engine } = engineWithFake();
     engine.unlock();
-    const g = gains(made[0]);
+    const g = gains(engine);
     engine.duck('hook');
     engine.duck('stamp');
-    expect(g.duckAmbience.gain.target).toBe(Math.min(SOUND.duck.hook.to, SOUND.duck.stamp.to));
+    expect(g.duck.gain.target).toBe(Math.min(SOUND.duck.hook.to, SOUND.duck.stamp.to));
     vi.advanceTimersByTime(SOUND.duck.stamp.hold * 1000);
-    expect(g.duckAmbience.gain.target).not.toBe(1);
+    expect(g.duck.gain.target).not.toBe(1);
     vi.advanceTimersByTime((SOUND.duck.hook.hold - SOUND.duck.stamp.hold) * 1000);
-    expect(g.duckAmbience.gain.target).toBe(1);
+    expect(g.duck.gain.target).toBe(1);
   });
 
   test('the voice ducks until released', () => {
     vi.useFakeTimers();
-    const { engine, made } = engineWithFake();
+    const { engine } = engineWithFake();
     engine.unlock();
-    const g = gains(made[0]);
+    const g = gains(engine);
     engine.duck('voice', 0);
     vi.advanceTimersByTime(60_000);
-    expect(g.duckAmbience.gain.target).toBe(SOUND.duck.voice.to);
+    expect(g.duck.gain.target).toBe(SOUND.duck.voice.to);
     engine.release();
-    expect(g.duckAmbience.gain.target).toBe(1);
+    expect(g.duck.gain.target).toBe(1);
   });
 });
 
@@ -181,10 +235,10 @@ describe('quality', () => {
   });
 
   test('the tab hidden: everything fades out; shown again: back in', () => {
-    const { engine, made } = engineWithFake();
+    const { engine } = engineWithFake();
     const stop = startSound(engine);
     engine.unlock();
-    const { master } = gains(made[0]);
+    const { master } = gains(engine);
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
     document.dispatchEvent(new Event('visibilitychange'));
     expect(master.gain.target).toBe(0);
@@ -213,11 +267,11 @@ describe('the table from events to sounds', () => {
   });
 
   test('connected: a stamp, after a gesture, ducks the ambience', () => {
-    const { engine, made } = engineWithFake();
+    const { engine } = engineWithFake();
     const stop = startSound(engine);
     window.dispatchEvent(new Event('keydown'));
     emitStoryEvent({ type: 'stamp:legend', evidence: 'e1' });
-    expect(gains(made[0]).duckAmbience.gain.target).toBe(SOUND.duck.stamp.to);
+    expect(gains(engine).duck.gain.target).toBe(SOUND.duck.stamp.to);
     stop();
   });
 });

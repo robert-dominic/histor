@@ -1,11 +1,11 @@
 // src/lib/sound/index.ts
 // The app's sound: one engine, listening to the story's and the desk's events (story-events.ts) and answering them
-// from the table (sound-map.ts). Started once by the app (startSound). Nothing sounds before the first gesture, or
-// while the player has turned the sound off; it fades out while the tab is hidden.
+// from the table (sound-map.ts). Started once by the app (startSound). Nothing sounds before the first gesture; the
+// music and the effects each follow their own control; everything fades out while the tab is hidden.
 
 import { useSyncExternalStore } from 'react';
 import { Ambience } from '@/lib/sound/ambience';
-import { SoundEngine } from '@/lib/sound/engine';
+import { SoundEngine, type Channel } from '@/lib/sound/engine';
 import { Narrator } from '@/lib/sound/narration';
 import { MOTION_QUERIES } from '@/lib/motion';
 import { SOUND } from '@/lib/sound/levels';
@@ -80,7 +80,10 @@ export function startSound(engine: SoundEngine = sound): () => void {
   // "Away" waits a moment: going from one page of a case to another sends "away" then the new place at once, and the
   // layers both share should play on unbroken.
   let awayTimer: ReturnType<typeof setTimeout> | null = null;
-  const stopStart = engine.onStart(ctx => {
+  const stopStart = engine.onStart((ctx, channel) => {
+    if (channel === 'effects') {
+      return;
+    }
     if (stopTimer !== null) {
       clearTimeout(stopTimer);
       stopTimer = null;
@@ -89,13 +92,17 @@ export function startSound(engine: SoundEngine = sound): () => void {
     score.restart(ctx, scoreBus());
   });
   const stopChange = engine.subscribe(() => {
-    if (!engine.running && stopTimer === null) {
+    // The effects off: the drone goes (faded) at once.
+    if (!engine.playing('effects')) {
+      dropDrone();
+    }
+    // The music off: its generated layers stop once its gate has faded, so nothing clicks.
+    if (!engine.playing('music') && stopTimer === null) {
       stopTimer = setTimeout(() => {
         stopTimer = null;
-        if (!engine.running) {
+        if (!engine.playing('music')) {
           ambience.stopAll();
           score.stop();
-          dropDrone();
         }
       }, (SOUND.toggleFade + 0.1) * 1000);
     }
@@ -179,21 +186,31 @@ export function startSound(engine: SoundEngine = sound): () => void {
   };
 }
 
-/** For the sound toggle: whether the sound is on, and a way to turn it on or off (from a gesture). */
-export function useSound(engine: SoundEngine = sound): { enabled: boolean; setEnabled: (on: boolean) => void } {
-  const enabled = useSyncExternalStore(
+/** For a sound control: whether its channel is on, its volume, and ways to change them (from a gesture). */
+export function useSoundChannel(
+  channel: Channel,
+  engine: SoundEngine = sound
+): { on: boolean; volume: number; setOn: (on: boolean) => void; setVolume: (volume: number) => void } {
+  const on = useSyncExternalStore(
     listener => engine.subscribe(listener),
-    () => engine.enabled,
-    () => engine.enabled
+    () => engine.isOn(channel),
+    () => engine.isOn(channel)
+  );
+  const volume = useSyncExternalStore(
+    listener => engine.subscribe(listener),
+    () => engine.volume(channel),
+    () => engine.volume(channel)
   );
   return {
-    enabled,
+    on,
+    volume,
     // On but not started yet (reduced motion waits for a choice): pressing it starts the sound rather than muting it.
-    setEnabled: on => {
-      if (!on && engine.enabled && !engine.running && engine.unlock()) {
+    setOn: next => {
+      if (!next && engine.isOn(channel) && !engine.running && engine.unlock()) {
         return;
       }
-      engine.setEnabled(on);
+      engine.setOn(channel, next);
     },
+    setVolume: next => engine.setVolume(channel, next),
   };
 }

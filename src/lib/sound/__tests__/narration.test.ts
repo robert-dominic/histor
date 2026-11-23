@@ -4,7 +4,7 @@
 // the score ducked under the voice until it ends, nothing with the sound off.
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { SoundEngine } from '@/lib/sound/engine';
-import { NARRATION, SOUND, SOUND_STORAGE_KEY } from '@/lib/sound/levels';
+import { NARRATION, SOUND, SOUND_KEYS } from '@/lib/sound/levels';
 import { Narrator } from '@/lib/sound/narration';
 import { type FakeGain, fakeContextMaker } from '@/test/fake-audio';
 
@@ -40,20 +40,31 @@ function setUp() {
   return { engine, narrator, clips, made: maker.made };
 }
 const duckOf = (engine: SoundEngine, made: ReturnType<typeof fakeContextMaker>['made']) => {
-  void engine;
-  return (made[0].nodes.filter(node => node.kind === 'gain')[1] as FakeGain).gain.target;
+  void made;
+  return (engine.nodes!.duck as unknown as FakeGain).gain.target;
 };
 
 beforeEach(() => localStorage.clear());
 
 describe('the narrator', () => {
+  test('its volume is the effects\' volume; turning the effects off stops the voice', () => {
+    const { engine, narrator, clips } = setUp();
+    void narrator.play('/a.mp3');
+    engine.setVolume('effects', 0.5);
+    expect(clips[0].volume).toBeCloseTo(NARRATION.volume * 0.5);
+    engine.setOn('music', false);
+    expect(narrator.playing).toBe('/a.mp3');
+    engine.setOn('effects', false);
+    expect(narrator.playing).toBeNull();
+  });
+
   test('plays a clip; the ambience and the score duck under the voice until it ends; then it resolves', async () => {
     const { engine, narrator, clips, made } = setUp();
     const done = vi.fn();
     void narrator.play('/a.mp3').then(done);
     expect(clips).toHaveLength(1);
     expect(clips[0].paused).toBe(false);
-    expect(clips[0].volume).toBe(NARRATION.volume);
+    expect(clips[0].volume).toBeCloseTo(NARRATION.volume * SOUND.defaultVolume);
     expect(narrator.playing).toBe('/a.mp3');
     expect(duckOf(engine, made)).toBe(SOUND.duck.voice.to);
     clips[0].end();
@@ -77,8 +88,8 @@ describe('the narrator', () => {
     expect(narrator.playing).toBeNull();
   });
 
-  test('with the sound off, no voice: it resolves at once', async () => {
-    localStorage.setItem(SOUND_STORAGE_KEY, '0');
+  test('with the effects off, no voice: it resolves at once (the music control does not matter)', async () => {
+    localStorage.setItem(SOUND_KEYS.effects, '0');
     const { narrator, clips } = setUp();
     await narrator.play('/a.mp3');
     expect(clips).toHaveLength(0);

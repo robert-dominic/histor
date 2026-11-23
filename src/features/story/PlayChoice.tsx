@@ -3,10 +3,10 @@
 // it into the story. The pen writes the case's title, one short line, then two big choices: "Play the story" or
 // "Read at my pace". The reader must choose: the story does not start until they do, and Escape means "Read at my
 // pace". The focus stays inside while it is open and goes back where it was afterwards.
-// A small "Sound on" switch under the choices, ticked unless the sound was turned off before (polish brief, B1): the
+// Two small switches under the choices, "Music" and "Effects", ticked unless turned off before (music brief, 1): the
 // choice's click is the gesture that starts the sound.
 // Reduced motion: it simply appears, with no writing and no movement.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import Quill from '@/components/Quill';
@@ -34,9 +34,11 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const playRef = useRef<HTMLButtonElement>(null);
   const readRef = useRef<HTMLButtonElement>(null);
-  const soundRef = useRef<HTMLInputElement>(null);
+  const musicRef = useRef<HTMLInputElement>(null);
+  const effectsRef = useRef<HTMLInputElement>(null);
   const choosingRef = useRef(false);
-  const [soundOn, setSoundOn] = useState(() => sound.enabled);
+  const [musicOn, setMusicOn] = useState(() => sound.isOn('music'));
+  const [effectsOn, setEffectsOn] = useState(() => sound.isOn('effects'));
 
   // While it is open the page does not scroll: the story starts only once the reader has chosen. The focus goes
   // into it, and back where it was when it closes.
@@ -88,7 +90,8 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
     }
     choosingRef.current = true;
     // This click (or key) is the gesture that may start the sound.
-    sound.setEnabled(soundOn);
+    sound.setOn('music', musicOn);
+    sound.setOn('effects', effectsOn);
     sound.unlock();
     const root = rootRef.current;
     if (root === null || typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches) {
@@ -107,9 +110,9 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
     if (event.key !== 'Tab') {
       return;
     }
-    // The focus stays on the two choices and the sound switch.
+    // The focus stays on the two choices and the two sound switches.
     event.preventDefault();
-    const stops = [playRef, readRef, soundRef].map(ref => ref.current).filter((element): element is HTMLButtonElement | HTMLInputElement => element !== null);
+    const stops = [playRef, readRef, musicRef, effectsRef].map(ref => ref.current).filter((element): element is HTMLButtonElement | HTMLInputElement => element !== null);
     const here = stops.indexOf(document.activeElement as HTMLButtonElement);
     stops[(here + (event.shiftKey ? stops.length - 1 : 1)) % stops.length]?.focus();
   };
@@ -155,24 +158,43 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
             Read at my pace
           </button>
         </div>
-        <label data-choice="sound" className="mt-7 inline-flex cursor-pointer items-center gap-2.5 font-voice text-[0.8125rem] tracking-[0.12em] text-night-ink/80 uppercase">
-          <input
-            ref={soundRef}
-            type="checkbox"
-            role="switch"
-            data-story-control=""
-            checked={soundOn}
-            onChange={event => setSoundOn(event.target.checked)}
-            className="peer sr-only"
-          />
-          {/* The switch: a small track with a knob, brass when on. */}
-          <span
-            aria-hidden="true"
-            className="relative h-4 w-7 rounded-full border border-night-ink/40 transition-colors duration-150 ease-out peer-checked:border-brass peer-checked:bg-brass/30 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass after:absolute after:top-[2px] after:left-[2px] after:size-2.5 after:rounded-full after:bg-night-ink/70 after:transition-[translate,background-color] after:duration-150 after:ease-out peer-checked:after:translate-x-3 peer-checked:after:bg-brass"
-          />
-          Sound on
-        </label>
+        <div data-choice="sound" className="mt-7 flex items-center justify-center gap-7">
+          <SoundSwitch label="Music" inputRef={musicRef} checked={musicOn} onChange={setMusicOn} />
+          <SoundSwitch label="Effects" inputRef={effectsRef} checked={effectsOn} onChange={setEffectsOn} />
+        </div>
       </div>
     </div>
+  );
+}
+
+/** One small switch: a track with a knob, brass when on. */
+function SoundSwitch({
+  label,
+  inputRef,
+  checked,
+  onChange,
+}: {
+  label: string;
+  inputRef: RefObject<HTMLInputElement | null>;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="inline-flex cursor-pointer items-center gap-2.5 font-voice text-[0.8125rem] tracking-[0.12em] text-night-ink/80 uppercase">
+      <input
+        ref={inputRef}
+        type="checkbox"
+        role="switch"
+        data-story-control=""
+        checked={checked}
+        onChange={event => onChange(event.target.checked)}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className="relative h-4 w-7 rounded-full border border-night-ink/40 transition-colors duration-150 ease-out peer-checked:border-brass peer-checked:bg-brass/30 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass after:absolute after:top-[2px] after:left-[2px] after:size-2.5 after:rounded-full after:bg-night-ink/70 after:transition-[translate,background-color] after:duration-150 after:ease-out peer-checked:after:translate-x-3 peer-checked:after:bg-brass"
+      />
+      {label}
+    </label>
   );
 }

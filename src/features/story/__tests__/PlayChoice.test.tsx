@@ -37,16 +37,17 @@ describe('PlayChoice', () => {
     expect(document.activeElement).toBe(play);
   });
 
-  test('a small "Sound on" switch, ticked by default; the choice keeps what it says (the click is the gesture)', () => {
+  test('two small switches, "Music" and "Effects", ticked by default; the choice keeps what they say (the click is the gesture)', () => {
     renderChoice();
-    const soundSwitch = screen.getByRole('switch', { name: 'Sound on' }) as HTMLInputElement;
-    expect(soundSwitch.checked).toBe(true);
-    fireEvent.click(soundSwitch);
-    expect(soundSwitch.checked).toBe(false);
+    const music = screen.getByRole('switch', { name: 'Music' }) as HTMLInputElement;
+    const effects = screen.getByRole('switch', { name: 'Effects' }) as HTMLInputElement;
+    expect([music.checked, effects.checked]).toEqual([true, true]);
+    fireEvent.click(music);
+    expect(music.checked).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Read at my pace' }));
-    expect(sound.enabled).toBe(false);
-    expect(localStorage.getItem('histor:sound')).toBe('0');
-    sound.setEnabled(true);
+    expect([sound.isOn('music'), sound.isOn('effects')]).toEqual([false, true]);
+    expect(localStorage.getItem('histor:music')).toBe('0');
+    sound.setOn('music', true);
     localStorage.clear();
   });
 
@@ -65,19 +66,22 @@ describe('PlayChoice', () => {
     expect(second.onChoose).toHaveBeenCalledWith('read');
   });
 
-  test('Tab stays on the two choices and the sound switch, and the focus goes back where it was when it closes', () => {
+  test('Tab stays on the two choices and the two sound switches, and the focus goes back where it was when it closes', () => {
     const { unmount, before } = renderChoice();
     const play = screen.getByRole('button', { name: 'Play the story' });
     const read = screen.getByRole('button', { name: 'Read at my pace' });
-    const soundSwitch = screen.getByRole('switch', { name: 'Sound on' });
+    const music = screen.getByRole('switch', { name: 'Music' });
+    const effects = screen.getByRole('switch', { name: 'Effects' });
     fireEvent.keyDown(play, { key: 'Tab' });
     expect(document.activeElement).toBe(read);
     fireEvent.keyDown(read, { key: 'Tab' });
-    expect(document.activeElement).toBe(soundSwitch);
-    fireEvent.keyDown(soundSwitch, { key: 'Tab' });
+    expect(document.activeElement).toBe(music);
+    fireEvent.keyDown(music, { key: 'Tab' });
+    expect(document.activeElement).toBe(effects);
+    fireEvent.keyDown(effects, { key: 'Tab' });
     expect(document.activeElement).toBe(play);
     fireEvent.keyDown(play, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(soundSwitch);
+    expect(document.activeElement).toBe(effects);
     unmount();
     expect(document.activeElement).toBe(before);
     expect(document.documentElement.style.overflow).toBe('');

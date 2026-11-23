@@ -1,20 +1,28 @@
 // src/lib/sound/engine.ts
-// The sound engine (polish brief, B1): one AudioContext, created lazily on the first user gesture, never before.
-// Three buses under a master: ambience, score and effects. The ambience and the score each pass through a duck, so
-// they dip under hooks, stamps and the voice. A cap on the one-shot voices playing at once. The choice to have sound
-// on or off is kept in localStorage (`histor:sound`); everything fades out when the tab is hidden.
-// Every sound is generated in code (voices.ts, ambience.ts, score.ts): no audio files.
+// The sound engine (polish brief, B1; music brief, 1): one AudioContext, created lazily on the first user gesture,
+// never before. Two channels the player controls separately, each on or off with its own volume, remembered in
+// localStorage (`SOUND_KEYS`):
+// - music: the music bus (and, behind AMBIENCE_ENABLED, the generated ambience and score);
+// - effects: the effects bus, and the narrator's voice (narration.ts reads its volume).
+// The music side passes through a duck, so it dips under hooks, stamps and the voice. A cap on the one-shot voices
+// playing at once. Everything fades out when the tab is hidden.
 
-import { SOUND, SOUND_STORAGE_KEY } from '@/lib/sound/levels';
+import { SOUND, SOUND_KEYS } from '@/lib/sound/levels';
 
-export type BusName = 'ambience' | 'score' | 'effects';
+export type Channel = 'music' | 'effects';
+export type BusName = 'music' | 'ambience' | 'score' | 'effects';
 export type DuckName = keyof typeof SOUND.duck;
 
-interface Graph {
+/** The buses on the music side: they follow the music control, and they duck. */
+const MUSIC_SIDE: readonly BusName[] = ['music', 'ambience', 'score'];
+
+export interface Graph {
   master: GainNode;
+  /** Each channel's on/off and volume. */
+  gate: Record<Channel, GainNode>;
+  /** Between the music side's buses and their gate: where they dip. */
+  duck: GainNode;
   bus: Record<BusName, GainNode>;
-  /** Between the ambience and score buses and the master: where they dip. */
-  duck: Record<'ambience' | 'score', GainNode>;
 }
 
 export interface SoundEngineOptions {
@@ -37,20 +45,29 @@ function browserContext(): AudioContext | null {
   }
 }
 
-function readEnabled(): boolean {
+function read(key: string): string | null {
   try {
-    return localStorage.getItem(SOUND_STORAGE_KEY) !== '0';
+    return localStorage.getItem(key);
   } catch {
-    return true;
+    return null;
   }
 }
 
-function writeEnabled(on: boolean): void {
+function write(key: string, value: string): void {
   try {
-    localStorage.setItem(SOUND_STORAGE_KEY, on ? '1' : '0');
+    localStorage.setItem(key, value);
   } catch {
     // Storage unavailable: the choice lasts until the page is left.
   }
+}
+
+/** A channel's remembered state: on unless turned off (or the old single switch was off), at its volume. */
+function readChannel(channel: Channel): { on: boolean; volume: number } {
+  const stored = read(SOUND_KEYS[channel]);
+  const on = stored === null ? read(SOUND_KEYS.legacy) !== '0' : stored !== '0';
+  const raw = Number.parseFloat(read(channel === 'music' ? SOUND_KEYS.musicVolume : SOUND_KEYS.effectsVolume) ?? '');
+  const volume = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : SOUND.defaultVolume;
+  return { on, volume };
 }
 
 /** Moves a gain smoothly to `value` over `seconds`, from wherever it is now: never a jump, never a click. */
@@ -64,7 +81,7 @@ export class SoundEngine {
   private readonly createContext: () => AudioContext | null;
   private ctx: AudioContext | null = null;
   private graph: Graph | null = null;
-  private on: boolean;
+  private readonly channels: Record<Channel, { on: boolean; volume: number }>;
   private hidden = false;
   /** When each one-shot voice playing now ends, in the context's time. */
   private voiceEnds: number[] = [];
@@ -73,40 +90,64 @@ export class SoundEngine {
   private duckUntil = 0;
   private duckTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly changeListeners = new Set<() => void>();
-  private readonly startListeners = new Set<(ctx: AudioContext) => void>();
+  private readonly startListeners = new Set<(ctx: AudioContext, channel: Channel | null) => void>();
 
   constructor(options: SoundEngineOptions = {}) {
     this.createContext = options.createContext ?? browserContext;
-    this.on = readEnabled();
+    this.channels = { music: readChannel('music'), effects: readChannel('effects') };
   }
 
-  /** The player's choice: sound on or off. */
+  /** The player's choice for a channel: on or off. */
+  isOn(channel: Channel): boolean {
+    return this.channels[channel].on;
+  }
+
+  /** A channel's volume, 0 to 1. */
+  volume(channel: Channel): number {
+    return this.channels[channel].volume;
+  }
+
+  /** True while either channel is on. */
   get enabled(): boolean {
-    return this.on;
+    return this.channels.music.on || this.channels.effects.on;
   }
 
-  /** True once a gesture has started the sound, while it is on: sounds can play. */
+  /** True once a gesture has started the sound, while either channel is on. */
   get running(): boolean {
-    return this.ctx !== null && this.on;
+    return this.ctx !== null && this.enabled;
+  }
+
+  /** True when a channel can be heard now: started, and on. */
+  playing(channel: Channel): boolean {
+    return this.ctx !== null && this.channels[channel].on;
   }
 
   get context(): AudioContext | null {
     return this.running ? this.ctx : null;
   }
 
-  /** A bus to connect a sound to, or null while nothing can play. */
-  bus(name: BusName): AudioNode | null {
-    return this.running ? (this.graph?.bus[name] ?? null) : null;
+  /** The graph, for tests and the dev page. Null before the sound starts. */
+  get nodes(): Graph | null {
+    return this.graph;
   }
 
-  /** For React: called whenever `enabled` or `running` changes. */
+  /** A bus to connect a sound to, or null while its channel cannot be heard. */
+  bus(name: BusName): AudioNode | null {
+    const channel: Channel = MUSIC_SIDE.includes(name) ? 'music' : 'effects';
+    return this.playing(channel) ? (this.graph?.bus[name] ?? null) : null;
+  }
+
+  /** For React: called whenever a channel or `running` changes. */
   subscribe(listener: () => void): () => void {
     this.changeListeners.add(listener);
     return () => this.changeListeners.delete(listener);
   }
 
-  /** Called with the context each time the sound starts (or comes back on): the ambience starts then. */
-  onStart(listener: (ctx: AudioContext) => void): () => void {
+  /**
+   * Called with the context when the sound starts (`channel` null) and when a channel comes back on: the music
+   * starts (or resumes) then.
+   */
+  onStart(listener: (ctx: AudioContext, channel: Channel | null) => void): () => void {
     this.startListeners.add(listener);
     return () => this.startListeners.delete(listener);
   }
@@ -117,10 +158,10 @@ export class SoundEngine {
 
   /**
    * Called from a user gesture (a click, a key): the only place the context is created or resumed, so nothing ever
-   * sounds before one. Does nothing while the sound is off.
+   * sounds before one. Does nothing while both channels are off.
    */
   unlock(): boolean {
-    if (!this.on) {
+    if (!this.enabled) {
       return false;
     }
     if (this.ctx === null) {
@@ -130,13 +171,18 @@ export class SoundEngine {
       }
       this.ctx = ctx;
       this.graph = this.build(ctx);
-      this.startListeners.forEach(listener => listener(ctx));
+      this.startListeners.forEach(listener => listener(ctx, null));
       this.changed();
     }
     if (this.ctx.state === 'suspended' && !this.hidden) {
       void this.ctx.resume().catch(() => undefined);
     }
     return true;
+  }
+
+  private gateLevel(channel: Channel): number {
+    const { on, volume } = this.channels[channel];
+    return on ? volume : 0;
   }
 
   private build(ctx: AudioContext): Graph {
@@ -149,32 +195,46 @@ export class SoundEngine {
     master.connect(ctx.destination);
     // The master fades in, never starts at full.
     glide(master.gain, this.hidden ? 0 : SOUND.master, SOUND.toggleFade, ctx.currentTime);
-    const duck = { ambience: gain(1), score: gain(1) };
-    duck.ambience.connect(master);
-    duck.score.connect(master);
-    const bus = { ambience: gain(SOUND.bus.ambience), score: gain(SOUND.bus.score), effects: gain(SOUND.bus.effects) };
-    bus.ambience.connect(duck.ambience);
-    bus.score.connect(duck.score);
-    bus.effects.connect(master);
-    return { master, bus, duck };
+    const gate = { music: gain(this.gateLevel('music')), effects: gain(this.gateLevel('effects')) };
+    gate.music.connect(master);
+    gate.effects.connect(master);
+    const duck = gain(1);
+    duck.connect(gate.music);
+    const bus = { music: gain(SOUND.bus.music), ambience: gain(SOUND.bus.ambience), score: gain(SOUND.bus.score), effects: gain(SOUND.bus.effects) };
+    bus.music.connect(duck);
+    bus.ambience.connect(duck);
+    bus.score.connect(duck);
+    bus.effects.connect(gate.effects);
+    return { master, gate, duck, bus };
   }
 
-  /** Sound on or off, remembered. Turning it on from a gesture starts it at once. */
-  setEnabled(on: boolean): void {
-    if (on === this.on) {
+  /** A channel on or off, remembered. Turning one on from a gesture starts the sound at once. */
+  setOn(channel: Channel, on: boolean): void {
+    if (on === this.channels[channel].on) {
       return;
     }
-    this.on = on;
-    writeEnabled(on);
+    this.channels[channel].on = on;
+    write(SOUND_KEYS[channel], on ? '1' : '0');
     const ctx = this.ctx;
     if (ctx !== null && this.graph !== null) {
-      glide(this.graph.master.gain, on && !this.hidden ? SOUND.master : 0, SOUND.toggleFade, ctx.currentTime);
+      glide(this.graph.gate[channel].gain, this.gateLevel(channel), SOUND.toggleFade, ctx.currentTime);
       if (on) {
         void ctx.resume().catch(() => undefined);
-        this.startListeners.forEach(listener => listener(ctx));
+        this.startListeners.forEach(listener => listener(ctx, channel));
       }
     } else if (on) {
       this.unlock();
+    }
+    this.changed();
+  }
+
+  /** A channel's volume, 0 to 1, remembered. */
+  setVolume(channel: Channel, volume: number): void {
+    const value = Math.min(1, Math.max(0, volume));
+    this.channels[channel].volume = value;
+    write(channel === 'music' ? SOUND_KEYS.musicVolume : SOUND_KEYS.effectsVolume, String(Math.round(value * 100) / 100));
+    if (this.ctx !== null && this.graph !== null) {
+      glide(this.graph.gate[channel].gain, this.gateLevel(channel), 0.08, this.ctx.currentTime);
     }
     this.changed();
   }
@@ -186,8 +246,8 @@ export class SoundEngine {
     if (ctx === null || this.graph === null) {
       return;
     }
-    glide(this.graph.master.gain, hidden || !this.on ? 0 : SOUND.master, SOUND.hiddenFade, ctx.currentTime);
-    if (!hidden && this.on) {
+    glide(this.graph.master.gain, hidden ? 0 : SOUND.master, SOUND.hiddenFade, ctx.currentTime);
+    if (!hidden && this.enabled) {
       void ctx.resume().catch(() => undefined);
     } else if (hidden) {
       // Once faded, the context rests: no CPU spent on a tab nobody hears.
@@ -200,8 +260,8 @@ export class SoundEngine {
   }
 
   /**
-   * The ambience and the score dip under a moment (a hook, a stamp, the voice), and come back after its hold.
-   * Overlapping ducks keep the deepest dip and the latest end. `hold` of 0 holds until `release()`.
+   * The music side dips under a moment (a hook, a stamp, the voice), and comes back after its hold. Overlapping
+   * ducks keep the deepest dip and the latest end. `hold` of 0 holds until `release()`.
    */
   duck(name: DuckName, hold: number = SOUND.duck[name].hold): void {
     const ctx = this.context;
@@ -216,9 +276,7 @@ export class SoundEngine {
     }
     if (depth < this.duckDepth) {
       this.duckDepth = depth;
-      for (const node of Object.values(this.graph.duck)) {
-        glide(node.gain, depth, SOUND.duckIn, now);
-      }
+      glide(this.graph.duck.gain, depth, SOUND.duckIn, now);
     }
     if (until > this.duckUntil) {
       this.duckUntil = until;
@@ -232,7 +290,7 @@ export class SoundEngine {
     }
   }
 
-  /** Ends every duck: the ambience and the score come back up. */
+  /** Ends every duck: the music side comes back up. */
   release(): void {
     if (this.duckTimer !== null) {
       clearTimeout(this.duckTimer);
@@ -244,24 +302,22 @@ export class SoundEngine {
     if (ctx === null || this.graph === null) {
       return;
     }
-    for (const node of Object.values(this.graph.duck)) {
-      glide(node.gain, 1, SOUND.duckOut, ctx.currentTime);
-    }
+    glide(this.graph.duck.gain, 1, SOUND.duckOut, ctx.currentTime);
   }
 
-  /** How far the ambience and the score are ducked now (1 = not at all). */
+  /** How far the music side is ducked now (1 = not at all). */
   get ducked(): number {
     const ctx = this.ctx;
     return ctx !== null && ctx.currentTime < this.duckUntil ? this.duckDepth : 1;
   }
 
   /**
-   * Asks for a one-shot voice lasting `seconds`. False when the cap is reached (the sound is skipped) or nothing can
-   * play; otherwise the voice counts until it ends.
+   * Asks for a one-shot effect lasting `seconds`. False when the cap is reached (the sound is skipped) or the effects
+   * cannot be heard; otherwise the voice counts until it ends.
    */
   voice(seconds: number): boolean {
     const ctx = this.context;
-    if (ctx === null) {
+    if (ctx === null || !this.channels.effects.on) {
       return false;
     }
     const now = ctx.currentTime;

@@ -1,7 +1,8 @@
 // src/lib/sound/narration.ts
 // Narration, ready for recordings (polish brief, B5): a chapter, or the central question, read aloud. One clip at a
 // time, through an <audio> element (the one place the app plays a file: a voice cannot be generated). While it plays,
-// the ambience and the score duck under the voice. It follows the sound toggle: with the sound off, no voice.
+// the music ducks under the voice. It follows the effects control: with the effects off, no voice; its volume is
+// theirs.
 // "Play the story" plays a chapter's clip as its page is written and waits for it (Story.tsx); "Read at my pace"
 // plays it only when the reader presses "Listen". No case has recordings yet: everything works without them.
 
@@ -21,6 +22,14 @@ export class Narrator {
   constructor(engine: SoundEngine, createAudio?: (src: string) => HTMLAudioElement | null) {
     this.engine = engine;
     this.createAudio = createAudio ?? (src => (typeof Audio === 'undefined' ? null : new Audio(src)));
+    // The effects turned off stop the voice; their volume is its volume.
+    engine.subscribe(() => {
+      if (!engine.isOn('effects')) {
+        this.stop();
+      } else if (this.audio !== null) {
+        this.audio.volume = NARRATION.volume * engine.volume('effects');
+      }
+    });
   }
 
   /** The clip playing now, or null. */
@@ -46,7 +55,7 @@ export class Narrator {
       return this.done;
     }
     this.stop();
-    if (!this.engine.enabled) {
+    if (!this.engine.isOn('effects')) {
       return Promise.resolve();
     }
     const audio = this.createAudio(src);
@@ -55,7 +64,7 @@ export class Narrator {
     }
     this.engine.unlock();
     this.engine.duck('voice', 0);
-    audio.volume = NARRATION.volume;
+    audio.volume = NARRATION.volume * this.engine.volume('effects');
     this.audio = audio;
     this.source = src;
     this.done = new Promise<void>(resolve => {

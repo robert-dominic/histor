@@ -98,16 +98,16 @@ describe('the ambience follows the place', () => {
     stop();
   });
 
-  test('turning the sound off stops the layers once the master has faded; on again, they start again', () => {
+  test('turning the music off stops the layers once its gate has faded; on again, they start again', () => {
     const { engine, made, stop } = connected();
     emitStoryEvent({ type: 'place', place: 'story', ambience: recipe });
     engine.unlock();
     const first = looping(made[0]);
-    engine.setEnabled(false);
+    engine.setOn('music', false);
     expect(first.every(source => source.stoppedAt === null)).toBe(true);
     vi.advanceTimersByTime((SOUND.toggleFade + 0.2) * 1000);
     expect(first.every(source => source.stoppedAt !== null)).toBe(true);
-    engine.setEnabled(true);
+    engine.setOn('music', true);
     expect(looping(made[0]).filter(source => source.stoppedAt === null)).toHaveLength(2);
     stop();
   });

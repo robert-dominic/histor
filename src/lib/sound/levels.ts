@@ -7,6 +7,8 @@ export const SOUND = {
   master: 0.55,
   /** Each bus's own level, under the master. */
   bus: {
+    /** The music: under everything. */
+    music: 0.5,
     ambience: 0.32,
     /** The score has its own level, so it can be turned down without losing the effects. */
     score: 0.16,
@@ -23,8 +25,10 @@ export const SOUND = {
   duckOut: 1.8,
   /** Everything fades out when the tab is hidden, and back in when it returns. */
   hiddenFade: 0.8,
-  /** Turning the sound off or on. */
+  /** Turning the music or the effects off or on, or changing a volume. */
   toggleFade: 0.35,
+  /** Each control's volume until the player moves its slider. */
+  defaultVolume: 0.8,
   /** No more one-shot sounds than this at once; another is simply skipped. */
   maxVoices: 14,
   /** The pen's scratch: never more ticks a second than this, however fast it writes. */
@@ -74,5 +78,15 @@ export const SCORE = {
 /** Narration (narration.ts): the voice's level, and the beat "Play the story" waits after a clip ends. */
 export const NARRATION = { volume: 0.9, beat: 0.8 } as const;
 
-/** Where the choice to have sound on or off is kept. Absent means on. */
-export const SOUND_STORAGE_KEY = 'histor:sound';
+/**
+ * Where the player's choices are kept: music and effects each on or off (absent means on), and each one's volume
+ * (0 to 1; absent means `SOUND.defaultVolume`). `histor:sound` is the old single switch: read once, if the new ones
+ * are absent.
+ */
+export const SOUND_KEYS = {
+  music: 'histor:music',
+  effects: 'histor:effects',
+  musicVolume: 'histor:music-volume',
+  effectsVolume: 'histor:effects-volume',
+  legacy: 'histor:sound',
+} as const;

@@ -105,7 +105,7 @@ describe('connected to the story', () => {
     emitStoryEvent({ type: 'place', place: 'story' });
     engine.unlock();
     const fake = maker.made[0];
-    const scoreBus = fake.nodes.filter(node => node.kind === 'gain')[4] as FakeGain;
+    const scoreBus = engine.nodes!.bus.score as unknown as FakeGain;
     expect(scoreBus.gain.value).toBe(SOUND.bus.score);
     expect(SOUND.bus.score).toBeLessThan(SOUND.bus.effects);
     expect(padLevel(fake, scoreBus as unknown as AudioNode)).toBe(SCORE.mood.story);

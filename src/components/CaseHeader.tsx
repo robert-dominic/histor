@@ -2,8 +2,8 @@
 // The slim header of a case page: the case title and its years, fixed to the top for the whole page.
 // It is the page's heading. It shows once the story starts (features/story/Story.tsx finds it by its
 // `data-case-header` attribute), and the story's images start below it, so it never covers them.
-// Its height is the `--case-header` variable in src/index.css. The sound toggle sits at its right end.
-import SoundToggle from '@/components/SoundToggle';
+// Its height is the `--case-header` variable in src/index.css. The two sound controls (music, effects) sit at its right end.
+import SoundControls from '@/components/SoundControls';
 
 interface CaseHeaderProps {
   title: string;
@@ -41,7 +41,7 @@ export default function CaseHeader({ title, years, unsolved = false, startHidden
             </span>
           )}
         </p>
-        <SoundToggle />
+        <SoundControls />
       </div>
     </header>
   );
