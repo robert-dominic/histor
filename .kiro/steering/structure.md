@@ -20,7 +20,8 @@ src/
   components/   shared UI (Stamp, CaseFile, Button, Panel)
   lib/          audio.ts, storage.ts, motion.ts (every ease and duration), smooth-scroll.ts, floor.ts (the floor layout),
                 story-pages.ts (STORY_PACE: every timing of the story, and the pen's plan),
-                fit-heading.ts (a chapter heading on one line), phone-gate.ts,
+                fit-heading.ts (a chapter heading on one line), desk-split.ts (board and floor, floor-first),
+                phone-gate.ts,
                 image-sources.ts
   styles/       tokens.css, effects.css
   types/        case.ts (all content types)

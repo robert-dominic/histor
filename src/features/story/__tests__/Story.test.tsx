@@ -18,8 +18,9 @@ import { splitQuestion } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case, StorySection } from '@/types/case';
 
-// The cinematic story builds one long timeline for all six chapters. Give it room under load.
-vi.setConfig({ testTimeout: 15_000 });
+// The story builds a pen for all six chapters' pages, and a jump writes several of them at once: thousands of
+// letter tweens. Alone each test takes a few seconds; give them room under the full suite's load.
+vi.setConfig({ testTimeout: 30_000 });
 
 /** The text a reader sees: every {{ref:id|label}} shown as its label. */
 const plainText = (text: string) =>
