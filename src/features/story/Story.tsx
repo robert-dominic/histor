@@ -50,9 +50,8 @@ const SCENE = {
   hookDim: 0.92,
   /** A beat of stillness: nothing changes before the next scene. */
   stillness: 1.6,
-  /** Weighted words: the beat of stillness before a phrase lands, and how long its rust line takes to grow. */
+  /** Weighted words in the central question: the breath before a phrase lands on its own. */
   weightBeat: STEP.slow,
-  weightLine: STEP.slow,
   /** The breath before a hook: the camera creeps this much closer, over `story.breath`. */
   creepTo: 1.05,
   /** A hook comes in word by word, one every so many seconds of scroll: slower than anything else. */
@@ -687,10 +686,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         const question = one('[data-story="question"]');
         const phrases = all('[data-story="phrase"]');
         const questionWeighted = all('[data-story="question"] [data-story="weighted"]');
-        const questionRules = all('[data-story="question"] [data-story="weight-line"]');
         if (question !== null && phrases.length > 0) {
           if (reduced || !cinematic) {
-            gsap.set(questionRules, { scaleX: 1 });
             gsap.set(phrases, { opacity: 0 });
             ScrollTrigger.create({
               trigger: question,
@@ -719,16 +716,6 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   at
                 );
                 at += MOTION['story.weighted'].duration;
-                const rule = one('[data-story="weight-line"]', span);
-                if (rule !== null) {
-                  chokepoint.fromTo(
-                    rule,
-                    { scaleX: 0 },
-                    { scaleX: 1, ease: MOTION['story.weighted'].ease, duration: SCENE.weightLine, immediateRender: false },
-                    at
-                  );
-                  at += SCENE.weightLine;
-                }
               });
               // The stop: the scroll settles here, with the phrase written in, and holds it for its reading time.
               chokepoint.addLabel(`phrase-${index}`, at);
@@ -764,7 +751,6 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         return () => {
           current = false;
           gsap.set([...phrases, ...questionWeighted], { clearProps: 'opacity,transform' });
-          gsap.set(questionRules, { clearProps: 'transform' });
           cleanups.forEach(cleanup => cleanup());
           delete root.dataset.tone;
           root.style.removeProperty('--story-sky');

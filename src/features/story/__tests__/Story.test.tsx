@@ -742,7 +742,7 @@ describe('Story: the central question as a chokepoint', () => {
     expect(timeline.duration()).toBeGreaterThan(timeline.labels.whole + 2);
   });
 
-  test('its weighted parts land like weighted words, after their phrase, with a rust line', () => {
+  test('its weighted parts land on their own after their phrase, slightly brighter, and no red line anywhere', () => {
     const { container } = renderQuestion();
     const weighted = [...container.querySelectorAll<HTMLElement>('[data-story="question"] [data-story="weighted"]')];
     expect(weighted.map(span => span.textContent)).toEqual(maryCeleste.centralQuestionEmphasis);
@@ -750,7 +750,9 @@ describe('Story: the central question as a chokepoint', () => {
     expect(land.vars).toMatchObject({ opacity: 1, ease: 'power4.out' });
     const phraseIn = gsap.getTweensOf(weighted[1].closest('[data-story="phrase"]')!)[0];
     expect(land.startTime()).toBeGreaterThan(phraseIn.startTime() + phraseIn.duration());
-    expect(gsap.getTweensOf(weighted[1].querySelector('[data-story="weight-line"]')!)[0].vars.scaleX).toBe(1);
+    expect(weighted[1].className).toContain('text-night-ink');
+    expect(container.querySelector('[data-story="weight-line"]')).toBeNull();
+    expect(container.querySelector('[class*="bg-rust"]')).toBeNull();
   });
 
   test('screen readers get the whole question at once', () => {

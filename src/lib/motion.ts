@@ -63,8 +63,8 @@ export const MOTION: Record<TokenName, MotionToken> = {
   /** A normal sentence rising out of the dark: each word slides up from behind its mask edge, like something
    * surfacing from water. The `ink.in` ease; the whole sentence takes its share of the scroll. */
   'story.surface': { ease: 'power3.out', duration: 0.9 },
-  /** A weighted phrase landing on its own after a beat of stillness: it drops into its held space and settles, then
-   * a thin rust line grows under it. */
+  /** A weighted phrase landing on its own after a breath: it drops into its held space and settles, slightly
+   * brighter than the words around it. No line is drawn under it. */
   'story.weighted': { ease: 'power4.out', duration: 0.7 },
   /** The breath before a hook: the column has cleared; the image darkens further and the camera creeps closer, and
    * nothing new appears. */

@@ -135,8 +135,8 @@ export interface StorySection {
    */
   rollCall?: RollCallEntry[];
   /**
-   * The weighted words of the chapter: phrases that arrive on their own in the story, after a beat of stillness,
-   * with a thin rust line growing under them. Each must appear word for word in the chapter's text (a body
+   * The weighted words of the chapter: phrases the pen writes after a breath, a touch slower and slightly brighter
+   * (no line under them). Each must appear word for word in the chapter's text (a body
    * paragraph or the hook, with {{ref:…}} markup read as its label), e.g. "two-year-old daughter".
    */
   emphasis?: string[];
