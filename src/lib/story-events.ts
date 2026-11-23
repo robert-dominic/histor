@@ -23,7 +23,14 @@ export type StoryEvent =
   | { type: 'hook'; chapter: string; direction: StoryDirection }
   // A line of the central question plays in (forward), or is returned to (backward).
   | { type: 'question-line'; index: number; direction: StoryDirection }
-  | { type: 'roll-call-out'; chapter: string; name: string; direction: StoryDirection }
+  // The hook leaves: its letters decay (forward), or it gives way to its page again (backward).
+  | { type: 'hook-out'; chapter: string; direction: StoryDirection }
+  // One name of the roll call un-written; `order` 0 is the first to go.
+  | { type: 'roll-call-out'; chapter: string; name: string; order: number; direction: StoryDirection }
+  // The pen writes a letter (anywhere: the legend, the story, a file, the verdict). Many a second.
+  | { type: 'pen' }
+  // The fork's modal opens over the question.
+  | { type: 'fork' }
   // The desk
   | { type: 'pile-hover' }
   | { type: 'folder-open'; evidence: string }

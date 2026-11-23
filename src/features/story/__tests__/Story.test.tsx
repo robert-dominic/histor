@@ -811,7 +811,7 @@ describe('Story: hooks', () => {
     expect(hook.style.opacity).toBe('1');
   });
 
-  test('story events: each chapter is entered, each hook comes, in order', () => {
+  test('story events: each chapter is entered, each hook comes and goes, in order', () => {
     const events: StoryEvent[] = [];
     const stop = onStoryEvent(event => events.push(event));
     try {
@@ -825,11 +825,41 @@ describe('Story: hooks', () => {
     } finally {
       stop();
     }
-    expect(events.filter(event => event.type !== 'beat').map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)).toEqual([
-      'chapter-enter:s-one',
-      'hook:s-one',
-      'chapter-enter:s-two',
-    ]);
+    expect(
+      events.filter(event => event.type !== 'beat' && event.type !== 'pen').map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)
+    ).toEqual(['chapter-enter:s-one', 'hook:s-one', 'hook-out:s-one', 'chapter-enter:s-two']);
+    // Each chapter says how far into the night it is; the pen says when it writes.
+    const depths = events.filter(event => event.type === 'chapter-enter').map(event => event.depth);
+    expect(depths[0]).toBe(0);
+    expect(depths[1]).toBeGreaterThan(0);
+    expect(events.some(event => event.type === 'pen')).toBe(true);
+  });
+
+  test('story events: stepping back from a hook to its page, and the question line by line', () => {
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
+    try {
+      const { container } = renderStory(testCase, READ);
+      finishWriting(container);
+      wheelBurst(stageOf(container));
+      settleSteps();
+      wheelBurst(stageOf(container), { deltaY: -60 });
+      settleSteps();
+      wheelBurst(stageOf(container));
+      settleSteps();
+      // Back from the hook to its page, then on to it again.
+      expect(events.filter(event => event.type === 'hook').map(event => (event as { direction: string }).direction)).toEqual(['forward', 'forward']);
+      expect(events.filter(event => event.type === 'hook-out').map(event => (event as { direction: string }).direction)).toEqual(['backward']);
+      // On to the question.
+      for (let step = 0; step < 12 && !(stepOf(container) ?? '').startsWith('line'); step += 1) {
+        wheelBurst(stageOf(container));
+        settleSteps();
+        finishWriting(container);
+      }
+      expect(events.some(event => event.type === 'question-line' && event.index === 0 && event.direction === 'forward')).toBe(true);
+    } finally {
+      stop();
+    }
   });
 });
 

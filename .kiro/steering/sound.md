@@ -48,6 +48,19 @@ Background music, generated: a quiet, slowly evolving **pad** under the whole st
 
 It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned down without losing the effects; its moods and timings are `SCORE` in `levels.ts`.
 
+## Story sounds (`sound-map.ts`, recipes in `voices.ts`)
+
+| Event | Sound |
+| --- | --- |
+| `chapter-enter` (forward) | A soft low swell (low-passed brown noise rising, a 55 Hz sine under it) |
+| `pen` | A faint scratch: a short tick of high-passed noise, with a little random pitch and level; throttled to about 12 a second at most, never one per letter |
+| `hook` (forward) | A deep drone fading in under it (two detuned low oscillators, low-passed), plus one low, distant boom as the text snaps in; the ambience and the score duck |
+| `hook-out` (forward) | A soft reversed whoosh (band-passed noise rising out of nothing, cut off softly); the drone fades out |
+| `roll-call-out` | A breathy hiss for each name, a little lower in pitch for each |
+| `chapter-enter` of a cued chapter | The ship's bell, once per visit, far away: an inharmonic bell of eight sine partials with a long decay, the upper ones dying first, low-passed. The Mary Celeste cues it at `s-found`, as the *Dei Gratia* sights her (`CaseAmbience.cues`) |
+| `question-line` | The drone stays low and still; each line adds a faint, low pulse |
+| `fork` | A paper slide |
+
 ## Quality bar
 
 - Nothing loud or sudden except the stamps. The master level is modest.

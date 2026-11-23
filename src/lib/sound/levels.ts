@@ -29,6 +29,10 @@ export const SOUND = {
   maxVoices: 14,
   /** The pen's scratch: never more ticks a second than this, however fast it writes. */
   penTicksPerSecond: 12,
+  /** The hook's drone: its level under a hook, its level held low under the question, and its release. */
+  drone: { level: 0.22, low: 0.1, release: 2.6 },
+  /** The ship's bell rings this long after its chapter enters: far away, after the swell. */
+  bellAfter: 1.4,
 } as const;
 
 /** The ambience's layers (ambience.ts): each one's level, and how the story's darkness moves them. */

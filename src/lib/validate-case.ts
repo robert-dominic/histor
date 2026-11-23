@@ -1,5 +1,5 @@
 // src/lib/validate-case.ts
-import type { AmbienceLayer, Case } from '@/types/case';
+import type { AmbienceCue, AmbienceLayer, Case } from '@/types/case';
 import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
@@ -300,6 +300,23 @@ export function validateCase(caseData: Case): string[] {
         }
       });
     }
+    // Its cues: each names a story chapter and a sound the sound can make
+    const cues: unknown = (ambience as { cues?: unknown }).cues;
+    if (cues !== undefined) {
+      if (!Array.isArray(cues)) {
+        errors.push('Field theme.ambience.cues: Must be an array');
+      } else {
+        const chapters = new Set(Array.isArray(caseData.story) ? caseData.story.map(section => section?.id) : []);
+        cues.forEach((cue: { chapter?: unknown; sound?: unknown } | null, j) => {
+          if (typeof cue?.chapter !== 'string' || !chapters.has(cue.chapter)) {
+            errors.push(`Field theme.ambience.cues[${j}].chapter: Must be the id of a story chapter`);
+          }
+          if (typeof cue?.sound !== 'string' || !AMBIENCE_CUES.includes(cue.sound)) {
+            errors.push(`Field theme.ambience.cues[${j}].sound: Must be one of ${AMBIENCE_CUES.join(', ')}`);
+          }
+        });
+      }
+    }
   }
 
   // Validate the optional chapter image: when present, src, alt and credit must be non-empty
@@ -505,6 +522,8 @@ interface MarkupField {
 /** Matches Malformed_Markup of the form {{ref:<Ref_Id>|<empty or whitespace>}} (4.3). */
 /** The ambience layers the sound can make (src/lib/sound/ambience.ts). */
 const AMBIENCE_LAYERS: readonly string[] = ['sea', 'wind', 'timber', 'room-tone', 'lamp-hum', 'distant-sea'] satisfies readonly AmbienceLayer[];
+/** The one-off sounds a chapter can cue. */
+const AMBIENCE_CUES: readonly string[] = ['ships-bell'] satisfies readonly AmbienceCue['sound'][];
 
 const EMPTY_LABEL_MARKUP =/^\{\{ref:[a-z0-9]+(?:-[a-z0-9]+)*\|\s*\}\}/;
 const ANY_BRACE = /[{}]/;

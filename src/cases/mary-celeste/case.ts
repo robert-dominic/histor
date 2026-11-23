@@ -443,7 +443,9 @@ export const maryCeleste: Case = {
     // the desk.
     ambience: {
       story: ['sea', 'wind', 'timber'],
-      desk: ['room-tone', 'lamp-hum', 'distant-sea']
+      desk: ['room-tone', 'lamp-hum', 'distant-sea'],
+      // A ship's bell, far away, once, as the Dei Gratia sights her.
+      cues: [{ chapter: 's-found', sound: 'ships-bell' }]
     }
   }
 };

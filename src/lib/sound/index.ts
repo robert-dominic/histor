@@ -9,7 +9,7 @@ import { SoundEngine } from '@/lib/sound/engine';
 import { SOUND } from '@/lib/sound/levels';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
-import { VOICES, vary, type Voice } from '@/lib/sound/voices';
+import { VOICES, drone, vary, type Voice } from '@/lib/sound/voices';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import type { AmbienceLayer } from '@/types/case';
 
@@ -27,12 +27,32 @@ export function playCue(engine: SoundEngine, cue: SoundCue): void {
   voice.play(ctx, out, { at: ctx.currentTime + 0.005 + (cue.delay ?? 0), gain: cue.gain ?? 1, pitch: (cue.pitch ?? 1) * vary(0.015) });
 }
 
+/** The hook's drone, while it plays: how to fade it out. */
+let stopDrone: ((release: number) => void) | null = null;
+
 /** Does what a row says. */
 export function playRow(engine: SoundEngine, row: SoundRow): void {
   if (row.duck !== undefined) {
     engine.duck(row.duck);
   }
+  if (row.drone === 'out' && stopDrone !== null) {
+    stopDrone(SOUND.drone.release);
+    stopDrone = null;
+  }
+  if ((row.drone === 'in' || row.drone === 'low') && stopDrone === null) {
+    const ctx = engine.context;
+    const out = engine.bus('effects');
+    if (ctx !== null && out !== null) {
+      stopDrone = drone(ctx, out, row.drone === 'in' ? SOUND.drone.level : SOUND.drone.low);
+    }
+  }
   row.cues?.forEach(cue => playCue(engine, cue));
+}
+
+/** Silences the drone at once, faded (the sound is off, or the place has changed). */
+function dropDrone(): void {
+  stopDrone?.(SOUND.toggleFade);
+  stopDrone = null;
 }
 
 /**
@@ -70,6 +90,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
         if (!engine.running) {
           ambience.stopAll();
           score.stop();
+          dropDrone();
         }
       }, (SOUND.toggleFade + 0.1) * 1000);
     }
@@ -80,6 +101,11 @@ export function startSound(engine: SoundEngine = sound): () => void {
       awayTimer = null;
     }
     const layers: readonly AmbienceLayer[] = event.place === 'away' ? [] : (event.ambience?.[event.place] ?? []);
+    if (event.place === 'story') {
+      // Each visit to the story plays its cues once.
+      memory.cues = event.ambience?.cues ?? [];
+      memory.played = new Set();
+    }
     const apply = () => {
       if (event.place === 'desk') {
         ambience.setDarkness(null, 0);
@@ -87,6 +113,9 @@ export function startSound(engine: SoundEngine = sound): () => void {
       ambience.set(engine.context, ambienceBus(), layers);
       score.set(engine.context, scoreBus(), event.place);
     };
+    if (event.place !== 'story') {
+      dropDrone();
+    }
     if (event.place === 'away') {
       awayTimer = setTimeout(apply, 50);
     } else {

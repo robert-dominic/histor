@@ -154,7 +154,129 @@ export function vary(amount: number): number {
   return 1 + (Math.random() * 2 - 1) * amount;
 }
 
-/** Every one-shot sound, by name. The story's and the desk's recipes are added below. */
-export const VOICES = {} satisfies Record<string, Voice>;
+// ---- The story's sounds (polish brief, B3)
+
+/** A chapter enters: a soft, low swell, like the sea lifting the ship. */
+const swell: Voice = {
+  seconds: 3.8,
+  play: (ctx, out, { at, gain, pitch }) => {
+    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 260 * pitch, sweepTo: 520 * pitch, peak: 0.34 * gain, attack: 1.4, hold: 0.2, release: 2.2 });
+    tone(ctx, out, { at, frequency: 55 * pitch, peak: 0.07 * gain, attack: 1.2, hold: 0.3, release: 2.2 });
+  },
+};
+
+/** The pen: one faint scratch, a tick of high-passed noise, a little different every time. */
+const scratch: Voice = {
+  seconds: 0.06,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'highpass', frequency: 3600 * pitch * vary(0.12), q: 0.8, peak: 0.05 * gain * vary(0.3), attack: 0.004, release: 0.035, rate: vary(0.1) }),
+};
+
+/** As the hook's text snaps in: one low, distant boom. */
+const boom: Voice = {
+  seconds: 3,
+  play: (ctx, out, { at, gain, pitch }) => {
+    tone(ctx, out, { at, frequency: 48 * pitch, glideTo: 31 * pitch, peak: 0.5 * gain, attack: 0.025, release: 2.7 });
+    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 170 * pitch, sweepTo: 70, peak: 0.4 * gain, attack: 0.02, release: 1.9 });
+  },
+};
+
+/** The hook decays: a soft whoosh played as if reversed, rising out of nothing and cut off softly. */
+const whoosh: Voice = {
+  seconds: 1.05,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 520 * pitch, sweepTo: 2100 * pitch, q: 0.9, peak: 0.14 * gain, attack: 0.85, release: 0.16 }),
+};
+
+/** A name un-written: a breathy hiss; the table lowers its pitch for each name. */
+const hiss: Voice = {
+  seconds: 0.45,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 2800 * pitch, sweepTo: 2000 * pitch, q: 1.3, peak: 0.075 * gain, attack: 0.06, hold: 0.04, release: 0.32 }),
+};
+
+/** The inharmonic partials of a bell (as ratios of its strike tone), and each one's level. */
+const BELL_PARTIALS: readonly [number, number][] = [
+  [0.5, 0.55],
+  [1, 1],
+  [1.19, 0.5],
+  [1.5, 0.35],
+  [2, 0.42],
+  [2.51, 0.2],
+  [2.66, 0.18],
+  [3.01, 0.12],
+];
+
+/** A ship's bell, far away: a few sine partials with a long decay, the upper ones dying first, through a low-pass. */
+const bell: Voice = {
+  seconds: 7,
+  play: (ctx, out, { at, gain, pitch }) => {
+    const far = ctx.createBiquadFilter();
+    far.type = 'lowpass';
+    far.frequency.value = 2400;
+    far.connect(out);
+    BELL_PARTIALS.forEach(([ratio, level]) =>
+      tone(ctx, far, { at, frequency: 392 * ratio * pitch, detune: (Math.random() - 0.5) * 6, peak: 0.05 * level * gain, attack: 0.004, release: 6.5 / Math.sqrt(ratio) })
+    );
+  },
+};
+
+/** A line of the question: a faint, low pulse. */
+const pulse: Voice = {
+  seconds: 1,
+  play: (ctx, out, { at, gain, pitch }) => tone(ctx, out, { at, frequency: 52 * pitch, peak: 0.2 * gain, attack: 0.08, release: 0.8 }),
+};
+
+/** The fork's modal: a sheet of paper slid across the desk. */
+const paperSlide: Voice = {
+  seconds: 0.55,
+  play: (ctx, out, { at, gain, pitch }) =>
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 1900 * pitch, sweepTo: 900 * pitch, q: 0.7, peak: 0.09 * gain, attack: 0.12, hold: 0.1, release: 0.3 }),
+};
+
+/**
+ * The hook's drone: two detuned low oscillators, fading in under the hook and held until it leaves. Not a one-shot:
+ * it returns a function that fades it out and stops it.
+ */
+export function drone(ctx: AudioContext, out: AudioNode, level: number): (release: number) => void {
+  const amp = ctx.createGain();
+  amp.gain.value = 0.0001;
+  const low = ctx.createBiquadFilter();
+  low.type = 'lowpass';
+  low.frequency.value = 240;
+  low.connect(amp).connect(out);
+  const at = ctx.currentTime;
+  const oscs = [41.2, 41.7, 82.1].map((frequency, index) => {
+    const osc = ctx.createOscillator();
+    osc.type = index === 2 ? 'sine' : 'triangle';
+    osc.frequency.value = frequency;
+    const part = ctx.createGain();
+    part.gain.value = index === 2 ? 0.25 : 0.5;
+    osc.connect(part).connect(low);
+    osc.start(at);
+    return osc;
+  });
+  amp.gain.setValueAtTime(0.0001, at);
+  amp.gain.linearRampToValueAtTime(level, at + 2.4);
+  return release => {
+    const now = ctx.currentTime;
+    amp.gain.cancelScheduledValues(now);
+    amp.gain.setValueAtTime(amp.gain.value, now);
+    amp.gain.linearRampToValueAtTime(0.0001, now + release);
+    oscs.forEach(osc => osc.stop(now + release + 0.05));
+  };
+}
+
+/** Every one-shot sound, by name. */
+export const VOICES = {
+  swell,
+  scratch,
+  boom,
+  whoosh,
+  hiss,
+  bell,
+  pulse,
+  'paper-slide': paperSlide,
+} satisfies Record<string, Voice>;
 
 export type SoundName = keyof typeof VOICES;

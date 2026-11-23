@@ -6,6 +6,7 @@
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { LINEAR, MOTION, STEP, tween } from '@/lib/motion';
+import { emitStoryEvent } from '@/lib/story-events';
 
 gsap.registerPlugin(SplitText);
 
@@ -50,6 +51,8 @@ export function createQuillWriter(point: HTMLElement, body: HTMLElement): QuillW
   const quillY = gsap.quickTo(point, 'y', { duration: STEP.fast / 2, ease: MOTION.hover.ease });
 
   const moveQuill = (letter: HTMLElement, jump: boolean) => {
+    // The pen's scratch (src/lib/sound throttles it).
+    emitStoryEvent({ type: 'pen' });
     const stage = point.parentElement;
     if (stage === null) {
       return;

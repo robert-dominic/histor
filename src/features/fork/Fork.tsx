@@ -12,6 +12,7 @@ import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import { MOTION_QUERIES, QUICK_OUT, STEP, tween } from '@/lib/motion';
+import { emitStoryEvent } from '@/lib/story-events';
 import type { Fork as ForkData } from '@/types/case';
 
 gsap.registerPlugin(useGSAP, SplitText);
@@ -54,6 +55,7 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
   useEffect(() => {
     if (open) {
       panelRef.current?.focus({ preventScroll: true });
+      emitStoryEvent({ type: 'fork' });
     }
   }, [open]);
 

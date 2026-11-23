@@ -211,6 +211,14 @@ export interface CaseAmbience {
   story: AmbienceLayer[];
   /** At the investigation desk, quieter, e.g. a room tone, a lamp's hum and the sea far away. */
   desk: AmbienceLayer[];
+  /** One-off sounds of the story: each plays once, the first time its chapter enters, e.g. a ship's bell. */
+  cues?: AmbienceCue[];
+}
+
+export interface AmbienceCue {
+  /** The id of a story chapter. */
+  chapter: string;
+  sound: 'ships-bell';
 }
 
 // ---------- Case ----------

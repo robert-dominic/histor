@@ -659,7 +659,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   [...names].reverse().forEach((name, order) => {
                     const label = name.querySelector('span')?.textContent ?? '';
                     timeline.call(
-                      () => emitStoryEvent({ type: 'roll-call-out', chapter: section.id, name: label, direction: 'forward' }),
+                      () => emitStoryEvent({ type: 'roll-call-out', chapter: section.id, name: label, order, direction: 'forward' }),
                       undefined,
                       (order / Math.max(1, names.length)) * STORY_PACE.unwrite
                     );
@@ -701,6 +701,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               }
               // Leaving a hook: its letters decay one at a time, in an uneven order, like ink drying away.
               if (from.kind === 'hook') {
+                timeline.call(() => emitStoryEvent({ type: 'hook-out', chapter: story[fromScene].id, direction: 'forward' }), undefined, 0);
                 const decaying = decayOrder[fromScene];
                 if (decaying.length > 0) {
                   const fade = MOTION['story.decay'].duration;
@@ -754,6 +755,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               const { page, shade, corners, names, dim, figure, hook, slip } = parts[fromScene];
               const quiet = [page, shade, corners].filter((element): element is HTMLElement => element !== null);
               let at = 0;
+              emitStoryEvent({ type: 'hook-out', chapter: story[fromScene].id, direction: 'backward' });
               if (hook !== null) {
                 timeline.to(hook, { opacity: 0, ...quick }, at);
                 at += quick.duration;

@@ -67,6 +67,20 @@ describe('validateCase: theme.ambience', () => {
   });
 
   test('the Mary Celeste: the sea, the wind and the timber under the story; a quiet room at the desk', () => {
-    expect(maryCeleste.theme.ambience).toEqual({ story: ['sea', 'wind', 'timber'], desk: ['room-tone', 'lamp-hum', 'distant-sea'] });
+    expect(maryCeleste.theme.ambience).toMatchObject({ story: ['sea', 'wind', 'timber'], desk: ['room-tone', 'lamp-hum', 'distant-sea'] });
+  });
+
+  test('cues: each names a story chapter and a known sound', () => {
+    expect(validateCase(createCase({ story: [], desk: [], cues: [{ chapter: 's-one', sound: 'ships-bell' }] }))).toEqual([]);
+    expect(validateCase(createCase({ story: [], desk: [], cues: [{ chapter: 's-none', sound: 'gong' }] }))).toEqual([
+      'Field theme.ambience.cues[0].chapter: Must be the id of a story chapter',
+      'Field theme.ambience.cues[0].sound: Must be one of ships-bell',
+    ]);
+    expect(validateCase(createCase({ story: [], desk: [], cues: 'bell' }))).toEqual(['Field theme.ambience.cues: Must be an array']);
+  });
+
+  test('the Mary Celeste: a ship\'s bell as the Dei Gratia sights her (s-found), and the case validates', () => {
+    expect(maryCeleste.theme.ambience?.cues).toEqual([{ chapter: 's-found', sound: 'ships-bell' }]);
+    expect(validateCase(maryCeleste)).toEqual([]);
   });
 });
