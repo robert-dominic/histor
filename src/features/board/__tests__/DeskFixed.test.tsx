@@ -42,7 +42,7 @@ describe('the desktop desk', () => {
   test('is one screen: a grid of a fixed-height header, the board and a roomier floor, with nothing that scrolls', () => {
     renderDesk();
     expect(desk().dataset.desk).toBe('fixed');
-    for (const name of ['h-svh', 'grid', 'overflow-hidden', 'grid-rows-[3.5rem_minmax(0,55fr)_minmax(0,45fr)]']) {
+    for (const name of ['h-svh', 'grid', 'overflow-hidden', 'grid-rows-[2.5rem_minmax(0,55fr)_minmax(0,45fr)]']) {
       expect(desk().className).toContain(name);
     }
     expect(desk().querySelector('[data-desk="board-row"]')).not.toBeNull();
@@ -105,10 +105,15 @@ describe('the desktop desk', () => {
     expect(desk().querySelector('header')?.textContent).not.toContain('You can close the case');
   });
 
-  test('two quiet labels: "Theories" above the board and "Case files · 23" over the floor, from the data', () => {
+  test('two quiet labels: "Theories" in the top bar and "Case files · 23" over the floor, from the data', () => {
     renderDesk();
-    const theories = desk().querySelector<HTMLElement>('[data-desk="board-row"] [data-board="label"]')!;
+    // "Theories" is in the top bar, level with the stamp; the board holds only the notes (its heading is for screen
+    // readers).
+    const theories = desk().querySelector<HTMLElement>('header [data-desk="theories-label"]')!;
     expect(theories.textContent).toBe('Theories');
+    const boardLabel = desk().querySelector<HTMLElement>('[data-desk="board-row"] [data-board="label"]')!;
+    expect(boardLabel.className).toBe('sr-only');
+    expect(boardLabel.textContent?.trim()).toBe('Theories');
     const evidence = desk().querySelector<HTMLElement>('[data-desk="floor-row"] [data-desk="floor-label"]')!;
     expect(evidence.textContent).toBe(`Case files · ${maryCeleste.evidence.length}`);
     for (const label of [theories, evidence]) {

@@ -40,6 +40,12 @@ import { isDeskGuideOff } from '@/lib/desk-guide-seen';
 
 gsap.registerPlugin(useGSAP);
 
+/**
+ * The one-screen desk's top bar (polish brief, A3): `barRem` tall, `gainedRem` less than it used to be. The height it
+ * gives back goes to the board, not the floor.
+ */
+const DESK_TOP = { barRem: 2.5, gainedRem: 1 } as const;
+
 /** The progress line, in the app's voice. */
 function progressLine(opened: number, total: number, threshold: number): string {
   const count = `${opened} of ${total} files opened.`;
@@ -162,12 +168,14 @@ function DeskScreen() {
     const measure = () => {
       const floor = root.querySelector<HTMLElement>('[data-board="floor"]');
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const room = root.clientHeight - (parseFloat(getComputedStyle(root).paddingTop) || 0) - 3.5 * rem;
+      const room = root.clientHeight - (parseFloat(getComputedStyle(root).paddingTop) || 0) - DESK_TOP.barRem * rem;
       const width = floor?.clientWidth ?? 0;
       if (room <= 0 || width <= 0) {
         return;
       }
-      const next = deskSplit(room, width, fileCount, { width: 7.75 * rem, height: 6 * rem }).floorRow;
+      // The floor is shared out as if the top bar were as tall as it used to be, so the height the tighter bar gives
+      // back all goes to the board (polish brief, A3). The floor keeps what its labels need at 12px.
+      const next = deskSplit(room - DESK_TOP.gainedRem * rem, width, fileCount, { width: 7.75 * rem, height: 6 * rem }).floorRow;
       setFloorRow(current => (current === next ? current : next));
     };
     measure();
@@ -404,10 +412,10 @@ function DeskScreen() {
         aria-labelledby="board-title"
         // Floor-first: the floor gets the height its folders need at their smallest (labels at 12px), the board the
         // rest (desk-split.ts). Until it is measured, about 55/45.
-        style={desktop && floorRow !== null ? { gridTemplateRows: `3.5rem minmax(0, 1fr) ${floorRow}px` } : undefined}
+        style={desktop && floorRow !== null ? { gridTemplateRows: `${DESK_TOP.barRem}rem minmax(0, 1fr) ${floorRow}px` } : undefined}
         className={
           desktop
-            ? 'relative isolate grid h-svh grid-rows-[3.5rem_minmax(0,55fr)_minmax(0,45fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
+            ? 'relative isolate grid h-svh grid-rows-[2.5rem_minmax(0,55fr)_minmax(0,45fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
             : 'relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink'
         }
       >
@@ -419,10 +427,15 @@ function DeskScreen() {
                 title: the one "Case files" label is over the floor (its heading stays for screen readers). Above the
                 lamp's shadow, so all of it is always readable. Its height is fixed, so nothing that comes or goes in
                 it (a hint, the stamp) changes the size of the board or the floor, and no folder moves. */}
-            <header className="relative z-[21] flex h-14 items-center gap-x-6 px-8">
+            <header className="relative z-[21] flex h-10 items-center gap-x-6 px-8">
               <h2 id="board-title" className="sr-only">
                 The case files
               </h2>
+              {/* The board's label, on the left of the bar, level with the stamp on the right; over the notes' left edge.
+                  The board's own heading is for screen readers. */}
+              <p aria-hidden="true" data-desk="theories-label" className="ml-4 shrink-0 font-voice text-[0.6875rem] tracking-[0.2em] text-night-ink/65 uppercase">
+                Theories
+              </p>
               <div className="min-w-0 flex-1 [&_[data-hint=desk]]:mt-0 [&_[data-hint=desk]]:min-h-6">
                 <DeskHints />
               </div>
