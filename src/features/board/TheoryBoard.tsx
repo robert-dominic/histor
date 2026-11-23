@@ -8,9 +8,9 @@ import { useId, useRef, useState } from 'react';
 import HangingTab, { type SlipReading } from '@/features/board/HangingTab';
 import TheoryCard from '@/features/board/TheoryCard';
 import TheoryNote from '@/features/board/TheoryNote';
+import TheoryPile from '@/features/board/TheoryPile';
 import Threads from '@/features/board/Threads';
 import type { DeskLayout } from '@/lib/desk';
-import { useTabFit } from '@/lib/use-tab-fit';
 import { SMALL_PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Case } from '@/types/case';
 
@@ -29,31 +29,14 @@ interface TheoryBoardProps {
   /** e.g. "/case/mary-celeste/files". */
   filesHref: string;
   slips: DeskSlips;
-  /** The one-screen desk: the board fills the row it is given, and the hanging files overlap to fit it. */
+  /** The one-screen desk: the board fills the row it is given, and the files pinned to a theory lie in a tidy pile
+   * under its note (TheoryPile), so the board never grows. */
   fitted?: boolean;
 }
 
 export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted = false }: TheoryBoardProps) {
   const isSmallPhone = useMediaQuery(SMALL_PHONE_QUERY);
   const feltRef = useRef<HTMLElement>(null);
-  // Fitted: how much the files under each note overlap, so that the fullest column still fits the row.
-  useTabFit(
-    feltRef,
-    felt => {
-      if (!fitted) {
-        return [];
-      }
-      const style = getComputedStyle(felt);
-      const inner = felt.clientHeight - parseFloat(style.paddingTop || '0') - parseFloat(style.paddingBottom || '0');
-      return [...felt.querySelectorAll<HTMLElement>('[data-board="column"]')].map(column => {
-        const note = column.querySelector<HTMLElement>('[data-board="theory"]');
-        const tabs = [...column.querySelectorAll<HTMLElement>('[data-board="tab"] > button')];
-        // The tab list starts one rem below its note (mt-4).
-        return { count: tabs.length, tabHeight: tabs[0]?.offsetHeight ?? 0, available: inner - (note?.offsetHeight ?? 0) - 16 };
-      });
-    },
-    `${fitted}:${caseData.theories.map(theory => layout.byTheory.get(theory.id)?.length ?? 0).join(',')}`
-  );
   // Small phones: the theory whose claim and files are shown. Until the user taps one, the theory of an open
   // slip is shown, so the slip of a file just pinned can be seen.
   const [chosen, setChosen] = useState<string | null | undefined>(undefined);
@@ -146,7 +129,18 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
         {caseData.theories.map(theory => (
           <div key={theory.id} data-board="column" className="w-[15rem] shrink-0 snap-start lg:w-auto">
             <TheoryNote theory={theory} className="relative z-[2]" fitted={fitted} />
-            {tabsOf(theory.id)}
+            {fitted ? (
+              <TheoryPile
+                theoryId={theory.id}
+                theoryTitle={theory.title}
+                files={layout.byTheory.get(theory.id) ?? []}
+                numberOf={numberOf}
+                filesHref={filesHref}
+                slips={slips}
+              />
+            ) : (
+              tabsOf(theory.id)
+            )}
           </div>
         ))}
       </div>

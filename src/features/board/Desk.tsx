@@ -22,6 +22,7 @@ import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
 import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
+import { carryOut } from '@/features/board/pile';
 import type { SlipReading } from '@/features/board/HangingTab';
 import { Flip, clearFlight, flightFor, pendingFlight, recordFlight, recordTabs, takeTabs } from '@/features/board/flight';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
@@ -197,6 +198,17 @@ function DeskScreen() {
       if (home === null) {
         return;
       }
+      // A pinned file lies in its theory's pile, its tab inside the pile's closed panel: the focus goes back to the
+      // pile, and the pile takes the folder with a small landing instead of a flight to a tab nobody can see.
+      const pile = home.closest('[hidden]') !== null ? home.closest<HTMLElement>('[data-board="pile"]') : null;
+      if (pile !== null) {
+        const button = pile.querySelector<HTMLElement>('[data-board="pile-button"]');
+        button?.focus({ preventScroll: true });
+        if (flight.state !== null && button !== null) {
+          gsap.fromTo(button, { scale: 1.05 }, { scale: 1, ...tween('paper.land'), clearProps: 'scale' });
+        }
+        return;
+      }
       home.querySelector<HTMLElement>('[data-focus-home]')?.focus({ preventScroll: true });
       if (flight.state !== null) {
         // It flies back to its floor place or its tab (paper.move), then settles there with a small overshoot (paper.land).
@@ -330,6 +342,8 @@ function DeskScreen() {
           ? { from: 'tray' }
           : { from: 'board', theoryId: tab.closest('[data-board="tabs"]')?.getAttribute('data-theory-id') ?? '' },
       restingScale: () => 1,
+      onLift: tab => carryOut(tab, true),
+      onLetGo: tab => carryOut(tab, false),
       onDrop: (tab, outcome) => handleTabDropRef.current(tab, outcome),
     });
   }, [desktop, fileOpen, tabsNow, caseData.theories]);

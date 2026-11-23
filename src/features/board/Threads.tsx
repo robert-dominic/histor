@@ -49,7 +49,10 @@ export default function Threads({ threads, fresh = null }: ThreadsProps) {
 
     /** Places one thread between its note's pin and its tab's pin. */
     const drawOne = (path: SVGPathElement, origin: DOMRect) => {
-      const tabPin = board.querySelector(`[data-board="tab"][data-evidence-id="${path.dataset.evidenceId}"] [data-board="tab-pin"]`);
+      // On the desktop desk a pinned file lies in its theory's pile: the thread ends at the pin on the pile's top file.
+      const tabPin =
+        board.querySelector(`[data-board="pile"][data-files~="${path.dataset.evidenceId}"] [data-board="pile-top"] [data-board="tab-pin"]`) ??
+        board.querySelector(`[data-board="tab"][data-evidence-id="${path.dataset.evidenceId}"] [data-board="tab-pin"]`);
       const anchor = board.querySelector(`[data-board="theory"][data-theory-id="${path.dataset.theoryId}"] [data-board="anchor"]`);
       if (tabPin === null || anchor === null) {
         path.removeAttribute('d');

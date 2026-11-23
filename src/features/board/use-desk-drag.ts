@@ -35,6 +35,10 @@ export interface DeskDragConfig {
   restingScale: (element: HTMLElement) => number;
   /** Told what a drop does, with the folder as it was let go (still where it was dropped, still small over a note). */
   onDrop: (element: HTMLElement, outcome: DropOutcome) => void;
+  /** Told when a folder is picked up, before it moves. */
+  onLift?: (element: HTMLElement) => void;
+  /** Told when a folder is let go, before `onDrop`. */
+  onLetGo?: (element: HTMLElement) => void;
 }
 
 /** True when this drop target is a theory note (not the tray, the board or the floor). */
@@ -64,6 +68,7 @@ export function createDeskDrag(config: DeskDragConfig): () => void {
       targets = dropTargets();
       hot = null;
       overNote = false;
+      config.onLift?.(this.target as HTMLElement);
       gsap.set(this.target, { zIndex: HELD_Z });
       document.documentElement.dataset.dragging = 'true';
     },
@@ -86,6 +91,7 @@ export function createDeskDrag(config: DeskDragConfig): () => void {
       const element = this.target as HTMLElement;
       clearHotTargets(targets);
       delete document.documentElement.dataset.dragging;
+      config.onLetGo?.(element);
       const place = { x: Number(gsap.getProperty(element, 'x')), y: Number(gsap.getProperty(element, 'y')) };
       const outcome = dropOutcome(config.sourceOf(element), dropTargetFor(hot, config.theories, place));
       hot = null;

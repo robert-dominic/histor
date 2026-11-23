@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/features/board/__tests__/DeskFixed.test.tsx
-// The desktop desk is one fixed screen: a grid of header, board (about 55%) and floor (about 45%), a page that
-// never scrolls, and files that overlap to fit. Below 1024px the phone desk scrolls as before.
+// The desktop desk is one fixed screen: a grid of a fixed-height header, board (about 46%) and floor (about 54%), a
+// page that never scrolls, and pinned files in tidy piles. Below 1024px the phone desk scrolls as before.
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -84,18 +84,19 @@ describe('the desktop desk', () => {
     expect(screen.queryByText('Set aside')).toBeNull();
   });
 
-  test('the files hanging under the notes overlap by a measured amount, written as a CSS variable', () => {
-    const state = {
-      opened: maryCeleste.evidence.slice(0, 6).map(item => item.id),
-      pins: Object.fromEntries(maryCeleste.evidence.slice(0, 6).map(item => [item.id, maryCeleste.theories[0].id])),
-      verdict: null,
-    };
-    localStorage.setItem(KEY, JSON.stringify(state));
+  test('the files pinned to a theory lie in one pile under its note, not a column: the board never grows', () => {
+    const six = maryCeleste.evidence.slice(0, 6).map(item => item.id);
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({ opened: six, pins: Object.fromEntries(six.map(id => [id, maryCeleste.theories[0].id])), verdict: null })
+    );
     renderDesk();
     const board = desk().querySelector('[data-board="board"]') as HTMLElement;
-    expect(board.querySelectorAll('[data-board="tab"]')).toHaveLength(6);
-    // jsdom has no layout, so the room is zero and the overlap is the least it can be.
-    expect(board.style.getPropertyValue('--tab-overlap')).toBe('6px');
+    expect(board.querySelectorAll('[data-board="pile"]')).toHaveLength(1);
+    // The tabs are only in the pile's panel, closed until it is opened.
+    const panel = board.querySelector<HTMLElement>('[data-board="pile-panel"]')!;
+    expect(panel.hidden).toBe(true);
+    expect(panel.querySelectorAll('[data-board="tab"]')).toHaveLength(6);
   });
 });
 
