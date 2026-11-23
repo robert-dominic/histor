@@ -15,3 +15,6 @@ export interface PortalContextValue {
 
 /** Null outside a PortalProvider: text is then rendered without portals. */
 export const PortalContext = createContext<PortalContextValue | null>(null);
+
+/** Hovering, with a mouse: how long to rest on a name before its card opens, and the grace before it closes (ms). */
+export const PORTAL_HOVER = { openAfterMs: 300, graceMs: 250 } as const;

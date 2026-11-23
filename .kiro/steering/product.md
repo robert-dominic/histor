@@ -37,7 +37,7 @@ A telling of what the record says, in steps: one gesture (a scroll, a swipe, a k
 - Told in short sections. Each section ends on a moment of curiosity (its hook) that pulls the user on.
 - The screen grows darker as the story goes on.
 - Before chapter 1 the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. It opens once per page load however the reader arrives (after the legend intro, on a return visit, a reload or a direct link), and each time the intro's scroll cue is pressed. The case header carries the title. No gesture moves past the modal. Each chapter is a page beside its image, written by a pen; the next step brings the chapter's hook, then the next chapter.
-- Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
+- Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference (with a mouse, resting on the name opens it too, and a click pins it). Portals work the same in the story and inside the case files. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
 - Job: give a newcomer full context, so nobody finishes the story confused.
 
 ### 4. The question and the fork

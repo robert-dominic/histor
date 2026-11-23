@@ -42,6 +42,13 @@ interface PortalCardProps {
   trigger: HTMLElement;
   /** Called once the card has finished closing. */
   onClosed: () => void;
+  /**
+   * Opened by resting a mouse on the name: it does not take the focus, and has no backdrop to block the page (a
+   * press outside closes it). False once it is clicked open, or pinned by a click.
+   */
+  hover?: boolean;
+  /** Changes when the provider asks the card to close (the pointer has left it): it then closes with its exit. */
+  closeSignal?: number;
 }
 
 interface Drag {
@@ -52,7 +59,7 @@ interface Drag {
   offset: number;
 }
 
-export default function PortalCard({ reference, sources, trigger, onClosed }: PortalCardProps) {
+export default function PortalCard({ reference, sources, trigger, onClosed, hover = false, closeSignal = 0 }: PortalCardProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -123,10 +130,13 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
     };
   }, []);
 
-  // Focus moves into the card when it opens.
+  // Focus moves into the card when it opens, or when a card opened by hovering is clicked open. A card the pointer
+  // opened leaves the focus where it is.
   useEffect(() => {
-    cardRef.current?.focus({ preventScroll: true });
-  }, []);
+    if (!hover) {
+      cardRef.current?.focus({ preventScroll: true });
+    }
+  }, [hover]);
 
   useGSAP(
     () => {
@@ -162,8 +172,10 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
       return;
     }
     closingRef.current = true;
-    // Focus goes back to the word at once, not after the exit animation.
-    trigger.focus({ preventScroll: true });
+    // Focus goes back to the word at once, not after the exit animation (unless the card never took it).
+    if (cardRef.current?.contains(document.activeElement) || document.activeElement === cardRef.current) {
+      trigger.focus({ preventScroll: true });
+    }
 
     const card = cardRef.current;
     if (card === null || typeof window.matchMedia !== 'function') {
@@ -186,6 +198,14 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
     },
     [onClosed, trigger]
   );
+
+  // The provider asks it to close (the pointer has moved away from a card it opened).
+  const firstSignal = useRef(closeSignal);
+  useEffect(() => {
+    if (closeSignal !== firstSignal.current) {
+      close();
+    }
+  }, [closeSignal, close]);
 
   // Escape closes the card, wherever the focus is.
   useEffect(() => {
@@ -269,7 +289,8 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
         data-portal="backdrop"
         aria-hidden="true"
         onClick={() => close()}
-        className="fixed inset-0 z-40 bg-night/45 lg:bg-transparent"
+        data-hover={String(hover)}
+        className="fixed inset-0 z-40 bg-night/45 data-[hover=true]:pointer-events-none lg:bg-transparent"
       />
 
       <div
@@ -279,6 +300,7 @@ export default function PortalCard({ reference, sources, trigger, onClosed }: Po
         aria-labelledby={titleId}
         tabIndex={-1}
         data-portal="card"
+        data-opened-by={hover ? 'hover' : 'press'}
         data-more="false"
         onKeyDown={handleKeyDown}
         data-lenis-prevent

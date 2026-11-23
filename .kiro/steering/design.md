@@ -107,6 +107,7 @@ Each case sets its own accent, texture, video and sounds in its folder (`theme.c
 
 ## Interaction
 
+- **Portals work the same everywhere** (the story, inside an open file, inside a card): the provider handles their triggers by delegation, so a name keeps working after an animation rebuilds the text around it. With a fine pointer, resting on a name for about 0.3s opens its card without taking the focus; moving onto the card keeps it open, and moving away from both closes it after a short grace (`PORTAL_HOVER`). A click pins it open. Touch and the keyboard tap or press as before.
 - Every clickable element (buttons, links, Skip, Continue) shows `cursor: pointer` on hover devices. Tailwind v4 no longer does this for buttons, so the rule is set globally in `src/index.css`. Do not override it per component.
 
 ## Images and video

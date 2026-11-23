@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // src/features/portals/__tests__/Portals.test.tsx
 // A portal opens from its word on click and on Enter, shows the reference, and closes on Escape, returning focus.
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import PortalProvider from '@/features/portals/PortalProvider';
 import PortalText from '@/features/portals/PortalText';
@@ -399,3 +400,104 @@ describe('Portal card: keyboard', () => {
     expect(document.activeElement).toBe(within(card).getByRole('link', { name: 'A linked source' }));
   });
 });
+
+describe('Portals: resting a mouse on a name (story-steps 4)', () => {
+  /** A desktop with a mouse: a fine pointer that can hover. */
+  function stubMouse() {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('hover: hover') || query.includes('no-preference') || query.includes('min-width: 1024px'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }))
+    );
+  }
+  const over = (element: Element, from: Element | null = document.body) =>
+    fireEvent.pointerOver(element, { pointerType: 'mouse', relatedTarget: from });
+  const out = (element: Element, to: Element | null = document.body) =>
+    fireEvent.pointerOut(element, { pointerType: 'mouse', relatedTarget: to });
+  const card = () => document.querySelector<HTMLElement>('[data-portal="card"]');
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    stubMouse();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('about 0.3s on a name opens its card, without taking the focus or blocking the page', () => {
+    renderText();
+    const name = trigger('the captain');
+    over(name);
+    act(() => vi.advanceTimersByTime(200));
+    expect(card()).toBeNull();
+    act(() => vi.advanceTimersByTime(150));
+    expect(card()).not.toBeNull();
+    expect(card()!.dataset.openedBy).toBe('hover');
+    expect(card()!.contains(document.activeElement)).toBe(false);
+    expect(document.querySelector<HTMLElement>('[data-portal="backdrop"]')?.className).toContain('data-[hover=true]:pointer-events-none');
+  });
+
+  test('passing over a name without resting opens nothing', () => {
+    renderText();
+    const name = trigger('the captain');
+    over(name);
+    act(() => vi.advanceTimersByTime(100));
+    out(name);
+    act(() => vi.advanceTimersByTime(500));
+    expect(card()).toBeNull();
+  });
+
+  test('moving onto the card keeps it open; moving away from both closes it after a short grace', () => {
+    renderText();
+    const name = trigger('the captain');
+    over(name);
+    act(() => vi.advanceTimersByTime(350));
+    out(name, card());
+    over(card()!, name);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(card()).not.toBeNull();
+    out(card()!);
+    act(() => vi.advanceTimersByTime(100));
+    expect(card()).not.toBeNull();
+    act(() => vi.advanceTimersByTime(300));
+    // It leaves with its exit, then is gone.
+    act(() => vi.advanceTimersByTime(1000));
+    act(() => {
+      gsapSettle();
+    });
+    expect(card()).toBeNull();
+  });
+
+  test('a click pins it open: it takes the focus, and moving away no longer closes it', () => {
+    renderText();
+    const name = trigger('the captain');
+    over(name);
+    act(() => vi.advanceTimersByTime(350));
+    fireEvent.click(name);
+    expect(card()!.dataset.openedBy).toBe('press');
+    expect(document.activeElement).toBe(card());
+    out(name);
+    act(() => vi.advanceTimersByTime(2000));
+    expect(card()).not.toBeNull();
+  });
+
+  test('touch never opens a card by hovering', () => {
+    renderText();
+    fireEvent.pointerOver(trigger('the captain'), { pointerType: 'touch' });
+    act(() => vi.advanceTimersByTime(1000));
+    expect(card()).toBeNull();
+  });
+});
+
+/** Runs GSAP's tweens now under way to their end (the card's exit). */
+function gsapSettle() {
+  gsap.globalTimeline.getChildren(true, true, false).forEach(child => child.progress(1));
+}

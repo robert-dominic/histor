@@ -212,3 +212,33 @@ describe('files already read, and reduced motion', () => {
     expect(gsap.getTweensOf('[data-file-nib="quill-body"]')).toHaveLength(0);
   });
 });
+
+describe('portals inside an opened file (story-steps 4)', () => {
+  const withPortal = CASE.evidence.find(evidence => JSON.stringify(evidence).includes('{{ref:'))!;
+
+  test('after the writing reveal has rebuilt the text, a portal name in the file still opens its card', () => {
+    renderAt(`${BASE}/files/${withPortal.id}`);
+    // The reveal runs to its end: its line splitting is put back, and the text around the names is rebuilt.
+    timelineOf().progress(1);
+    const names = [...document.querySelectorAll<HTMLElement>('[data-file="sheet"] [data-portal-trigger]')];
+    expect(names.length).toBeGreaterThan(0);
+    fireEvent.click(names[0]);
+    expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
+    // The file stays open behind it.
+    expect(sheet()).not.toBeNull();
+  });
+
+  test('a name whose element was replaced (as a split and revert does) still opens, by click and by Enter', () => {
+    renderAt(`${BASE}/files/${withPortal.id}`);
+    timelineOf().progress(1);
+    const name = document.querySelector<HTMLElement>('[data-file="sheet"] [data-portal-trigger]')!;
+    const paragraph = name.parentElement!;
+    // The same HTML, new elements: React's own handlers would be gone.
+    const html = paragraph.innerHTML;
+    paragraph.innerHTML = html;
+    const rebuilt = paragraph.querySelector<HTMLElement>('[data-portal-trigger]')!;
+    expect(rebuilt).not.toBe(name);
+    fireEvent.keyDown(rebuilt, { key: 'Enter' });
+    expect(document.querySelector('[data-portal="card"]')).not.toBeNull();
+  });
+});
