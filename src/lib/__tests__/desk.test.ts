@@ -61,11 +61,19 @@ describe('deskLayout', () => {
     expect(layout.openedCount).toBe(4);
   });
 
-  test('a pin on a file that was never opened leaves it sealed in the pile', () => {
-    const layout = deskLayout(maryCeleste, state([], { 'e-lifeboat': 't-sinking' }));
+  test('a sealed file can be pinned: it hangs on the board, still sealed, and does not count as opened', () => {
+    const layout = deskLayout(maryCeleste, state([], { 'e-lifeboat': 't-sinking', 'e-galley': 'none' }));
 
-    expect(layout.byTheory.get('t-sinking')).toEqual([]);
-    expect(layout.folders.find(folder => folder.evidence.id === 'e-lifeboat')?.place).toEqual({ kind: 'pile', opened: false });
+    expect(ids(layout.byTheory.get('t-sinking') ?? [])).toEqual(['e-lifeboat']);
+    expect(ids(layout.aside)).toEqual(['e-galley']);
+    expect(layout.folders.find(folder => folder.evidence.id === 'e-lifeboat')?.place).toEqual({
+      kind: 'board',
+      theoryId: 't-sinking',
+      opened: false,
+    });
+    expect(layout.folders.find(folder => folder.evidence.id === 'e-galley')?.place).toEqual({ kind: 'aside', opened: false });
+    expect(layout.openedCount).toBe(0);
+    expect(layout.pile.map(evidence => evidence.id)).not.toContain('e-lifeboat');
   });
 
   test('unknown ids are ignored, and the threshold opens the seal', () => {

@@ -32,9 +32,8 @@ export type DropTarget =
 
 /** What a drop does. */
 export type DropOutcome =
-  /** A sealed floor file onto a theory or the tray: it opens and is read first, then it flies there (Q6). */
-  | { kind: 'reveal-then-pin'; target: PinTarget }
-  /** Pin at once: a re-pin, a file put aside, an opened floor file onto a theory (Q6), the open file. */
+  /** Pin at once: a floor file (sealed or opened) onto a theory or the tray, a re-pin, a file put aside, the open
+   * file. A sealed file stays sealed: pinning never opens it. */
   | { kind: 'pin'; target: PinTarget }
   /** A floor file onto the board outside any note: it opens for reading. */
   | { kind: 'open' }
@@ -57,11 +56,9 @@ export function dropOutcome(source: DragSource, target: DropTarget): DropOutcome
     case 'floor':
       switch (target.kind) {
         case 'theory':
-          return source.sealed
-            ? { kind: 'reveal-then-pin', target: target.theoryId }
-            : { kind: 'pin', target: target.theoryId };
+          return { kind: 'pin', target: target.theoryId };
         case 'tray':
-          return source.sealed ? { kind: 'reveal-then-pin', target: 'none' } : { kind: 'pin', target: 'none' };
+          return { kind: 'pin', target: 'none' };
         case 'board':
           return { kind: 'open' };
         case 'floor':

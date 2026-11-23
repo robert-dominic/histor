@@ -30,10 +30,12 @@ export function scatter(id: string, maxDegrees: number, maxOffset: number): { ro
 
 /** Where a folder lies on the desk. */
 export type FolderPlace =
-  /** Sealed, or opened but not yet pinned: back on top of the pile, stamped (D1). */
+  /** Not pinned: on the floor (the pile on phones), sealed or stamped (D1). */
   | { kind: 'pile'; opened: boolean }
-  | { kind: 'board'; theoryId: string }
-  | { kind: 'aside' };
+  /** Pinned to a theory: sealed or opened (a sealed file can be pinned without opening it). */
+  | { kind: 'board'; theoryId: string; opened: boolean }
+  /** Pinned to "None of them": sealed or opened. */
+  | { kind: 'aside'; opened: boolean };
 
 export interface DeskFolder {
   evidence: Evidence;
@@ -58,8 +60,9 @@ export interface DeskLayout {
 
 /**
  * Where every folder lies, worked out from the investigation, never stored.
- * A file is on the board only if it is opened and pinned to a theory of the case; in the aside tray only if it
- * is opened and pinned to "none"; in the pile otherwise. Ids that are not in the case are ignored. Never throws.
+ * A file is on the board if it is pinned to a theory of the case, in the aside tray if it is pinned to "none", and
+ * in the pile otherwise. Pinning does not need the file to be opened: a sealed file can be pinned and stays sealed.
+ * Ids that are not in the case are ignored. Never throws.
  */
 export function deskLayout(caseData: Case, state: InvestigationState): DeskLayout {
   const theoryIds = new Set(caseData.theories.map(theory => theory.id));
@@ -92,11 +95,11 @@ export function deskLayout(caseData: Case, state: InvestigationState): DeskLayou
     const isOpen = opened.has(evidence.id);
     const target = pins.get(evidence.id);
     let place: FolderPlace;
-    if (isOpen && target === 'none') {
-      place = { kind: 'aside' };
+    if (target === 'none') {
+      place = { kind: 'aside', opened: isOpen };
       aside.push(evidence);
-    } else if (isOpen && target !== undefined) {
-      place = { kind: 'board', theoryId: target };
+    } else if (target !== undefined) {
+      place = { kind: 'board', theoryId: target, opened: isOpen };
       byTheory.get(target)?.push(evidence);
     } else {
       place = { kind: 'pile', opened: isOpen };

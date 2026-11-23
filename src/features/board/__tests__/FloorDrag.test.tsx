@@ -150,22 +150,22 @@ describe('Draggables on the floor', () => {
     expect(Number(gsap.getProperty(folder, 'scale'))).toBeCloseTo(resting, 3);
   });
 
-  test('a sealed folder dropped on a note: read first, then pinned (reveal-then-pin)', () => {
+  test('a sealed folder dropped on a note: pinned at once, without opening it', () => {
     stubMedia();
     renderFloor();
     const folder = folders()[2];
     dragTo(folder, screen.getByTestId(`note-${NOTE}`)).over();
     expect(onDrop).toHaveBeenCalledTimes(1);
     expect(onDrop.mock.calls[0][0]).toBe(folder.dataset.evidenceId);
-    expect(onDrop.mock.calls[0][1]).toEqual({ kind: 'reveal-then-pin', target: NOTE });
+    expect(onDrop.mock.calls[0][1]).toEqual({ kind: 'pin', target: NOTE });
     expect(onDrop.mock.calls[0][2]).toBe(folder);
   });
 
-  test('a sealed folder dropped on the tray: read first, then set aside', () => {
+  test('a sealed folder dropped on the tray: set aside at once, still sealed', () => {
     stubMedia();
     renderFloor();
     dragTo(folders()[0], screen.getByTestId('tray')).over();
-    expect(onDrop.mock.calls[0][1]).toEqual({ kind: 'reveal-then-pin', target: 'none' });
+    expect(onDrop.mock.calls[0][1]).toEqual({ kind: 'pin', target: 'none' });
   });
 
   test('a folder dropped on the board outside any note opens', () => {
@@ -262,39 +262,17 @@ describe('a drop in the whole app', () => {
   const saved = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
   const note = () => document.querySelector<HTMLElement>(`[data-board="theory"][data-drop-target="${NOTE}"]`)!;
 
-  test('a sealed folder on a note opens the file with the target waiting, then pins it once the reveal is read', async () => {
+  test('a sealed folder on a note is pinned at once: no file opens, and it stays sealed', async () => {
     renderDesk();
     const id = 'e-lifeboat';
     act(() => dragTo(folderOf(id), note()).over());
-    expect(window.location.pathname).toBe(`${BASE}/files/${id}`);
-    expect(saved()?.pins ?? {}).toEqual({});
-    // The reveal runs; skipped, its moments play and the pin follows.
-    const first = gsap.getTweensOf([...document.querySelectorAll<HTMLElement>('#file-title *')].find(e => e.children.length === 0)!)[0];
-    const timeline = first.parent as gsap.core.Timeline;
-    timeline.time(first.startTime() + 0.01, true);
-    fireEvent.click(document.querySelector('[data-file="grip"]')!);
-    // The cover closes, then the pin is made.
-    act(() => {
-      finish(document.querySelector('[data-file="cover"]')!);
-    });
+    expect(window.location.pathname).toBe(`${BASE}/files`);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(saved().pins).toEqual({ [id]: NOTE });
-    await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/files`));
-    await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/files`));
+    expect(saved().opened).not.toContain(id);
     await waitFor(() =>
       expect(document.querySelector(`[data-board="tabs"][data-theory-id="${NOTE}"] [data-evidence-id="${id}"]`)).not.toBeNull()
     );
-    expect(saved().opened).toContain(id);
-  });
-
-  test('Escape while the dropped file is being read still pins it: the drop was the choice', () => {
-    renderDesk();
-    const id = 'e-sword';
-    act(() => dragTo(folderOf(id), note()).over());
-    fireEvent.keyDown(window, { key: 'Escape' });
-    act(() => {
-      finish(document.querySelector('[data-file="cover"]')!);
-    });
-    expect(saved().pins).toEqual({ [id]: NOTE });
   });
 
   test('a folder dropped on the board outside any note opens for reading, with nothing waiting', () => {

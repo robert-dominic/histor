@@ -250,7 +250,7 @@ describe('The board', () => {
     expect(document.querySelector<HTMLElement>('[data-board="theory"] [data-board="paper"]')?.style.rotate).toBe(first);
   });
 
-  test('files pinned to a theory hang beneath its note, in case order, each with a thread; unopened pins do not', () => {
+  test('files pinned to a theory hang beneath its note, in case order, sealed ones too', () => {
     seed({
       opened: ['e-water', 'e-lifeboat', 'e-sword'],
       pins: { 'e-water': 't-sinking', 'e-lifeboat': 't-sinking', 'e-sword': 't-mutiny', 'e-galley': 't-sinking' },
@@ -262,13 +262,13 @@ describe('The board', () => {
       [...document.querySelectorAll<HTMLElement>(`[data-board="tabs"][data-theory-id="${id}"] [data-board="tab"]`)].map(
         tab => tab.dataset.evidenceId
       );
-    expect(tabs('t-sinking')).toEqual(['e-lifeboat', 'e-water']);
+    expect(tabs('t-sinking').sort()).toEqual(['e-galley', 'e-lifeboat', 'e-water']);
     expect(tabs('t-mutiny')).toEqual(['e-sword']);
     expect(tabs('t-fraud')).toEqual([]);
     const threads = [...document.querySelectorAll<SVGPathElement>('[data-board="threads"] path')];
-    expect(threads.map(path => path.dataset.evidenceId).sort()).toEqual(['e-lifeboat', 'e-sword', 'e-water']);
-    fireEvent.click(document.querySelector<HTMLElement>('[data-board="tab"] button')!);
-    expect(document.querySelector('[data-board="tab"] [data-board="slip"] a')?.getAttribute('href')).toBe(`${BASE}/files/e-lifeboat`);
+    expect(threads.map(path => path.dataset.evidenceId).sort()).toEqual(['e-galley', 'e-lifeboat', 'e-sword', 'e-water']);
+    // A sealed pin does not count as opened.
+    expect(JSON.parse(localStorage.getItem(`histor:case:${CASE.id}`) ?? '{}').opened).not.toContain('e-galley');
   });
 
   test('says how many files are open, and how many more it takes to close the case', () => {

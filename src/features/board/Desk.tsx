@@ -259,12 +259,8 @@ function DeskScreen() {
     if (outcome.kind === 'open') {
       recordFlight(id, 'in', element);
       navigate(`${base}/files/${id}`);
-    } else if (outcome.kind === 'reveal-then-pin') {
-      // Read it first: the file opens and is written out, and when its stamp has landed it is pinned.
-      recordFlight(id, 'in', element);
-      navigate(`${base}/files/${id}`, { state: { pinAfterReveal: outcome.target } });
     } else if (outcome.kind === 'pin') {
-      // Already read: pinned at once. The desk flies the folder to its place, draws its thread, opens its slip.
+      // Pinned at once, sealed or read: a sealed file stays sealed and does not count as opened. The desk flies the folder to its place, draws its thread, opens its slip.
       recordFlight(id, 'out', element);
       if (rootRef.current !== null) {
         recordTabs(rootRef.current);

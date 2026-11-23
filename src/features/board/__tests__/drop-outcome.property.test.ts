@@ -29,7 +29,7 @@ describe('Property 7: every drop has exactly one outcome', () => {
     fc.assert(
       fc.property(sources, targets, (source, target) => {
         const first = dropOutcome(source, target);
-        expect(['reveal-then-pin', 'pin', 'open', 'unpin', 'settle', 'return']).toContain(first.kind);
+        expect(['pin', 'open', 'unpin', 'settle', 'return']).toContain(first.kind);
         expect(dropOutcome(source, target)).toEqual(first);
       }),
       { numRuns: 300 }
@@ -44,7 +44,7 @@ describe('Property 7: every drop has exactly one outcome', () => {
     fc.assert(
       fc.property(sources, targets, (source, target) => {
         const outcome = dropOutcome(source, target);
-        if (outcome.kind === 'pin' || outcome.kind === 'reveal-then-pin') {
+        if (outcome.kind === 'pin') {
           expect(outcome.target).toBe(target.kind === 'theory' ? target.theoryId : 'none');
           expect(target.kind === 'theory' || target.kind === 'tray').toBe(true);
         }
@@ -78,12 +78,12 @@ describe('Property 7: every drop has exactly one outcome', () => {
    * Feature: fix-pack, Property 7: Every drop has exactly one outcome
    * **Validates: Requirements 17.2, 17.3, 17.4**
    */
-  test('only a sealed floor file is read before it is pinned; only floor files open or settle', () => {
+  test('sealed or not, a floor file pins the same way; only floor files open or settle', () => {
     fc.assert(
       fc.property(sources, targets, (source, target) => {
         const outcome = dropOutcome(source, target);
-        if (outcome.kind === 'reveal-then-pin') {
-          expect(source).toEqual({ from: 'floor', sealed: true });
+        if (source.from === 'floor') {
+          expect(dropOutcome({ from: 'floor', sealed: !source.sealed }, target)).toEqual(outcome);
         }
         if (outcome.kind === 'open' || outcome.kind === 'settle') {
           expect(source.from).toBe('floor');

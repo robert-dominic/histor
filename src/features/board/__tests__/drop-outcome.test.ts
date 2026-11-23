@@ -10,12 +10,12 @@ const onFloor: DropTarget = { kind: 'floor', x: 120, y: 80 };
 describe('dropOutcome: from a sealed folder on the floor', () => {
   const sealed: DragSource = { from: 'floor', sealed: true };
 
-  test('onto a theory note: the reveal plays first, then it is pinned (17.2)', () => {
-    expect(dropOutcome(sealed, onNote('t-mutiny'))).toEqual({ kind: 'reveal-then-pin', target: 't-mutiny' });
+  test('onto a theory note: pinned at once, still sealed, no reveal forced', () => {
+    expect(dropOutcome(sealed, onNote('t-mutiny'))).toEqual({ kind: 'pin', target: 't-mutiny' });
   });
 
-  test('onto the tray: the reveal plays first, then it goes to the tray, since status is earned by opening (Q6)', () => {
-    expect(dropOutcome(sealed, { kind: 'tray' })).toEqual({ kind: 'reveal-then-pin', target: 'none' });
+  test('onto the tray: set aside at once, still sealed', () => {
+    expect(dropOutcome(sealed, { kind: 'tray' })).toEqual({ kind: 'pin', target: 'none' });
   });
 
   test('onto the board outside any note: it opens for reading (17.3)', () => {

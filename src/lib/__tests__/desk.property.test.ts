@@ -92,10 +92,10 @@ describe('deskLayout: properties', () => {
         for (const folder of layout.folders) {
           const id = folder.evidence.id;
           const target = Object.hasOwn(state.pins, id) ? state.pins[id] : undefined;
-          if (opened.has(id) && target !== undefined && theories.has(target)) {
-            expect(folder.place).toEqual({ kind: 'board', theoryId: target });
-          } else if (opened.has(id) && target === 'none') {
-            expect(folder.place).toEqual({ kind: 'aside' });
+          if (target !== undefined && theories.has(target)) {
+            expect(folder.place).toEqual({ kind: 'board', theoryId: target, opened: opened.has(id) });
+          } else if (target === 'none') {
+            expect(folder.place).toEqual({ kind: 'aside', opened: opened.has(id) });
           } else {
             expect(folder.place).toEqual({ kind: 'pile', opened: opened.has(id) });
           }
@@ -105,12 +105,13 @@ describe('deskLayout: properties', () => {
   });
 
   // Feature: desk, Property 3: Sealed files are in the pile
-  test('Property 3: sealed files are always in the pile, below the opened ones', () => {
+  test('Property 3: unpinned sealed files are in the pile, below the opened ones', () => {
     fc.assert(
       fc.property(caseAndState, ({ caseData, state }) => {
         const layout = deskLayout(caseData, state);
         const opened = new Set(state.opened);
-        const sealed = caseData.evidence.filter(e => !opened.has(e.id)).map(e => e.id);
+        const pinned = (id: string) => layout.folders.find(folder => folder.evidence.id === id)?.place.kind !== 'pile';
+        const sealed = caseData.evidence.filter(e => !opened.has(e.id) && !pinned(e.id)).map(e => e.id);
         expect(layout.pile.slice(0, sealed.length).map(e => e.id)).toEqual(sealed);
       })
     );
