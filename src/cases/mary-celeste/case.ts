@@ -1,5 +1,5 @@
 // src/cases/mary-celeste/case.ts
-import type { Case } from '@/types/case';
+import type { Case, CaseTheme } from '@/types/case';
 import refBenjaminBriggsImage from './assets/images/ref-benjamin-briggs.webp';
 import refGibraltarImage from './assets/images/ref-gibraltar.webp';
 import refMaryCelesteImage from './assets/images/ref-mary-celeste.webp';
@@ -21,6 +21,10 @@ import legendVideoSrc from './assets/video/legend-night.mp4';
  * The theories, evidence and historians' summary are real content, copied from docs/content/mary-celeste-evidence.md.
  * The fork's wording comes from product.md.
  */
+// The case's music: written by `npm run music:import -- mary-celeste` (scripts/music-import.mjs). Until it has been
+// run there is no music.ts, and so no playlists.
+const music = Object.values(import.meta.glob<{ playlists: NonNullable<CaseTheme['playlists']> }>('./music.ts', { eager: true }))[0];
+
 export const maryCeleste: Case = {
   id: 'mary-celeste',
   title: 'The Mary Celeste',
@@ -446,7 +450,8 @@ export const maryCeleste: Case = {
       desk: ['room-tone', 'lamp-hum', 'distant-sea'],
       // A ship's bell, far away, once, as the Dei Gratia sights her.
       cues: [{ chapter: 's-found', sound: 'ships-bell' }]
-    }
+    },
+    ...(music === undefined ? {} : { playlists: music.playlists })
   }
 };
 

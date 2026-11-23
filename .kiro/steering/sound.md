@@ -28,6 +28,15 @@ inclusion: always
 - Levels (`MUSIC` and `SOUND` in `levels.ts`): the music sits under everything; the desk's playlist a little quieter than the story's; ducked under the voice to about 12%, and gently under hooks and stamps.
 - **Credits:** the report ends with a "Credits" section listing each track's title and credit under "Music".
 
+## Importing music (`npm run music:import -- <caseId>`)
+
+1. The owner saves the chosen tracks (from Pixabay) in `~/histor-media/music/story/` and `~/histor-media/music/desk/`, outside the repo (`HISTOR_MEDIA` overrides the folder).
+2. `npm run music:import -- mary-celeste` converts each with `ffmpeg` to MP3 (128 kbps stereo), trims the silence at both ends, matches loudness (`loudnorm`, about −18 LUFS), and writes them to `public/audio/music/<caseId>/story/` and `.../desk/`, printing each file's size before and after.
+3. It writes `src/cases/<caseId>/music.ts` with the playlists: each title from its file name (without Pixabay's trailing number), each credit "Pixabay" with a `TODO` until the artist is filled in. Running it again keeps credits already filled in.
+4. The case's theme imports `music.ts` when it exists (`import.meta.glob`); until the script has run there are no playlists.
+
+It needs `ffmpeg` and Node 22.18 or newer, and installs nothing: without either it says so and stops. Its pure parts are `src/lib/music-import.ts`, tested.
+
 ## Ambience and score: kept, off (`AMBIENCE_ENABLED = false`)
 
 The generated ambience (sea, wind and the other layers below) and the generated score no longer play: real music replaced them (music brief, 2). Their code, recipes and tests are kept behind `AMBIENCE_ENABLED` in `levels.ts`, in case they come back. The effects, the ship's bell among them, still play.

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "music:import": "node scripts/music-import.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
