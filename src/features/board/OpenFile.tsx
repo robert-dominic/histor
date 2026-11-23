@@ -26,6 +26,7 @@ import { buildCaseReport } from '@/lib/case-report';
 import { coverLabel } from '@/lib/desk';
 import { INK_RISE, MOTION, MOTION_QUERIES, STEP, ghostDuration, stampHit, tween } from '@/lib/motion';
 import { createQuillWriter } from '@/lib/quill-writing';
+import { useDeskOutlet } from '@/features/board/desk-outlet';
 import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Evidence, PinTarget, Source } from '@/types/case';
@@ -359,8 +360,15 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       close();
     }
   };
-  /** "Back to the floor": the file comes off the board (or the tray) and goes back to the floor, still opened. */
-  const unpin = () => dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: evidence.id });
+  /**
+   * "Back to the floor": the file comes off the board (or the tray) and goes back to the floor, still opened, to its
+   * own spot (not to where it was last dropped).
+   */
+  const desk = useDeskOutlet();
+  const unpin = () => {
+    desk?.forgetFloorSpot(evidence.id);
+    dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: evidence.id });
+  };
   /** Tab stays inside the open file. */
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     const root = event.currentTarget;

@@ -228,3 +228,79 @@ describe('threads and the other tabs when a pin changes', () => {
     expect(moved).not.toContain('e-lifeboat');
   });
 });
+
+describe('drop where I drop (story-steps 5.1)', () => {
+  const floorSpots = () => JSON.parse(localStorage.getItem(`${KEY}:floor`) ?? '[]') as [string, { fx: number; fy: number }][];
+  const rect = (left: number, top: number, width: number, height: number) =>
+    ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+
+  test('a pinned file dragged to the floor lands where it was let go, and that spot is saved', () => {
+    seed({ 'e-lifeboat': A });
+    renderDesk();
+    const floor = document.querySelector<HTMLElement>('[data-board="floor"]')!;
+    vi.spyOn(floor, 'getBoundingClientRect').mockReturnValue(rect(100, 400, 1000, 300));
+    Object.defineProperty(floor, 'clientWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(floor, 'clientHeight', { configurable: true, value: 300 });
+    const strip = tab('e-lifeboat');
+    // Let go with its centre at (650, 520) on the screen: (550, 120) on the floor.
+    vi.spyOn(strip, 'getBoundingClientRect').mockReturnValue(rect(600, 500, 100, 40));
+    drop(strip, floor);
+    expect(saved().pins).toEqual({});
+    expect(floorSpots()).toEqual([['e-lifeboat', { fx: 0.55, fy: 0.4 }]]);
+  });
+
+  test('it is measured as it is let go, before the cascade puts its list back', () => {
+    seed({ 'e-lifeboat': A });
+    renderDesk();
+    const floor = document.querySelector<HTMLElement>('[data-board="floor"]')!;
+    vi.spyOn(floor, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 1000, 300));
+    Object.defineProperty(floor, 'clientWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(floor, 'clientHeight', { configurable: true, value: 300 });
+    const strip = tab('e-lifeboat');
+    // Where it is while carried, then (once the list is put back) somewhere else.
+    const box = vi.spyOn(strip, 'getBoundingClientRect').mockReturnValue(rect(200, 100, 100, 40));
+    const list = strip.closest<HTMLElement>('[data-board="tabs"]')!;
+    const observer = new MutationObserver(() => {
+      if (list.style.translate === '') {
+        box.mockReturnValue(rect(800, 280, 100, 40));
+      }
+    });
+    observer.observe(list, { attributes: true, attributeFilter: ['style'] });
+    drop(strip, floor);
+    observer.disconnect();
+    expect(floorSpots()).toEqual([['e-lifeboat', { fx: 0.25, fy: 0.4 }]]);
+  });
+
+  test('landing on the floor, a folder settles where it lies: the landing never moves it to the top', () => {
+    seed({ 'e-lifeboat': A });
+    renderDesk();
+    const flips = vi.spyOn(Flip, 'from');
+    const landings = vi.spyOn(gsap, 'fromTo');
+    drop(tab('e-lifeboat'), document.querySelector('[data-board="floor"]'));
+    const folder = document.querySelector<HTMLElement>('[data-board="floor"] [data-evidence-id="e-lifeboat"]')!;
+    gsap.set(folder, { y: 137 });
+    const flight = flips.mock.calls.find(call => call[1]?.targets === folder);
+    expect(flight).toBeDefined();
+    act(() => {
+      (flight![1]!.onComplete as () => void)();
+    });
+    const landing = landings.mock.calls.find(call => call[0] === folder)!;
+    expect(landing[1]).toMatchObject({ y: 133 });
+    expect(landing[2]).toMatchObject({ y: 137 });
+  });
+
+  test('"Back to the floor" from the Pin menu sends it to its own spot, forgetting where it was last dropped', async () => {
+    seed({ 'e-lifeboat': A });
+    localStorage.setItem(`${KEY}:floor`, JSON.stringify([['e-lifeboat', { fx: 0.9, fy: 0.9 }]]));
+    window.history.pushState({}, '', `${BASE}/files/e-lifeboat`);
+    render(<App />);
+    const { fireEvent, within } = await import('@testing-library/react');
+    const file = document.querySelector<HTMLElement>('[data-file="folder"]')!;
+    fireEvent.click(within(file).getByRole('button', { name: /^Pin to/ }));
+    const menu = file.querySelector<HTMLElement>('[role="menu"]') ?? [...document.querySelectorAll<HTMLElement>('[role="menu"]')].at(-1)!;
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /Back to the floor/ }));
+    expect(saved().pins).toEqual({});
+    expect(floorSpots()).toEqual([]);
+  });
+});
+

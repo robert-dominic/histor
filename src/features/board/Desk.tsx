@@ -22,6 +22,7 @@ import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
 import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
+import type { DeskOutlet } from '@/features/board/desk-outlet';
 import { carryOut } from '@/features/board/pile';
 import type { SlipReading } from '@/features/board/HangingTab';
 import { Flip, clearFlight, deskLayoutSettled, flightFor, pendingFlight, recordFlight, recordTabs, takeTabs } from '@/features/board/flight';
@@ -71,6 +72,12 @@ function DeskScreen() {
   const navigate = useNavigate();
   /** Folders the player dropped on the floor, in the order they were dropped: kept in storage, apart from the investigation. */
   const [dropped] = useState(() => loadFloorPositions(caseData.id, caseData.evidence.map(evidence => evidence.id)));
+  /** "Back to the floor" from the Pin menu: the file goes back to its own spot, not to where it was last dropped. */
+  const forgetFloorSpot = (id: string) => {
+    if (dropped.delete(id)) {
+      saveFloorPositions(caseData.id, dropped);
+    }
+  };
   const rememberDrop = (id: string, spot: DroppedSpot) => {
     dropped.delete(id);
     dropped.set(id, spot);
@@ -262,7 +269,9 @@ function DeskScreen() {
         ...tween('paper.move'),
         zIndex: 30,
         onComplete: () => {
-          gsap.fromTo(home, { y: -4 }, { y: 0, ...tween('paper.land'), onComplete: deskLayoutSettled });
+          // It lands where it now lies: a folder on the floor rests at its own place (its x and y), a tab at 0.
+          const restY = Number(gsap.getProperty(home, 'y')) || 0;
+          gsap.fromTo(home, { y: restY - 4 }, { y: restY, ...tween('paper.land'), onComplete: deskLayoutSettled });
         },
       });
     }
@@ -285,6 +294,8 @@ function DeskScreen() {
       navigate(`${base}/files`, { state: pinned, replace: true });
     }
   };
+  /** Where the last tab was let go, on the screen (the drop point always wins). */
+  const letGoAt = useRef<{ tab: HTMLElement; box: DOMRect } | null>(null);
   /** What a tab dragged from a note or the tray does, without opening the file (Requirement 17.5 and 17.6). */
   const handleTabDrop = (tab: HTMLElement, outcome: DropOutcome) => {
     const id = tab.dataset.evidenceId ?? '';
@@ -302,10 +313,12 @@ function DeskScreen() {
       const pinned: PinnedState = { pinned: id };
       navigate(`${base}/files`, { state: pinned, replace: true });
     } else if (outcome.kind === 'unpin') {
-      // It lies on the floor where it was dropped, and the desk remembers the spot. `outcome` is where the tab's own
-      // transform ended, which is not a floor place: take the spot from where the tab's centre is on the screen.
+      // It lies on the floor exactly where it was dropped (kept inside the floor), and the desk remembers the spot.
+      // `outcome` is where the tab's own transform ended, which is not a floor place: take the spot from where the
+      // tab's centre was on the screen when it was let go.
       const floor = root.querySelector<HTMLElement>('[data-board="floor"]');
-      const box = tab.getBoundingClientRect();
+      const box = letGoAt.current?.tab === tab ? letGoAt.current.box : tab.getBoundingClientRect();
+      letGoAt.current = null;
       const origin = floor?.getBoundingClientRect();
       if (floor != null && origin !== undefined) {
         const cx = box.left + box.width / 2 - origin.left;
@@ -338,7 +351,11 @@ function DeskScreen() {
           : { from: 'board', theoryId: tab.closest('[data-board="tabs"]')?.getAttribute('data-theory-id') ?? '' },
       restingScale: () => 1,
       onLift: tab => carryOut(tab, true),
-      onLetGo: tab => carryOut(tab, false),
+      onLetGo: tab => {
+        // Where it was let go, measured before the cascade takes back its clipping (which can shift the list).
+        letGoAt.current = { tab, box: tab.getBoundingClientRect() };
+        carryOut(tab, false);
+      },
       onDrop: (tab, outcome) => handleTabDropRef.current(tab, outcome),
     });
   }, [desktop, fileOpen, tabsNow, caseData.theories]);
@@ -449,7 +466,7 @@ function DeskScreen() {
           threshold={caseData.closeThreshold}
         />
       )}
-      <Outlet />
+      <Outlet context={{ forgetFloorSpot } satisfies DeskOutlet} />
     </>
   );
 }
