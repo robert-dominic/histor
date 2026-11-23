@@ -482,6 +482,24 @@ describe('Story: reduced motion', () => {
     }
   });
 
+  test('each chapter shows its image with the whole page already written, then the hook as plain text', () => {
+    const { container } = renderStory();
+    for (const section of maryCeleste.story) {
+      const chapter = chapterOf(container, section);
+      const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
+      expect(page.className).toContain('lg:w-[42%]');
+      expect(chapter.querySelector('[data-story="pane"] img')).not.toBeNull();
+      // No pen: nothing is split to be written.
+      expect(page.querySelector('[data-pen]')).toBeNull();
+      expect(page.querySelector('[data-story="quill"]')).toBeNull();
+      const hook = chapter.querySelector('[data-hook="true"]');
+      expect(hook?.textContent).toBe(section.hook === undefined ? undefined : plainText(section.hook));
+      if (hook !== null) {
+        expect(page.contains(hook)).toBe(false);
+      }
+    }
+  });
+
   test('no auto-scroll: no play choice and no play control', () => {
     renderStory();
 
