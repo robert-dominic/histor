@@ -19,3 +19,4 @@ On a screen 1024px wide or more the investigation is **one fixed screen** that n
 
 | `slate` | #2f3a3f | Theory cards on the desktop desk: the ship's log slate |
 | `chalk` | #ece6d6 | Writing on slate (9.4:1) |
+- **No count in the desktop header.** The header no longer says how many files are open. The wax seal "Close the case" simply appears there, pressing in, once enough files are open; the desk guide says when. The first-visit hint line stays. (The phone desk keeps its progress line beside the pile.)

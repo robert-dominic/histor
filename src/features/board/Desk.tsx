@@ -375,16 +375,14 @@ function DeskScreen() {
         <DeskSurface />
         {desktop ? (
           <>
-            {/* The compact header: the title, the progress line, the hints and the way to close the case. Above the
+            {/* The compact header: the title, the first visit's hints and, once enough files are open, the wax seal that
+                closes the case (it presses in as it appears; the guide says when). No count of opened files. Above the
                 lamp's shadow, so all of it is always readable. Its height is fixed, so nothing that comes or goes in
                 it (a hint, the seal) changes the size of the board or the floor, and no folder moves. */}
             <header className="relative z-[21] flex h-14 items-center gap-x-6 px-8">
               <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
                 The case files
               </h2>
-              <p data-board="progress" className="font-voice text-[0.9375rem] leading-snug text-night-ink tabular-nums">
-                {progressLine(layout.openedCount, caseData.evidence.length, caseData.closeThreshold)}
-              </p>
               <div className="min-w-0 flex-1 [&_[data-hint=desk]]:mt-0 [&_[data-hint=desk]]:min-h-6">
                 <DeskHints />
               </div>

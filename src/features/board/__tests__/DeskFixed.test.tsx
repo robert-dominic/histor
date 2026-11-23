@@ -64,18 +64,30 @@ describe('the desktop desk', () => {
     expect(lenis.start).toHaveBeenCalledTimes(1);
   });
 
-  test('the header holds the title and the progress line; the board and the tray are in their rows', () => {
+  test('the header holds the title, and no count of opened files; the board and the tray are in their rows', () => {
     renderDesk();
     const header = desk().querySelector('header') as HTMLElement;
     expect(header.textContent).toContain('The case files');
-    expect(header.querySelector('[data-board="progress"]')?.textContent).toContain(
-      `0 of ${maryCeleste.evidence.length} files opened.`
-    );
+    expect(header.querySelector('[data-board="progress"]')).toBeNull();
+    expect(header.textContent).not.toContain('files opened');
     const board = desk().querySelector('[data-desk="board-row"] [data-board="board"]') as HTMLElement;
     expect(board.dataset.fitted).toBe('true');
     expect(board.querySelectorAll('[data-board="theory"]')).toHaveLength(maryCeleste.theories.length);
     const tray = desk().querySelector('[data-desk="floor-row"] [data-board="aside"]') as HTMLElement;
     expect(tray.dataset.fitted).toBe('true');
+  });
+
+  test('the wax seal simply appears in the header once enough files are open, and presses in', () => {
+    const opened = maryCeleste.evidence.slice(0, maryCeleste.closeThreshold).map(item => item.id);
+    localStorage.setItem(KEY, JSON.stringify({ opened: opened.slice(0, -1), pins: {}, verdict: null }));
+    renderDesk();
+    expect(desk().querySelector('header [data-seal="desk"]')).toBeNull();
+    cleanup();
+    localStorage.setItem(KEY, JSON.stringify({ opened, pins: {}, verdict: null }));
+    renderDesk();
+    const seal = desk().querySelector<HTMLElement>('header [data-seal="desk"]')!;
+    expect(seal.textContent).toContain('Close the case');
+    expect(desk().querySelector('header')?.textContent).not.toContain('You can close the case');
   });
 
   test('the tray is labelled "None of them", as in the report', () => {
