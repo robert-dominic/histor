@@ -25,11 +25,13 @@ export default function CaseInvestigation() {
   // A browser that cannot measure its screen gets the investigation: better a cramped desk than a closed door.
   const canMeasure = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   // The sound's place: the desk's room, for the desk, the verdict and the report (src/lib/sound).
-  const ambience = entry !== undefined && !entry.sealed ? entry.data?.theme.ambience : undefined;
+  const theme = entry !== undefined && !entry.sealed ? entry.data?.theme : undefined;
+  const ambience = theme?.ambience;
+  const playlists = theme?.playlists;
   useEffect(() => {
-    emitStoryEvent({ type: 'place', place: 'desk', ambience });
+    emitStoryEvent({ type: 'place', place: 'desk', ambience, playlists });
     return () => emitStoryEvent({ type: 'place', place: 'away' });
-  }, [ambience]);
+  }, [ambience, playlists]);
 
   if (entry === undefined) {
     return (

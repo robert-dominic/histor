@@ -11,6 +11,7 @@ import { useInvestigation } from '@/app/InvestigationProvider';
 import Stamp from '@/components/Stamp';
 import DeskSurface from '@/features/board/DeskSurface';
 import Lamp from '@/features/board/Lamp';
+import CaseCredits from '@/features/verdict/CaseCredits';
 import ReportSection from '@/features/verdict/ReportSection';
 import VerdictReveal from '@/features/verdict/VerdictReveal';
 import { formatCaseYears } from '@/lib/case-years';
@@ -287,6 +288,7 @@ export default function Report() {
           </Link>
         </nav>
       </article>
+      <CaseCredits playlists={caseData.theme.playlists} />
       <Lamp still narrow={narrow} />
     </main>
   );

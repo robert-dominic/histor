@@ -52,7 +52,7 @@ describe('nothing loud or sudden except the stamps', () => {
   test('the ambience fades in from silence: no layer starts at once', () => {
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
-    const stop = startSound(engine);
+    const stop = startSound(engine, { generated: true });
     emitStoryEvent({ type: 'place', place: 'story', ambience: maryCeleste.theme.ambience });
     engine.unlock();
     const ctx = maker.made[0];
@@ -71,7 +71,7 @@ describe('CPU', () => {
   test('a flood of moments never plays more voices at once than the cap', () => {
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
-    const stop = startSound(engine);
+    const stop = startSound(engine, { generated: true });
     engine.unlock();
     for (let i = 0; i < 40; i += 1) {
       emitStoryEvent({ type: 'stamp:record', evidence: `e${i}` });
@@ -86,7 +86,7 @@ describe('reduced motion: sound still works, but nothing starts by itself', () =
     stubMatchMedia({ reducedMotion: true });
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
-    const stop = startSound(engine);
+    const stop = startSound(engine, { generated: true });
     window.dispatchEvent(new Event('pointerdown'));
     window.dispatchEvent(new Event('keydown'));
     expect(maker.made).toHaveLength(0);
@@ -102,7 +102,7 @@ describe('reduced motion: sound still works, but nothing starts by itself', () =
   test('with full motion, the first gesture starts it', () => {
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
-    const stop = startSound(engine);
+    const stop = startSound(engine, { generated: true });
     window.dispatchEvent(new Event('pointerdown'));
     expect(maker.made).toHaveLength(1);
     stop();

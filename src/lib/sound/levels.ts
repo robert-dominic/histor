@@ -18,7 +18,8 @@ export const SOUND = {
   duck: {
     hook: { to: 0.45, hold: 4 },
     stamp: { to: 0.4, hold: 1.4 },
-    voice: { to: 0.22, hold: 0 },
+    /** Under the narrator, the music drops to about 12%. */
+    voice: { to: 0.12, hold: 0 },
   },
   /** How quickly a duck comes in, and goes back out. */
   duckIn: 0.25,
@@ -37,6 +38,22 @@ export const SOUND = {
   drone: { level: 0.22, low: 0.1, release: 2.6 },
   /** The ship's bell rings this long after its chapter enters: far away, after the swell. */
   bellAfter: 1.4,
+} as const;
+
+/**
+ * The generated ambience and score (ambience.ts, score.ts) are kept, but do not play: real music tracks replace
+ * them (music brief, 2). True brings them back.
+ */
+export const AMBIENCE_ENABLED = false;
+
+/** The music (music.ts): playlists of real tracks, streamed, shuffled and crossfaded. */
+export const MUSIC = {
+  /** One track into the next, and one place's playlist into the other's, over this. */
+  crossfade: 3,
+  /** Each place's own level (under the music bus): the desk a little quieter than the story. */
+  level: { story: 1, desk: 0.78 },
+  /** The next track starts loading once the current one has played this long. */
+  preloadAfter: 5,
 } as const;
 
 /** The ambience's layers (ambience.ts): each one's level, and how the story's darkness moves them. */

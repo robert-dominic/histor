@@ -8,16 +8,29 @@ inclusion: always
 
 ## The rule
 
-**No audio files.** Every sound is generated in code with the Web Audio API: noise, oscillators, filters and envelopes. Nothing to download or license, no added weight. Each sound is small and tasteful; quieter is better. The aim is atmosphere and weight, never a cartoon effect.
+**Effects are generated; music is real.** Every effect is generated in code with the Web Audio API: noise, oscillators, filters and envelopes. Nothing to download or license, no added weight. Each is small and tasteful; quieter is better. The aim is atmosphere and weight, never a cartoon effect. The music is real tracks the owner chooses (see "Music"), streamed; and a narration clip, when a case has one, is a file too.
 
 ## The engine (`src/lib/sound/engine.ts`)
 
 - **One `AudioContext`**, created lazily on the first user gesture (a pointer or a key), never before. A browser without Web Audio simply has no sound.
-- **Buses:** master, then `ambience`, `score` and `effects` under it. The ambience and the score each pass through a duck: they **dip under hooks, stamps and the voice**, and come back after the moment's hold. Overlapping ducks keep the deepest dip and the latest end. The effects never dip.
+- **Buses:** master, then a gate per control. Under the music gate, the music side (`music`, and the kept `ambience` and `score`) passes through a duck: it **dips under hooks and stamps, gently, and to about 12% under the voice**, and comes back after the moment's hold. Overlapping ducks keep the deepest dip and the latest end. Under the effects gate, `effects`, which never dip.
 - **Two controls (music brief, 1):** two icons in the case header (`SoundControls`). **Music** (a note) controls the music; **Effects** (a speaker) controls the effects and the narrator's voice. Each is on or off, remembered apart (`histor:music`, `histor:effects`; absent means on; the old single `histor:sound` off is read as both off until a new choice). Pressing and holding an icon, hovering it with a mouse, or reaching it with the keyboard shows a small popover with its volume slider (remembered: `histor:music-volume`, `histor:effects-volume`). Each channel has its own gate under the master. The play modal ("Play the story" / "Read at my pace") has two small switches, "Music" and "Effects", ticked unless turned off before; that click is the gesture that starts the sound.
 - **The tab hidden:** everything fades out, and back in when it returns.
 - **Components never call sounds.** They emit their moments (`src/lib/story-events.ts`); the engine listens, and the table in `src/lib/sound/sound-map.ts` says what each moment sounds like. To change a sound, change its row there, or its recipe in `voices.ts`.
 - **Every level and timing to tune is in `src/lib/sound/levels.ts`** (`SOUND`).
+
+## Music: a rotating playlist (`music.ts`)
+
+- Each case names its music in its theme: `CaseTheme.playlists = { story?: Track[], desk?: Track[] }`, with `Track = { src, title, credit }` (validated; optional: without a playlist there is no music, and nothing breaks). The Mary Celeste's come from `src/cases/mary-celeste/music.ts`, written by `npm run music:import` (see "Importing music").
+- The player plays the playlist of the place the player is in: `story` tracks in the story (and its legend intro), `desk` tracks on the desk, the verdict and the report. It **shuffles**, never plays the same track twice in a row, **crossfades** over about 3s from one track to the next, and loops the playlist for ever. Moving between places crossfades to the other playlist.
+- **Turning the music off pauses the track where it is; turning it back on resumes it from there, never from the start.** The tab hidden pauses it too, after the fade.
+- Tracks **stream**: an `<audio>` with `preload="none"`, routed into the music bus through its own gain. Only the current track and the next one load (the next starts loading a few seconds into the current).
+- Levels (`MUSIC` and `SOUND` in `levels.ts`): the music sits under everything; the desk's playlist a little quieter than the story's; ducked under the voice to about 12%, and gently under hooks and stamps.
+- **Credits:** the report ends with a "Credits" section listing each track's title and credit under "Music".
+
+## Ambience and score: kept, off (`AMBIENCE_ENABLED = false`)
+
+The generated ambience (sea, wind and the other layers below) and the generated score no longer play: real music replaced them (music brief, 2). Their code, recipes and tests are kept behind `AMBIENCE_ENABLED` in `levels.ts`, in case they come back. The effects, the ship's bell among them, still play.
 
 ## Ambience: the case's theme (`ambience.ts`)
 

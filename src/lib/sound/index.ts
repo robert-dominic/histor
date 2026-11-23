@@ -8,7 +8,8 @@ import { Ambience } from '@/lib/sound/ambience';
 import { SoundEngine, type Channel } from '@/lib/sound/engine';
 import { Narrator } from '@/lib/sound/narration';
 import { MOTION_QUERIES } from '@/lib/motion';
-import { SOUND } from '@/lib/sound/levels';
+import { AMBIENCE_ENABLED, SOUND } from '@/lib/sound/levels';
+import { MusicPlayer } from '@/lib/sound/music';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { VOICES, drone, vary, type Voice } from '@/lib/sound/voices';
@@ -30,6 +31,12 @@ export function playCue(engine: SoundEngine, cue: SoundCue): void {
     return;
   }
   voice.play(ctx, out, { at: ctx.currentTime + 0.005 + (cue.delay ?? 0), gain: cue.gain ?? 1, pitch: (cue.pitch ?? 1) * vary(0.015) });
+}
+
+/** The music player of the running app (for the dev page and tests). */
+let musicNow: MusicPlayer | null = null;
+export function currentMusic(): MusicPlayer | null {
+  return musicNow;
 }
 
 /** The hook's drone, while it plays: how to fade it out. */
@@ -64,11 +71,16 @@ function dropDrone(): void {
  * Connects the engine to the page: the first gesture starts it, the tab's visibility fades it, and every event is
  * answered from the table. Returns a function that disconnects it all.
  */
-export function startSound(engine: SoundEngine = sound): () => void {
+export function startSound(engine: SoundEngine = sound, setup: { createAudio?: (src: string) => HTMLAudioElement | null; generated?: boolean } = {}): () => void {
   if (typeof window === 'undefined') {
     return () => undefined;
   }
   const memory = freshMemory();
+  // The generated ambience and score play only when brought back (AMBIENCE_ENABLED; tests pass `generated`).
+  const generated = setup.generated ?? AMBIENCE_ENABLED;
+  // The music: the place's playlist, streamed (music.ts). It pauses where it is when turned off, and resumes there.
+  const music = new MusicPlayer(engine, setup.createAudio);
+  musicNow = music;
   // The ambience: the layers of the place the player is in, started once the sound is, stopped once it is off (after
   // the master has faded, so nothing clicks).
   const ambience = new Ambience();
@@ -88,8 +100,13 @@ export function startSound(engine: SoundEngine = sound): () => void {
       clearTimeout(stopTimer);
       stopTimer = null;
     }
-    ambience.restart(ctx, ambienceBus());
-    score.restart(ctx, scoreBus());
+    if (engine.playing('music')) {
+      music.resume();
+    }
+    if (generated) {
+      ambience.restart(ctx, ambienceBus());
+      score.restart(ctx, scoreBus());
+    }
   });
   const stopChange = engine.subscribe(() => {
     // The effects off: the drone goes (faded) at once.
@@ -101,6 +118,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
       stopTimer = setTimeout(() => {
         stopTimer = null;
         if (!engine.playing('music')) {
+          music.pause();
           ambience.stopAll();
           score.stop();
         }
@@ -122,8 +140,11 @@ export function startSound(engine: SoundEngine = sound): () => void {
       if (event.place === 'desk') {
         ambience.setDarkness(null, 0);
       }
-      ambience.set(engine.context, ambienceBus(), layers);
-      score.set(engine.context, scoreBus(), event.place);
+      music.setPlace(event.place, event.playlists);
+      if (generated) {
+        ambience.set(engine.context, ambienceBus(), layers);
+        score.set(engine.context, scoreBus(), event.place);
+      }
     };
     if (event.place !== 'story') {
       dropDrone();
@@ -142,7 +163,21 @@ export function startSound(engine: SoundEngine = sound): () => void {
     }
     engine.unlock();
   };
-  const visibility = () => engine.setHidden(document.visibilityState === 'hidden');
+  // The tab hidden: everything fades, then the music pauses where it is; shown again, it carries on.
+  let hiddenTimer: ReturnType<typeof setTimeout> | null = null;
+  const visibility = () => {
+    const hidden = document.visibilityState === 'hidden';
+    engine.setHidden(hidden);
+    if (hiddenTimer !== null) {
+      clearTimeout(hiddenTimer);
+      hiddenTimer = null;
+    }
+    if (hidden) {
+      hiddenTimer = setTimeout(() => music.pause(), SOUND.hiddenFade * 1000);
+    } else if (engine.playing('music')) {
+      music.resume();
+    }
+  };
   const options = { capture: true, passive: true } as const;
   window.addEventListener('pointerdown', gesture, options);
   window.addEventListener('keydown', gesture, options);
@@ -153,17 +188,19 @@ export function startSound(engine: SoundEngine = sound): () => void {
       place(event);
       return;
     }
-    if (event.type === 'chapter-enter') {
-      if (event.depth !== undefined) {
-        ambience.setDarkness(engine.context, event.depth);
+    if (generated) {
+      if (event.type === 'chapter-enter') {
+        if (event.depth !== undefined) {
+          ambience.setDarkness(engine.context, event.depth);
+        }
+        score.set(engine.context, scoreBus(), 'story', event.depth);
       }
-      score.set(engine.context, scoreBus(), 'story', event.depth);
-    }
-    if (event.type === 'hook') {
-      score.set(engine.context, scoreBus(), 'hook');
-    }
-    if (event.type === 'question-line') {
-      score.set(engine.context, scoreBus(), 'question');
+      if (event.type === 'hook') {
+        score.set(engine.context, scoreBus(), 'hook');
+      }
+      if (event.type === 'question-line') {
+        score.set(engine.context, scoreBus(), 'question');
+      }
     }
     if (!engine.running) {
       return;
@@ -180,9 +217,13 @@ export function startSound(engine: SoundEngine = sound): () => void {
     stop();
     stopStart();
     stopChange();
-    [stopTimer, awayTimer].forEach(timer => timer !== null && clearTimeout(timer));
+    [stopTimer, awayTimer, hiddenTimer].forEach(timer => timer !== null && clearTimeout(timer));
     ambience.stopAll();
     score.stop();
+    music.stop();
+    if (musicNow === music) {
+      musicNow = null;
+    }
   };
 }
 

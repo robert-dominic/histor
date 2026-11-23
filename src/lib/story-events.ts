@@ -8,14 +8,14 @@
 // Desk events fire when the user does something at the investigation desk.
 
 import type { CaseRank } from '@/lib/case-rank';
-import type { CaseAmbience, EvidenceStatus, PinTarget } from '@/types/case';
+import type { CaseAmbience, CaseTheme, EvidenceStatus, PinTarget } from '@/types/case';
 
 export type StoryDirection = 'forward' | 'backward';
 
 export type StoryEvent =
   // Where the player is: the case's story (with its legend intro), its desk (the investigation, the verdict and the
-  // report), or away from any case. Carries the case's ambience recipe.
-  | { type: 'place'; place: 'story' | 'desk' | 'away'; ambience?: CaseAmbience }
+  // report), or away from any case. Carries the case's ambience recipe and its playlists.
+  | { type: 'place'; place: 'story' | 'desk' | 'away'; ambience?: CaseAmbience; playlists?: CaseTheme['playlists'] }
   // `depth`: how far into the night the story is, 0 (day) to 1 (night).
   | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number }
   // A sentence of the text column starts to rise into view. `index` is its place in the chapter.

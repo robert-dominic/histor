@@ -319,6 +319,34 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
+  // Validate the optional playlists: when present, story and desk (each optional) are arrays of tracks whose src,
+  // title and credit are non-empty strings
+  const playlists: unknown = caseData.theme?.playlists;
+  if (playlists !== undefined) {
+    if (playlists === null || typeof playlists !== 'object' || Array.isArray(playlists)) {
+      errors.push('Field theme.playlists: Must be an object with optional story and desk playlists');
+    } else {
+      for (const place of ['story', 'desk'] as const) {
+        const tracks: unknown = (playlists as Record<string, unknown>)[place];
+        if (tracks === undefined) {
+          continue;
+        }
+        if (!Array.isArray(tracks)) {
+          errors.push(`Field theme.playlists.${place}: Must be an array of tracks`);
+          continue;
+        }
+        tracks.forEach((track: Record<string, unknown> | null, j) => {
+          for (const part of ['src', 'title', 'credit'] as const) {
+            const value = track === null || typeof track !== 'object' ? undefined : track[part];
+            if (typeof value !== 'string' || value.trim() === '') {
+              errors.push(`Field theme.playlists.${place}[${j}].${part}: Must be a non-empty string`);
+            }
+          }
+        });
+      }
+    }
+  }
+
   // Validate the optional chapter image: when present, src, alt and credit must be non-empty
   if (Array.isArray(caseData.story)) {
     caseData.story.forEach((section, i) => {

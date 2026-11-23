@@ -101,7 +101,7 @@ describe('connected to the story', () => {
   test('its own bus with its own level, under the effects; it follows the place, the hooks and the question', () => {
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
-    const stop = startSound(engine);
+    const stop = startSound(engine, { generated: true });
     emitStoryEvent({ type: 'place', place: 'story' });
     engine.unlock();
     const fake = maker.made[0];

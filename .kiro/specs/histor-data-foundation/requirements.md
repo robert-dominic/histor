@@ -237,6 +237,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 7. THE CaseTheme SHALL support optional ambience with story and desk fields, each an array of AmbienceLayer ('sea', 'wind', 'timber', 'room-tone', 'lamp-hum', 'distant-sea'), for the sound generated under the story and at the desk; without it the case has no ambience
 8. WHEN a CaseTheme includes ambience, THE Validator SHALL verify that story and desk are arrays whose every entry is a known AmbienceLayer, each listed at most once
 9. THE CaseAmbience SHALL support optional cues, an array of AmbienceCue with chapter field of type string and sound field of type 'ships-bell', each played once the first time its chapter enters; WHEN ambience includes cues, THE Validator SHALL verify that it is an array whose every chapter is the id of a story section and whose every sound is a known cue
+10. THE CaseTheme SHALL support optional playlists with story and desk fields, each an optional array of Track (src, title and credit, all of type string), for the music streamed in the story and at the desk; WHEN a CaseTheme includes playlists, THE Validator SHALL verify that it is an object, that each present playlist is an array, and that every track's src, title and credit are non-empty strings. Without playlists the case has no music
 
 ### Requirement 14: Legend Intro Structure
 

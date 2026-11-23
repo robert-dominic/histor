@@ -212,6 +212,18 @@ export interface CaseTheme {
    * Optional: without it, the case is silent but for its effects.
    */
   ambience?: CaseAmbience;
+  /**
+   * The case's music (src/lib/sound/music.ts): a playlist for the story, and one for the desk (the investigation, the
+   * verdict and the report), shuffled and crossfaded. Optional: without one, there is no music.
+   */
+  playlists?: { story?: Track[]; desk?: Track[] };
+}
+
+/** One music track: where it streams from, its title, and its credit (the artist and the source). */
+export interface Track {
+  src: string;
+  title: string;
+  credit: string;
 }
 
 /** One layer of generated ambience. More can be added for later cases (rain, fog, distant carriages). */

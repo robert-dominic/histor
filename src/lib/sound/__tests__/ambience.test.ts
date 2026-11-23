@@ -16,7 +16,7 @@ const recipe = maryCeleste.theme.ambience!;
 function connected() {
   const maker = fakeContextMaker();
   const engine = new SoundEngine({ createContext: maker.create });
-  const stop = startSound(engine);
+  const stop = startSound(engine, { generated: true });
   return { engine, made: maker.made, stop };
 }
 const sources = (ctx: FakeAudioContext) => ctx.started;

@@ -31,10 +31,11 @@ export default function Case() {
   const storyRef = useRef<HTMLDivElement>(null);
   // The sound's place: the case's story, with its legend intro (src/lib/sound).
   const ambience = caseData?.theme.ambience;
+  const playlists = caseData?.theme.playlists;
   useEffect(() => {
-    emitStoryEvent({ type: 'place', place: 'story', ambience });
+    emitStoryEvent({ type: 'place', place: 'story', ambience, playlists });
     return () => emitStoryEvent({ type: 'place', place: 'away' });
-  }, [ambience]);
+  }, [ambience, playlists]);
   /** The play choice is open: the reader has gone on from the legend intro and must choose how to hear the story. */
   const [choosing, setChoosing] = useState(false);
   /** The reader's choice, each time it is made: the story starts with it. */
