@@ -167,11 +167,13 @@ describe('buildCaseReport: properties', () => {
   });
 
   // Feature: case-report, Property 2: Every pinned legend is listed
-  test('Property 2: every legend pinned to a theory is in legends trusted, with its theory', () => {
+  // night-run 2.4: only an opened legend; a sealed one never says what it is.
+  test('Property 2: every opened legend pinned to a theory is in legends trusted, with its theory', () => {
     fc.assert(
       fc.property(caseAndStateArbitrary, ({ caseData, state }) => {
         const expected = caseData.evidence
           .filter(item => item.status === 'legend')
+          .filter(item => state.opened.includes(item.id))
           .filter(item => Object.hasOwn(state.pins, item.id))
           .map(item => ({ evidenceId: item.id, theoryId: state.pins[item.id] }))
           .filter(({ evidenceId, theoryId }) => isValidPin(caseData, evidenceId, theoryId) && theoryId !== 'none');

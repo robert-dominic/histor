@@ -30,7 +30,8 @@ export interface ReportVerdict {
 export interface PinReading {
   evidenceId: string;
   title: string;
-  status: EvidenceStatus;
+  /** Null for a file pinned without being opened: its status is earned by opening it, and stays sealed. */
+  status: EvidenceStatus | null;
   /** The theory id the user chose, or "none". */
   target: PinTarget;
   reading: HistoriansReading;
@@ -41,7 +42,8 @@ export interface PinReading {
 export interface ReliedOnEntry {
   evidenceId: string;
   title: string;
-  status: EvidenceStatus;
+  /** Null for a file pinned without being opened: it shows as sealed, with no status. */
+  status: EvidenceStatus | null;
   reading: HistoriansReading;
 }
 
@@ -190,12 +192,15 @@ export function buildCaseReport(caseData: Case, state: InvestigationState): Case
 
     if (target !== undefined) {
       const reading = historiansReading(evidence, target);
-      pins.push({ evidenceId, title, status, target, reading, note: evidence.reading.note });
+      // A file pinned without being opened keeps its status sealed (night-run 2.4).
+      const shown = opened.has(evidenceId) ? status : null;
+      pins.push({ evidenceId, title, status: shown, target, reading, note: evidence.reading.note });
 
       if (chosen !== null && target === chosen.id) {
-        reliedOn.push({ evidenceId, title, status, reading });
+        reliedOn.push({ evidenceId, title, status: shown, reading });
       }
-      if (evidence.status === 'legend' && target !== 'none') {
+      // Only an opened file can be known as a legend: a sealed one never says what it is.
+      if (evidence.status === 'legend' && target !== 'none' && opened.has(evidenceId)) {
         legendsTrusted.push({ evidenceId, title, theoryId: target, origin: evidence.origin });
       }
     }

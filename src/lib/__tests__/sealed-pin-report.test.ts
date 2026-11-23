@@ -1,7 +1,7 @@
 // src/lib/__tests__/sealed-pin-report.test.ts
 // A sealed file can be pinned without opening it (desk-fixes item 2). The case report is unchanged by that: a
-// sealed pin is read the same way as an opened one, the file still counts as never opened, and it never counts
-// against the verdict (only opened files do).
+// sealed pin is read by historians the same way, but its status stays sealed (night-run 2.4): the report shows it as
+// unopened, the file still counts as never opened, and it never counts against the verdict or as a legend trusted.
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { buildCaseReport } from '@/lib/case-report';
@@ -25,12 +25,21 @@ describe('the case report with a sealed pin', () => {
     expect(report.againstVerdict.map(entry => entry.evidenceId)).not.toContain(sealed.id);
   });
 
-  test('the pin is read by historians exactly as if the file had been opened', () => {
+  test('the pin is read by historians as if opened, but its status stays sealed: it shows as unopened', () => {
     const asSealed = buildCaseReport(CASE, sealedState);
     const asOpened = buildCaseReport(CASE, openedState);
-    expect(asSealed.pins).toEqual(asOpened.pins);
-    expect(asSealed.reliedOn).toEqual(asOpened.reliedOn);
-    expect(asSealed.legendsTrusted).toEqual(asOpened.legendsTrusted);
+    const strip = <T extends { status: unknown }>(entries: T[]) => entries.map(entry => ({ ...entry, status: undefined }));
+    expect(strip(asSealed.pins)).toEqual(strip(asOpened.pins));
+    expect(asSealed.pins.find(pin => pin.evidenceId === sealed.id)?.status).toBeNull();
+    expect(asSealed.reliedOn.find(entry => entry.evidenceId === sealed.id)?.status).toBeNull();
+    expect(asOpened.reliedOn.find(entry => entry.evidenceId === sealed.id)?.status).toBe(sealed.status);
+  });
+
+  test('a sealed legend is not counted as a legend trusted: that would give its status away', () => {
+    const legend = CASE.evidence.find(evidence => evidence.status === 'legend' && !threshold.includes(evidence.id))!;
+    const theory = CASE.theories[0].id;
+    const report = buildCaseReport(CASE, { opened: threshold, pins: { [legend.id]: theory }, verdict: theory });
+    expect(report.legendsTrusted).toEqual([]);
   });
 
   test('a never-opened entry carries no status', () => {

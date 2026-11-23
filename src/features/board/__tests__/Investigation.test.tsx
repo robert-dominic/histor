@@ -753,6 +753,15 @@ describe('The case report', () => {
     verdict: 't-sinking',
   };
 
+  test('a file pinned without being opened shows as "Sealed" under "What you relied on", with no status', () => {
+    seed({ ...fixed, pins: { ...fixed.pins, 'e-pump': 't-sinking' } });
+    renderAt(`${BASE}/report`);
+    const reliedOn = document.querySelector<HTMLElement>('section[data-report="relied-on"]')!;
+    const row = [...reliedOn.querySelectorAll('li')].find(item => item.textContent?.includes(CASE.evidence.find(e => e.id === 'e-pump')!.title))!;
+    expect(row.querySelector('[data-stamp="sealed"]')?.textContent).toBe('Sealed');
+    expect(row.querySelector('[data-stamp="record"], [data-stamp="disputed"], [data-stamp="legend"]')).toBeNull();
+  });
+
   test('lies on the desk as typed paper under a still lamp', () => {
     seed(fixed);
     renderAt(`${BASE}/report`);

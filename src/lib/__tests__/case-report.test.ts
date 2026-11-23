@@ -72,7 +72,8 @@ describe('buildCaseReport: the worked example (verdict "She was sinking")', () =
       {
         evidenceId: 'e-findings',
         title: evidence('e-findings').title,
-        status: 'record',
+        // Pinned without being opened: its status stays sealed (night-run 2.4).
+        status: null,
         target: 'none',
         // It supports no theory, so "None of them" agrees.
         reading: 'agree',
@@ -81,7 +82,7 @@ describe('buildCaseReport: the worked example (verdict "She was sinking")', () =
       {
         evidenceId: 'e-sword',
         title: evidence('e-sword').title,
-        status: 'disputed',
+        status: null,
         target: 't-mutiny',
         reading: 'disagree',
         note: evidence('e-sword').reading.note,
@@ -89,7 +90,7 @@ describe('buildCaseReport: the worked example (verdict "She was sinking")', () =
       {
         evidenceId: 'e-legend-breakfast',
         title: evidence('e-legend-breakfast').title,
-        status: 'legend',
+        status: null,
         target: 't-sinking',
         reading: 'no-link',
         note: evidence('e-legend-breakfast').reading.note,
@@ -100,10 +101,11 @@ describe('buildCaseReport: the worked example (verdict "She was sinking")', () =
   test('relied on: the files pinned to the verdict', () => {
     expect(report.reliedOn).toStrictEqual([
       { evidenceId: 'e-lifeboat', title: evidence('e-lifeboat').title, status: 'record', reading: 'agree' },
+      // Pinned without being opened: it shows as sealed, with no status.
       {
         evidenceId: 'e-legend-breakfast',
         title: evidence('e-legend-breakfast').title,
-        status: 'legend',
+        status: null,
         reading: 'no-link',
       },
     ]);
@@ -123,8 +125,13 @@ describe('buildCaseReport: the worked example (verdict "She was sinking")', () =
     );
   });
 
-  test('legends trusted: the legend pinned to a theory, with where it came from', () => {
-    expect(report.legendsTrusted).toStrictEqual([
+  test('legends trusted: none here, since the legend pinned to a theory was never opened (it stays sealed)', () => {
+    expect(report.legendsTrusted).toStrictEqual([]);
+  });
+
+  test('legends trusted: an opened legend pinned to a theory, with where it came from', () => {
+    const opened = buildCaseReport(maryCeleste, { ...workedExample, opened: [...workedExample.opened, 'e-legend-breakfast'] });
+    expect(opened.legendsTrusted).toStrictEqual([
       {
         evidenceId: 'e-legend-breakfast',
         title: evidence('e-legend-breakfast').title,
@@ -170,7 +177,7 @@ describe('buildCaseReport: no verdict', () => {
     ['no verdict yet', null],
     ['a verdict that is not in the case', 't-not-in-case'],
   ])('%s: the verdict parts are empty, the rest is still filled', (_label, verdict) => {
-    const report = buildCaseReport(maryCeleste, state(['e-lifeboat'], pins, verdict));
+    const report = buildCaseReport(maryCeleste, state(['e-lifeboat', 'e-legend-towed'], pins, verdict));
 
     expect(report.verdict).toBeNull();
     expect(report.reliedOn).toStrictEqual([]);

@@ -110,7 +110,12 @@ export default function Report() {
                 <li key={entry.evidenceId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className={ITEM_META_CLASSES}>{numberOf(entry.evidenceId)}</span>
                   <span className={ITEM_TITLE_CLASSES}>{entry.title}</span>
-                  <Stamp label={STATUS_LABEL[entry.status]} tone={entry.status} />
+                  {/* A file pinned without being opened shows as sealed: its status is earned by opening it. */}
+                  {entry.status === null ? (
+                    <Stamp label="Sealed" tone="sealed" />
+                  ) : (
+                    <Stamp label={STATUS_LABEL[entry.status]} tone={entry.status} />
+                  )}
                 </li>
               ))}
             </ul>

@@ -5,7 +5,8 @@
 
 import type { EvidenceStatus, TheoryStanding } from '@/types/case';
 
-export type StampTone = EvidenceStatus | TheoryStanding;
+/** `sealed`: a file that was never opened; it has no status to show. */
+export type StampTone = EvidenceStatus | TheoryStanding | 'sealed';
 
 const TONE_CLASSES: Record<StampTone, string> = {
   record: 'border-record text-record',
@@ -15,6 +16,7 @@ const TONE_CLASSES: Record<StampTone, string> = {
   leading: 'border-record text-record',
   considered: 'border-muted text-muted',
   rejected: 'border-rust text-rust',
+  sealed: 'border-muted border-dashed text-muted',
 };
 
 const SIZE_CLASSES = {
