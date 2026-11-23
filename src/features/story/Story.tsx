@@ -45,10 +45,12 @@ import { INK_RISE, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
 import { questionLines } from '@/lib/phrases';
 import { holdSmoothScroll, jumpToY, releaseSmoothScroll } from '@/lib/smooth-scroll';
 import { STORY_PACE, readingSeconds } from '@/lib/story-pages';
+import { narrator } from '@/lib/sound';
+import { NARRATION } from '@/lib/sound/levels';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
-import type { Reference, Source, StorySection, Voyage } from '@/types/case';
+import type { Narration, Reference, Source, StorySection, Voyage } from '@/types/case';
 
 // ScrollTrigger is registered inside the component: it needs window.matchMedia as soon as it is registered.
 gsap.registerPlugin(useGSAP, Observer);
@@ -101,6 +103,8 @@ interface StoryProps {
   centralQuestionEmphasis?: string[];
   /** The lines the question is shown in, one per step (`Case.centralQuestionLines`). */
   centralQuestionLines?: string[];
+  /** The question read aloud (`Case.centralQuestionNarration`). */
+  centralQuestionNarration?: Narration;
   /** Every reference of the case, for the portals in the text. */
   references: Reference[];
   /** Every source of the case, listed in the portal cards. */
@@ -113,7 +117,18 @@ interface StoryProps {
   start?: { mode: 'play' | 'read'; token: number } | null;
 }
 
-export default function Story({ story, centralQuestion, centralQuestionEmphasis, centralQuestionLines, references, sources, voyage, start = null, fork }: StoryProps) {
+export default function Story({
+  story,
+  centralQuestion,
+  centralQuestionEmphasis,
+  centralQuestionLines,
+  centralQuestionNarration,
+  references,
+  sources,
+  voyage,
+  start = null,
+  fork,
+}: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
   const reducedMotion = useReducedMotion();
@@ -593,10 +608,18 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           waiting.forEach(resolve => resolve());
         };
 
+        /** The recording of a step's passage: its chapter's, or the question's. */
+        const narrationOf = (step: StoryStep | undefined): Narration | undefined =>
+          step === undefined ? undefined : onQuestion(step) ? centralQuestionNarration : story[sceneOf(step)]?.narration;
+
         /** Moves to step `index`, with `build` adding the animation on the way; nothing new is accepted meanwhile. */
         const moveTo = (index: number, fresh: boolean, direction: StoryDirection, build: (timeline: gsap.core.Timeline) => void) =>
           new Promise<boolean>(resolve => {
             transition?.kill();
+            // A clip of another passage stops (a chapter's carries on into its own hook).
+            if (narrator.playing !== null && narrator.playing !== narrationOf(steps[index])?.src) {
+              narrator.stop();
+            }
             setAnimating(true);
             setStep(index);
             // `data` marks it as a step's own animation (tests settle it with this).
@@ -988,7 +1011,14 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             if (now.kind === 'page') {
               const writer = writers[now.chapter];
               writer.start();
+              // A chapter read aloud: its clip plays as the page is written, and the story waits for it (and a beat).
+              const narration = story[now.chapter].narration;
+              const clip = narration === undefined ? null : narrator.play(narration.src);
               await writer.whenWritten();
+              if (clip !== null) {
+                await clip;
+                return NARRATION.beat;
+              }
               const text = all('[data-story="paragraph"], [data-story="name"]', scenes[now.chapter])
                 .map(element => element.textContent ?? '')
                 .join(' ');
@@ -998,6 +1028,17 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               return STORY_PACE.hookHold;
             }
             const read = readingSeconds(phrases[now.line]?.textContent ?? '');
+            // The question read aloud: its clip starts with its first line; the last line waits for it to end.
+            if (centralQuestionNarration !== undefined) {
+              if (now.line === 0) {
+                void narrator.play(centralQuestionNarration.src);
+              }
+              const clip = narrator.current(centralQuestionNarration.src);
+              if (now.line === phrases.length - 1 && clip !== null) {
+                await clip;
+                return NARRATION.beat + STORY_PACE.beforeFork;
+              }
+            }
             return now.line === phrases.length - 1 ? read + STORY_PACE.beforeFork : read;
           },
           next: async () => {
@@ -1011,6 +1052,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         };
         cleanups.push(() => {
           driverRef.current = null;
+          narrator.stop();
         });
 
         // Before the story begins: the first scene waits under the play modal, its page still to be written.
@@ -1060,7 +1102,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             ))}
             {/* The central question, over the last scene, one line per step. */}
             <div data-story="question-layer" className="pointer-events-none absolute inset-0 z-[6] opacity-0">
-              <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} />
+              <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
             </div>
           </div>
         ) : (
@@ -1068,7 +1110,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             {story.map((section, index) => (
               <StoryChapter key={section.id} section={section} index={index} step={dayNight[index]} grade={grades[index]} route={route} />
             ))}
-            <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} />
+            <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
             {/* After the question, more black to scroll into: scrolling on brings the fork. */}
             <div aria-hidden="true" data-story="after-question" className="h-[45svh] bg-black" />
           </>

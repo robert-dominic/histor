@@ -142,6 +142,17 @@ export interface StorySection {
    * paragraph or the hook, with {{ref:…}} markup read as its label), e.g. "two-year-old daughter".
    */
   emphasis?: string[];
+  /**
+   * A recording of the chapter read aloud. With "Play the story" it plays as the page is written, and the story waits
+   * for it; with "Read at my pace" it plays when the reader presses "Listen". Optional: the story works without it.
+   */
+  narration?: Narration;
+}
+
+/** A recording of a passage read aloud, with its credit (who reads it, and where the recording comes from). */
+export interface Narration {
+  src: string;
+  credit: string;
 }
 
 export interface RollCallEntry {
@@ -251,6 +262,8 @@ export interface Case {
    * `centralQuestion` exactly. Without them it is split at its commas and before "and".
    */
   centralQuestionLines?: string[];
+  /** A recording of the central question read aloud (as `StorySection.narration`). Optional. */
+  centralQuestionNarration?: Narration;
   fork: Fork;
   theories: Theory[];
   evidence: Evidence[];

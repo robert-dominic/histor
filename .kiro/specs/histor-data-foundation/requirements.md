@@ -73,6 +73,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 17. THE Type_System SHALL define Case with centralQuestionEmphasis field of type optional string array (the weighted parts of the central question); WHEN a case has centralQuestionEmphasis, THE Validator SHALL verify that every phrase is a non-empty string that appears word for word in case.centralQuestion
 18. THE Type_System SHALL define Case with centralQuestionLines field of type optional string array (the lines the central question is shown in, one per step); WHEN a case has centralQuestionLines, THE Validator SHALL verify that it is a non-empty array of non-empty strings, each with no space at either end, that joined with single spaces exactly equal case.centralQuestion
 19. THE Type_System SHALL define StorySection with rollCallTitle field of type optional string (the heading of the chapter's crew list slip); WHEN a section has rollCallTitle, THE Validator SHALL verify that it is a non-empty string and that the section has a non-empty rollCall
+20. THE Type_System SHALL define Narration with src field of type string and credit field of type string (a recording of a passage read aloud, and who reads it); StorySection SHALL have narration field of type optional Narration, and Case SHALL have centralQuestionNarration field of type optional Narration; WHEN either is present, THE Validator SHALL verify that its src and credit are non-empty strings. A case without narration works the same, silently
 
 ### Requirement 4: Case Registry
 

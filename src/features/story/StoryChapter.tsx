@@ -6,6 +6,7 @@
 
 import CreditInfo from '@/components/CreditInfo';
 import PortalText from '@/features/portals/PortalText';
+import ListenButton from '@/features/story/ListenButton';
 import VoyageChart from '@/features/story/VoyageChart';
 import type { DayNightStep, ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
@@ -100,6 +101,7 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
               ))}
               {hasChartPoint && <VoyageChart route={route} variant="still" upTo={index} />}
             </div>
+            {section.narration !== undefined && <ListenButton narration={section.narration} className="mt-6" />}
           </div>
         </div>
         {/* The roll call: a crew list, a slip of aged paper on the other side of the image from the page (below it on

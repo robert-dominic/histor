@@ -79,6 +79,13 @@ It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned do
 
 A thud is one recipe at three weights (`thud-soft`, `thud`, `thud-heavy`): a short low sine that drops in pitch, with a knock of low-passed noise.
 
+## Narration (`narration.ts`), ready for recordings
+
+- Optional `narration?: { src, credit }` on `StorySection`, and `Case.centralQuestionNarration` for the question; validated (both non-empty strings). The one place the app plays a file: a voice cannot be generated. The Mary Celeste has no recordings yet, and everything works without them.
+- **"Play the story":** a chapter's clip plays as its page is written, and Play waits for the clip to end, plus a short beat (`NARRATION.beat`), before moving on. The question's clip starts with its first line; its last line waits for the clip.
+- **"Read at my pace":** a clip plays only when the reader presses the small **"Listen"** button on the panel (or under the question), with the recording's credit beside it. Pressing it again stops it.
+- One clip at a time; a step to another passage stops it (a chapter's clip carries on into its own hook). The ambience and the score duck under the voice until it ends. With the sound off, there is no voice.
+
 ## Quality bar
 
 - Nothing loud or sudden except the stamps. The master level is modest.

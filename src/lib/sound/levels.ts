@@ -71,5 +71,8 @@ export const SCORE = {
   moodGlide: 2.5,
 } as const;
 
+/** Narration (narration.ts): the voice's level, and the beat "Play the story" waits after a clip ends. */
+export const NARRATION = { volume: 0.9, beat: 0.8 } as const;
+
 /** Where the choice to have sound on or off is kept. Absent means on. */
 export const SOUND_STORAGE_KEY = 'histor:sound';

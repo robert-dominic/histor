@@ -12,6 +12,8 @@ import maryCeleste from '@/cases/mary-celeste/case';
 import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
 import { parseRefs } from '@/lib/parse-refs';
+import { narrator } from '@/lib/sound';
+import { NARRATION } from '@/lib/sound/levels';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { STORY_PACE } from '@/lib/story-pages';
 import { splitQuestion } from '@/lib/phrases';
@@ -1155,6 +1157,52 @@ describe('Story: the central question, one line per step', () => {
     const opener = ScrollTrigger.getAll().find(trigger => trigger.vars.start === 'bottom 60%')!;
     act(() => opener.vars.onEnter?.(opener));
     expect(gsap.getTweensOf(screen.getByRole('dialog', { name: 'What next' }))).toHaveLength(0);
+  });
+});
+
+describe('Story: ready for narration', () => {
+  const clip = { src: '/audio/s-one.mp3', credit: 'Read by a test voice' };
+  const narrated: StoryData = { ...testCase, story: [{ ...testCase.story[0], narration: clip }, testCase.story[1]] };
+
+  test('the Mary Celeste has no recordings: no "Listen" anywhere, and the story works as before', () => {
+    const { container } = renderStory();
+    expect(container.querySelector('[data-story="listen"]')).toBeNull();
+  });
+
+  test('"Read at my pace": a small "Listen" on a narrated chapter\'s panel, with its credit; pressing it plays the clip', () => {
+    const play = vi.spyOn(narrator, 'play').mockReturnValue(new Promise(() => undefined));
+    const { container } = renderStory(narrated, READ);
+    const page = chapterOf(container, narrated.story[0]).querySelector<HTMLElement>('[data-story="page"]')!;
+    const listen = within(page).getByRole('button', { name: 'Listen' });
+    expect(page.textContent).toContain(clip.credit);
+    expect(chapterOf(container, narrated.story[1]).querySelector('[data-story="listen"]')).toBeNull();
+    // Nothing plays by itself.
+    expect(play).not.toHaveBeenCalled();
+    fireEvent.click(listen);
+    expect(play).toHaveBeenCalledWith(clip.src);
+  });
+
+  test('"Play the story": the clip plays as the page is written, and the story waits for it, then a beat', async () => {
+    let endClip: () => void = () => undefined;
+    const play = vi.spyOn(narrator, 'play').mockReturnValue(new Promise<void>(resolve => (endClip = resolve)));
+    const { container } = renderStory(narrated, PLAY);
+    const delayed = vi.spyOn(gsap, 'delayedCall');
+    const flush = () =>
+      act(async () => {
+        for (let tick = 0; tick < 6; tick += 1) {
+          await Promise.resolve();
+        }
+      });
+    await flush();
+    expect(play).toHaveBeenCalledWith(clip.src);
+    finishWriting(container);
+    await flush();
+    // Written, but the voice is still reading: no hold yet.
+    expect(delayed).not.toHaveBeenCalled();
+    endClip();
+    await flush();
+    expect(delayed).toHaveBeenCalledTimes(1);
+    expect(delayed.mock.calls[0][0]).toBe(NARRATION.beat);
   });
 });
 

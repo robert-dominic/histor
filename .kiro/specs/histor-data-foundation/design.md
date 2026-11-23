@@ -115,6 +115,7 @@ export function validateCase(caseData: Case): string[];
 - Legend video: when `theme.legendVideo` is present, its `src`, `poster` and `credit` must be non-empty strings
 - Ambience: when `theme.ambience` is present, `story` and `desk` are arrays of known `AmbienceLayer`s, none listed twice (Requirement 13.7, 13.8); its optional `cues` each name a story chapter and a known sound (`'ships-bell'`) (Requirement 13.9)
 - New optional fields: `StorySection.image` (when present, `src`, `alt` and `credit` must be non-empty strings), `Case.yearEnd` (when present, an integer with `yearEnd >= year`) and `Case.unsolved` (boolean, shows the UNSOLVED stamp)
+- Narration: `StorySection.narration` and `Case.centralQuestionNarration` are optional `{ src, credit }`; when present, both must be non-empty strings (Requirement 3.20)
 - Image caption: `ImageAsset.caption` is optional; when present on a story, reference or evidence image it must be a non-empty string
 
 **Implementation notes:**

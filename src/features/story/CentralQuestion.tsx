@@ -4,8 +4,10 @@
 // Its weighted parts arrive on their own after a breath, slightly brighter (no lines drawn in the story). The fork
 // comes only after the whole question. Under reduced motion it is simply shown whole.
 // The text comes from the case data. Screen readers get the whole question at once.
+import ListenButton from '@/features/story/ListenButton';
 import { questionLines } from '@/lib/phrases';
 import { weightedPieces } from '@/lib/story-emphasis';
+import type { Narration } from '@/types/case';
 
 interface CentralQuestionProps {
   question: string;
@@ -13,9 +15,11 @@ interface CentralQuestionProps {
   emphasis?: string[];
   /** The lines it is shown in (`Case.centralQuestionLines`). */
   lines?: string[];
+  /** It read aloud (`Case.centralQuestionNarration`): a "Listen" button under it. */
+  narration?: Narration;
 }
 
-export default function CentralQuestion({ question, emphasis = [], lines }: CentralQuestionProps) {
+export default function CentralQuestion({ question, emphasis = [], lines, narration }: CentralQuestionProps) {
   return (
     <div
       data-story="question"
@@ -44,6 +48,7 @@ export default function CentralQuestion({ question, emphasis = [], lines }: Cent
           ))}
         </span>
       </h2>
+      {narration !== undefined && <ListenButton narration={narration} className="absolute inset-x-0 bottom-[8svh] justify-center" />}
     </div>
   );
 }

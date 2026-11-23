@@ -372,6 +372,24 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional narration of each chapter and of the central question: when present, src and credit
+  // must be non-empty strings
+  const checkNarration = (narration: { src?: unknown; credit?: unknown } | undefined | null, field: string) => {
+    if (narration === undefined) {
+      return;
+    }
+    for (const part of ['src', 'credit'] as const) {
+      const value = narration === null || typeof narration !== 'object' ? undefined : narration[part];
+      if (typeof value !== 'string' || value.trim() === '') {
+        errors.push(`Field ${field}.${part}: Must be a non-empty string`);
+      }
+    }
+  };
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => checkNarration(section?.narration, `story[${i}].narration`));
+  }
+  checkNarration(caseData.centralQuestionNarration, 'centralQuestionNarration');
+
   // Validate the optional weighted parts of the central question (3.17): an array of non-empty phrases, each found
   // word for word in centralQuestion
   const questionEmphasis: unknown = caseData.centralQuestionEmphasis;

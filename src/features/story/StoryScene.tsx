@@ -11,6 +11,7 @@
 import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import PortalText from '@/features/portals/PortalText';
+import ListenButton from '@/features/story/ListenButton';
 import PenText from '@/features/story/PenText';
 import { HookLetters } from '@/features/story/StoryWords';
 import type { ImageGrade } from '@/lib/day-night';
@@ -130,6 +131,7 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
             ))}
           </div>
           <Quill attribute="data-story" sizeClassName="h-[clamp(2.5rem,4vw,3.75rem)]" />
+          {section.narration !== undefined && <ListenButton narration={section.narration} className="mt-6" />}
         </div>
       </div>
       {/* The roll call, on the other side of the screen from the page: a crew list, a small slip of aged paper pinned

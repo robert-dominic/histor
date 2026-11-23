@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react';
 import { Ambience } from '@/lib/sound/ambience';
 import { SoundEngine } from '@/lib/sound/engine';
+import { Narrator } from '@/lib/sound/narration';
 import { SOUND } from '@/lib/sound/levels';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
@@ -15,6 +16,9 @@ import type { AmbienceLayer } from '@/types/case';
 
 /** The one engine. */
 export const sound = new SoundEngine();
+
+/** The one narrator: a chapter or the question read aloud (narration.ts). */
+export const narrator = new Narrator(sound);
 
 /** Plays one cue on the effects bus, if a voice is free. */
 export function playCue(engine: SoundEngine, cue: SoundCue): void {
