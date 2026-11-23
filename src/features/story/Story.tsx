@@ -769,6 +769,13 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               gsap.set(leaving, { opacity: 1 });
               timeline.to(leaving, { opacity: 0, ...quick });
             }
+            // Back into a hook: the darkness first, then the text (investigation brief, 6). The hook was painted
+            // whole underneath; it waits, hidden, until what is left has gone.
+            const hookBack = to.kind === 'hook' ? parts[toScene].hook : null;
+            if (hookBack !== null) {
+              gsap.set(hookBack, { opacity: 0 });
+              timeline.to(hookBack, { opacity: 1, ...tween('ink.in') }, quick.duration);
+            }
           });
         };
 

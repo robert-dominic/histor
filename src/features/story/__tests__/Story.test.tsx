@@ -773,6 +773,40 @@ describe('Story: hooks', () => {
     expect(chapter.querySelector<HTMLElement>('[data-story="page"]')?.dataset.written).toBe('true');
   });
 
+  test('darkness first, both ways: forward the image darkens before the text; back into a hook the text waits for the dark', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    const second = chapterOf(container, maryCeleste.story[1]);
+    // Forward into chapter 2's hook.
+    wheelBurst(stageOf(container));
+    settleSteps();
+    wheelBurst(stageOf(container));
+    settleSteps();
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    const forward = transitionNow();
+    const hook = second.querySelector<HTMLElement>('[data-story="hook-moment"]')!;
+    const dark = on(forward, second.querySelector('[data-story="dim"]')!).find(tween => tween.vars.opacity !== 0)!;
+    const textIn = on(forward, hook).find(tween => tween.vars.opacity === 1)!;
+    expect(textIn.startTime()).toBeGreaterThanOrEqual(end(dark) - 1e-6);
+    settleSteps();
+    // On to chapter 3, then back into chapter 2's hook.
+    wheelBurst(stageOf(container));
+    settleSteps();
+    expect(stepOf(container)).toBe('page-2');
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    const back = transitionNow();
+    // Painted dark underneath, the text hidden until the lit scene has gone.
+    expect(hook.style.opacity).toBe('0');
+    expect(second.querySelector<HTMLElement>('[data-story="dim"]')!.style.opacity).not.toBe('0');
+    const leaving = on(back, chapterOf(container, maryCeleste.story[2])).find(tween => tween.vars.opacity === 0)!;
+    const textBack = on(back, hook).find(tween => tween.vars.opacity === 1)!;
+    expect(textBack.startTime()).toBeGreaterThanOrEqual(end(leaving) - 1e-6);
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-1');
+    expect(hook.style.opacity).toBe('1');
+  });
+
   test('story events: each chapter is entered, each hook comes, in order', () => {
     const events: StoryEvent[] = [];
     const stop = onStoryEvent(event => events.push(event));
