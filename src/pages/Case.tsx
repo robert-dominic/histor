@@ -15,6 +15,9 @@ import { formatCaseYears } from '@/lib/case-years';
 import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
 import { validateCase } from '@/lib/validate-case';
 
+/** The story has "arrived" once its top is this far up the screen (an IntersectionObserver root margin). */
+const STORY_ARRIVAL_MARGIN = '0px 0px -35% 0px';
+
 export default function Case() {
   const { id } = useParams();
   const entry = getCaseById(id);
@@ -29,6 +32,12 @@ export default function Case() {
   const [choosing, setChoosing] = useState(false);
   /** The reader's choice, each time it is made: the story starts with it. */
   const [start, setStart] = useState<{ mode: PlayMode; token: number } | null>(null);
+  /** The play choice has been shown on this page load (it shows once, before chapter 1, however the reader arrives). */
+  const choiceShownRef = useRef(false);
+  const openChoice = () => {
+    choiceShownRef.current = true;
+    setChoosing(true);
+  };
 
   const title = caseData?.title;
   const year = caseData?.year;
@@ -39,6 +48,30 @@ export default function Case() {
     () => (title === undefined || year === undefined ? undefined : { title, years: formatCaseYears(year, yearEnd), unsolved }),
     [title, year, yearEnd, unsolved]
   );
+
+  // The story is only there to scroll to once the intro has made its point (or was seen on an earlier visit).
+  const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
+
+  // However the reader reaches the story (the scroll cue, scrolling past the intro, a return visit, a reload or a
+  // direct link), the play choice opens once on this page load, before chapter 1 starts: as soon as the story comes
+  // up the screen. (The scroll cue opens it too, each time it is pressed.)
+  useEffect(() => {
+    const story = storyRef.current;
+    if (!showStory || story === null || typeof IntersectionObserver !== 'function') {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting) && !choiceShownRef.current) {
+          observer.disconnect();
+          openChoice();
+        }
+      },
+      { rootMargin: STORY_ARRIVAL_MARGIN }
+    );
+    observer.observe(story);
+    return () => observer.disconnect();
+  }, [showStory]);
 
   // In development, check the case content and report every problem in the console.
   useEffect(() => {
@@ -79,8 +112,6 @@ export default function Case() {
     );
   }
 
-  // The story is only there to scroll to once the intro has made its point (or was seen on an earlier visit).
-  const showStory = introSeenBefore || introEndedFor === caseData.id;
 
   return (
     // The key gives every case its own provider, so one case never starts with another case's investigation.
@@ -110,7 +141,7 @@ export default function Case() {
             markIntroSeen(caseData.id);
             setIntroEndedFor(caseData.id);
           }}
-          onDone={() => setChoosing(true)}
+          onDone={openChoice}
         />
         {showStory && (
           // The scroll cue stops with the first chapter filling the screen.

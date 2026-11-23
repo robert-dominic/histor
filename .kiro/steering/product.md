@@ -36,7 +36,7 @@ The case's most famous legend, told dramatically. For the Mary Celeste this is t
 A scroll-driven telling of what the record says, built with GSAP ScrollTrigger.
 - Told in short sections. Each section ends on a moment of curiosity that pulls the user to keep scrolling.
 - The screen grows darker as the story goes on.
-- After the legend intro the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. The case header carries the title. Each chapter is a page beside its image, written by a pen; scrolling on brings the chapter's hook, then the next chapter.
+- Before chapter 1 the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. It opens once per page load however the reader arrives (after the legend intro, on a return visit, a reload or a direct link), and each time the intro's scroll cue is pressed. The case header carries the title. Each chapter is a page beside its image, written by a pen; scrolling on brings the chapter's hook, then the next chapter.
 - Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
 - Job: give a newcomer full context, so nobody finishes the story confused.
 

@@ -2,7 +2,7 @@
 // src/pages/__tests__/Case.test.tsx
 // Task 7.2: the case page handles a missing case, a sealed case and an open case.
 // An open case is its legend intro, then its story below it.
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registry } from '@/cases';
@@ -192,6 +192,46 @@ describe('Case page: open case', () => {
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'See what really happened' }));
     expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
+  });
+
+  test('a return visit (no intro played): the play choice opens once the story comes up the screen, once per page load', async () => {
+    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+    const observed: { callback: IntersectionObserverCallback; disconnected: boolean }[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        record: { callback: IntersectionObserverCallback; disconnected: boolean };
+        constructor(callback: IntersectionObserverCallback) {
+          this.record = { callback, disconnected: false };
+          observed.push(this.record);
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {
+          this.record.disconnected = true;
+        }
+        takeRecords() {
+          return [];
+        }
+      }
+    );
+    const arrive = () =>
+      observed
+        .filter(record => !record.disconnected)
+        .forEach(record =>
+          act(() => record.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
+        );
+
+    renderCasePage(`/case/${openEntry.id}`);
+    // The intro is at its end state; nothing is pressed. The choice waits until the story arrives.
+    expect(screen.queryByRole('dialog')).toBeNull();
+    arrive();
+    const choice = screen.getByRole('dialog', { name: openEntry.data.title });
+    fireEvent.click(within(choice).getByRole('button', { name: 'Read at my pace' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
+    // Once per page load: arriving again does not bring it back.
+    arrive();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   test('the intro still plays when localStorage cannot be read', () => {
