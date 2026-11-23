@@ -189,6 +189,13 @@ export class SoundEngine {
     glide(this.graph.master.gain, hidden || !this.on ? 0 : SOUND.master, SOUND.hiddenFade, ctx.currentTime);
     if (!hidden && this.on) {
       void ctx.resume().catch(() => undefined);
+    } else if (hidden) {
+      // Once faded, the context rests: no CPU spent on a tab nobody hears.
+      setTimeout(() => {
+        if (this.hidden) {
+          void ctx.suspend().catch(() => undefined);
+        }
+      }, (SOUND.hiddenFade + 0.1) * 1000);
     }
   }
 

@@ -564,7 +564,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           const step = steps[index];
           if (step?.kind === 'page') {
             const section = story[step.chapter];
-            emitStoryEvent({ type: 'chapter-enter', chapter: section.id, direction });
+            emitStoryEvent({ type: 'chapter-enter', chapter: section.id, direction, depth: dayNight[step.chapter]?.mix ?? 0 });
             emitStoryEvent({ type: 'beat', chapter: section.id, index: 0, direction });
             const image = parts[step.chapter].image;
             if (image !== null && (fresh || !gsap.isTweening(image))) {

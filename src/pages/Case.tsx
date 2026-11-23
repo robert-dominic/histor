@@ -13,6 +13,7 @@ import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
 import Story from '@/features/story/Story';
 import { formatCaseYears } from '@/lib/case-years';
 import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
+import { emitStoryEvent } from '@/lib/story-events';
 import { validateCase } from '@/lib/validate-case';
 
 /** The story has "arrived" once its top is this far up the screen (an IntersectionObserver root margin). */
@@ -28,6 +29,12 @@ export default function Case() {
   const caseId = caseData?.id;
   const introSeenBefore = useMemo(() => (caseId === undefined ? false : hasSeenIntro(caseId)), [caseId]);
   const storyRef = useRef<HTMLDivElement>(null);
+  // The sound's place: the case's story, with its legend intro (src/lib/sound).
+  const ambience = caseData?.theme.ambience;
+  useEffect(() => {
+    emitStoryEvent({ type: 'place', place: 'story', ambience });
+    return () => emitStoryEvent({ type: 'place', place: 'away' });
+  }, [ambience]);
   /** The play choice is open: the reader has gone on from the legend intro and must choose how to hear the story. */
   const [choosing, setChoosing] = useState(false);
   /** The reader's choice, each time it is made: the story starts with it. */

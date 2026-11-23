@@ -31,5 +31,20 @@ export const SOUND = {
   penTicksPerSecond: 12,
 } as const;
 
+/** The ambience's layers (ambience.ts): each one's level, and how the story's darkness moves them. */
+export const AMBIENCE = {
+  /** A layer fades in, and out, over these. */
+  fadeIn: 3,
+  fadeOut: 2.2,
+  sea: { level: 0.9, cutoff: 420, swell: 0.28, darkCutoff: 280, darkLevel: 0.7 },
+  wind: { level: 0.16, centre: 750, darkLevel: 0.3, gust: { every: [25, 60], rise: 1.8, fall: 4.5, by: 0.14 } },
+  timber: { level: 0.5, every: [8, 20] },
+  'room-tone': { level: 0.22, cutoff: 520 },
+  'lamp-hum': { level: 0.018 },
+  'distant-sea': { level: 0.42, cutoff: 230 },
+  /** How quickly the ambience follows the story's darkness. */
+  darkGlide: 6,
+} as const;
+
 /** Where the choice to have sound on or off is kept. Absent means on. */
 export const SOUND_STORAGE_KEY = 'histor:sound';

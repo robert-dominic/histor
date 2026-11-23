@@ -196,6 +196,21 @@ export interface CaseTheme {
    * The credit is shown on screen with the "Illustration" label.
    */
   legendVideo?: { src: string; poster: string; credit: string };
+  /**
+   * The case's generated ambience (src/lib/sound/ambience.ts): which layers play under the story and at the desk.
+   * Optional: without it, the case is silent but for its effects.
+   */
+  ambience?: CaseAmbience;
+}
+
+/** One layer of generated ambience. More can be added for later cases (rain, fog, distant carriages). */
+export type AmbienceLayer = 'sea' | 'wind' | 'timber' | 'room-tone' | 'lamp-hum' | 'distant-sea';
+
+export interface CaseAmbience {
+  /** Under the legend intro and the story, e.g. sea, wind and timber. */
+  story: AmbienceLayer[];
+  /** At the investigation desk, quieter, e.g. a room tone, a lamp's hum and the sea far away. */
+  desk: AmbienceLayer[];
 }
 
 // ---------- Case ----------

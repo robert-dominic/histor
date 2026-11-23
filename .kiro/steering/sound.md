@@ -19,6 +19,21 @@ inclusion: always
 - **Components never call sounds.** They emit their moments (`src/lib/story-events.ts`); the engine listens, and the table in `src/lib/sound/sound-map.ts` says what each moment sounds like. To change a sound, change its row there, or its recipe in `voices.ts`.
 - **Every level and timing to tune is in `src/lib/sound/levels.ts`** (`SOUND`).
 
+## Ambience: the case's theme (`ambience.ts`)
+
+Each case names its ambience in its theme: `CaseTheme.ambience = { story: AmbienceLayer[], desk: AmbienceLayer[] }` (optional; without it, silence). The pages say where the player is with a `place` event: the story page (legend intro and story) is `story`; the investigation layout (desk, verdict, report) is `desk`. Layers both places share play on unbroken; the others fade out and in.
+
+| Layer | How it is made |
+| --- | --- |
+| `sea` | Brown noise through a slowly moving low-pass, swelling like waves: two slow, unrelated LFOs on the filter and two on the gain, so it never repeats exactly |
+| `wind` | Band-passed noise with a slow, uneven sweep; rarely (every 25–60s) a gust |
+| `timber` | An occasional low creak (a short resonant sawtooth pulse that bends in pitch), every 8–20s; sometimes the hull answers itself |
+| `room-tone` | Brown noise, low-passed, very quiet |
+| `lamp-hum` | A faint 60 Hz hum with its 120 Hz partial |
+| `distant-sea` | The sea, far away: a lower low-pass and a lower level |
+
+**Day into night:** as the story darkens (`chapter-enter`'s `depth`), the sea gets lower and duller, and the wind louder. The Mary Celeste: `story: ['sea', 'wind', 'timber']`, `desk: ['room-tone', 'lamp-hum', 'distant-sea']`. A later case adds its own layers (rain, fog, distant carriages) to `AmbienceLayer`, `ambience.ts` and the validator.
+
 ## Quality bar
 
 - Nothing loud or sudden except the stamps. The master level is modest.

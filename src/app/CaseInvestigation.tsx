@@ -5,7 +5,7 @@
 // with useInvestigation(). Below 1024px wide, the phone gate takes the place of every screen until the visitor
 // chooses to continue anyway (once per session).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import PhoneGate from '@/app/PhoneGate';
@@ -13,6 +13,7 @@ import CaseHeader from '@/components/CaseHeader';
 import { getCaseById } from '@/cases';
 import PortalProvider from '@/features/portals/PortalProvider';
 import { formatCaseYears } from '@/lib/case-years';
+import { emitStoryEvent } from '@/lib/story-events';
 import { continuePastGate, hasContinuedPastGate } from '@/lib/phone-gate';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 
@@ -23,6 +24,12 @@ export default function CaseInvestigation() {
   const [continued, setContinued] = useState(hasContinuedPastGate);
   // A browser that cannot measure its screen gets the investigation: better a cramped desk than a closed door.
   const canMeasure = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  // The sound's place: the desk's room, for the desk, the verdict and the report (src/lib/sound).
+  const ambience = entry !== undefined && !entry.sealed ? entry.data?.theme.ambience : undefined;
+  useEffect(() => {
+    emitStoryEvent({ type: 'place', place: 'desk', ambience });
+    return () => emitStoryEvent({ type: 'place', place: 'away' });
+  }, [ambience]);
 
   if (entry === undefined) {
     return (

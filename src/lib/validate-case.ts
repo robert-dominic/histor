@@ -1,5 +1,5 @@
 // src/lib/validate-case.ts
-import type { Case } from '@/types/case';
+import type { AmbienceLayer, Case } from '@/types/case';
 import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
@@ -283,6 +283,25 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
+  // Validate the optional ambience: when present, story and desk are arrays of known layers, each at most once
+  const ambience: { story?: unknown; desk?: unknown } | undefined | null = caseData.theme?.ambience;
+  if (ambience !== undefined && ambience !== null) {
+    for (const place of ['story', 'desk'] as const) {
+      const layers = ambience[place];
+      if (!Array.isArray(layers)) {
+        errors.push(`Field theme.ambience.${place}: Must be an array of ambience layers`);
+        continue;
+      }
+      layers.forEach((layer: unknown, j) => {
+        if (typeof layer !== 'string' || !AMBIENCE_LAYERS.includes(layer)) {
+          errors.push(`Field theme.ambience.${place}[${j}]: Must be one of ${AMBIENCE_LAYERS.join(', ')}`);
+        } else if (layers.indexOf(layer) !== j) {
+          errors.push(`Field theme.ambience.${place}[${j}]: '${layer}' is listed twice`);
+        }
+      });
+    }
+  }
+
   // Validate the optional chapter image: when present, src, alt and credit must be non-empty
   if (Array.isArray(caseData.story)) {
     caseData.story.forEach((section, i) => {
@@ -484,7 +503,10 @@ interface MarkupField {
 }
 
 /** Matches Malformed_Markup of the form {{ref:<Ref_Id>|<empty or whitespace>}} (4.3). */
-const EMPTY_LABEL_MARKUP = /^\{\{ref:[a-z0-9]+(?:-[a-z0-9]+)*\|\s*\}\}/;
+/** The ambience layers the sound can make (src/lib/sound/ambience.ts). */
+const AMBIENCE_LAYERS: readonly string[] = ['sea', 'wind', 'timber', 'room-tone', 'lamp-hum', 'distant-sea'] satisfies readonly AmbienceLayer[];
+
+const EMPTY_LABEL_MARKUP =/^\{\{ref:[a-z0-9]+(?:-[a-z0-9]+)*\|\s*\}\}/;
 const ANY_BRACE = /[{}]/;
 const EXCERPT_MAX = 40;
 

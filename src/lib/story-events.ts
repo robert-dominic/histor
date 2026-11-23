@@ -1,18 +1,22 @@
 // src/lib/story-events.ts
-// The story's and the desk's moments, as events, so sound (or anything else) can follow them later without
-// touching their code. There is no sound yet: nothing listens by default.
+// The story's and the desk's moments, as events, so sound (or anything else) can follow them without touching their
+// code. The sound (src/lib/sound) listens to all of them, and its table (sound-map.ts) says what each sounds like.
 //
 //   const stop = onStoryEvent(event => { if (event.type === 'hook') playBell(); });
 //
 // Story events fire when the reader passes a moment, in either direction; `direction` says which way.
 // Desk events fire when the user does something at the investigation desk.
 
-import type { EvidenceStatus, PinTarget } from '@/types/case';
+import type { CaseAmbience, EvidenceStatus, PinTarget } from '@/types/case';
 
 export type StoryDirection = 'forward' | 'backward';
 
 export type StoryEvent =
-  | { type: 'chapter-enter'; chapter: string; direction: StoryDirection }
+  // Where the player is: the case's story (with its legend intro), its desk (the investigation, the verdict and the
+  // report), or away from any case. Carries the case's ambience recipe.
+  | { type: 'place'; place: 'story' | 'desk' | 'away'; ambience?: CaseAmbience }
+  // `depth`: how far into the night the story is, 0 (day) to 1 (night).
+  | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number }
   // A sentence of the text column starts to rise into view. `index` is its place in the chapter.
   | { type: 'beat'; chapter: string; index: number; direction: StoryDirection }
   | { type: 'hook'; chapter: string; direction: StoryDirection }

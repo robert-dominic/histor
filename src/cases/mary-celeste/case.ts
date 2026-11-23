@@ -438,6 +438,12 @@ export const maryCeleste: Case = {
       src: legendVideoSrc,
       poster: legendVideoPoster,
       credit: 'AI-generated illustration (Google Gemini)'
+    },
+    // Generated in code (src/lib/sound): the open sea under the story; a quiet room, a lamp and the sea far away at
+    // the desk.
+    ambience: {
+      story: ['sea', 'wind', 'timber'],
+      desk: ['room-tone', 'lamp-hum', 'distant-sea']
     }
   }
 };
