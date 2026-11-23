@@ -396,15 +396,22 @@ function DeskScreen() {
             {/* The floor, with the tray beside it. */}
             <div data-desk="floor-row" className="relative min-h-0 px-4 pb-3">
               <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_13rem] gap-4">
-                <div className="min-h-0 min-w-0">
-                  <Floor
-                    layout={layout}
-                    filesHref={`${base}/files`}
-                    theories={caseData.theories}
-                    dropped={dropped}
-                    onRearrange={rememberDrop}
-                    onDrop={handleFloorDrop}
-                  />
+                {/* A small, quiet label over the floor, on its own line so it never covers a folder; above the lamp's
+                    shadow. */}
+                <div className="flex min-h-0 min-w-0 flex-col">
+                  <p data-desk="floor-label" className="relative z-[21] h-5 shrink-0 pl-1 font-voice text-[0.6875rem] tracking-[0.2em] text-night-ink/65 uppercase">
+                    Evidence · {caseData.evidence.length} files
+                  </p>
+                  <div className="min-h-0 flex-1">
+                    <Floor
+                      layout={layout}
+                      filesHref={`${base}/files`}
+                      theories={caseData.theories}
+                      dropped={dropped}
+                      onRearrange={rememberDrop}
+                      onDrop={handleFloorDrop}
+                    />
+                  </div>
                 </div>
                 <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
               </div>

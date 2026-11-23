@@ -90,6 +90,21 @@ describe('the desktop desk', () => {
     expect(desk().querySelector('header')?.textContent).not.toContain('You can close the case');
   });
 
+  test('two quiet labels: "Theories" above the board and "Evidence · 23 files" over the floor, from the data', () => {
+    renderDesk();
+    const theories = desk().querySelector<HTMLElement>('[data-desk="board-row"] [data-board="label"]')!;
+    expect(theories.textContent).toBe('Theories');
+    const evidence = desk().querySelector<HTMLElement>('[data-desk="floor-row"] [data-desk="floor-label"]')!;
+    expect(evidence.textContent).toBe(`Evidence · ${maryCeleste.evidence.length} files`);
+    for (const label of [theories, evidence]) {
+      expect(label.className).toContain('font-voice');
+      expect(label.className).toContain('text-night-ink/65');
+      expect(label.tagName).not.toBe('H2');
+    }
+    // The floor label has its own line: it lies outside the floor, so it never covers a folder.
+    expect(desk().querySelector('[data-board="floor"]')?.contains(evidence)).toBe(false);
+  });
+
   test('the tray is labelled "None of them", as in the report', () => {
     renderDesk();
     expect(screen.getByRole('heading', { name: 'None of them' })).toBeDefined();

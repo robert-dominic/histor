@@ -126,10 +126,19 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
       // The board outside the notes is a place to drop a folder too: it opens it.
       data-drop-target={fitted ? 'board' : undefined}
       className={`desk-felt relative rounded-sm ${
-        fitted ? 'h-full min-h-0 px-6 pt-3 pb-3 lg:px-8' : '-mx-4 px-4 pt-6 pb-8 sm:mx-0 sm:px-6 lg:px-8'
+        fitted ? 'h-full min-h-0 px-6 pt-6 pb-3 lg:px-8' : '-mx-4 px-4 pt-6 pb-8 sm:mx-0 sm:px-6 lg:px-8'
       }`}
     >
-      <h3 id="theories-title" className="sr-only">
+      {/* The one-screen desk: a small, quiet label above the theories. Elsewhere it is for screen readers only. */}
+      <h3
+        id="theories-title"
+        data-board="label"
+        className={
+          fitted
+            ? 'absolute top-1.5 left-8 font-voice text-[0.6875rem] tracking-[0.2em] text-night-ink/65 uppercase'
+            : 'sr-only'
+        }
+      >
         Theories
       </h3>
       {/* The threads run behind the paper, so they show in the gaps between a note and its files. */}

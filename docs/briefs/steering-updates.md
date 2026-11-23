@@ -24,3 +24,8 @@ On a screen 1024px wide or more the investigation is **one fixed screen** that n
 ### "The story: cinematic scenes": replace the "The opening scene" bullet
 
 - **One opening, on the first scene.** After the legend intro the story opens on chapter 1's own scene: its image, full screen, under its camera. Over it the quill writes the case title large, the years are typed under it one letter at a time, the UNSOLVED stamp lands, then the teaser and a quiet scroll cue. As the reader scrolls, they clear (on their own timer, `ink.out`, never left half faded), the title floats up and docks into the case header (which stays empty until then), and chapter 1's heading and text column begin on the same image. One image, one title. Scrolling back brings the opening back and takes the title out of the header. Under reduced motion the opening is a plain screen at night before chapter 1.
+
+### "The desk (desktop)": add
+
+- **Labels.** A small label above the board, "Theories", and one over the floor on its own line, "Evidence · {n} files" ({n} from the data). Special Elite, small capitals, in a muted night tone (`night-ink` at 65%, so it still reads on the night desk); quiet, not headings.
+- **The guide.** "How to investigate" opens by itself on the first visit to the desk (remembered in storage, `histor:desk-guide:{caseId}`), and the **?** opens it again. Its first sentence is the case's own (`Case.deskGuideIntro`), then the theories, the evidence ("the folders on the floor" on a desktop, "the files below" on a phone), what the stamps mean, how to pin, and when the seal appears.

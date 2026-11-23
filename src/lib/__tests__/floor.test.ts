@@ -12,11 +12,12 @@ const IDS = maryCeleste.evidence.map(evidence => evidence.id);
 
 /**
  * The floor's size on the desk at a given screen: the screen minus the case header (2.75rem), the desk's header
- * (3.5rem), the board's 46 parts of the rest, the floor row's padding, the tray (13rem) and the gap beside it.
+ * (3.5rem), the board's 46 parts of the rest, the floor row's padding and its label (1.25rem), the tray (13rem) and
+ * the gap beside it.
  */
 function floorAt(screenWidth: number, screenHeight: number) {
   const rows = screenHeight - 44 - 56;
-  return { width: screenWidth - 32 - 208 - 16, height: Math.floor((rows * 54) / 100) - 12 };
+  return { width: screenWidth - 32 - 208 - 16, height: Math.floor((rows * 54) / 100) - 12 - 20 };
 }
 
 describe('floorLayout with the Mary Celeste files', () => {
