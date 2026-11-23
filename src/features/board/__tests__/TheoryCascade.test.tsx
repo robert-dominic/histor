@@ -37,6 +37,25 @@ describe('TheoryCascade', () => {
     expect(strips[2].textContent).toContain(maryCeleste.evidence[2].title);
   });
 
+  test('every strip shows its full label, wrapping to a second line if needed, never cut off', () => {
+    const { container } = renderCascade(maryCeleste.evidence.length);
+    const labels = [...container.querySelectorAll<HTMLElement>('[data-board="tab-label"]')];
+    expect(labels.map(label => label.textContent)).toEqual(maryCeleste.evidence.map(item => item.title));
+    for (const label of labels) {
+      expect(label.className).not.toMatch(/truncate|line-clamp|text-ellipsis|whitespace-nowrap|overflow-hidden/);
+      expect(label.className).toContain('break-words');
+    }
+  });
+
+  test('the cascade scrolls only when its pile is taller than the room under its theory', () => {
+    const { container } = renderCascade(3);
+    const scroll = container.querySelector<HTMLElement>('[data-board="cascade-scroll"]')!;
+    // `auto`: no scrollbar until the strips overflow the space left (flex-1 under the theory).
+    expect(scroll.className).toContain('overflow-y-auto');
+    expect(scroll.className).not.toContain('overflow-y-scroll');
+    expect(scroll.className).toContain('flex-1');
+  });
+
   test('nothing pinned, no cascade; its thread pin stays at the top, outside what scrolls', () => {
     expect(renderCascade(0).container.querySelector('[data-board="cascade"]')).toBeNull();
     cleanup();

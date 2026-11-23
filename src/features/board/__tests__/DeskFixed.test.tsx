@@ -41,7 +41,7 @@ describe('the desktop desk', () => {
   test('is one screen: a grid of a fixed-height header, the board and a roomier floor, with nothing that scrolls', () => {
     renderDesk();
     expect(desk().dataset.desk).toBe('fixed');
-    for (const name of ['h-svh', 'grid', 'overflow-hidden', 'grid-rows-[3.5rem_minmax(0,46fr)_minmax(0,54fr)]']) {
+    for (const name of ['h-svh', 'grid', 'overflow-hidden', 'grid-rows-[3.5rem_minmax(0,60fr)_minmax(0,40fr)]']) {
       expect(desk().className).toContain(name);
     }
     expect(desk().querySelector('[data-desk="board-row"]')).not.toBeNull();

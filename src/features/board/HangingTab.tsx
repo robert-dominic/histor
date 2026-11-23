@@ -80,7 +80,7 @@ export default function HangingTab({ evidence, number, href, reading, slipOpen, 
           <span className="sr-only">File </span>
           {number}
         </span>
-        <span className="truncate font-voice text-[0.8125rem] text-ink">{evidence.title}</span>
+        <span data-board="tab-label" className="min-w-0 font-voice text-[0.8125rem] leading-[1.25] text-pretty break-words text-ink">{evidence.title}</span>
       </button>
       <div id={slipId} aria-live="polite">
         {showSlip && (

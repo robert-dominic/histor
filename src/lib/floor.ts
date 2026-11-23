@@ -52,8 +52,11 @@ export interface FloorLayout {
 export const MAX_TILT = 6;
 /** The most a folder strays from the middle of its cell, in px on screen. */
 export const MAX_JITTER = 12;
-/** Smallest the folders are drawn before the layout gives up keeping them apart. */
-export const MIN_SCALE = 0.75;
+/**
+ * Smallest the folders are drawn before the layout gives up keeping them apart. The floor has 40% of the desk
+ * (quick-fixes brief, item 6), so at 1366×768 the 23 folders are drawn at about 65%.
+ */
+export const MIN_SCALE = 0.6;
 /** Room kept around the most tilted folder in its cell, in px, so that even it can stray a little. */
 const SLACK = 8;
 
@@ -140,7 +143,7 @@ function planGrid(count: number, floor: FloorSize, folder: FolderBox) {
  * The folders lie in rows, in case order, each in its own cell; a short last row is centred under the others.
  * Within its cell a folder is tilted by up to 6° and moved off the middle by up to 12px, both taken from its id,
  * and never by so much that it leaves the cell. So no folder covers another, and all of them lie inside the floor.
- * The folders are drawn as large as that allows, at most at their natural size and at least at 75%; on a floor too
+ * The folders are drawn as large as that allows, at most at their natural size and at least at `MIN_SCALE`; on a floor too
  * small even for that, tilts and offsets shrink to nothing before the folders are allowed to overlap.
  *
  * @param ids - every file of the case, in case order (not only those on the floor now)

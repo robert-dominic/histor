@@ -12,12 +12,12 @@ const IDS = maryCeleste.evidence.map(evidence => evidence.id);
 
 /**
  * The floor's size on the desk at a given screen: the screen minus the case header (2.75rem), the desk's header
- * (3.5rem), the board's 46 parts of the rest, the floor row's padding and its label (1.25rem), the tray (13rem) and
+ * (3.5rem), the board's 60 parts of the rest (the floor's 40), the floor row's padding and its label (1.25rem), the tray (13rem) and
  * the gap beside it.
  */
 function floorAt(screenWidth: number, screenHeight: number) {
   const rows = screenHeight - 44 - 56;
-  return { width: screenWidth - 32 - 208 - 16, height: Math.floor((rows * 54) / 100) - 12 - 20 };
+  return { width: screenWidth - 32 - 208 - 16, height: Math.floor((rows * 40) / 100) - 12 - 20 };
 }
 
 describe('floorLayout with the Mary Celeste files', () => {
@@ -30,12 +30,13 @@ describe('floorLayout with the Mary Celeste files', () => {
     [1440, 900],
     [1280, 720],
     [1920, 1080],
-  ])('at a %i×%i screen the 23 folders lie apart, in rows, readable (at least 90%% of their size)', (width, height) => {
+  ])('at a %i×%i screen the 23 folders lie apart, in rows, shrunk to fit the smaller floor (every label in view)', (width, height) => {
     const floor = floorAt(width, height);
     const layout = floorLayout(IDS, floor, FOLDER);
     expect(layout.apart).toBe(true);
     expect(layout.places.map(place => place.id)).toEqual(IDS);
-    if (width >= 1366) {
+    expect(layout.scale).toBeGreaterThanOrEqual(MIN_SCALE);
+    if (width >= 1920) {
       expect(layout.scale).toBeGreaterThanOrEqual(0.9);
     }
     // More than one row, and rows across the floor.
@@ -65,7 +66,7 @@ describe('floorLayout with the Mary Celeste files', () => {
     expect(floorLayout(IDS, { width: 2000, height: 900 }, FOLDER).scale).toBe(1);
   });
 
-  test('a tight floor shrinks the folders, but never below 75%', () => {
+  test('a tight floor shrinks the folders, but never below MIN_SCALE', () => {
     const { scale } = floorLayout(IDS, { width: 800, height: 250 }, FOLDER);
     expect(scale).toBeLessThan(1);
     expect(scale).toBeGreaterThanOrEqual(MIN_SCALE);

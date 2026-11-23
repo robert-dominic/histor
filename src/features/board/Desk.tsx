@@ -362,7 +362,7 @@ function DeskScreen() {
         aria-labelledby="board-title"
         className={
           desktop
-            ? 'relative isolate grid h-svh grid-rows-[3.5rem_minmax(0,46fr)_minmax(0,54fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
+            ? 'relative isolate grid h-svh grid-rows-[3.5rem_minmax(0,60fr)_minmax(0,40fr)] overflow-hidden bg-night pt-[var(--case-header)] text-night-ink'
             : 'relative isolate min-h-svh bg-night pt-[var(--case-header)] text-night-ink'
         }
       >
