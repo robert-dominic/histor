@@ -221,6 +221,11 @@ export interface Case {
    * Each must appear word for word in `centralQuestion`, e.g. "his two-year-old daughter".
    */
   centralQuestionEmphasis?: string[];
+  /**
+   * The lines the central question is shown in, one per step. Joined with single spaces they must give
+   * `centralQuestion` exactly. Without them it is split at its commas and before "and".
+   */
+  centralQuestionLines?: string[];
   fork: Fork;
   theories: Theory[];
   evidence: Evidence[];

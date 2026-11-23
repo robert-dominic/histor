@@ -42,7 +42,7 @@ import { useStepPlayer, type StepDriver } from '@/features/story/use-step-player
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { hashUnit } from '@/lib/desk';
 import { INK_RISE, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
-import { splitQuestion } from '@/lib/phrases';
+import { questionLines } from '@/lib/phrases';
 import { holdSmoothScroll, jumpToY, releaseSmoothScroll } from '@/lib/smooth-scroll';
 import { STORY_PACE, readingSeconds } from '@/lib/story-pages';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
@@ -108,6 +108,8 @@ interface StoryProps {
   centralQuestion: string;
   /** The question's weighted parts. */
   centralQuestionEmphasis?: string[];
+  /** The lines the question is shown in, one per step (`Case.centralQuestionLines`). */
+  centralQuestionLines?: string[];
   /** Every reference of the case, for the portals in the text. */
   references: Reference[];
   /** Every source of the case, listed in the portal cards. */
@@ -120,14 +122,14 @@ interface StoryProps {
   start?: { mode: 'play' | 'read'; token: number } | null;
 }
 
-export default function Story({ story, centralQuestion, centralQuestionEmphasis, references, sources, voyage, start = null, fork }: StoryProps) {
+export default function Story({ story, centralQuestion, centralQuestionEmphasis, centralQuestionLines, references, sources, voyage, start = null, fork }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
   const reducedMotion = useReducedMotion();
   // Without matchMedia a reduced-motion request cannot be honoured, so nothing is animated.
   const canAnimate = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const cinematic = canAnimate && !reducedMotion;
-  const lines = useMemo(() => splitQuestion(centralQuestion), [centralQuestion]);
+  const lines = useMemo(() => questionLines(centralQuestion, centralQuestionLines), [centralQuestion, centralQuestionLines]);
   const hasFork = fork !== undefined;
   const steps = useMemo(() => buildSteps(story, lines.length, hasFork), [story, lines, hasFork]);
   const driverRef = useRef<StepDriver | null>(null);
@@ -981,7 +983,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         };
       });
     },
-    { scope: rootRef, dependencies: [story, centralQuestion, centralQuestionEmphasis, cinematic, route, steps, dayNight, count, canAnimate], revertOnUpdate: true }
+    { scope: rootRef, dependencies: [story, centralQuestion, centralQuestionEmphasis, centralQuestionLines, cinematic, route, steps, dayNight, count, canAnimate], revertOnUpdate: true }
   );
 
   const jumpToTick = (tickIndex: number) => {
@@ -1007,7 +1009,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             ))}
             {/* The central question, over the last scene, one line per step. */}
             <div data-story="question-layer" className="pointer-events-none absolute inset-0 z-[6] opacity-0">
-              <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} />
+              <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} />
             </div>
           </div>
         ) : (
@@ -1015,7 +1017,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             {story.map((section, index) => (
               <StoryChapter key={section.id} section={section} index={index} step={dayNight[index]} grade={grades[index]} route={route} />
             ))}
-            <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} />
+            <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} />
             {/* After the question, more black to scroll into: scrolling on brings the fork. */}
             <div aria-hidden="true" data-story="after-question" className="h-[45svh] bg-black" />
           </>

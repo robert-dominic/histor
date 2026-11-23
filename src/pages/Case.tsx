@@ -151,6 +151,7 @@ export default function Case() {
               story={caseData.story}
               centralQuestion={caseData.centralQuestion}
               centralQuestionEmphasis={caseData.centralQuestionEmphasis}
+              centralQuestionLines={caseData.centralQuestionLines}
               references={caseData.references}
               sources={caseData.sources}
               voyage={caseData.voyage}

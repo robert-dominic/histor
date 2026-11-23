@@ -269,3 +269,45 @@ describe('validateCase: weighted parts of the central question (data-foundation 
     );
   });
 });
+
+describe('validateCase: lines of the central question (data-foundation 3.18)', () => {
+  const question = createCase().centralQuestion;
+  const words = question.split(' ');
+
+  test('may be left out; lines that give the question back exactly, joined with single spaces, are valid', () => {
+    expect(validateCase(createCase())).toEqual([]);
+    expect(validateCase(createCase({ centralQuestionLines: [question] }))).toEqual([]);
+    if (words.length > 1) {
+      expect(validateCase(createCase({ centralQuestionLines: [words[0], words.slice(1).join(' ')] }))).toEqual([]);
+    }
+  });
+
+  test('lines that do not give the question back exactly are an error', () => {
+    expect(validateCase(createCase({ centralQuestionLines: ['Something else entirely'] }))).toContain(
+      'Field centralQuestionLines: Joined with single spaces, the lines must equal centralQuestion exactly'
+    );
+    // A word left out.
+    expect(validateCase(createCase({ centralQuestionLines: [words.slice(1).join(' ') || 'x'] }))).toContain(
+      'Field centralQuestionLines: Joined with single spaces, the lines must equal centralQuestion exactly'
+    );
+  });
+
+  test('an empty line, a line with a space at an end, an empty list, or not a list, is an error', () => {
+    expect(validateCase(createCase({ centralQuestionLines: [question, ''] }))).toContain(
+      'Field centralQuestionLines[1]: Must be a non-empty string with no space at either end'
+    );
+    expect(validateCase(createCase({ centralQuestionLines: [` ${question}`] }))).toContain(
+      'Field centralQuestionLines[0]: Must be a non-empty string with no space at either end'
+    );
+    expect(validateCase(createCase({ centralQuestionLines: [] }))).toContain('Field centralQuestionLines: Must be a non-empty array');
+    expect(validateCase(createCase({ centralQuestionLines: question as unknown as string[] }))).toContain(
+      'Field centralQuestionLines: Must be a non-empty array'
+    );
+  });
+
+  test('the Mary Celeste lines are valid', async () => {
+    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
+    expect(maryCeleste.centralQuestionLines).toHaveLength(5);
+    expect(validateCase(maryCeleste)).toEqual([]);
+  });
+});

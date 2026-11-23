@@ -171,6 +171,13 @@ export const maryCeleste: Case = {
   centralQuestion:
     'Why would Captain Briggs abandon a sound ship, one he partly owned, and put his wife, his two-year-old daughter and his crew into a small lifeboat in the middle of the Atlantic?',
   centralQuestionEmphasis: ['his two-year-old daughter', 'in the middle of the Atlantic'],
+  centralQuestionLines: [
+    'Why would Captain Briggs abandon a sound ship,',
+    'one he partly owned, and put his wife,',
+    'his two-year-old daughter',
+    'and his crew into a small lifeboat',
+    'in the middle of the Atlantic?',
+  ],
 
   fork: {
     prompt: 'Most people stop here. Want to see what the evidence says?',

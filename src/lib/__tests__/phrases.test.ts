@@ -52,3 +52,23 @@ describe('splitQuestion', () => {
     expect(splitQuestion('Sails andirons anchors')).toEqual(['Sails andirons anchors']);
   });
 });
+
+describe('questionLines', () => {
+  test('the case\'s own lines, when they give the question back exactly', async () => {
+    const { questionLines } = await import('@/lib/phrases');
+    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
+    expect(questionLines(maryCeleste.centralQuestion, maryCeleste.centralQuestionLines)).toEqual([
+      'Why would Captain Briggs abandon a sound ship,',
+      'one he partly owned, and put his wife,',
+      'his two-year-old daughter',
+      'and his crew into a small lifeboat',
+      'in the middle of the Atlantic?',
+    ]);
+  });
+
+  test('otherwise, the comma split', async () => {
+    const { questionLines, splitQuestion } = await import('@/lib/phrases');
+    expect(questionLines('One, two and three?')).toEqual(splitQuestion('One, two and three?'));
+    expect(questionLines('One, two and three?', ['Not', 'the question'])).toEqual(splitQuestion('One, two and three?'));
+  });
+});

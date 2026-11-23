@@ -1,19 +1,21 @@
 // src/features/story/CentralQuestion.tsx
-// The end of the story: the case's central question, a chokepoint on a full-black screen. Story.tsx pins it and
-// builds it phrase by phrase (split at its commas and before "and", splitQuestion), each phrase a stop the scroll
-// settles on; it is one solid black screen, the full height of the screen; its weighted parts arrive on their own after a breath, slightly brighter (no lines in the story). The fork comes only after the whole
-// question, and a short hold. Under reduced motion it is simply shown whole.
+// The end of the story: the case's central question, a chokepoint on one solid black screen. Story.tsx builds it one
+// line per step: the case's own lines (`Case.centralQuestionLines`), or else split at its commas and before "and".
+// Its weighted parts arrive on their own after a breath, slightly brighter (no lines drawn in the story). The fork
+// comes only after the whole question. Under reduced motion it is simply shown whole.
 // The text comes from the case data. Screen readers get the whole question at once.
-import { splitQuestion } from '@/lib/phrases';
+import { questionLines } from '@/lib/phrases';
 import { weightedPieces } from '@/lib/story-emphasis';
 
 interface CentralQuestionProps {
   question: string;
   /** Its weighted parts (`Case.centralQuestionEmphasis`). */
   emphasis?: string[];
+  /** The lines it is shown in (`Case.centralQuestionLines`). */
+  lines?: string[];
 }
 
-export default function CentralQuestion({ question, emphasis = [] }: CentralQuestionProps) {
+export default function CentralQuestion({ question, emphasis = [], lines }: CentralQuestionProps) {
   return (
     <div
       data-story="question"
@@ -23,7 +25,7 @@ export default function CentralQuestion({ question, emphasis = [] }: CentralQues
         {/* Screen readers get the whole question at once; the phrases that are written in are for the eyes only. */}
         <span className="sr-only">{question}</span>
         <span aria-hidden="true" className="flex flex-col items-center gap-[0.15em]">
-          {splitQuestion(question).map((phrase, index) => (
+          {questionLines(question, lines).map((phrase, index) => (
             <span key={index} data-story="phrase" className="block">
               {weightedPieces(phrase, emphasis).map((piece, pieceIndex) =>
                 piece.weighted ? (

@@ -879,6 +879,32 @@ describe('Story: the central question, one line per step', () => {
     expect(phrases[1].style.opacity).toBe('0');
   });
 
+  test('the lines come from the case data when it has them, and the weighted parts still land', () => {
+    const { container } = render(
+      <Story
+        story={testCase.story}
+        centralQuestion={maryCeleste.centralQuestion}
+        centralQuestionEmphasis={maryCeleste.centralQuestionEmphasis}
+        centralQuestionLines={maryCeleste.centralQuestionLines}
+        references={testCase.references}
+        sources={testCase.sources}
+        start={READ}
+      />
+    );
+    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')].map(phrase => phrase.textContent);
+    expect(phrases).toEqual(maryCeleste.centralQuestionLines);
+    const weighted = [...container.querySelectorAll('[data-story="question"] [data-story="weighted"]')].map(span => span.textContent);
+    expect(weighted).toEqual(maryCeleste.centralQuestionEmphasis);
+    // One step per line.
+    fireEvent.click([...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')].at(-1)!);
+    settleSteps();
+    for (let line = 1; line < phrases.length; line += 1) {
+      wheelBurst(stageOf(container));
+      settleSteps();
+    }
+    expect(stepOf(container)).toBe(`line-${phrases.length - 1}`);
+  });
+
   test('its weighted parts land on their own after their line, slightly brighter, and no red line anywhere', () => {
     const { container } = renderQuestion();
     const weighted = [...container.querySelectorAll<HTMLElement>('[data-story="question"] [data-story="weighted"]')];

@@ -19,3 +19,14 @@ export function splitQuestion(text: string): string[] {
     .map(phrase => phrase.trim())
     .filter(phrase => phrase !== '');
 }
+
+/**
+ * The lines the central question is shown in, one per step: the case's own (`Case.centralQuestionLines`) when they
+ * give the question back exactly, joined with single spaces; otherwise it is split at its commas and before "and".
+ */
+export function questionLines(question: string, lines?: readonly string[]): string[] {
+  if (lines !== undefined && lines.length > 0 && lines.join(' ') === question) {
+    return [...lines];
+  }
+  return splitQuestion(question);
+}

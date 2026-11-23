@@ -338,6 +338,26 @@ export function validateCase(caseData: Case): string[] {
     }
   }
 
+  // Validate the optional lines of the central question (3.18): a non-empty array of trimmed, non-empty strings that,
+  // joined with single spaces, give centralQuestion exactly
+  const questionLines: unknown = caseData.centralQuestionLines;
+  if (questionLines !== undefined && questionLines !== null) {
+    if (!Array.isArray(questionLines) || questionLines.length === 0) {
+      errors.push('Field centralQuestionLines: Must be a non-empty array');
+    } else {
+      let linesValid = true;
+      questionLines.forEach((line: unknown, j) => {
+        if (typeof line !== 'string' || line.trim() === '' || line !== line.trim()) {
+          errors.push(`Field centralQuestionLines[${j}]: Must be a non-empty string with no space at either end`);
+          linesValid = false;
+        }
+      });
+      if (linesValid && questionLines.join(' ') !== caseData.centralQuestion) {
+        errors.push('Field centralQuestionLines: Joined with single spaces, the lines must equal centralQuestion exactly');
+      }
+    }
+  }
+
   // Validate the optional weighted words (3.16): when present, an array of non-empty phrases, each found word for
   // word in the section's own text (a body paragraph or the hook, with {{ref:…}} markup read as its label)
   if (Array.isArray(caseData.story)) {
