@@ -91,12 +91,12 @@ export default function PlayCard({ player, onRead, storyRef }: PlayCardProps) {
       aria-label="How to read the story"
       // Hidden until the first scroll past the opening (GSAP writes opacity and visibility).
       style={{ opacity: 0, visibility: 'hidden' }}
-      className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+3.75rem)] left-1/2 z-30 flex w-[min(22rem,calc(100vw-1.5rem))] -translate-x-1/2 flex-col items-center gap-3 rounded-sm border border-night-ink/20 bg-night/90 px-4 pt-4 pb-3.5 text-center text-night-ink shadow-xl shadow-black/50 sm:bottom-6 sm:w-[24rem]"
+      className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+3.75rem)] left-1/2 z-30 flex w-[min(22rem,calc(100vw-1.5rem))] -translate-x-1/2 flex-col items-center gap-3 rounded-sm border border-night-ink/20 bg-night/90 px-4 pt-4 pb-3.5 text-center text-night-ink shadow-xl shadow-black/50 sm:bottom-3 sm:w-[36rem] sm:flex-row sm:justify-between sm:gap-5 sm:py-2"
     >
       <p data-story="hint" className="font-voice text-[0.9375rem] tracking-[0.04em]">
         Scroll, or press play.
       </p>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:flex-nowrap">
         <button
           type="button"
           data-story-control=""

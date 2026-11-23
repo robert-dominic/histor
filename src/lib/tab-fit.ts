@@ -5,7 +5,7 @@
 /** The least a tab overlaps the one above it, in px: the gap the desk always has. */
 export const MIN_TAB_OVERLAP = 6;
 /** The most of a tab's height that may be hidden: its number and title always stay readable. */
-export const MIN_TAB_VISIBLE = 16;
+export const MIN_TAB_VISIBLE = 13;
 
 /**
  * How far each tab overlaps the one above it, in px, for `count` tabs of height `tabHeight` to fit `available`.

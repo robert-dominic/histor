@@ -712,6 +712,15 @@ describe('Story: the other parts, with the column', () => {
     expect(timeline.labels['chapter-1'] - arrive.startTime()).toBeGreaterThanOrEqual(arrive.duration() + 4);
   });
 
+  test('an invisible hook is click-through, so it never covers the column; it takes clicks once it appears', () => {
+    const { container } = renderStory(testCase);
+    const hook = chapterOf(container, testCase.story[0]).querySelector('[data-story="hook-moment"]') as HTMLElement;
+    expect(hook.className).toContain('pointer-events-none');
+    const switches = gsap.getTweensOf(hook).filter(tween => tween.vars.pointerEvents === 'auto');
+    expect(switches).toHaveLength(1);
+    const arrive = gsap.getTweensOf(hook).find(tween => tween.vars.opacity === 1)!;
+    expect(switches[0].startTime()).toBeGreaterThanOrEqual(arrive.startTime() - 1e-6);
+  });
   test('a chapter without a hook keeps its column, and still pauses before the next scene', () => {
     const { container } = renderStory(testCase);
     const column = chapterOf(container, testCase.story[1]).querySelector('[data-story="column"]') as HTMLElement;

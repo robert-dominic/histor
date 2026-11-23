@@ -411,6 +411,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 { opacity: 1, y: 0, duration: SCENE.hookIn, immediateRender: false },
                 t + 0.35
               );
+              timeline.set(hook, { pointerEvents: 'auto' }, t + 0.35);
               emitAt(t + 0.35, () => ({ type: 'hook', chapter: section.id, direction }));
               t += 0.35 + SCENE.hookIn + SCENE.hookHold + SCENE.stillness;
             } else {

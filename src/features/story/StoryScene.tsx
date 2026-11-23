@@ -181,7 +181,8 @@ export default function StoryScene({ section, index, grade, sentences, loadImage
         <p
           aria-hidden="true"
           data-story="hook-moment"
-          className="absolute inset-x-0 top-1/2 mx-auto max-w-[min(20ch,88vw)] -translate-y-1/2 text-center font-record text-[clamp(1.75rem,1.2rem+3vw,3.75rem)] leading-[1.2] text-balance text-night-ink italic"
+          // Click-through until it appears (Story.tsx): an invisible hook must not cover the text column.
+          className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto max-w-[min(20ch,88vw)] -translate-y-1/2 text-center font-record text-[clamp(1.75rem,1.2rem+3vw,3.75rem)] leading-[1.2] text-balance text-night-ink italic"
           style={{ opacity: 0 }}
         >
           <PortalText text={section.hook} tabbable={false} />
