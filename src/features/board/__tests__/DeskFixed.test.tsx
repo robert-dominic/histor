@@ -64,10 +64,21 @@ describe('the desktop desk', () => {
     expect(lenis.start).toHaveBeenCalledTimes(1);
   });
 
-  test('the header holds the title, and no count of opened files; the board and the tray are in their rows', () => {
+  test('one "Case files" label: over the floor, not in the top bar (whose heading is for screen readers only)', () => {
     renderDesk();
     const header = desk().querySelector('header') as HTMLElement;
-    expect(header.textContent).toContain('The case files');
+    const title = header.querySelector<HTMLElement>('#board-title')!;
+    expect(title.textContent).toContain('The case files');
+    expect(title.className).toContain('sr-only');
+    const visible = [...desk().querySelectorAll<HTMLElement>('*')].filter(
+      element => element.children.length === 0 && /case files/i.test(element.textContent ?? '') && element.closest('.sr-only, [role="dialog"]') === null
+    );
+    expect(visible.map(element => element.textContent?.trim())).toEqual([`Case files · ${maryCeleste.evidence.length}`]);
+  });
+
+  test('the top bar holds no count of opened files; the board and the tray are in their rows', () => {
+    renderDesk();
+    const header = desk().querySelector('header') as HTMLElement;
     expect(header.querySelector('[data-board="progress"]')).toBeNull();
     expect(header.textContent).not.toContain('files opened');
     const board = desk().querySelector('[data-desk="board-row"] [data-board="board"]') as HTMLElement;
