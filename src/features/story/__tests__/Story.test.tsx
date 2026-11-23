@@ -677,30 +677,100 @@ describe('Story: hooks', () => {
     expect(hookOf(container, 0).style.opacity).toBe('0');
   });
 
-  test('before the hook: the names fade off the crew list last to first, the page and corners dim, the chart goes quiet', () => {
+  /** The step animation now under way, and its own tweens and timelines. */
+  const transitionNow = () =>
+    gsap.globalTimeline
+      .getChildren(false, false, true)
+      .filter(child => child.data === 'story-step')
+      .at(-1) as gsap.core.Timeline;
+  const childrenOf = (transition: gsap.core.Timeline) => transition.getChildren(false, true, true) as (gsap.core.Tween | gsap.core.Timeline)[];
+  const end = (child: gsap.core.Animation) => child.startTime() + child.duration();
+  /** The tweens of `transition` on `target`. */
+  const on = (transition: gsap.core.Timeline, target: Element) =>
+    childrenOf(transition).filter((child): child is gsap.core.Tween => 'targets' in child && (child.targets() as unknown[]).includes(target));
+  /** Chapter 1's writing: the timeline its pen writes the page on (the parent of any written unit's tween). */
+  const writingOf = (container: HTMLElement) => {
+    const units = [...chapterOf(container, maryCeleste.story[0]).querySelectorAll<HTMLElement>('[data-story="body"] [data-pen]')];
+    for (const unit of units) {
+      const tween = gsap.getTweensOf(unit).find(candidate => candidate.parent !== null && candidate.parent !== gsap.globalTimeline);
+      if (tween !== undefined) {
+        return tween.parent as gsap.core.Timeline;
+      }
+    }
+    throw new Error('no writing timeline');
+  };
+
+  test('the crew list is not on screen until the pen reaches the roll call; then it lifts in, and the names are written on it', () => {
     const { container } = renderStory(maryCeleste, READ);
+    const chapter = chapterOf(container, maryCeleste.story[0]);
+    const slip = chapter.querySelector<HTMLElement>('[data-story="crew-slip"]')!;
+    expect(slip.style.opacity).toBe('0');
+    const writing = writingOf(container);
+    const lift = writing.getTweensOf(slip).find(tween => tween.vars.ease === 'power2.out')!;
+    const land = writing.getTweensOf(slip).find(tween => tween.vars.ease === 'back.out(1.15)')!;
+    const lastBody = [...chapter.querySelectorAll<HTMLElement>('[data-story="body"] [data-pen="word"]')].at(-1)!;
+    const firstName = chapter.querySelector<HTMLElement>('[data-story="roll-call"] [data-pen="word"]')!;
+    const writtenAt = (element: HTMLElement) =>
+      (writing.getTweensOf(element)[0] ?? writing.getTweensOf(element.querySelector('[data-pen="char"]')!)[0]).startTime();
+    expect(lift.startTime()).toBeGreaterThanOrEqual(writtenAt(lastBody));
+    expect(land.startTime()).toBeGreaterThanOrEqual(lift.startTime());
+    expect(writtenAt(firstName)).toBeGreaterThanOrEqual(end(land));
+    finishWriting(container);
+    expect(slip.style.opacity).toBe('1');
+  });
+
+  test('the hook step, in order: the names are un-written last to first, the empty slip leaves, then the dark, then the hook', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    // Found before it finishes: GSAP lets go of a timeline once it is complete.
+    const writing = writingOf(container);
     finishWriting(container);
     const chapter = chapterOf(container, maryCeleste.story[0]);
-    const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
-    wheelBurst(stageOf(container));
-    const names = [...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')];
-    const outAt = (name: Element) => gsap.getTweensOf(name).find(tween => tween.vars.opacity === 0 && tween.vars.ease === 'power2.in')!.startTime();
-    expect(outAt(names.at(-1)!)).toBeLessThan(outAt(names[0]));
-    const pageOut = gsap.getTweensOf(chapter.querySelector('[data-story="page"]')!).find(tween => tween.vars.opacity === 0)!;
-    expect(pageOut.startTime()).toBeGreaterThan(outAt(names[0]));
-    expect(gsap.getTweensOf(chapter.querySelector('[data-story="corners"]')!).some(tween => tween.vars.opacity === 0)).toBe(true);
-    expect(chart.dataset.hushed).toBe('true');
-    // The paper itself stays, and is left empty.
     const slip = chapter.querySelector<HTMLElement>('[data-story="crew-slip"]')!;
-    expect(gsap.getTweensOf(slip)).toHaveLength(0);
+    const hook = chapter.querySelector<HTMLElement>('[data-story="hook-moment"]')!;
+    const dim = chapter.querySelector<HTMLElement>('[data-story="dim"]')!;
+    wheelBurst(stageOf(container));
+    const transition = transitionNow();
+    // The pen's own writing, played backwards: a tween of the writing timeline, from its end to its start.
+    const unwrite = childrenOf(transition).find(child => 'targets' in child && (child as gsap.core.Tween).targets()[0] === writing) as gsap.core.Tween;
+    expect(unwrite).toBeDefined();
+    expect(unwrite.startTime()).toBe(0);
+    expect(unwrite.duration()).toBeCloseTo(STORY_PACE.unwrite, 5);
+    const slipOut = on(transition, slip).find(tween => tween.vars.opacity === 0)!;
+    expect(slipOut.startTime()).toBeGreaterThanOrEqual(end(unwrite) - 1e-6);
+    const dark = on(transition, dim).find(tween => tween.vars.opacity !== 0)!;
+    expect(dark.startTime()).toBeGreaterThanOrEqual(end(slipOut) - 1e-6);
+    const text = on(transition, hook).find(tween => tween.vars.opacity === 1)!;
+    expect(text.startTime()).toBeGreaterThanOrEqual(end(dark) - 1e-6);
+    // The chart is quiet while the hook is on screen.
+    expect(container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!.dataset.hushed).toBe('true');
     settleSteps();
-    expect(chart.dataset.hushed).toBe('true');
-    expect(names.every(name => name.style.opacity === '0')).toBe(true);
-    expect(slip.style.opacity).toBe('');
-    // Back on the page, the names are there again.
+    expect(slip.style.opacity).toBe('0');
+    expect([...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')].every(name => name.style.opacity === '0')).toBe(true);
+  });
+
+  test('stepping back from the hook reverses all of it: the text leaves, the light returns, the slip comes back, the names are written again', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    finishWriting(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
+    const chapter = chapterOf(container, maryCeleste.story[0]);
+    const slip = chapter.querySelector<HTMLElement>('[data-story="crew-slip"]')!;
+    const hook = chapter.querySelector<HTMLElement>('[data-story="hook-moment"]')!;
+    const dim = chapter.querySelector<HTMLElement>('[data-story="dim"]')!;
+    const writing = writingOf(container);
     wheelBurst(stageOf(container), { deltaY: -60 });
+    const transition = transitionNow();
+    const textOut = on(transition, hook).find(tween => tween.vars.opacity === 0)!;
+    const light = on(transition, dim).find(tween => tween.vars.opacity === 0)!;
+    const slipIn = on(transition, slip).find(tween => tween.vars.opacity === 1)!;
+    const rewrite = childrenOf(transition).find(child => 'targets' in child && (child as gsap.core.Tween).targets()[0] === writing)!;
+    expect(light.startTime()).toBeGreaterThanOrEqual(end(textOut) - 1e-6);
+    expect(slipIn.startTime()).toBeGreaterThanOrEqual(end(light) - 1e-6);
+    expect(rewrite.startTime()).toBeGreaterThanOrEqual(end(slipIn) - 1e-6);
     settleSteps();
-    expect(names.every(name => name.style.opacity === '1')).toBe(true);
+    expect(stepOf(container)).toBe('page-0');
+    expect(slip.style.opacity).toBe('1');
+    expect(chapter.querySelector<HTMLElement>('[data-story="page"]')?.dataset.written).toBe('true');
   });
 
   test('story events: each chapter is entered, each hook comes, in order', () => {

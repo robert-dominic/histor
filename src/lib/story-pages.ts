@@ -32,8 +32,8 @@ export const STORY_PACE = {
   backDissolve: 0.5,
   /** A jump from the progress rail: a quick dissolve. */
   jumpDissolve: 0.35,
-  /** Before a hook, the crew list's names fade off one after another, this far apart (last to first). */
-  nameOutEvery: 0.09,
+  /** Before a hook, the pen un-writes the crew list's names over this long (and writes them again, going back). */
+  unwrite: 1.4,
   /** The breath before a hook: the page has dimmed away; the image darkens and the camera creeps closer. */
   breath: 0.7,
   /** The hook line snaps in whole, its letters settling from out of line over this long. */

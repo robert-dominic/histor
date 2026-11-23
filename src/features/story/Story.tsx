@@ -311,6 +311,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           image: one('[data-story="image"]', scene),
           hook: one('[data-story="hook-moment"]', scene),
           hookChars: all('[data-story="hook-char"]', scene),
+          slip: one('[data-story="crew-slip"]', scene),
         }));
 
         // ---- The pen: one writer per page. A click on the page (or the roll call) finishes its writing at once.
@@ -410,7 +411,16 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
 
         /** A scene as its page shows it, or as its hook does. */
         const look = (index: number, as: 'page' | 'hook') => {
-          const { page, corners, names, dim, figure, hook, hookChars } = parts[index];
+          const { page, corners, names, dim, figure, hook, hookChars, slip } = parts[index];
+          // The crew list's slip: on screen with a page whose pen has reached it, gone while the hook has the screen.
+          // (Its entrance lives on the pen's own timeline, so its tweens are never killed here.)
+          if (slip !== null) {
+            if (as === 'hook') {
+              gsap.set(slip, { opacity: 0 });
+            } else if (writers[index]?.written()) {
+              gsap.set(slip, { opacity: 1, y: 0, scale: 1 });
+            }
+          }
           const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
           gsap.killTweensOf([...quiet, ...names, dim, figure, hook].filter((element): element is HTMLElement => element !== null));
           gsap.set(quiet, { opacity: as === 'page' ? 1 : 0 });
@@ -504,6 +514,12 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           const shown = sceneOf(step);
           const question = onQuestion(step);
           const freshPage = fresh && step?.kind === 'page';
+          // Pages before this one count as written, and so does this one unless it has just been reached.
+          writers.forEach((writer, writerIndex) => {
+            if (writerIndex < shown || question || (writerIndex === shown && !freshPage)) {
+              writer.finish();
+            }
+          });
           scenes.forEach((scene, sceneIndex) => {
             gsap.killTweensOf(scene);
             gsap.set(scene, { opacity: sceneIndex === shown ? 1 : 0 });
@@ -516,12 +532,6 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 gsap.set(image, { scale: 1, xPercent: 0, yPercent: 0 });
               }
               image.style.willChange = sceneIndex === shown && !question ? 'transform' : '';
-            }
-          });
-          // Pages before this one count as written, and so does this one unless it has just been reached.
-          writers.forEach((writer, writerIndex) => {
-            if (writerIndex < shown || question || (writerIndex === shown && !freshPage)) {
-              writer.finish();
             }
           });
           // The question.
@@ -627,19 +637,30 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           if (delta === 1) {
             return moveTo(target, to.kind === 'page', 'forward', timeline => {
               let at = 0;
-              // Leaving a page for its hook: the roll call's names fade off, last to first; the page and the image's
-              // corners dim away; the image darkens and the camera creeps closer; then the hook snaps in, whole.
+              // Leaving a page for its hook, in order (investigation brief, 5 and 6): the pen un-writes the crew list's
+              // names, last to first (its own writing played backwards); the empty slip leaves; the page and the
+              // image's corners dim away and the image darkens, the camera creeping closer; only then, in the dark,
+              // does the hook snap in, whole.
               if (from.kind === 'page' && to.kind === 'hook') {
-                const { page, corners, names, dim, figure, hook } = parts[fromScene];
+                const { page, corners, names, dim, figure, hook, slip } = parts[fromScene];
                 const section = story[fromScene];
-                // The names fade off the crew list, last to first, and leave the paper empty.
-                [...names].reverse().forEach((name, order) => {
-                  const when = order * STORY_PACE.nameOutEvery;
-                  timeline.to(name, { opacity: 0, ...tween('ink.out') }, when);
-                  const label = name.querySelector('span')?.textContent ?? '';
-                  timeline.call(() => emitStoryEvent({ type: 'roll-call-out', chapter: section.id, name: label, direction: 'forward' }), undefined, when);
-                });
-                at = names.length > 0 ? (names.length - 1) * STORY_PACE.nameOutEvery + MOTION['ink.out'].duration : 0;
+                const unwrite = writers[fromScene].unwriteRoll(STORY_PACE.unwrite);
+                if (unwrite !== null) {
+                  timeline.add(unwrite, 0);
+                  [...names].reverse().forEach((name, order) => {
+                    const label = name.querySelector('span')?.textContent ?? '';
+                    timeline.call(
+                      () => emitStoryEvent({ type: 'roll-call-out', chapter: section.id, name: label, direction: 'forward' }),
+                      undefined,
+                      (order / Math.max(1, names.length)) * STORY_PACE.unwrite
+                    );
+                  });
+                  at = STORY_PACE.unwrite;
+                }
+                if (slip !== null) {
+                  timeline.to(slip, { opacity: 0, y: -10, ...tween('ink.out') }, at);
+                  at += MOTION['ink.out'].duration;
+                }
                 const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
                 if (quiet.length > 0) {
                   timeline.to(quiet, { opacity: 0, duration: SCENE.pageOut, ease: MOTION['ink.out'].ease }, at);
@@ -712,18 +733,31 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               return;
             }
             if (from.kind === 'hook' && to.kind === 'page' && toScene === fromScene) {
-              // Back from a hook to its page: the hook goes, the page comes back as it was.
-              const { page, corners, names, dim, figure, hook } = parts[fromScene];
+              // Back from a hook to its page: all of it in reverse. The hook text leaves first; then the light
+              // returns with the page; then the slip comes back and the pen writes the names in again.
+              const { page, corners, names, dim, figure, hook, slip } = parts[fromScene];
               const quiet = [page, corners].filter((element): element is HTMLElement => element !== null);
+              let at = 0;
               if (hook !== null) {
-                timeline.to(hook, { opacity: 0, ...quick }, 0);
+                timeline.to(hook, { opacity: 0, ...quick }, at);
+                at += quick.duration;
               }
-              timeline.to([...quiet, ...names], { opacity: 1, ...quick }, 0);
+              timeline.set(names, { opacity: 1 }, at);
+              timeline.to(quiet, { opacity: 1, ...quick }, at);
               if (dim !== null) {
-                timeline.to(dim, { opacity: 0, ...quick }, 0);
+                timeline.to(dim, { opacity: 0, ...quick }, at);
               }
               if (figure !== null) {
-                timeline.to(figure, { scale: 1, ...quick }, 0);
+                timeline.to(figure, { scale: 1, ...quick }, at);
+              }
+              at += quick.duration;
+              const rewrite = writers[fromScene].rewriteRoll(STORY_PACE.unwrite);
+              if (slip !== null && rewrite !== null) {
+                timeline.fromTo(slip, { opacity: 0, y: 14, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, ...tween('paper.lift') }, at);
+                at += MOTION['paper.lift'].duration;
+              }
+              if (rewrite !== null) {
+                timeline.add(rewrite, at);
               }
               return;
             }

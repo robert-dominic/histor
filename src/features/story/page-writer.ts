@@ -4,6 +4,7 @@
 // (penPlan), a word at a time for a long page. Weighted phrases get a breath before them and are written a touch
 // slower. Once written, the text stays; `finish` writes it all at once.
 import gsap from 'gsap';
+import { LINEAR, MOTION, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { STORY_PACE, penPlan } from '@/lib/story-pages';
 
@@ -21,6 +22,15 @@ export interface PageWriter {
   whenWritten: () => Promise<void>;
   /** Undoes the letter splitting and kills the writing. */
   revert: () => void;
+  /** The crew list's slip, when the page has a roll call: it comes on screen only as the pen reaches it. */
+  slip: HTMLElement | null;
+  /**
+   * The roll call un-written, last letter first, over `seconds`: the pen's own writing played backwards (the hook,
+   * investigation brief 5). Null without a roll call. Add the tween to a timeline; it drives the writing itself.
+   */
+  unwriteRoll: (seconds: number) => gsap.core.Tween | null;
+  /** The roll call written again over `seconds` (stepping back from the hook). */
+  rewriteRoll: (seconds: number) => gsap.core.Tween | null;
 }
 
 const NOTHING_TO_WRITE: PageWriter = {
@@ -31,6 +41,9 @@ const NOTHING_TO_WRITE: PageWriter = {
   writing: () => false,
   whenWritten: () => Promise.resolve(),
   revert: () => undefined,
+  slip: null,
+  unwriteRoll: () => null,
+  rewriteRoll: () => null,
 };
 
 /** Builds the pen for the page in `scene`. Its letters are hidden until written. */
@@ -77,17 +90,33 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
   const plan = penPlan(letters.length, words.length);
   const units = plan.unit === 'letter' ? letters : words;
   gsap.set(units, { opacity: 0 });
+  // The crew list's slip is not on screen until the pen reaches the roll call: then it lifts in and lands, and the
+  // pen writes the names onto it (investigation brief, 5).
+  const slip = one('[data-story="crew-slip"]');
+  if (slip !== null) {
+    gsap.set(slip, { opacity: 0 });
+  }
+  /** Where the roll call is written on the timeline: from its first name to its last. */
+  let roll: { start: number; end: number } | null = null;
 
   // Runs of plain units, and the weighted phrases between them. A run never spans the body and the roll call.
   let run: HTMLElement[] = [];
   const flush = () => {
     const body = run.filter(unit => !inRoll(unit));
-    const roll = run.filter(inRoll);
+    const rollUnits = run.filter(inRoll);
     if (body.length > 0) {
       at += pen.write(writing, body, at, plan.rate);
     }
-    if (roll.length > 0) {
-      at += rollPen.write(writing, roll, at, plan.rate);
+    if (rollUnits.length > 0) {
+      if (roll === null && slip !== null) {
+        writing.fromTo(slip, { opacity: 0, y: 14, scale: 0.95 }, { opacity: 1, y: -3, scale: 1, ...tween('paper.lift') }, at);
+        at += MOTION['paper.lift'].duration;
+        writing.to(slip, { y: 0, ...tween('paper.land') }, at);
+        at += MOTION['paper.land'].duration;
+      }
+      const start = roll?.start ?? at;
+      at += rollPen.write(writing, rollUnits, at, plan.rate);
+      roll = { start, end: at };
     }
     run = [];
   };
@@ -152,5 +181,14 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
       writing.kill();
       splits.forEach(split => split.revert());
     },
+    slip,
+    unwriteRoll: seconds => {
+      if (roll === null) {
+        return null;
+      }
+      rollPen.hide();
+      return writing.tweenFromTo(roll.end, roll.start, { duration: seconds, ease: LINEAR, immediateRender: false });
+    },
+    rewriteRoll: seconds => (roll === null ? null : writing.tweenFromTo(roll.start, roll.end, { duration: seconds, ease: LINEAR, immediateRender: false })),
   };
 }
