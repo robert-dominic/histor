@@ -28,10 +28,13 @@ export const STORY_PACE = {
   // ---- The hold before a hook, and the hook.
   /** How much scroll the written page holds before the hook begins (scroll seconds). */
   pageHold: 3,
-  /** The hook arrives a word every so many scroll seconds: slower than anything else. */
-  hookWordEvery: 0.55,
+  /**
+   * Once the reader reaches a hook, the whole line snaps in on a timer, not scrubbed: its letters settle from out of
+   * line over this long, in real seconds. The hook's stretch of scroll is this plus `hookHold`.
+   */
+  hookIn: 0.8,
   /** The hook hold: how long the hook line holds, whole, before it decays (scroll seconds). */
-  hookHold: 4,
+  hookHold: 2.4,
   /** The hook decays letter by letter over this long (scroll seconds). */
   hookDecay: 1.8,
   /** Stillness after the hook, then the next image cross-dissolves in over this long (scroll seconds). */
@@ -52,6 +55,8 @@ export const STORY_PACE = {
   /** Black before its first phrase, and the hold on the whole question before the fork (scroll seconds). */
   questionLead: 0.6,
   beforeFork: 2.4,
+  /** Each phrase plays in on a timer over this long (real seconds) as soon as the scroll reaches its stop. */
+  questionPhrase: 0.6,
 
   // ---- The scroll itself.
   /**

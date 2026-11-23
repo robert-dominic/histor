@@ -47,7 +47,9 @@ const SCENE = {
   nameOut: 0.36,
   hookDim: 0.92,
   /** Weighted words in the central question: the breath before a phrase lands on its own. */
-  weightBeat: STEP.slow,
+  weightBeat: STEP.base,
+  /** Going back over a hook's start, its snap runs backwards this many times faster (exits are quicker). */
+  hookBackRate: 2,
   /** The breath before a hook: the camera creeps this much closer, over `story.breath`. */
   creepTo: 1.05,
   /** Where a hook's letters start: up to this far out of line, in px and degrees, then they snap into place. */
@@ -282,6 +284,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           const headingTimelines: gsap.core.Timeline[] = [];
           /** When each hook has the screen: the chart inset goes quiet then. */
           const hooks: { from: number; to: number }[] = [];
+          /** Each hook's timed snap, where it starts on the timeline, and where its decay begins. */
+          const hookIns: { at: number; decayAt?: number; timeline: gsap.core.Timeline }[] = [];
           /** Who is waiting for a page to be written ("Play the story"). */
           const onWritten: (() => void)[][] = scenes.map(() => []);
 
@@ -467,39 +471,59 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 );
               }
               t += breath;
-              // Then the hook, word by word, slower than anything else: its letters start a little out of line (each
-              // its own way, the same every time) and snap into place.
+              // Then the hook: once the reader reaches it, the whole line snaps in on a timer (not scrubbed), its
+              // letters starting a little out of line (each its own way, the same every time) and settling into place
+              // over `STORY_PACE.hookIn`. Then it holds. Going back over its start, it leaves the same way, quicker.
               // The letters are already split, word by word (StoryWords.tsx).
-              const hookWords = all('[data-story="hook-word"]', hook);
               const hookChars = all('[data-story="hook-char"]', hook);
               const offset = (char: number, salt: string, size: number) => (hashUnit(`${section.id}:${char}`, salt) * 2 - 1) * size;
               gsap.set(hookChars, { opacity: 0 });
+              const snap = MOTION['story.hook'].duration;
+              const hookIn = gsap.timeline({ paused: true }).fromTo(
+                hookChars,
+                {
+                  opacity: 0,
+                  x: index => offset(index, 'x', SCENE.hookMisalign.x),
+                  y: index => offset(index, 'y', SCENE.hookMisalign.y),
+                  rotation: index => offset(index, 'r', SCENE.hookMisalign.rotate),
+                },
+                {
+                  opacity: 1,
+                  x: 0,
+                  y: 0,
+                  rotation: 0,
+                  ...tween('story.hook'),
+                  stagger: Math.max(0, STORY_PACE.hookIn - snap) / Math.max(1, hookChars.length - 1),
+                }
+              );
+              headingTimelines.push(hookIn);
+              hookIns.push({ at: t, timeline: hookIn });
+              timeline.addLabel(`hook-${index}`, t);
               timeline.set(hook, { opacity: 1, pointerEvents: 'auto' }, t);
+              timeline.call(
+                () => {
+                  if (playheadForward()) {
+                    hookIn.timeScale(1).restart();
+                  } else {
+                    hookIn.timeScale(SCENE.hookBackRate).reverse();
+                  }
+                },
+                undefined,
+                t
+              );
               emitAt(t, () => ({ type: 'hook', chapter: section.id, direction }));
-              hookWords.forEach((word, wordIndex) => {
-                const chars = hookChars.filter(char => word.contains(char));
-                const first = hookChars.indexOf(chars[0]);
-                timeline.fromTo(
-                  chars,
-                  {
-                    opacity: 0,
-                    x: index => offset(first + index, 'x', SCENE.hookMisalign.x),
-                    y: index => offset(first + index, 'y', SCENE.hookMisalign.y),
-                    rotation: index => offset(first + index, 'r', SCENE.hookMisalign.rotate),
-                  },
-                  { opacity: 1, x: 0, y: 0, rotation: 0, ...tween('story.hook'), immediateRender: false },
-                  t + wordIndex * STORY_PACE.hookWordEvery
-                );
-              });
-              t += Math.max(0, hookWords.length - 1) * STORY_PACE.hookWordEvery + MOTION['story.hook'].duration + STORY_PACE.hookHold;
+              t += STORY_PACE.hookIn + STORY_PACE.hookHold;
+              // The decay takes the letters from whole: the snap is finished first if it is still settling.
+              hookIns[hookIns.length - 1].decayAt = t;
               // The ending decays: its letters disappear unevenly, one at a time in a random order, like ink drying.
               const decaying = [...hookChars].sort(
                 (a, b) => hashUnit(`${section.id}:${hookChars.indexOf(a)}`, 'decay') - hashUnit(`${section.id}:${hookChars.indexOf(b)}`, 'decay')
               );
               if (decaying.length > 0) {
                 const decayFade = MOTION['story.decay'].duration;
-                timeline.to(
+                timeline.fromTo(
                   decaying,
+                  { opacity: 1 },
                   {
                     opacity: 0,
                     ...tween('story.decay'),
@@ -632,6 +656,12 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   chartFrame.dataset.hushed = String(hushed);
                 }
               }
+              // Scrolling on into a hook's decay while its snap still settles: the snap finishes first.
+              hookIns.forEach(hookIn => {
+                if (hookIn.decayAt !== undefined && timeline.time() >= hookIn.decayAt && hookIn.timeline.progress() < 1 && !hookIn.timeline.reversed()) {
+                  hookIn.timeline.progress(1);
+                }
+              });
               // Scrolling onward into a page finishes its writing at once: the reader is never kept waiting.
               if (direction === 'forward') {
                 spans.forEach((span, spanIndex) => {
@@ -752,28 +782,44 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
             const chokepoint = gsap.timeline({ defaults: { ease: LINEAR } });
             gsap.set([...phrases, ...questionWeighted], { opacity: 0 });
             let at: number = STORY_PACE.questionLead;
+            const phraseIns: gsap.core.Timeline[] = [];
             phrases.forEach((phrase, index) => {
-              chokepoint.fromTo(
+              // The stop: as soon as the scroll reaches it, the phrase plays in on a timer (`STORY_PACE.questionPhrase`),
+              // its weighted parts landing on their own after a breath. Going back over it, it leaves, quicker.
+              const phraseIn = gsap.timeline({ paused: true });
+              phraseIn.fromTo(
                 phrase,
                 { opacity: 0, y: INK_RISE },
-                { opacity: 1, y: 0, ...tween('ink.in'), immediateRender: false },
+                { opacity: 1, y: 0, ease: MOTION['ink.in'].ease, duration: STORY_PACE.questionPhrase }
+              );
+              let landAt = STORY_PACE.questionPhrase;
+              all('[data-story="weighted"]', phrase).forEach(span => {
+                landAt += SCENE.weightBeat;
+                phraseIn.fromTo(span, { opacity: 0, y: -INK_RISE }, { opacity: 1, y: 0, ...tween('story.weighted') }, landAt);
+                landAt += MOTION['story.weighted'].duration;
+              });
+              phraseIns.push(phraseIn);
+              chokepoint.addLabel(`phrase-${index}`, at);
+              chokepoint.call(
+                () => {
+                  const forward = chokepoint.time() >= chokepointLast;
+                  if (forward) {
+                    phraseIn.timeScale(1).play();
+                  } else {
+                    phraseIn.timeScale(SCENE.hookBackRate).reverse();
+                  }
+                },
+                undefined,
                 at
               );
-              at += MOTION['ink.in'].duration;
-              all('[data-story="weighted"]', phrase).forEach(span => {
-                at += SCENE.weightBeat;
-                chokepoint.fromTo(
-                  span,
-                  { opacity: 0, y: -INK_RISE },
-                  { opacity: 1, y: 0, ...tween('story.weighted'), immediateRender: false },
-                  at
-                );
-                at += MOTION['story.weighted'].duration;
-              });
-              // The stop: the scroll settles here, with the phrase written in, and holds it for its reading time.
-              chokepoint.addLabel(`phrase-${index}`, at);
-              at += Math.max(STORY_PACE.readAtLeast, readingSeconds(phrase.textContent ?? ''));
+              // The phrase holds for its time to arrive and to be read before the next stop.
+              at += phraseIn.duration() + Math.max(STORY_PACE.readAtLeast, readingSeconds(phrase.textContent ?? ''));
             });
+            let chokepointLast = 0;
+            chokepoint.eventCallback('onUpdate', () => {
+              chokepointLast = chokepoint.time();
+            });
+            cleanups.push(() => phraseIns.forEach(phraseIn => phraseIn.kill()));
             // The whole question, held a moment before the fork.
             chokepoint.addLabel('whole', at);
             chokepoint.to({}, { duration: STORY_PACE.beforeFork }, at);
@@ -803,7 +849,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               return [
                 ...phrases.map((phrase, index) => ({
                   y: questionPin.start + chokepoint.labels[`phrase-${index}`] * px,
-                  hold: readingSeconds(phrase.textContent ?? ''),
+                  hold: (phraseIns[index]?.duration() ?? 0) + readingSeconds(phrase.textContent ?? ''),
                 })),
                 {
                   y: questionPin.start + chokepoint.labels.whole * px,

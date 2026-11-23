@@ -28,9 +28,9 @@ Every GSAP tween spreads a token: `gsap.to(el, { ...tween('ink.in'), opacity: 1 
 | `ghost` | `sine.inOut` | 2 to 4s | Ghost ink drifting and flickering: slow and irregular (`ghostDuration(key)`) |
 | `story.weighted` | `power4.out` | 0.7s | A weighted part of the central question landing alone after a breath, slightly brighter (no line under it) |
 | `story.breath` | `sine.inOut` | 2.4s | Before a hook: the page has dimmed away, the image darkens, the camera creeps closer (1.05); nothing new appears |
-| `story.hook` | `back.out(2.2)` | 1.1s per word | A hook word by word, its letters snapping into place from slightly out of line |
+| `story.hook` | `back.out(2.2)` | 0.45s per letter | A hook snapping in whole on a timer once reached (not scrubbed): its letters settle from slightly out of line, staggered over `STORY_PACE.hookIn` (about 0.8s) |
 | `story.decay` | `power1.in` | 0.35s per letter | A hook leaving: letters go one at a time in a fixed random order |
-| `story.settle` | `power2.inOut` | 0.6s | The central question's stops: ScrollTrigger snaps to the next phrase (`labelsDirectional`) |
+| `story.settle` | `power2.inOut` | 0.6s | The central question's stops: ScrollTrigger snaps to the next phrase (`labelsDirectional`); each phrase then plays in on a timer (`STORY_PACE.questionPhrase`, about 0.6s) |
 
 **The pen** writes each chapter's page on its own timer (the quill writer, `src/lib/quill-writing.ts`), not on the scroll: a click or scrolling onward finishes it at once. Its words and letters are split by React (`PenText.tsx`, `StoryWords.tsx` for hooks), so portals stay whole; screen readers get the full text once. **Every timing of the story** (writing speed, the hold before a hook, the hook hold, auto-play reading time, the scroll per second and the story page's Lenis wheel multiplier) is in one commented object, `STORY_PACE` in `src/lib/story-pages.ts`.
 

@@ -568,23 +568,42 @@ describe('Story: the four entrances', () => {
 
 
 
-  test('a hook arrives word by word, slower than anything else, its letters snapping into place from out of line', () => {
+  test('a hook snaps in whole on a timer once reached, its letters settling from out of line in about 0.8s', () => {
     const { container } = renderStory();
     const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
     const words = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-word"]')];
     expect(words.map(word => word.textContent).join(' ')).toBe(voyage.hook);
-    const snaps = words.map(word => gsap.getTweensOf(word.querySelector('[data-story="hook-char"]')!)[0]);
-    expect(snaps[0].vars).toMatchObject({ opacity: 1, x: 0, y: 0, rotation: 0, ease: 'back.out(2.2)' });
-    for (let index = 1; index < snaps.length; index += 1) {
-      expect(snaps[index].startTime() - snaps[index - 1].startTime()).toBeCloseTo(0.55, 6);
-    }
+    const letters = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
+    const snap = gsap.getTweensOf(letters[0]).find(tween => tween.vars.opacity === 1)!;
+    expect(snap.vars).toMatchObject({ opacity: 1, x: 0, y: 0, rotation: 0, ease: 'back.out(2.2)' });
+    // One timed tween for the whole line, not scrubbed: it lives on its own paused timeline, not the stage's.
+    expect(letters.every(letter => gsap.getTweensOf(letter).includes(snap))).toBe(true);
+    const stage = ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+    expect(snap.parent).not.toBe(stage);
+    expect(snap.parent!.paused()).toBe(true);
+    expect(snap.parent!.duration()).toBeCloseTo(STORY_PACE.hookIn, 5);
     // Each letter starts its own way out of line (within a few px and degrees), the same every time.
-    const letters = [...words[1].querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
-    const from = snaps[1].vars.startAt as { rotation: (index: number) => number; x: (index: number) => number };
+    const from = snap.vars.startAt as { rotation: (index: number) => number; x: (index: number) => number };
     const turns = letters.map((_, index) => from.rotation(index));
-    expect(new Set(turns.map(value => value.toFixed(3))).size).toBe(letters.length);
+    expect(new Set(turns.map(value => value.toFixed(3))).size).toBeGreaterThan(letters.length / 2);
     expect(turns.every(value => Math.abs(value) <= 12)).toBe(true);
     expect(letters.map((_, index) => from.x(index))).toEqual(letters.map((_, index) => from.x(index)));
+  });
+
+  test('reaching the hook plays its snap; going back over it reverses it', () => {
+    const { container } = renderStory();
+    const index = maryCeleste.story.indexOf(voyage);
+    const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
+    const letter = hook.querySelector<HTMLElement>('[data-story="hook-char"]')!;
+    const snap = gsap.getTweensOf(letter).find(tween => tween.vars.opacity === 1)!.parent as gsap.core.Timeline;
+    const stage = ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+    const at = stage.labels[`hook-${index}`];
+    stage.time(at - 0.1);
+    stage.time(at + 0.1);
+    expect(snap.paused()).toBe(false);
+    expect(snap.reversed()).toBe(false);
+    stage.time(at - 0.1);
+    expect(snap.reversed()).toBe(true);
   });
 
   test('when a hook leaves, its letters decay one at a time, in an uneven order', () => {
@@ -621,13 +640,13 @@ describe('Story: the hook between chapters', () => {
     const creep = start(chapter.querySelector('[data-story="figure"]')!);
     const hook = chapter.querySelector('[data-story="hook-moment"]')!;
     const letter = hook.querySelector('[data-story="hook-char"]')!;
-    const snap = start(letter, tween => tween.vars.opacity === 1);
+    const snap = stageTimeline().labels[`hook-${index}`];
     const decay = start(letter, tween => tween.vars.opacity === 0);
     expect(lastNameOut).toBeLessThan(firstNameOut);
     expect(firstNameOut).toBeLessThan(pageOut);
     expect(pageOut).toBeLessThan(creep);
     expect(creep).toBeLessThan(snap);
-    expect(decay - snap).toBeGreaterThanOrEqual(STORY_PACE.hookHold);
+    expect(decay - snap).toBeCloseTo(STORY_PACE.hookIn + STORY_PACE.hookHold, 5);
     expect(stageTimeline().labels[`chapter-${index + 1}`]).toBeGreaterThan(decay);
   });
 
@@ -639,10 +658,7 @@ describe('Story: the hook between chapters', () => {
     const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
     const timeline = stageTimeline();
     const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
-    const snap = gsap
-      .getTweensOf(chapter.querySelector('[data-story="hook-char"]')!)
-      .find(tween => tween.parent !== gsap.globalTimeline && tween.vars.opacity === 1)!;
-    timeline.time(snap.startTime() + 0.5, false);
+    timeline.time(timeline.labels['hook-0'] + 0.5, false);
     act(() => pinned.vars.onUpdate?.(pinned));
     expect(chart.dataset.hushed).toBe('true');
     timeline.time(0, false);
@@ -678,7 +694,7 @@ describe('Story: the central question as a chokepoint', () => {
     expect(document.documentElement.style.overflow).toBe('');
   });
 
-  test('it builds phrase by phrase, each written in with ink.in, each a stop, then the whole question and a hold', () => {
+  test('each phrase is a stop; reaching it plays the phrase in on a timer, then the whole question and a hold', () => {
     const { container } = renderQuestion();
     const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
     expect(phrases).toHaveLength(5);
@@ -686,8 +702,20 @@ describe('Story: the central question as a chokepoint', () => {
     const labels = Object.keys(timeline.labels);
     expect(labels).toEqual([...phrases.map((_, index) => `phrase-${index}`), 'whole']);
     const ins = phrases.map(phrase => gsap.getTweensOf(phrase)[0]);
-    expect(ins.every(tween => tween.vars.ease === 'power3.out' && tween.vars.opacity === 1)).toBe(true);
-    ins.forEach((tween, index) => expect(tween.startTime()).toBeLessThan(timeline.labels[`phrase-${index}`]));
+    // Timed, not scrubbed: each phrase's tween is on its own paused timeline, about 0.6s long.
+    ins.forEach(tween => {
+      expect(tween.vars).toMatchObject({ opacity: 1, ease: 'power3.out', duration: STORY_PACE.questionPhrase });
+      expect(tween.parent).not.toBe(timeline);
+      expect(tween.parent!.paused()).toBe(true);
+    });
+    // Reaching the stop plays it; going back over it reverses it.
+    const second = ins[1].parent as gsap.core.Timeline;
+    timeline.time(timeline.labels['phrase-1'] - 0.1);
+    timeline.time(timeline.labels['phrase-1'] + 0.1);
+    expect(second.paused()).toBe(false);
+    expect(second.reversed()).toBe(false);
+    timeline.time(timeline.labels['phrase-1'] - 0.1);
+    expect(second.reversed()).toBe(true);
     // The fork waits: the timeline holds on the whole question before the pin lets go.
     expect(timeline.duration()).toBeGreaterThan(timeline.labels.whole + 2);
   });
@@ -699,6 +727,7 @@ describe('Story: the central question as a chokepoint', () => {
     const land = gsap.getTweensOf(weighted[1])[0];
     expect(land.vars).toMatchObject({ opacity: 1, ease: 'power4.out' });
     const phraseIn = gsap.getTweensOf(weighted[1].closest('[data-story="phrase"]')!)[0];
+    expect(land.parent).toBe(phraseIn.parent);
     expect(land.startTime()).toBeGreaterThan(phraseIn.startTime() + phraseIn.duration());
     expect(weighted[1].className).toContain('text-night-ink');
     expect(container.querySelector('[data-story="weight-line"]')).toBeNull();

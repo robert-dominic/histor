@@ -65,9 +65,9 @@ export const MOTION: Record<TokenName, MotionToken> = {
   /** The breath before a hook: the column has cleared; the image darkens further and the camera creeps closer, and
    * nothing new appears. */
   'story.breath': { ease: 'sine.inOut', duration: 2.4 },
-  /** A hook arriving word by word, slower than anything else: its letters start a little out of line and snap
-   * into place. `duration` is one word's snap. */
-  'story.hook': { ease: 'back.out(2.2)', duration: 1.1 },
+  /** A hook snapping in on a timer: its letters start a little out of line and settle into place, staggered over
+   * `STORY_PACE.hookIn`. `duration` is one letter's settle. */
+  'story.hook': { ease: 'back.out(2.2)', duration: 0.45 },
   /** A hook leaving: its letters go one at a time, in a random order, like ink drying away. `duration` is one
    * letter's fade. */
   'story.decay': { ease: 'power1.in', duration: 0.35 },

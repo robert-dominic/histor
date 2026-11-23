@@ -14,6 +14,12 @@ describe('STORY_PACE: one object to tune', () => {
       expect(STORY_PACE[key], key).toBeGreaterThan(0);
     }
   });
+
+  test('a hook snaps in whole in about 0.8s and a question phrase in about 0.6s, on timers', () => {
+    expect(STORY_PACE.hookIn).toBeCloseTo(0.8, 5);
+    expect(STORY_PACE.questionPhrase).toBeCloseTo(0.6, 5);
+    expect('hookWordEvery' in STORY_PACE).toBe(false);
+  });
 });
 
 describe('STORY_PACE: the scroll', () => {
