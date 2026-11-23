@@ -16,6 +16,7 @@ import { HookLetters } from '@/features/story/StoryWords';
 import type { ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
 import { useHeadingFit } from '@/features/story/use-heading-fit';
+import { storyImageCredit } from '@/lib/image-credit';
 import type { StorySection } from '@/types/case';
 
 interface StorySceneProps {
@@ -71,23 +72,16 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
 
       {/* The image's corners: its labels and its credit. They go quiet while the hook has the screen (Story.tsx). */}
       <div data-story="corners" className="pointer-events-none absolute inset-0 z-10">
-        {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
+        {image !== undefined && image.caption !== undefined && (
           <p className="absolute top-[calc(var(--case-header)+0.625rem)] left-2.5 z-10 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:left-3.5">
-            {image.isIllustration && (
-              <span data-story="illustration" className={LABEL_CLASSES}>
-                Illustration
-              </span>
-            )}
-            {image.caption !== undefined && (
-              <span data-story="caption" className={LABEL_CLASSES}>
-                {image.caption}
-              </span>
-            )}
+            <span data-story="caption" className={LABEL_CLASSES}>
+              {image.caption}
+            </span>
           </p>
         )}
         {image !== undefined && (
           <CreditInfo
-            credit={image.credit}
+            credit={storyImageCredit(image)}
             attribute="data-story"
             placement="below"
             className="pointer-events-auto top-[var(--case-header)] right-0 lg:right-1"

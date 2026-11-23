@@ -28,14 +28,14 @@ The same title and years appear on the case's entry on Home.
 
 ## The images (final)
 
-Originals are in `~/histor-media/`. Claude Code crops, compresses and copies them into `src/cases/mary-celeste/assets/images/`. Every image shows a credit line; the deck still also shows "Illustration".
+Originals are in `~/histor-media/`. Claude Code crops, compresses and copies them into `src/cases/mary-celeste/assets/images/`. Every image has its credit behind an ⓘ; the deck still has no visible "Illustration" tag, and its credit begins "AI illustration."
 
 | Chapter | File | What it is | Credit line | Mood / grade |
 | --- | --- | --- | --- | --- |
 | 1. Ten people set sail | `s-voyage.jpg` | Edward Moran, *Shipping off Governors Island, New York*, c. 1870 | Painting by Edward Moran, c. 1870. Not the Mary Celeste. Public domain, via Wikimedia Commons. | Daylight |
 | 2. Six miles from land | `s-last-entry.jpg` | Ivan Aivazovsky, *Stürmische See im Abendrot* (Stormy Sea at Sunset), 1896. Commons: https://commons.wikimedia.org/wiki/File:Ivan_Konstantinovich_Aivazovsky_-_St%C3%BCrmische_See_im_Abendrot,_1896.jpg | Painting by Ivan Aivazovsky, 1896. Not the Mary Celeste. Public domain, via Wikimedia Commons. | Storm, dim |
 | 3. She kept sailing | `s-found.jpg` | The Mary Celeste in 1861, under her first name, *Amazon*, entering Marseilles (cropped) | The Mary Celeste as the *Amazon*, 1861. Artist unconfirmed. Public domain, via Wikimedia Commons. | Overcast, colder |
-| 4. Everything, except the people | still from `s-aboard.mp4` | AI-generated still of an empty deck | Illustration. AI-generated (Google Gemini). | Dusk |
+| 4. Everything, except the people | still from `s-aboard.mp4` | AI-generated still of an empty deck | AI illustration. AI-generated (Google Gemini). | Dusk |
 | 5. Murder? | `s-inquiry.jpg` | *Gibraltar from the northwest*, engraving, 1870 | Engraving by J.H. Mann, 1870. U.S. Naval History and Heritage Command. Public domain, via Wikimedia Commons. | Evening |
 | 6. Why? | `s-question.jpg` | Ivan Aivazovsky, *A Moonlit Night at Sea*, 1885 | Painting by Ivan Aivazovsky, 1885. Not the Mary Celeste. Public domain, via Wikimedia Commons. | Full night |
 

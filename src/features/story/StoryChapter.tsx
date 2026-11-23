@@ -11,6 +11,7 @@ import type { DayNightStep, ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
 import type { ChartRoute } from '@/lib/voyage-chart';
 import { useHeadingFit } from '@/features/story/use-heading-fit';
+import { storyImageCredit } from '@/lib/image-credit';
 import type { StorySection } from '@/types/case';
 
 interface StoryChapterProps {
@@ -54,23 +55,16 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
             <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />
           </figure>
         )}
-        {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
+        {image !== undefined && image.caption !== undefined && (
           <p className="absolute top-[calc(var(--case-header)+0.625rem)] right-14 z-10 flex max-w-[calc(100%-5rem)] flex-wrap justify-end gap-1.5 lg:right-16">
-            {image.isIllustration && (
-              <span data-story="illustration" className={LABEL_CLASSES}>
-                Illustration
-              </span>
-            )}
-            {image.caption !== undefined && (
-              <span data-story="caption" className={LABEL_CLASSES}>
-                {image.caption}
-              </span>
-            )}
+            <span data-story="caption" className={LABEL_CLASSES}>
+              {image.caption}
+            </span>
           </p>
         )}
         {image !== undefined && (
           <CreditInfo
-            credit={image.credit}
+            credit={storyImageCredit(image)}
             attribute="data-story"
             placement="below"
             className="top-[var(--case-header)] right-0 z-10 lg:right-1"

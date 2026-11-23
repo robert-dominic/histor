@@ -109,7 +109,7 @@ Each case sets its own accent, texture, video and sounds in its folder (`theme.c
 
 - Every image and video carries a credit.
 - **Chapter and portal images keep the credit behind a small ⓘ button** in a corner of the image. Hovering (on mouse devices), keyboard focus or a tap shows the credit in a small tooltip. Never print the full credit line over the image.
-- **Two labels are always visible on an image:** "Illustration" on AI-generated or artist-made media (`isIllustration: true`), and the image's short caption when it has one (`caption`), e.g. "The Mary Celeste, 1861". Nothing else is printed on the image.
+- **Story images carry no visible "Illustration" tag**: it obstructs the scene. Honesty stays in the ⓘ: for any image with `isIllustration: true` the credit always begins "AI illustration." (`src/lib/image-credit.ts`). The only label printed on a story image is its short caption when it has one (`caption`), e.g. "The Mary Celeste, 1861". Portal images keep their visible "Illustration" label and caption.
 - The legend intro's video keeps its visible "Illustration" label and credit line.
 - Never AI-generate real people. Real people appear only in real photos or period portraits.
 

@@ -262,15 +262,29 @@ describe('Story: scenes', () => {
     expect(container.querySelector('[data-story="quill"]')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('every image keeps its credit behind an ⓘ, and its labels', () => {
-    const { container } = renderStory();
-
-    for (const section of maryCeleste.story) {
-      const chapter = chapterOf(container, section);
-      expect(within(chapter).getByRole('img', { name: section.image?.alt })).toBeDefined();
-      expect(within(chapter).getByRole('tooltip', { hidden: true }).textContent).toBe(section.image?.credit);
-      expect(chapter.querySelector('[data-story="illustration"]') !== null).toBe(section.image?.isIllustration);
+  test('every image keeps its credit behind an ⓘ and its caption; no visible "Illustration" tag, the ⓘ says it', () => {
+    for (const reducedMotion of [false, true]) {
+      cleanup();
+      vi.unstubAllGlobals();
+      stubMatchMedia({ reducedMotion });
+      vi.stubGlobal('scrollTo', vi.fn());
+      const { container } = renderStory();
+      for (const section of maryCeleste.story) {
+        const chapter = chapterOf(container, section);
+        const image = section.image!;
+        expect(within(chapter).getByRole('img', { name: image.alt })).toBeDefined();
+        const credit = within(chapter).getByRole('tooltip', { hidden: true }).textContent ?? '';
+        expect(credit.startsWith('AI illustration.')).toBe(image.isIllustration);
+        expect(credit).toContain(image.credit);
+        expect(chapter.querySelector('[data-story="illustration"]')).toBeNull();
+        expect(chapter.textContent).not.toMatch(/^Illustration$/m);
+      }
     }
+    cleanup();
+    vi.unstubAllGlobals();
+    stubMatchMedia();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const { container } = renderStory();
     expect(chapterOf(container, maryCeleste.story[2]).querySelector('[data-story="caption"]')?.textContent).toBe(
       'The Mary Celeste, 1861'
     );
