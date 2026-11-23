@@ -112,15 +112,16 @@ export default function StoryOpening({ card, overlay = false }: StoryOpeningProp
           at += quill.write(timeline, split.chars as HTMLElement[], at);
         });
 
-        // The years, typed: letters appear whole, one at a time.
+        // The years, typed: one character at a time, each appearing whole (a set, never a fade), so nothing overlaps
+        // and nothing rests half visible. The characters are the plain inline spans the years are written in, so
+        // their spacing is the text's own; once typed, they are handed back as they were.
         at += TIMING.pauseBeforeYears;
         years.forEach(block => {
-          const split = SplitText.create(block, { type: 'chars', aria: 'none' });
-          splits.push(split);
-          const letters = split.chars as HTMLElement[];
+          const letters = [...block.querySelectorAll<HTMLElement>('[data-opening="year-char"]')];
           gsap.set(letters, { opacity: 0 });
           letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, at + index / TIMING.typeRate));
           at += letters.length / TIMING.typeRate;
+          timeline.set(letters, { clearProps: 'opacity' }, at);
         });
 
         // The stamp lands, then the teaser, then a quiet scroll cue.
@@ -177,7 +178,12 @@ export default function StoryOpening({ card, overlay = false }: StoryOpeningProp
           data-opening="years"
           className="font-voice text-[clamp(0.875rem,0.8rem+0.4vw,1.125rem)] tracking-[0.22em] text-ghost-night tabular-nums"
         >
-          {card.years}
+          {/* One plain inline span per character (spaces too), for the typing: no splitting, no re-layout. */}
+          {[...card.years].map((character, index) => (
+            <span key={index} data-opening="year-char">
+              {character}
+            </span>
+          ))}
         </p>
         {card.unsolved && (
           <p

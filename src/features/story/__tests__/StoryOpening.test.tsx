@@ -89,6 +89,27 @@ describe('StoryOpening: content', () => {
     expect(one(container, 'stamp').style.opacity).toBe('0');
   });
 
+  test('the years type in one character at a time, spaces kept, each appearing whole, and all whole at rest', () => {
+    const { container } = renderOpening();
+    const chars = [...one(container, 'years').querySelectorAll<HTMLElement>('[data-opening="year-char"]')];
+    // Every character of the text, spaces and the dash included, and nothing else.
+    expect(chars.map(char => char.textContent).join('')).toBe(card.years);
+    expect(chars).toHaveLength([...card.years].length);
+    // Plain inline spans: nothing is laid out again, so no letter can overlap another.
+    expect(chars.every(char => char.className === '' && char.style.display === '')).toBe(true);
+    expect(chars.every(char => char.style.opacity === '0')).toBe(true);
+    const sets = chars.map(char => gsap.getTweensOf(char).find(tween => tween.vars.opacity === 1)!);
+    // Each one appears at once (no fade), one after another.
+    expect(sets.every(tween => tween.duration() === 0)).toBe(true);
+    for (let index = 1; index < sets.length; index += 1) {
+      expect(sets[index].startTime()).toBeGreaterThan(sets[index - 1].startTime());
+    }
+    // The parent never fades: nothing is left half visible.
+    expect(gsap.getTweensOf(one(container, 'years'))).toHaveLength(0);
+    (sets[0].parent as gsap.core.Timeline).progress(1);
+    expect(chars.every(char => char.style.opacity === '')).toBe(true);
+  });
+
   test('reduced motion: the title is not split, and everything fades in', () => {
     vi.unstubAllGlobals();
     stubMatchMedia({ reducedMotion: true });
