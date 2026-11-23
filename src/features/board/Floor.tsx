@@ -232,6 +232,21 @@ export default function Floor({ layout, filesHref, theories, dropped, onRearrang
         lift(folder, false);
       }
     };
+    // A file with the focus (or its "Pin to…") comes to the top, so its menu is never under another file.
+    const onFocusIn = (event: FocusEvent) => {
+      const folder = (event.target as Element).closest<HTMLElement>('[data-board="folder"]');
+      if (folder !== null) {
+        gsap.set(folder, { zIndex: allIds.length * 2 + 20 });
+      }
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      const folder = (event.target as Element).closest<HTMLElement>('[data-board="folder"]');
+      if (folder !== null && !folder.contains(event.relatedTarget as Node | null)) {
+        gsap.set(folder, { zIndex: resting.current.get(idOf(folder))?.z ?? 0 });
+      }
+    };
+    root.addEventListener('focusin', onFocusIn);
+    root.addEventListener('focusout', onFocusOut);
     // The desk's sound: the hand comes over the files.
     const onEnter = () => emitStoryEvent({ type: 'pile-hover' });
     root.addEventListener('pointerenter', onEnter);
@@ -243,6 +258,8 @@ export default function Floor({ layout, filesHref, theories, dropped, onRearrang
       stopDragging();
       observer?.disconnect();
       root.removeEventListener('pointerenter', onEnter);
+      root.removeEventListener('focusin', onFocusIn);
+      root.removeEventListener('focusout', onFocusOut);
       root.removeEventListener('pointerover', onOver);
       root.removeEventListener('pointerout', onOut);
       gsap.killTweensOf(folders());
@@ -270,6 +287,15 @@ export default function Floor({ layout, filesHref, theories, dropped, onRearrang
             number={numberOf.get(evidence.id) ?? ''}
             href={`${filesHref}/${evidence.id}`}
             opened={openedIds.has(evidence.id)}
+            pin={{
+              theories,
+              onPin: target => {
+                const element = rootRef.current?.querySelector<HTMLElement>(`[data-board="folder"][data-evidence-id="${evidence.id}"]`);
+                if (element != null) {
+                  onDropRef.current(evidence.id, { kind: 'pin', target }, element);
+                }
+              },
+            }}
           />
         ))}
       </ol>

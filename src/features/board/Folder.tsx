@@ -6,8 +6,9 @@
 
 import { Link } from 'react-router-dom';
 import Stamp from '@/components/Stamp';
+import PinMenu from '@/features/board/PinMenu';
 import { STATUS_LABEL } from '@/lib/case-files';
-import type { Evidence } from '@/types/case';
+import type { Evidence, PinTarget, Theory } from '@/types/case';
 
 interface FolderProps {
   evidence: Evidence;
@@ -16,9 +17,14 @@ interface FolderProps {
   href: string;
   /** Opened before, but not pinned: its stamp shows. */
   opened: boolean;
+  /**
+   * The desktop floor: while the file has focus, a small "Pin to…" shows on it, and P opens it, so a file can be
+   * pinned without dragging, sealed or not.
+   */
+  pin?: { theories: Theory[]; onPin: (target: PinTarget) => void };
 }
 
-export default function Folder({ evidence, number, href, opened }: FolderProps) {
+export default function Folder({ evidence, number, href, opened, pin }: FolderProps) {
   return (
     <li
       data-board="folder"
@@ -28,7 +34,18 @@ export default function Folder({ evidence, number, href, opened }: FolderProps) 
       // In the phone strip the folder in the middle lifts (data-centred, set by Pile.tsx). On a desktop GSAP places it.
       // On the desktop floor every folder has one fixed size (7.75rem by 6rem), stamped or not, so the floor layout can
       // keep them apart; the label takes up to three lines.
-      className="desk-folder w-[10.5rem] shrink-0 motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-out data-[centred=true]:-translate-y-2.5 lg:h-24 lg:w-[7.75rem]"
+      onKeyDown={event => {
+        // P, on the focused file: open its "Pin to…".
+        if (pin !== undefined && (event.key === 'p' || event.key === 'P') && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          const button = event.currentTarget.querySelector<HTMLButtonElement>('[data-folder="pin"] button[aria-haspopup="menu"]');
+          if (button !== null && event.target === event.currentTarget.querySelector('a')) {
+            event.preventDefault();
+            button.focus();
+            button.click();
+          }
+        }
+      }}
+      className="desk-folder group/file w-[10.5rem] shrink-0 motion-safe:transition-[translate] motion-safe:duration-200 motion-safe:ease-out data-[centred=true]:-translate-y-2.5 lg:h-24 lg:w-[7.75rem]"
     >
       <Link
         to={href}
@@ -54,6 +71,15 @@ export default function Folder({ evidence, number, href, opened }: FolderProps) 
           )}
         </span>
       </Link>
+      {pin !== undefined && (
+        // Shown while the file (or its menu) has focus; reachable with Tab from the file.
+        <div
+          data-folder="pin"
+          className="pointer-events-none absolute top-4 right-1 z-[2] opacity-0 transition-opacity duration-(--motion-hover-duration) ease-(--motion-hover-ease) group-focus-within/file:pointer-events-auto group-focus-within/file:opacity-100"
+        >
+          <PinMenu theories={pin.theories} current={undefined} onPin={pin.onPin} compact srSuffix={`file ${number}, ${evidence.title}`} />
+        </div>
+      )}
     </li>
   );
 }

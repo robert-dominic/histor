@@ -23,6 +23,10 @@ interface PinMenuProps {
   onUnpin?: () => void;
   /** True while a pin is being carried out: the button does nothing more. */
   busy?: boolean;
+  /** A small button, for a file on the floor. */
+  compact?: boolean;
+  /** Said after "Pin to…" to screen readers, e.g. the file's number and title. */
+  srSuffix?: string;
 }
 
 /** The menu's last item, for a file that is pinned or set aside. */
@@ -31,7 +35,7 @@ export const BACK_TO_FLOOR = 'Back to the floor';
 const FLOOR_ITEM = 'back-to-floor';
 type MenuItemId = PinTarget | typeof FLOOR_ITEM;
 
-export default function PinMenu({ theories, current, onPin, onUnpin, busy = false }: PinMenuProps) {
+export default function PinMenu({ theories, current, onPin, onUnpin, busy = false, compact = false, srSuffix }: PinMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -202,9 +206,12 @@ export default function PinMenu({ theories, current, onPin, onUnpin, busy = fals
         disabled={busy}
         onClick={() => (open ? close(false) : openAt())}
         onKeyDown={handleButtonKeyDown}
-        className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-ink bg-ink px-5 py-2 font-voice text-sm tracking-[0.1em] text-paper uppercase transition-[scale,background-color] duration-150 ease-out hover:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] disabled:opacity-60"
+        className={`inline-flex items-center rounded-sm border border-ink bg-ink font-voice tracking-[0.1em] text-paper uppercase transition-[scale,background-color] duration-150 ease-out hover:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] disabled:opacity-60 ${
+          compact ? 'min-h-7 gap-1 px-2 py-0.5 text-[0.6875rem]' : 'min-h-11 gap-2 px-5 py-2 text-sm'
+        }`}
       >
         Pin to…
+        {srSuffix !== undefined && <span className="sr-only"> {srSuffix}</span>}
         <svg aria-hidden="true" viewBox="0 0 10 6" className="h-1.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M1 1 L5 5 L9 1" />
         </svg>

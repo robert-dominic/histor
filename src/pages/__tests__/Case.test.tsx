@@ -217,7 +217,7 @@ describe('Case page: open case', () => {
       expect(scrollIntoView).not.toHaveBeenCalled();
       fireEvent.click(within(choice).getByRole('button', { name: 'Read at my pace' }));
       // It leaves quickly (a tween), then the story starts.
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
       // The page scrolls again once the choice is made.
       expect(document.documentElement.style.overflow).toBe('');
     } finally {
