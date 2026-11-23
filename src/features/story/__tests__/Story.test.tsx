@@ -192,13 +192,18 @@ describe('Story: the full text is in the DOM', () => {
       expect(starts[index] - starts[index - 1]).toBeCloseTo(plan[index - 1].seconds, 6);
     }
   });
-  test('the sentences ease in, and the list moves up over the same stretch', () => {
+  test('the sentences rise word by word from behind their masks, and the list moves up over the same stretch', () => {
     const { container } = renderStory(testCase);
     const chapter = chapterOf(container, testCase.story[0]);
     const sentence = chapter.querySelector('[data-story="sentence"]') as HTMLElement;
     const list = chapter.querySelector('[data-story="sentences"]') as HTMLElement;
+    const words = [...sentence.querySelectorAll<HTMLElement>('[data-story="word"]')];
+    expect(words.length).toBeGreaterThan(1);
+    expect(words.every(word => word.parentElement?.dataset.story === 'mask')).toBe(true);
+    const rise = gsap.getTweensOf(words[0])[0];
+    expect(rise.vars).toMatchObject({ yPercent: 0, opacity: 1, ease: 'power3.out' });
+    expect(gsap.getTweensOf(words[1])[0]).toBe(rise);
     const fade = gsap.getTweensOf(sentence)[0];
-    expect(fade.vars.ease).toBe('power3.out');
     const moves = gsap.getTweensOf(list);
     expect(moves).toHaveLength(texts(testCase.story[0]).length);
     expect(moves[0].startTime()).toBeCloseTo(fade.startTime(), 6);
@@ -610,6 +615,88 @@ describe('Story: sized images', () => {
     expect(images[0].getAttribute('srcset')).toMatch(/ 828w, .+ \d+w$/);
     expect(images[0].getAttribute('sizes')).toBe('100vw');
     expect(images[1].getAttribute('srcset')).toBeNull();
+  });
+});
+
+describe('Story: the four entrances', () => {
+  const voyage = maryCeleste.story.find(section => section.id === 's-voyage')!;
+
+  test('weighted words hold their space, then land on their own after a beat, and a rust line grows under them', () => {
+    const { container } = renderStory();
+    const chapter = chapterOf(container, voyage);
+    const weighted = [...chapter.querySelectorAll<HTMLElement>('[data-story="column"] [data-story="weighted"]')];
+    expect(weighted.map(span => span.textContent)).toEqual(voyage.emphasis);
+    const span = weighted[0];
+    const sentence = span.closest<HTMLElement>('[data-story="sentence"]')!;
+    const words = [...span.querySelectorAll<HTMLElement>('[data-story="word"]')];
+    // Held empty while the sentence rises.
+    expect(words.every(word => word.style.opacity === '0')).toBe(true);
+    const plainRise = gsap.getTweensOf(sentence.querySelector('[data-story="word"]')!)[0];
+    const landing = gsap.getTweensOf(words[0])[0];
+    expect(landing.vars).toMatchObject({ yPercent: 0, opacity: 1, ease: 'power4.out' });
+    // After the sentence has risen, and a beat of stillness.
+    expect(landing.startTime()).toBeGreaterThanOrEqual(plainRise.startTime() + plainRise.duration() + 0.9 - 1e-6);
+    const rule = gsap.getTweensOf(span.querySelector('[data-story="weight-line"]')!)[0];
+    expect(rule.vars.scaleX).toBe(1);
+    expect(rule.startTime()).toBeCloseTo(landing.startTime() + landing.duration(), 6);
+  });
+
+  test('before a hook the column clears, the image darkens and the camera creeps closer, and nothing new appears', () => {
+    const { container } = renderStory();
+    const chapter = chapterOf(container, voyage);
+    const column = chapter.querySelector('[data-story="column"]') as HTMLElement;
+    const figure = chapter.querySelector('[data-story="figure"]') as HTMLElement;
+    const hook = chapter.querySelector('[data-story="hook-moment"]') as HTMLElement;
+    const clear = gsap.getTweensOf(column).find(tween => tween.vars.opacity === 0)!;
+    expect(clear.vars.ease).toBe('power2.in');
+    const creep = gsap.getTweensOf(figure)[0];
+    expect(creep.vars).toMatchObject({ scale: 1.05, ease: 'sine.inOut', duration: 2.4 });
+    const firstLetter = hook.querySelector('[data-story="hook-char"]')!;
+    const snap = gsap.getTweensOf(firstLetter).find(tween => tween.vars.opacity === 1)!;
+    // The hook comes only once the breath is over.
+    expect(snap.startTime()).toBeCloseTo(creep.startTime() + creep.duration(), 6);
+  });
+
+  test('a hook arrives word by word, slower than anything else, its letters snapping into place from out of line', () => {
+    const { container } = renderStory();
+    const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
+    const words = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-word"]')];
+    expect(words.map(word => word.textContent).join(' ')).toBe(voyage.hook);
+    const snaps = words.map(word => gsap.getTweensOf(word.querySelector('[data-story="hook-char"]')!)[0]);
+    expect(snaps[0].vars).toMatchObject({ opacity: 1, x: 0, y: 0, rotation: 0, ease: 'back.out(2.2)' });
+    for (let index = 1; index < snaps.length; index += 1) {
+      expect(snaps[index].startTime() - snaps[index - 1].startTime()).toBeCloseTo(0.55, 6);
+    }
+    // Each letter starts its own way out of line (within a few px and degrees), the same every time.
+    const letters = [...words[1].querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
+    const from = snaps[1].vars.startAt as { rotation: (index: number) => number; x: (index: number) => number };
+    const turns = letters.map((_, index) => from.rotation(index));
+    expect(new Set(turns.map(value => value.toFixed(3))).size).toBe(letters.length);
+    expect(turns.every(value => Math.abs(value) <= 12)).toBe(true);
+    expect(letters.map((_, index) => from.x(index))).toEqual(letters.map((_, index) => from.x(index)));
+  });
+
+  test('when a hook leaves, its letters decay one at a time, in an uneven order', () => {
+    const { container } = renderStory();
+    const hook = chapterOf(container, voyage).querySelector('[data-story="hook-moment"]') as HTMLElement;
+    const letters = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
+    const decay = gsap.getTweensOf(letters[0]).find(tween => tween.vars.opacity === 0)!;
+    expect(decay.vars.ease).toBe('power1.in');
+    // One tween for all of them, staggered: one letter at a time...
+    expect(letters.every(letter => gsap.getTweensOf(letter).includes(decay))).toBe(true);
+    expect(decay.vars.stagger as number).toBeGreaterThan(0);
+    // ...in an uneven order, not the reading order, and always the same one.
+    const order = (decay.targets() as HTMLElement[]).map(target => letters.indexOf(target));
+    expect([...order].sort((a, b) => a - b)).toEqual(letters.map((_, index) => index));
+    expect(order).not.toEqual(letters.map((_, index) => index));
+  });
+
+  test('screen readers still get the full text once: the split copies are hidden', () => {
+    const { container } = renderStory();
+    const chapter = chapterOf(container, voyage);
+    expect(chapter.querySelector('[data-story="column"]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(chapter.querySelector('[data-story="hook-moment"]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(chapter.querySelector('[data-story="text"]')?.textContent).toContain('ten people');
   });
 });
 

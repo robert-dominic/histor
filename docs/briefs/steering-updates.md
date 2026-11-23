@@ -29,3 +29,19 @@ On a screen 1024px wide or more the investigation is **one fixed screen** that n
 
 - **Labels.** A small label above the board, "Theories", and one over the floor on its own line, "Evidence · {n} files" ({n} from the data). Special Elite, small capitals, in a muted night tone (`night-ink` at 65%, so it still reads on the night desk); quiet, not headings.
 - **The guide.** "How to investigate" opens by itself on the first visit to the desk (remembered in storage, `histor:desk-guide:{caseId}`), and the **?** opens it again. Its first sentence is the case's own (`Case.deskGuideIntro`), then the theories, the evidence ("the folders on the floor" on a desktop, "the files below" on a phone), what the stamps mean, how to pin, and when the seal appears.
+
+## motion.md
+
+### "2. The motion tokens": add five rows to the table
+
+| `story.surface` | `power3.out` | 0.9s (its share of the scroll) | A normal sentence rising out of the dark: each word slides up from behind its own mask edge, one after another |
+| `story.weighted` | `power4.out` | 0.7s | A weighted phrase landing on its own after a beat of stillness (`STEP.slow`); then a thin rust line grows under it |
+| `story.breath` | `sine.inOut` | 2.4s | The breath before a hook: the column has cleared, the image darkens further and the camera creeps closer (to 1.05); nothing new appears |
+| `story.hook` | `back.out(2.2)` | 1.1s per word | A hook arriving word by word (one every 0.55s of scroll), slower than anything else; its letters start a little out of line (up to 5px, 7px, 12°, from their position) and snap into place |
+| `story.decay` | `power1.in` | 0.35s per letter | A hook leaving: its letters disappear one at a time, in a fixed random order, over 1.8s, like ink drying away |
+
+The story's entrances play on the scrubbed timeline, so their durations are seconds of scroll and scrolling back reverses them. The words and letters are split by React (`StoryWords.tsx`), not measured afterwards, so every portal stays whole. Screen readers get the full text once (the split copies are `aria-hidden`). Under reduced motion everything simply appears.
+
+### "6. GSAP and smooth scrolling": add
+
+- **The story's scroll feel** is one constant, `SCROLL_FEEL` in `src/lib/story-column.ts`: pixels of scroll per second of the timeline (0.3 of the screen, 160 to 280px; twice the old distance per sentence) and Lenis's wheel multiplier on the story page (0.8). Tune both by feel.

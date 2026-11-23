@@ -16,5 +16,7 @@ export default defineConfig({
   test: {
     // At most two test files at once, so the full suite uses less memory.
     maxWorkers: 2,
+    // A faster getComputedStyle for the story's animated words and letters in jsdom (src/test/setup.ts).
+    setupFiles: ['./src/test/setup.ts'],
   },
 })

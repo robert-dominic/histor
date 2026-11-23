@@ -15,6 +15,11 @@ const NAMES: TokenName[] = [
   'layout',
   'scene',
   'ghost',
+  'story.surface',
+  'story.weighted',
+  'story.breath',
+  'story.hook',
+  'story.decay',
 ];
 
 describe('motion tokens', () => {

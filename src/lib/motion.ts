@@ -17,7 +17,12 @@ export type TokenName =
   | 'hover'
   | 'layout'
   | 'scene'
-  | 'ghost';
+  | 'ghost'
+  | 'story.surface'
+  | 'story.weighted'
+  | 'story.breath'
+  | 'story.hook'
+  | 'story.decay';
 
 export interface MotionToken {
   ease: string;
@@ -27,7 +32,12 @@ export interface MotionToken {
   y?: number;
 }
 
-/** The ten tokens, with their starting values (to be tuned by eye). Exits are quicker than entrances. */
+/**
+ * The story's entrances (story-dread 2.2): different moments enter differently, so calm lines and terrible ones do
+ * not feel the same. They play on the scrubbed timeline, so their durations are in seconds of scroll.
+ */
+
+/** The tokens, with their starting values (to be tuned by eye). Exits are quicker than entrances. */
 export const MOTION: Record<TokenName, MotionToken> = {
   /** Text and ink arriving: a small rise and a fade. */
   'ink.in': { ease: 'power3.out', duration: 0.9, y: 10 },
@@ -49,6 +59,21 @@ export const MOTION: Record<TokenName, MotionToken> = {
   scene: { ease: 'sine.inOut', duration: 1.2 },
   /** Ghost ink drifting and flickering: slow and irregular. */
   ghost: { ease: 'sine.inOut', duration: 3 },
+  /** A normal sentence rising out of the dark: each word slides up from behind its mask edge, like something
+   * surfacing from water. The `ink.in` ease; the whole sentence takes its share of the scroll. */
+  'story.surface': { ease: 'power3.out', duration: 0.9 },
+  /** A weighted phrase landing on its own after a beat of stillness: it drops into its held space and settles, then
+   * a thin rust line grows under it. */
+  'story.weighted': { ease: 'power4.out', duration: 0.7 },
+  /** The breath before a hook: the column has cleared; the image darkens further and the camera creeps closer, and
+   * nothing new appears. */
+  'story.breath': { ease: 'sine.inOut', duration: 2.4 },
+  /** A hook arriving word by word, slower than anything else: its letters start a little out of line and snap
+   * into place. `duration` is one word's snap. */
+  'story.hook': { ease: 'back.out(2.2)', duration: 1.1 },
+  /** A hook leaving: its letters go one at a time, in a random order, like ink drying away. `duration` is one
+   * letter's fade. */
+  'story.decay': { ease: 'power1.in', duration: 0.35 },
 };
 
 /** How far text rises, in px, while it fades in (`ink.in`). */

@@ -27,7 +27,8 @@ import StoryScene from '@/features/story/StoryScene';
 import VoyageChart from '@/features/story/VoyageChart';
 import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
-import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
+import { hashUnit } from '@/lib/desk';
+import { LINEAR, MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { scrollToY, setWheelMultiplier } from '@/lib/smooth-scroll';
 import { rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
@@ -62,18 +63,29 @@ const SCENE = {
   rollCallDim: 0.55,
   nameOut: 0.36,
   hookDim: 0.92,
-  hookIn: 0.9,
   /** "Hooks hold about 4s." */
   hookHold: 4,
   /** A beat of stillness: nothing changes before the next scene. */
   stillness: 1.6,
+  /** A normal sentence's words surface one after another, over this share of the sentence's move. */
+  surfaceSpread: 0.5,
+  /** Weighted words: the beat of stillness before a phrase lands, and how long its rust line takes to grow. */
+  weightBeat: STEP.slow,
+  weightLine: STEP.slow,
+  /** The breath before a hook: the camera creeps this much closer, over `story.breath`. */
+  creepTo: 1.05,
+  /** A hook comes in word by word, one every so many seconds of scroll: slower than anything else. */
+  hookWordEvery: 0.55,
+  /** Where a hook's letters start: up to this far out of line, in px and degrees, then they snap into place. */
+  hookMisalign: { x: 5, y: 7, rotate: 12 },
+  /** A hook decays letter by letter over this long, in a random order. */
+  decay: 1.8,
   /** A chapter without a hook still pauses before the next. */
   restWithoutHook: 1,
   /** The camera's slow push in. */
   zoomTo: 1.12,
   /** The dimming for the roll call and the hook, and a point on the route fading in. */
   rollCallDimIn: 0.6,
-  hookDimIn: 0.9,
   dotIn: 0.3,
   /** A name going out like a candle: [opacity, seconds] steps. */
   candle: [
@@ -361,12 +373,54 @@ export default function Story({ story, centralQuestion, references, sources, voy
             lines.forEach((line, lineIndex) => {
               const seconds = plan[lineIndex]?.seconds ?? COLUMN.minSeconds;
               const move = seconds * SCENE.columnMove;
-              timeline.fromTo(
-                line,
-                { opacity: 0, y: INK_RISE },
-                { opacity: 1, y: 0, duration: move, ease: MOTION['ink.in'].ease, immediateRender: false },
-                t
-              );
+              // A normal sentence rises out of the dark: each word slides up from behind its own mask edge, one after
+              // another (`story.surface`). Its weighted phrases hold their space, empty, and land on their own after a
+              // beat of stillness; then a thin rust line grows under each. All scrubbed, so scrolling back reverses it.
+              // The words are already split, each inside its own mask (StoryWords.tsx).
+              const words = all('[data-story="word"]', line);
+              const weightedSpans = [...line.querySelectorAll<HTMLElement>('[data-story="weighted"]')];
+              const plainWords = words.filter(word => word.closest('[data-story="weighted"]') === null);
+              timeline.set(line, { opacity: 1 }, t);
+              if (plainWords.length > 0) {
+                const each = (move * SCENE.surfaceSpread) / plainWords.length;
+                timeline.fromTo(
+                  plainWords,
+                  { yPercent: 100, opacity: 0 },
+                  {
+                    yPercent: 0,
+                    opacity: 1,
+                    ease: MOTION['story.surface'].ease,
+                    duration: move - each * (plainWords.length - 1),
+                    stagger: each,
+                    immediateRender: false,
+                  },
+                  t
+                );
+              }
+              let landAt = t + move;
+              weightedSpans.forEach(span => {
+                const phraseWords = words.filter(word => span.contains(word));
+                const rule = span.querySelector<HTMLElement>('[data-story="weight-line"]');
+                gsap.set(phraseWords, { opacity: 0 });
+                landAt += SCENE.weightBeat;
+                timeline.fromTo(
+                  phraseWords,
+                  { yPercent: -100, opacity: 0 },
+                  { yPercent: 0, opacity: 1, ...tween('story.weighted'), immediateRender: false },
+                  landAt
+                );
+                landAt += MOTION['story.weighted'].duration;
+                if (rule !== null) {
+                  timeline.fromTo(
+                    rule,
+                    { scaleX: 0 },
+                    { scaleX: 1, ease: MOTION['story.weighted'].ease, duration: SCENE.weightLine, immediateRender: false },
+                    landAt
+                  );
+                }
+              });
+              // The weighted phrases add their beats to the sentence's time; the rest of it is still for reading.
+              const extra = weightedSpans.length === 0 ? 0 : landAt - (t + move) + SCENE.weightLine;
               if (list !== null) {
                 // The sentence's bottom comes to rest at the bottom of the column; the next one starts from there.
                 timeline.fromTo(
@@ -377,7 +431,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 );
               }
               emitAt(t, () => ({ type: 'beat', chapter: section.id, index: lineIndex, direction }));
-              t += seconds;
+              t += seconds + extra;
 
               // The roll call: after the sentence that gives their number, the names appear one by one, and stay.
               if (lineIndex === rollAfter) {
@@ -434,16 +488,65 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 emitAt(t, () => ({ type: 'roll-call-out', chapter: section.id, name: label, direction }));
                 t += SCENE.nameOut;
               });
-              dimTo(SCENE.hookDim, t, SCENE.hookDimIn);
-              timeline.fromTo(
-                hook,
-                { opacity: 0, y: 12 },
-                { opacity: 1, y: 0, duration: SCENE.hookIn, immediateRender: false },
-                t + 0.35
+              // The breath before the hook: the column has cleared; the image darkens further and the camera creeps
+              // closer, and for a stretch of scroll nothing new appears.
+              const breath = MOTION['story.breath'].duration;
+              dimTo(SCENE.hookDim, t, breath);
+              const figure = one('[data-story="figure"]', scene);
+              if (figure !== null) {
+                timeline.fromTo(
+                  figure,
+                  { scale: 1 },
+                  { scale: SCENE.creepTo, ease: MOTION['story.breath'].ease, duration: breath, immediateRender: false },
+                  t
+                );
+              }
+              t += breath;
+              // Then the hook, word by word, slower than anything else: its letters start a little out of line (each
+              // its own way, the same every time) and snap into place.
+              // The letters are already split, word by word (StoryWords.tsx).
+              const hookWords = all('[data-story="hook-word"]', hook);
+              const hookChars = all('[data-story="hook-char"]', hook);
+              const offset = (char: number, salt: string, size: number) => (hashUnit(`${section.id}:${char}`, salt) * 2 - 1) * size;
+              gsap.set(hookChars, { opacity: 0 });
+              timeline.set(hook, { opacity: 1, pointerEvents: 'auto' }, t);
+              emitAt(t, () => ({ type: 'hook', chapter: section.id, direction }));
+              hookWords.forEach((word, wordIndex) => {
+                const chars = hookChars.filter(char => word.contains(char));
+                const first = hookChars.indexOf(chars[0]);
+                timeline.fromTo(
+                  chars,
+                  {
+                    opacity: 0,
+                    x: index => offset(first + index, 'x', SCENE.hookMisalign.x),
+                    y: index => offset(first + index, 'y', SCENE.hookMisalign.y),
+                    rotation: index => offset(first + index, 'r', SCENE.hookMisalign.rotate),
+                  },
+                  { opacity: 1, x: 0, y: 0, rotation: 0, ...tween('story.hook'), immediateRender: false },
+                  t + wordIndex * SCENE.hookWordEvery
+                );
+              });
+              t += Math.max(0, hookWords.length - 1) * SCENE.hookWordEvery + MOTION['story.hook'].duration + SCENE.hookHold;
+              // The ending decays: its letters disappear unevenly, one at a time in a random order, like ink drying.
+              const decaying = [...hookChars].sort(
+                (a, b) => hashUnit(`${section.id}:${hookChars.indexOf(a)}`, 'decay') - hashUnit(`${section.id}:${hookChars.indexOf(b)}`, 'decay')
               );
-              timeline.set(hook, { pointerEvents: 'auto' }, t + 0.35);
-              emitAt(t + 0.35, () => ({ type: 'hook', chapter: section.id, direction }));
-              t += 0.35 + SCENE.hookIn + SCENE.hookHold + SCENE.stillness;
+              if (decaying.length > 0) {
+                const decayFade = MOTION['story.decay'].duration;
+                timeline.to(
+                  decaying,
+                  {
+                    opacity: 0,
+                    ...tween('story.decay'),
+                    stagger: Math.max(0, SCENE.decay - decayFade) / Math.max(1, decaying.length - 1),
+                    immediateRender: false,
+                  },
+                  t
+                );
+              }
+              t += SCENE.decay;
+              timeline.set(hook, { pointerEvents: 'none' }, t);
+              t += SCENE.stillness;
             } else {
               t += SCENE.restWithoutHook;
             }

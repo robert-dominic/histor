@@ -13,6 +13,8 @@ import PortalText from '@/features/portals/PortalText';
 import type { ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
 import { columnLines } from '@/lib/story-column';
+import { weightedPieces } from '@/lib/story-emphasis';
+import { HookLetters, MaskedWords } from '@/features/story/StoryWords';
 import type { StorySection } from '@/types/case';
 
 interface StorySceneProps {
@@ -172,7 +174,23 @@ export default function StoryScene({ section, index, grade, sentences, loadImage
               className={`pt-[0.45em] text-pretty ${sentenceSizeClass(sentence)}`}
               style={{ opacity: 0 }}
             >
-              <PortalText text={sentence} tabbable={false} />
+              {/* A weighted phrase holds its space while the sentence rises, then lands on its own, and a thin rust line
+                  grows under it (Story.tsx). Never broken across lines, so its line is one line. */}
+              {weightedPieces(sentence, section.emphasis).map((piece, pieceIndex) =>
+                piece.weighted ? (
+                  <span key={pieceIndex} data-story="weighted" className="relative inline-block whitespace-nowrap">
+                    <MaskedWords text={piece.text} />
+                    <span
+                      aria-hidden="true"
+                      data-story="weight-line"
+                      className="absolute inset-x-0 -bottom-[0.06em] h-[0.06em] min-h-px origin-left bg-rust-night"
+                      style={{ transform: 'scaleX(0)' }}
+                    />
+                  </span>
+                ) : (
+                  <MaskedWords key={pieceIndex} text={piece.text} />
+                )
+              )}
             </p>
           ))}
         </div>
@@ -185,7 +203,7 @@ export default function StoryScene({ section, index, grade, sentences, loadImage
           className="pointer-events-none absolute inset-x-0 top-1/2 mx-auto max-w-[min(20ch,88vw)] -translate-y-1/2 text-center font-record text-[clamp(1.75rem,1.2rem+3vw,3.75rem)] leading-[1.2] text-balance text-night-ink italic"
           style={{ opacity: 0 }}
         >
-          <PortalText text={section.hook} tabbable={false} />
+          <HookLetters text={section.hook} />
         </p>
       )}
 
