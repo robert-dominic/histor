@@ -6,6 +6,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import CaseHeader from '@/components/CaseHeader';
@@ -702,6 +703,131 @@ describe('Story: the central question as a chokepoint', () => {
     // jsdom has no layout, so the question is already in view: one fade for the whole question, all at once.
     const tweens = new Set(phrases.map(phrase => gsap.getTweensOf(phrase)[0]));
     expect(tweens.size).toBe(1);
+  });
+});
+
+describe('Story: the fork as a modal over the question', () => {
+  const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/case/mary-celeste/files' };
+  function renderWithFork() {
+    return render(
+      <MemoryRouter>
+        <Story
+          story={testCase.story}
+          centralQuestion={maryCeleste.centralQuestion}
+          references={testCase.references}
+          sources={testCase.sources}
+          fork={FORK}
+        />
+      </MemoryRouter>
+    );
+  }
+  const questionPin = () =>
+    ScrollTrigger.getAll().find(trigger => (trigger.vars.trigger as Element | undefined)?.matches?.('[data-story="question"]') && trigger.pin)!;
+  /** Runs the fork's entrance to its end: the prompt typed, the choices shown. */
+  const settleFork = () =>
+    act(() => {
+      const choices = document.querySelector('[data-fork="choices"]');
+      gsap.getTweensOf(choices).forEach(tween => (tween.parent ?? tween).progress(1));
+    });
+
+  test('there is no fork section under the question: one solid black screen, and black to scroll into', () => {
+    const { container } = renderWithFork();
+    expect(container.querySelector('[data-fork="root"]')).toBeNull();
+    expect(container.querySelector('[data-story="question"]')?.className).toContain('min-h-svh');
+    expect(container.querySelector('[data-story="question"]')?.className).toContain('bg-black');
+    expect(container.querySelector('[data-story="after-question"]')?.className).toContain('bg-black');
+  });
+
+  test('scrolling on past the whole question opens it: rising, then settling, over a dark backdrop', () => {
+    renderWithFork();
+    const pin = questionPin();
+    act(() => pin.vars.onLeave?.(pin));
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    const moves = gsap.getTweensOf(dialog);
+    expect(moves.map(tween => tween.vars.ease)).toEqual(['power2.out', 'back.out(1.15)']);
+    settleFork();
+    expect(dialog.textContent).toContain(maryCeleste.fork.prompt);
+    expect(within(dialog).getByRole('link', { name: maryCeleste.fork.investigateLabel }).getAttribute('href')).toBe(FORK.filesHref);
+    expect(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel })).toBeDefined();
+    expect(document.activeElement).toBe(dialog);
+  });
+
+  test('"I\'ve heard enough" shows where historians stand, with two quiet links', () => {
+    renderWithFork();
+    const pin = questionPin();
+    act(() => pin.vars.onLeave?.(pin));
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    settleFork();
+    fireEvent.click(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel }));
+    for (const paragraph of maryCeleste.historiansSummary) {
+      expect(within(dialog).getByText(paragraph)).toBeDefined();
+    }
+    expect(within(dialog).getByRole('link', { name: 'Back to all cases' }).getAttribute('href')).toBe('/');
+  });
+
+  test('Tab stays inside; Escape, or scrolling back up, closes it', async () => {
+    renderWithFork();
+    const pin = questionPin();
+    act(() => pin.vars.onLeave?.(pin));
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    const stops = [...dialog.querySelectorAll<HTMLElement>('a[href], button')];
+    stops[stops.length - 1].focus();
+    fireEvent.keyDown(stops[stops.length - 1], { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    act(() => pin.vars.onLeave?.(pin));
+    expect(screen.getByRole('dialog')).toBeDefined();
+    act(() => pin.vars.onEnterBack?.(pin));
+    await vi.waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+
+  test('"Play the story" reads through to the end of the question, holds, then opens it', async () => {
+    const { container } = renderWithFork();
+    // The scroll and the holds happen at once here; the pen finishes when asked.
+    const realTo = gsap.to.bind(gsap);
+    vi.spyOn(gsap, 'to').mockImplementation(((target: unknown, vars: gsap.TweenVars) => {
+      if (target === window) {
+        (vars.onComplete as (() => void) | undefined)?.();
+        return realTo({}, {});
+      }
+      return realTo(target as gsap.TweenTarget, vars);
+    }) as typeof gsap.to);
+    vi.spyOn(gsap, 'delayedCall').mockImplementation(((_seconds: number, callback: () => void) => {
+      callback();
+      return realTo({}, {});
+    }) as typeof gsap.delayedCall);
+    act(() => {
+      fireEvent.click(container.querySelector('[data-story="play-control"]') as HTMLButtonElement);
+    });
+    for (let round = 0; round < 6; round += 1) {
+      await act(async () => {
+        container.querySelectorAll<HTMLElement>('[data-pen="char"]').forEach(char => {
+          gsap
+            .getTweensOf(char)
+            .filter(tween => tween.parent !== gsap.globalTimeline)
+            .forEach(tween => (tween.parent as gsap.core.Timeline).progress(1));
+        });
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+    }
+    try {
+      await vi.waitFor(() => expect(screen.getByRole('dialog', { name: 'What next' })).toBeDefined());
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  test('reduced motion: it appears without animation once the reader scrolls on', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    vi.stubGlobal('scrollTo', vi.fn());
+    renderWithFork();
+    const opener = ScrollTrigger.getAll().find(trigger => trigger.vars.start === 'bottom 60%')!;
+    act(() => opener.vars.onEnter?.(opener));
+    const dialog = screen.getByRole('dialog', { name: 'What next' });
+    expect(gsap.getTweensOf(dialog)).toHaveLength(0);
   });
 });
 

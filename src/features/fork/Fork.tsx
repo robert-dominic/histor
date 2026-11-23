@@ -1,14 +1,17 @@
 // src/features/fork/Fork.tsx
-// The fork, after the central question, still at full night. The app types its prompt, then offers two ways on:
-// open the case files, or stop here. Stopping shows where historians stand, with two quiet ways out.
+// The fork, as a modal over the central question. Once the whole question is on screen and the reader scrolls on
+// (or "Play the story" has held on it), it rises and settles over a darkened backdrop (`paper.lift`, then
+// `paper.land`). The app types its prompt, then offers two large choices: open the case files, or stop here.
+// Stopping shows where historians stand, with two quiet ways out. The focus stays inside while it is open; Escape,
+// or scrolling back up, closes it and returns to the question. Reduced motion: it appears without animation.
 // Everything shown comes from props.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
-import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
+import { MOTION_QUERIES, QUICK_OUT, STEP, tween } from '@/lib/motion';
 import type { Fork as ForkData } from '@/types/case';
 
 gsap.registerPlugin(useGSAP, SplitText);
@@ -17,142 +20,177 @@ gsap.registerPlugin(useGSAP, SplitText);
 const TYPE_RATE = 30;
 
 const CHOICE_CLASSES =
-  'inline-flex min-h-11 items-center justify-center rounded-sm px-6 font-voice text-sm tracking-[0.14em] uppercase transition-[scale,background-color,color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]';
+  'inline-flex min-h-14 min-w-[14rem] items-center justify-center rounded-sm px-8 font-voice text-base tracking-[0.14em] uppercase transition-[scale,background-color,color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]';
 const QUIET_LINK_CLASSES =
   'inline-flex min-h-11 items-center font-voice text-sm tracking-[0.1em] text-ghost-night underline underline-offset-4 transition-[color] duration-150 ease-out hover:text-night-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass';
 
-interface ForkProps {
+/** What can take the focus inside the modal. */
+const TAB_STOPS = 'a[href], button:not(:disabled), [tabindex="0"]';
+
+export interface ForkProps {
   fork: ForkData;
   /** Shown to the reader who stops here. */
   historiansSummary: string[];
   /** Where "Open the case files" goes. */
   filesHref: string;
+  open: boolean;
+  /** Escape: close it and go back to the question. */
+  onClose: () => void;
 }
 
-export default function Fork({ fork, historiansSummary, filesHref }: ForkProps) {
-  const rootRef = useRef<HTMLElement>(null);
+export default function Fork({ fork, historiansSummary, filesHref, open, onClose }: ForkProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLDivElement>(null);
   const [stopped, setStopped] = useState(false);
+  // Drawn while open, and until it has finished leaving.
+  const [drawn, setDrawn] = useState(open);
+  if (open && !drawn) {
+    setDrawn(true);
+  }
+  const shown = drawn || open;
 
-  // The prompt is typed once, when the fork comes into view. Without a way to watch for that, or to honour
-  // reduced motion, everything is simply shown.
+  // The focus goes into it when it opens.
+  useEffect(() => {
+    if (open) {
+      panelRef.current?.focus({ preventScroll: true });
+    }
+  }, [open]);
+
+  // Opening: it rises and settles, then the prompt is typed and the choices come. Closing: a quick fade.
   useGSAP(
     () => {
-      if (typeof window.matchMedia !== 'function' || typeof IntersectionObserver !== 'function') {
+      const root = rootRef.current;
+      if (root === null) {
         return;
       }
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_QUERIES, context => {
-        const reduced = context.conditions?.reduced === true;
-        const prompt = gsap.utils.toArray<HTMLElement>('[data-fork="prompt"]')[0];
-        const choices = '[data-fork="choices"]';
-        const timeline = gsap.timeline({ paused: true, defaults: tween('ink.in') });
-        let split: SplitText | null = null;
-
-        if (reduced) {
-          timeline.fromTo(prompt, { opacity: 0 }, { opacity: 1, duration: STEP.base });
-        } else {
-          split = SplitText.create(prompt, { type: 'words,chars', aria: 'none' });
-          const letters = split.chars as HTMLElement[];
-          gsap.set(letters, { opacity: 0 });
-          letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, index / TYPE_RATE));
+      const canQuery = typeof window.matchMedia === 'function';
+      const reduced = !canQuery || window.matchMedia(MOTION_QUERIES.reduced).matches;
+      if (!open) {
+        if (drawn && !reduced) {
+          gsap.to(root, { opacity: 0, ...QUICK_OUT, onComplete: () => setDrawn(false) });
+        } else if (drawn) {
+          setDrawn(false);
         }
-        // Hidden with visibility as well, so the buttons cannot be focused before they are shown.
-        timeline.fromTo(
-          choices,
-          reduced ? { autoAlpha: 0 } : { autoAlpha: 0, y: 8 },
-          { autoAlpha: 1, y: 0, ...tween('paper.lift') },
-          '>+=0.3'
-        );
-
-        const observer = new IntersectionObserver(
-          entries => {
-            if (entries.some(entry => entry.isIntersecting)) {
-              timeline.play();
-              observer.disconnect();
-            }
-          },
-          { threshold: 0.5 }
-        );
-        if (rootRef.current !== null) {
-          observer.observe(rootRef.current);
-        }
-        return () => {
-          observer.disconnect();
-          split?.revert();
-        };
-      });
+        return;
+      }
+      gsap.set(root, { opacity: 1 });
+      if (reduced) {
+        return;
+      }
+      const timeline = gsap.timeline();
+      timeline.fromTo('[data-fork="backdrop"]', { opacity: 0 }, { opacity: 1, ...tween('paper.lift') }, 0);
+      timeline.fromTo(panelRef.current, { opacity: 0, y: 48 }, { opacity: 1, y: -6, ...tween('paper.lift') }, 0);
+      timeline.to(panelRef.current, { y: 0, ...tween('paper.land') });
+      const prompt = root.querySelector<HTMLElement>('[data-fork="prompt"]');
+      let split: SplitText | null = null;
+      if (prompt !== null) {
+        split = SplitText.create(prompt, { type: 'words,chars', aria: 'none' });
+        const letters = split.chars as HTMLElement[];
+        gsap.set(letters, { opacity: 0 });
+        const typeAt = timeline.duration();
+        letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, typeAt + index / TYPE_RATE));
+      }
+      timeline.fromTo('[data-fork="choices"]', { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, ...tween('paper.lift') }, `>+=${STEP.fast}`);
+      return () => split?.revert();
     },
-    { scope: rootRef }
+    { scope: rootRef, dependencies: [open], revertOnUpdate: true }
   );
 
-  // Stopping here: where historians stand fades in, and the focus moves to it.
+  // Stopping here: where historians stand comes in, and the focus moves to it.
   useGSAP(
     () => {
       if (!stopped) {
         return;
       }
       closeRef.current?.focus({ preventScroll: true });
-      if (typeof window.matchMedia !== 'function') {
+      if (typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches) {
         return;
       }
-      const mm = gsap.matchMedia();
-      mm.add(MOTION_QUERIES, context => {
-        const reduced = context.conditions?.reduced === true;
-        gsap.fromTo(
-          closeRef.current,
-          reduced ? { opacity: 0 } : { opacity: 0, y: 8 },
-          { opacity: 1, y: 0, ...tween('paper.lift') }
-        );
-      });
+      gsap.fromTo(closeRef.current, { opacity: 0, y: 8 }, { opacity: 1, y: 0, ...tween('paper.lift') });
     },
     { scope: rootRef, dependencies: [stopped] }
   );
 
-  return (
-    <section
-      ref={rootRef}
-      data-fork="root"
-      aria-label="What next"
-      className="relative z-10 flex min-h-[70svh] flex-col items-center justify-center bg-night px-6 pt-8 pb-[14svh] text-center"
-    >
-      <p className="max-w-[34rem] font-voice text-[clamp(1.0625rem,0.95rem+0.5vw,1.375rem)] leading-[1.6] text-pretty text-night-ink">
-        <span className="sr-only">{fork.prompt}</span>
-        <span aria-hidden="true" data-fork="prompt">
-          {fork.prompt}
-        </span>
-      </p>
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab' || panelRef.current === null) {
+      return;
+    }
+    // The focus stays inside.
+    const stops = [...panelRef.current.querySelectorAll<HTMLElement>(TAB_STOPS)];
+    if (stops.length === 0) {
+      event.preventDefault();
+      return;
+    }
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === panelRef.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
-      {stopped ? (
-        <div ref={closeRef} tabIndex={-1} data-fork="close" className="mt-10 max-w-[38rem] outline-none">
-          <div className="flex flex-col gap-4 font-record text-[clamp(1.0625rem,1rem+0.3vw,1.25rem)] leading-[1.65] text-night-ink">
-            {historiansSummary.map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
-            ))}
+  if (!shown) {
+    return null;
+  }
+  return (
+    <div ref={rootRef} data-fork="modal" className="fixed inset-0 z-[55] grid place-items-center px-4" onKeyDown={handleKeyDown}>
+      <div aria-hidden="true" data-fork="backdrop" className="absolute inset-0 bg-black/80" />
+      <section
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="What next"
+        tabIndex={-1}
+        data-fork="root"
+        className="relative w-full max-w-2xl rounded-[2px] border border-night-ink/15 bg-night px-6 pt-10 pb-10 text-center text-night-ink shadow-2xl shadow-black/70 outline-none sm:px-12"
+      >
+        <p className="mx-auto max-w-[34rem] font-voice text-[clamp(1.125rem,1rem+0.5vw,1.4375rem)] leading-[1.6] text-pretty">
+          <span className="sr-only">{fork.prompt}</span>
+          <span aria-hidden="true" data-fork="prompt">
+            {fork.prompt}
+          </span>
+        </p>
+
+        {stopped ? (
+          <div ref={closeRef} tabIndex={-1} data-fork="close" className="mx-auto mt-8 max-w-[38rem] outline-none">
+            <div className="flex flex-col gap-4 font-record text-[clamp(1.0625rem,1rem+0.3vw,1.25rem)] leading-[1.65]">
+              {historiansSummary.map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
+            <nav aria-label="After the story" className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-1">
+              <Link to={filesHref} className={QUIET_LINK_CLASSES}>
+                Open the case files anyway
+              </Link>
+              <Link to="/" className={QUIET_LINK_CLASSES}>
+                Back to all cases
+              </Link>
+            </nav>
           </div>
-          <nav aria-label="After the story" className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-1">
-            <Link to={filesHref} className={QUIET_LINK_CLASSES}>
-              Open the case files anyway
+        ) : (
+          <div data-fork="choices" className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <Link to={filesHref} className={`${CHOICE_CLASSES} border border-brass bg-brass text-night hover:bg-transparent hover:text-brass`}>
+              {fork.investigateLabel}
             </Link>
-            <Link to="/" className={QUIET_LINK_CLASSES}>
-              Back to all cases
-            </Link>
-          </nav>
-        </div>
-      ) : (
-        <div data-fork="choices" className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
-          <Link to={filesHref} className={`${CHOICE_CLASSES} border border-brass text-brass hover:bg-brass hover:text-night`}>
-            {fork.investigateLabel}
-          </Link>
-          <button
-            type="button"
-            onClick={() => setStopped(true)}
-            className={`${CHOICE_CLASSES} text-ghost-night hover:text-night-ink`}
-          >
-            {fork.leaveLabel}
-          </button>
-        </div>
-      )}
-    </section>
+            <button
+              type="button"
+              onClick={() => setStopped(true)}
+              className={`${CHOICE_CLASSES} border border-night-ink/40 text-night-ink hover:border-night-ink`}
+            >
+              {fork.leaveLabel}
+            </button>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

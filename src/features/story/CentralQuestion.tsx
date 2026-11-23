@@ -1,7 +1,7 @@
 // src/features/story/CentralQuestion.tsx
 // The end of the story: the case's central question, a chokepoint on a full-black screen. Story.tsx pins it and
 // builds it phrase by phrase (split at its commas and before "and", splitQuestion), each phrase a stop the scroll
-// settles on; its weighted parts arrive on their own after a breath, slightly brighter (no lines in the story). The fork comes only after the whole
+// settles on; it is one solid black screen, the full height of the screen; its weighted parts arrive on their own after a breath, slightly brighter (no lines in the story). The fork comes only after the whole
 // question, and a short hold. Under reduced motion it is simply shown whole.
 // The text comes from the case data. Screen readers get the whole question at once.
 import { splitQuestion } from '@/lib/phrases';
@@ -17,7 +17,7 @@ export default function CentralQuestion({ question, emphasis = [] }: CentralQues
   return (
     <div
       data-story="question"
-      className="relative z-10 grid min-h-svh place-items-center bg-black px-6 py-[12svh] text-center sm:px-10"
+      className="relative z-10 grid min-h-svh place-items-center bg-black px-6 py-[8svh] text-center sm:px-10"
     >
       <h2 className="max-w-[24em] font-record text-[clamp(1.5rem,1.05rem+2.2vw,2.75rem)] leading-[1.32] text-balance text-night-ink/85">
         {/* Screen readers get the whole question at once; the phrases that are written in are for the eyes only. */}

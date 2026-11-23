@@ -12,7 +12,6 @@ import { firstSentence } from '@/lib/desk';
 import { Draggable, FINE_POINTER_QUERY } from '@/features/board/drag';
 import { DESKTOP_QUERY, SMALL_PHONE_QUERY } from '@/lib/use-media-query';
 import { onStoryEvent } from '@/lib/story-events';
-import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { InvestigationState } from '@/types/case';
 
@@ -55,32 +54,6 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   window.history.pushState({}, '', '/');
-});
-
-describe('The fork', () => {
-  test('after the story: the prompt, then "Open the case files" and "I\'ve heard enough"', () => {
-    renderAt(BASE);
-    finishLegendIntro();
-
-    const fork = document.querySelector<HTMLElement>('[data-fork="root"]')!;
-    expect(fork.textContent).toContain(CASE.fork.prompt);
-    expect(within(fork).getByRole('link', { name: CASE.fork.investigateLabel }).getAttribute('href')).toBe(`${BASE}/files`);
-    expect(within(fork).getByRole('button', { name: CASE.fork.leaveLabel })).toBeDefined();
-  });
-
-  test('"I\'ve heard enough" closes on where historians stand, with two quiet links', () => {
-    renderAt(BASE);
-    finishLegendIntro();
-
-    const fork = document.querySelector<HTMLElement>('[data-fork="root"]')!;
-    fireEvent.click(within(fork).getByRole('button', { name: CASE.fork.leaveLabel }));
-
-    for (const paragraph of CASE.historiansSummary) {
-      expect(within(fork).getByText(paragraph)).toBeDefined();
-    }
-    expect(within(fork).getByRole('link', { name: 'Open the case files anyway' }).getAttribute('href')).toBe(`${BASE}/files`);
-    expect(within(fork).getByRole('link', { name: 'Back to all cases' }).getAttribute('href')).toBe('/');
-  });
 });
 
 describe('The board', () => {

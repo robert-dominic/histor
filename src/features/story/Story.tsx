@@ -15,6 +15,7 @@ import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import PortalProvider from '@/features/portals/PortalProvider';
+import Fork, { type ForkProps } from '@/features/fork/Fork';
 import CentralQuestion from '@/features/story/CentralQuestion';
 import PlayControl from '@/features/story/PlayControl';
 import { activeSceneIndex } from '@/features/story/active-scene';
@@ -105,11 +106,13 @@ interface StoryProps {
   sources: Source[];
   /** The voyage, drawn on the chart as the story goes. */
   voyage?: Voyage;
+  /** The fork after the central question, shown as a modal over it. */
+  fork?: Pick<ForkProps, 'fork' | 'historiansSummary' | 'filesHref'>;
   /** The reader's choice in the play modal, each time it is made (a new token): the story starts with it. */
   start?: { mode: 'play' | 'read'; token: number } | null;
 }
 
-export default function Story({ story, centralQuestion, centralQuestionEmphasis, references, sources, voyage, start = null }: StoryProps) {
+export default function Story({ story, centralQuestion, centralQuestionEmphasis, references, sources, voyage, start = null, fork }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
   const reducedMotion = useReducedMotion();
@@ -119,6 +122,10 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
   /** The stops "Play the story" plays through, worked out from the timeline when play is pressed. */
   const playPlanRef = useRef<(() => PlayStep[]) | null>(null);
   const player = useStoryPlayer(cinematic, () => playPlanRef.current?.() ?? []);
+  /** The fork is open over the question. (Whether it shows is state; how it moves is GSAP's.) */
+  const [forkOpen, setForkOpen] = useState(false);
+  /** Escape on the fork: back to the whole question. Set once the question is built. */
+  const backToQuestionRef = useRef<() => void>(() => undefined);
   // Images load one chapter ahead of the reader. The first one loads at once.
   const [loadedThrough, setLoadedThrough] = useState(0);
 
@@ -748,6 +755,14 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               once: true,
               onEnter: () => gsap.to(phrases, { opacity: 1, ...tween('ink.in') }),
             });
+            // The fork: once the question has been read and the reader scrolls on; scrolling back up closes it.
+            ScrollTrigger.create({
+              trigger: question,
+              start: 'bottom 60%',
+              onEnter: () => setForkOpen(true),
+              onLeaveBack: () => setForkOpen(false),
+            });
+            backToQuestionRef.current = () => question.scrollIntoView?.({ behavior: 'auto', block: 'start' });
           } else {
             const chokepoint = gsap.timeline({ defaults: { ease: LINEAR } });
             gsap.set([...phrases, ...questionWeighted], { opacity: 0 });
@@ -786,6 +801,9 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               scrub: STORY_PACE.scrub,
               animation: chokepoint,
               invalidateOnRefresh: true,
+              // The fork: once the whole question has held and the reader scrolls on; back up, it closes.
+              onLeave: () => setForkOpen(true),
+              onEnterBack: () => setForkOpen(false),
               snap: {
                 snapTo: 'labelsDirectional',
                 duration: { min: settle.duration / 2, max: settle.duration },
@@ -802,9 +820,14 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   y: questionPin.start + chokepoint.labels[`phrase-${index}`] * px,
                   hold: readingSeconds(phrase.textContent ?? ''),
                 })),
-                { y: questionPin.start + chokepoint.labels.whole * px, hold: QUESTION.beforeFork },
+                {
+                  y: questionPin.start + chokepoint.labels.whole * px,
+                  hold: QUESTION.beforeFork,
+                  then: () => setForkOpen(true),
+                },
               ];
             };
+            backToQuestionRef.current = () => scrollToY(questionPin.start + chokepoint.labels.whole * pxPerSecond());
           }
         }
 
@@ -864,6 +887,18 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
         )}
 
         <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} />
+        {/* After the question, more black to scroll into: scrolling on brings the fork. No lighter band below. */}
+        <div aria-hidden="true" data-story="after-question" className="h-[45svh] bg-black" />
+        {fork !== undefined && (
+          <Fork
+            {...fork}
+            open={forkOpen}
+            onClose={() => {
+              setForkOpen(false);
+              backToQuestionRef.current();
+            }}
+          />
+        )}
 
         {cinematic && <VoyageChart route={route} variant="live" onExpand={player.pause} />}
         {cinematic && <PlayControl player={player} />}
