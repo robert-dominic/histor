@@ -20,6 +20,8 @@ export const STORY_PACE = {
   skipAfter: 0.25,
   /** The hold before a hook: how much scroll the written page holds, in timeline seconds, before the hook begins. */
   pageHold: 3,
+  /** The hook hold: how long the hook line holds, whole, before it decays, in timeline seconds. */
+  hookHold: 4,
 } as const;
 
 export interface PenPlan {

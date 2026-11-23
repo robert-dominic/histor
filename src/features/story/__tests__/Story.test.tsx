@@ -663,6 +663,53 @@ describe('Story: the four entrances', () => {
 
 });
 
+describe('Story: the hook between chapters', () => {
+  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+
+  test('names go out, the panel dims, the image darkens and creeps, the hook snaps in, holds, decays, then the next image', () => {
+    const { container } = renderStory();
+    const index = maryCeleste.story.findIndex(section => section.rollCall !== undefined);
+    const section = maryCeleste.story[index];
+    const chapter = chapterOf(container, section);
+    const start = (element: Element, match: (tween: gsap.core.Tween) => boolean = () => true) =>
+      gsap.getTweensOf(element).filter(tween => tween.parent !== gsap.globalTimeline).find(match)!.startTime();
+    const names = [...chapter.querySelectorAll('[data-story="name"]')];
+    const lastNameOut = start(names[names.length - 1], tween => tween.vars.keyframes !== undefined);
+    const firstNameOut = start(names[0], tween => tween.vars.keyframes !== undefined);
+    const pageOut = start(chapter.querySelector('[data-story="page"]')!, tween => tween.vars.opacity === 0);
+    const creep = start(chapter.querySelector('[data-story="figure"]')!);
+    const hook = chapter.querySelector('[data-story="hook-moment"]')!;
+    const letter = hook.querySelector('[data-story="hook-char"]')!;
+    const snap = start(letter, tween => tween.vars.opacity === 1);
+    const decay = start(letter, tween => tween.vars.opacity === 0);
+    expect(lastNameOut).toBeLessThan(firstNameOut);
+    expect(firstNameOut).toBeLessThan(pageOut);
+    expect(pageOut).toBeLessThan(creep);
+    expect(creep).toBeLessThan(snap);
+    expect(decay - snap).toBeGreaterThanOrEqual(STORY_PACE.hookHold);
+    expect(stageTimeline().labels[`chapter-${index + 1}`]).toBeGreaterThan(decay);
+  });
+
+  test('nothing else on screen while it is there: the corners go with the panel, the chart inset goes quiet', () => {
+    const { container } = renderStory();
+    const chapter = chapterOf(container, maryCeleste.story[0]);
+    const corners = chapter.querySelector('[data-story="corners"]')!;
+    expect(gsap.getTweensOf(corners).some(tween => tween.vars.opacity === 0)).toBe(true);
+    const chart = container.querySelector<HTMLElement>('[data-chart="frame"][data-variant="live"]')!;
+    const timeline = stageTimeline();
+    const pinned = ScrollTrigger.getAll().find(trigger => trigger.pin)!;
+    const snap = gsap
+      .getTweensOf(chapter.querySelector('[data-story="hook-char"]')!)
+      .find(tween => tween.parent !== gsap.globalTimeline && tween.vars.opacity === 1)!;
+    timeline.time(snap.startTime() + 0.5, false);
+    act(() => pinned.vars.onUpdate?.(pinned));
+    expect(chart.dataset.hushed).toBe('true');
+    timeline.time(0, false);
+    act(() => pinned.vars.onUpdate?.(pinned));
+    expect(chart.dataset.hushed).toBe('false');
+  });
+});
+
 describe('Story: the central question as a chokepoint', () => {
   function renderQuestion() {
     return render(

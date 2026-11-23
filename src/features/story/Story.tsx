@@ -53,8 +53,6 @@ const SCENE = {
   pageOut: 0.45,
   nameOut: 0.36,
   hookDim: 0.92,
-  /** "Hooks hold about 4s." */
-  hookHold: 4,
   /** A beat of stillness: nothing changes before the next scene. */
   stillness: 1.6,
   /** Weighted words: the beat of stillness before a phrase lands, and how long its rust line takes to grow. */
@@ -266,6 +264,8 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
           /** Each chapter's pen: start writing its page, finish it at once, and whether it is written. */
           const pageWriters: { start: () => void; finish: () => void; written: () => boolean }[] = [];
           const headingTimelines: gsap.core.Timeline[] = [];
+          /** When each hook has the screen: the chart inset goes quiet then. */
+          const hooks: { from: number; to: number }[] = [];
           /** Who is waiting for a page to be written ("Play the story"). */
           const onWritten: (() => void)[][] = scenes.map(() => []);
 
@@ -425,15 +425,17 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                 emitAt(t, () => ({ type: 'roll-call-out', chapter: section.id, name: label, direction }));
                 t += SCENE.nameOut;
               });
-              // The panel dims away, so the hook has the whole screen.
-              if (page !== null) {
+              // The panel dims away, and the image's labels and credit go quiet: the hook has the whole screen.
+              const quiet = [page, one('[data-story="corners"]', scene)].filter((element): element is HTMLElement => element !== null);
+              if (quiet.length > 0) {
                 timeline.fromTo(
-                  page,
+                  quiet,
                   { opacity: 1 },
                   { opacity: 0, duration: SCENE.pageOut, ease: MOTION['ink.out'].ease, immediateRender: false },
                   t
                 );
               }
+              const hushFrom = t;
               t += SCENE.pageOut;
               // The breath before the hook: the column has cleared; the image darkens further and the camera creeps
               // closer, and for a stretch of scroll nothing new appears.
@@ -473,7 +475,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
                   t + wordIndex * SCENE.hookWordEvery
                 );
               });
-              t += Math.max(0, hookWords.length - 1) * SCENE.hookWordEvery + MOTION['story.hook'].duration + SCENE.hookHold;
+              t += Math.max(0, hookWords.length - 1) * SCENE.hookWordEvery + MOTION['story.hook'].duration + STORY_PACE.hookHold;
               // The ending decays: its letters disappear unevenly, one at a time in a random order, like ink drying.
               const decaying = [...hookChars].sort(
                 (a, b) => hashUnit(`${section.id}:${hookChars.indexOf(a)}`, 'decay') - hashUnit(`${section.id}:${hookChars.indexOf(b)}`, 'decay')
@@ -494,6 +496,7 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               t += SCENE.decay;
               timeline.set(hook, { pointerEvents: 'none' }, t);
               t += SCENE.stillness;
+              hooks.push({ from: hushFrom, to: t });
             } else {
               t += SCENE.restWithoutHook;
             }
@@ -644,6 +647,13 @@ export default function Story({ story, centralQuestion, centralQuestionEmphasis,
               writeSky(mixAt(timeline.time()));
               syncWillChange(timeline.time());
               syncActive(timeline.time());
+              // Nothing else on screen while a hook is there: the chart inset goes quiet.
+              if (chartFrame !== null) {
+                const hushed = hooks.some(hook => timeline.time() >= hook.from && timeline.time() < hook.to);
+                if ((chartFrame.dataset.hushed === 'true') !== hushed) {
+                  chartFrame.dataset.hushed = String(hushed);
+                }
+              }
               // Scrolling onward into a page finishes its writing at once: the reader is never kept waiting.
               if (direction === 'forward') {
                 spans.forEach((span, spanIndex) => {

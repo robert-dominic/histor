@@ -238,7 +238,7 @@ export default function VoyageChart({ route, variant, upTo = 0, onExpand }: Voya
         className={
           expanded
             ? 'fixed top-1/2 left-1/2 z-[45] w-[min(92vw,47.5rem)] -translate-x-1/2 -translate-y-1/2'
-            : 'fixed right-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 w-[110px] transition-[opacity,visibility] duration-300 ease-out data-[visible=false]:invisible data-[visible=false]:opacity-0 sm:right-5 sm:bottom-6 sm:w-[160px]'
+            : 'fixed right-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 w-[110px] transition-[opacity,visibility] duration-300 ease-out data-[visible=false]:invisible data-[visible=false]:opacity-0 data-[hushed=true]:invisible data-[hushed=true]:opacity-0 sm:right-5 sm:bottom-6 sm:w-[160px]'
         }
       >
         <button

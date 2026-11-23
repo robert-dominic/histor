@@ -60,33 +60,36 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
         </figure>
       )}
 
-      {/* Readability: dark over the bottom 45%, where the text column is. */}
+      {/* Readability: dark over the bottom 45%, under the page on a phone. */}
       <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[45%] bg-linear-to-t from-night/95 via-night/75 to-transparent" />
-      {/* Dims the whole image: a little for the roll call, almost to black for the hook. */}
+      {/* Dims the whole image, almost to black, for the hook. */}
       <div aria-hidden="true" data-story="dim" className="absolute inset-0 bg-night" style={{ opacity: 0 }} />
 
-      {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
-        <p className="absolute top-[calc(var(--case-header)+0.625rem)] left-2.5 z-10 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:left-3.5">
-          {image.isIllustration && (
-            <span data-story="illustration" className={LABEL_CLASSES}>
-              Illustration
-            </span>
-          )}
-          {image.caption !== undefined && (
-            <span data-story="caption" className={LABEL_CLASSES}>
-              {image.caption}
-            </span>
-          )}
-        </p>
-      )}
-      {image !== undefined && (
-        <CreditInfo
-          credit={image.credit}
-          attribute="data-story"
-          placement="below"
-          className="top-[var(--case-header)] right-0 lg:right-1"
-        />
-      )}
+      {/* The image's corners: its labels and its credit. They go quiet while the hook has the screen (Story.tsx). */}
+      <div data-story="corners" className="pointer-events-none absolute inset-0 z-10">
+        {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
+          <p className="absolute top-[calc(var(--case-header)+0.625rem)] left-2.5 z-10 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:left-3.5">
+            {image.isIllustration && (
+              <span data-story="illustration" className={LABEL_CLASSES}>
+                Illustration
+              </span>
+            )}
+            {image.caption !== undefined && (
+              <span data-story="caption" className={LABEL_CLASSES}>
+                {image.caption}
+              </span>
+            )}
+          </p>
+        )}
+        {image !== undefined && (
+          <CreditInfo
+            credit={image.credit}
+            attribute="data-story"
+            placement="below"
+            className="pointer-events-auto top-[var(--case-header)] right-0 lg:right-1"
+          />
+        )}
+      </div>
 
       {/* The page: a dark, softly faded panel on the left (along the bottom on phones) holding the chapter's text.
           The image stays visible on the rest of the screen. The kicker is typed small, the heading written large at
