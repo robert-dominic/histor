@@ -15,6 +15,7 @@ import PenText from '@/features/story/PenText';
 import { HookLetters } from '@/features/story/StoryWords';
 import type { ImageGrade } from '@/lib/day-night';
 import { imageSources } from '@/lib/image-sources';
+import { useHeadingFit } from '@/features/story/use-heading-fit';
 import type { StorySection } from '@/types/case';
 
 interface StorySceneProps {
@@ -29,6 +30,8 @@ const LABEL_CLASSES =
 
 export default function StoryScene({ section, index, grade, loadImage }: StorySceneProps) {
   const headingId = `story-${section.id}`;
+  // The heading never wraps: it shrinks to fit the panel, and the panel widens if it must (use-heading-fit.ts).
+  const { headingRef, headingTextRef, boxRef, panelRef } = useHeadingFit();
   const { image, rollCall } = section;
   const sources = image === undefined ? null : imageSources(image.src);
 
@@ -98,22 +101,25 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
           all (Story.tsx); a click on the panel finishes the writing at once. Portals stay tappable, out of the Tab
           order: the full text below has them for the keyboard and screen readers. */}
       <div
+        ref={panelRef}
         data-story="page"
-        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[42%] lg:flex-col lg:justify-center lg:bg-linear-to-r lg:from-night/92 lg:via-night/80 lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
+        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[calc(42%+var(--heading-widen,0px))] lg:flex-col lg:justify-center lg:bg-linear-to-r lg:from-night/92 lg:via-night/80 lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
       >
-        <div data-story="page-inner" className="relative max-w-[34rem]">
+        <div ref={boxRef} data-story="page-inner" className="relative max-w-[calc(34rem+var(--heading-widen,0px))]">
           {section.kicker !== undefined && (
             <p data-story="kicker" className="font-voice text-[0.75rem] leading-snug tracking-[0.2em] uppercase sm:text-[0.8125rem]">
               {section.kicker}
             </p>
           )}
           <h2
+            ref={headingRef}
             id={headingId}
-            className="mt-2 font-legend text-[clamp(2.25rem,1.6rem+2.4vw,3.75rem)] leading-[1.02] text-balance [text-shadow:0_2px_24px_rgb(0_0_0/0.55)]"
+            data-fit="heading"
+            className="mt-2 font-legend text-[clamp(2.25rem,1.6rem+2.4vw,3.75rem)] leading-[1.02] whitespace-nowrap [text-shadow:0_2px_24px_rgb(0_0_0/0.55)]"
           >
             {/* Screen readers get the whole heading at once; the copy the pen writes is for the eyes only. */}
             <span className="sr-only">{section.heading}</span>
-            <span aria-hidden="true" data-story="heading">
+            <span ref={headingTextRef} aria-hidden="true" data-story="heading">
               {section.heading}
             </span>
           </h2>

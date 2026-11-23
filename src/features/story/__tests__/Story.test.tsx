@@ -121,7 +121,7 @@ describe('Story: a page per chapter', () => {
     for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
       const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
-      expect(page.className).toContain('lg:w-[42%]');
+      expect(page.className).toContain('lg:w-[calc(42%+var(--heading-widen,0px))]');
       expect(page.className).toContain('lg:right-auto');
       expect(page.querySelector('[data-story="kicker"]')?.textContent).toBe(section.kicker);
       expect(page.querySelector('[data-story="heading"]')?.textContent).toBe(section.heading);
@@ -145,6 +145,25 @@ describe('Story: a page per chapter', () => {
     expect(column.className).toContain('top-[');
     // Its own pen, in its own column.
     expect(column.querySelector('[data-roll="quill"]')).not.toBeNull();
+  });
+
+  test('every heading in the case is set to a single line: no wrapping, fitted to the panel, which can widen', () => {
+    for (const reducedMotion of [false, true]) {
+      cleanup();
+      vi.unstubAllGlobals();
+      stubMatchMedia({ reducedMotion });
+      vi.stubGlobal('scrollTo', vi.fn());
+      const { container } = renderStory();
+      for (const section of maryCeleste.story) {
+        const page = chapterOf(container, section).querySelector<HTMLElement>('[data-story="page"]')!;
+        const heading = page.querySelector<HTMLElement>('h2')!;
+        expect(heading.textContent).toContain(section.heading);
+        expect(heading.dataset.fit).toBe('heading');
+        expect(heading.className).toContain('whitespace-nowrap');
+        expect(heading.className).not.toContain('text-balance');
+        expect(page.className).toContain('var(--heading-widen,0px)');
+      }
+    }
   });
 
   test('the body is set in Old Standard TT at about 18 to 19px, the heading large, the kicker small', () => {
@@ -503,7 +522,7 @@ describe('Story: reduced motion', () => {
     for (const section of maryCeleste.story) {
       const chapter = chapterOf(container, section);
       const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
-      expect(page.className).toContain('lg:w-[42%]');
+      expect(page.className).toContain('lg:w-[calc(42%+var(--heading-widen,0px))]');
       expect(chapter.querySelector('[data-story="pane"] img')).not.toBeNull();
       // No pen: nothing is split to be written.
       expect(page.querySelector('[data-pen]')).toBeNull();
