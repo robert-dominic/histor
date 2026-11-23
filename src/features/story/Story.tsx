@@ -28,11 +28,11 @@ import VoyageChart from '@/features/story/VoyageChart';
 import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { hashUnit } from '@/lib/desk';
-import { LINEAR, MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
+import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { scrollToY, setWheelMultiplier } from '@/lib/smooth-scroll';
 import { rollCallBeatIndex, splitIntoBeats } from '@/lib/story-beats';
-import { COLUMN, SCROLL_FEEL, columnPlan } from '@/lib/story-column';
+import { COLUMN, SCROLL_FEEL, columnPlan, sentenceSeconds } from '@/lib/story-column';
 import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
@@ -107,6 +107,14 @@ const OPENING = {
   span: 1.6,
 } as const;
 
+/** The central question, in seconds of the scrubbed timeline: black before the first phrase, the least a phrase
+ * holds, and the hold on the whole question before the fork. */
+const QUESTION = {
+  lead: 0.6,
+  holdAtLeast: 1.6,
+  beforeFork: STEP.scene * 2,
+} as const;
+
 /**
  * The heading is written on a timer, not by the scroll: the quill takes about 2 seconds, whatever the scroll speed.
  * Seconds of real time.
@@ -133,6 +141,8 @@ interface StoryProps {
   story: StorySection[];
   /** Shown on its own screen after the last chapter. */
   centralQuestion: string;
+  /** The question's weighted parts. */
+  centralQuestionEmphasis?: string[];
   /** Every reference of the case, for the portals in the text. */
   references: Reference[];
   /** Every source of the case, listed in the portal cards. */
@@ -143,7 +153,7 @@ interface StoryProps {
   opening?: OpeningCard;
 }
 
-export default function Story({ story, centralQuestion, references, sources, voyage, opening }: StoryProps) {
+export default function Story({ story, centralQuestion, centralQuestionEmphasis, references, sources, voyage, opening }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
   const reducedMotion = useReducedMotion();
@@ -752,29 +762,82 @@ export default function Story({ story, centralQuestion, references, sources, voy
           });
         }
 
-        // ---- The central question, written in slowly: one phrase after another.
+        // ---- The central question, the chokepoint. Full motion: a pinned, full-black screen; the question builds
+        // phrase by phrase, each written in with `ink.in`, its weighted parts landing like weighted words. Each phrase
+        // is a stop: ScrollTrigger snaps the scroll to its label (`story.settle`), never locking it. The fork only
+        // comes once the whole question is on screen, after a short hold. "Play the story" scrolls through at the
+        // same pace, so it reads it slowly, pausing on each phrase. Reduced motion: the question is shown whole.
         const question = one('[data-story="question"]');
         const phrases = all('[data-story="phrase"]');
-        let writing: gsap.core.Tween | null = null;
+        const questionWeighted = all('[data-story="question"] [data-story="weighted"]');
+        const questionRules = all('[data-story="question"] [data-story="weight-line"]');
         if (question !== null && phrases.length > 0) {
-          gsap.set(phrases, { opacity: 0 });
-          const write = () => {
-            writing?.kill();
-            writing = gsap.fromTo(
-              phrases,
-              { opacity: 0 },
-              { opacity: 1, ...tween('scene'), stagger: reduced ? 0.4 : 0.8 }
-            );
-          };
-          ScrollTrigger.create({ trigger: question, start: 'top 35%', onEnter: write, onEnterBack: write });
-          ScrollTrigger.create({
-            trigger: question,
-            start: 'top bottom',
-            onLeaveBack: () => {
-              writing?.kill();
-              gsap.set(phrases, { opacity: 0 });
-            },
-          });
+          if (reduced || !cinematic) {
+            gsap.set(questionRules, { scaleX: 1 });
+            gsap.set(phrases, { opacity: 0 });
+            ScrollTrigger.create({
+              trigger: question,
+              start: 'top 70%',
+              once: true,
+              onEnter: () => gsap.to(phrases, { opacity: 1, ...tween('ink.in') }),
+            });
+          } else {
+            const chokepoint = gsap.timeline({ defaults: { ease: LINEAR } });
+            gsap.set([...phrases, ...questionWeighted], { opacity: 0 });
+            let at: number = QUESTION.lead;
+            phrases.forEach((phrase, index) => {
+              chokepoint.fromTo(
+                phrase,
+                { opacity: 0, y: INK_RISE },
+                { opacity: 1, y: 0, ...tween('ink.in'), immediateRender: false },
+                at
+              );
+              at += MOTION['ink.in'].duration;
+              all('[data-story="weighted"]', phrase).forEach(span => {
+                at += SCENE.weightBeat;
+                chokepoint.fromTo(
+                  span,
+                  { opacity: 0, y: -INK_RISE },
+                  { opacity: 1, y: 0, ...tween('story.weighted'), immediateRender: false },
+                  at
+                );
+                at += MOTION['story.weighted'].duration;
+                const rule = one('[data-story="weight-line"]', span);
+                if (rule !== null) {
+                  chokepoint.fromTo(
+                    rule,
+                    { scaleX: 0 },
+                    { scaleX: 1, ease: MOTION['story.weighted'].ease, duration: SCENE.weightLine, immediateRender: false },
+                    at
+                  );
+                  at += SCENE.weightLine;
+                }
+              });
+              // The stop: the scroll settles here, with the phrase written in, and holds it for its reading time.
+              chokepoint.addLabel(`phrase-${index}`, at);
+              at += Math.max(QUESTION.holdAtLeast, sentenceSeconds(phrase.textContent ?? ''));
+            });
+            // The whole question, held a moment before the fork.
+            chokepoint.addLabel('whole', at);
+            chokepoint.to({}, { duration: QUESTION.beforeFork }, at);
+            const settle = MOTION['story.settle'];
+            ScrollTrigger.create({
+              trigger: question,
+              start: 'top top',
+              end: () => `+=${Math.round(chokepoint.duration() * pxPerSecond())}`,
+              pin: true,
+              scrub: COLUMN.scrub,
+              animation: chokepoint,
+              invalidateOnRefresh: true,
+              snap: {
+                snapTo: 'labelsDirectional',
+                duration: { min: settle.duration / 2, max: settle.duration },
+                delay: STEP.fast,
+                ease: settle.ease,
+                inertia: false,
+              },
+            });
+          }
         }
 
         // Web fonts change the height of the text. Measure again once they are in.
@@ -783,8 +846,8 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
         return () => {
           current = false;
-          writing?.kill();
-          gsap.set(phrases, { clearProps: 'opacity' });
+          gsap.set([...phrases, ...questionWeighted], { clearProps: 'opacity,transform' });
+          gsap.set(questionRules, { clearProps: 'transform' });
           cleanups.forEach(cleanup => cleanup());
           delete root.dataset.tone;
           root.style.removeProperty('--story-sky');
@@ -793,7 +856,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
         };
       });
     },
-    { scope: rootRef, dependencies: [story, centralQuestion, cinematic, sentences, route, steps, count, canAnimate], revertOnUpdate: true }
+    { scope: rootRef, dependencies: [story, centralQuestion, centralQuestionEmphasis, cinematic, sentences, route, steps, count, canAnimate], revertOnUpdate: true }
   );
 
   return (
@@ -838,7 +901,7 @@ export default function Story({ story, centralQuestion, references, sources, voy
           ))
         )}
 
-        <CentralQuestion question={centralQuestion} />
+        <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} />
 
         {cinematic && <VoyageChart route={route} variant="live" onExpand={player.pause} />}
         {cinematic && <PlayControl player={player} />}

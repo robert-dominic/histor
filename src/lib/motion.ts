@@ -22,7 +22,8 @@ export type TokenName =
   | 'story.weighted'
   | 'story.breath'
   | 'story.hook'
-  | 'story.decay';
+  | 'story.decay'
+  | 'story.settle';
 
 export interface MotionToken {
   ease: string;
@@ -74,6 +75,8 @@ export const MOTION: Record<TokenName, MotionToken> = {
   /** A hook leaving: its letters go one at a time, in a random order, like ink drying away. `duration` is one
    * letter's fade. */
   'story.decay': { ease: 'power1.in', duration: 0.35 },
+  /** The central question's stops: the scroll settles on the next phrase like a magnet (ScrollTrigger's snap). */
+  'story.settle': { ease: 'power2.inOut', duration: 0.6 },
 };
 
 /** How far text rises, in px, while it fades in (`ink.in`). */

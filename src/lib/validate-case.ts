@@ -321,6 +321,23 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional weighted parts of the central question (3.17): an array of non-empty phrases, each found
+  // word for word in centralQuestion
+  const questionEmphasis: unknown = caseData.centralQuestionEmphasis;
+  if (questionEmphasis !== undefined && questionEmphasis !== null) {
+    if (!Array.isArray(questionEmphasis)) {
+      errors.push('Field centralQuestionEmphasis: Must be an array');
+    } else {
+      questionEmphasis.forEach((phrase: unknown, j) => {
+        if (typeof phrase !== 'string' || phrase.trim() === '') {
+          errors.push(`Field centralQuestionEmphasis[${j}]: Must be a non-empty string`);
+        } else if (typeof caseData.centralQuestion !== 'string' || !caseData.centralQuestion.includes(phrase)) {
+          errors.push(`Field centralQuestionEmphasis[${j}]: '${phrase}' must appear word for word in centralQuestion`);
+        }
+      });
+    }
+  }
+
   // Validate the optional weighted words (3.16): when present, an array of non-empty phrases, each found word for
   // word in the section's own text (a body paragraph or the hook, with {{ref:…}} markup read as its label)
   if (Array.isArray(caseData.story)) {

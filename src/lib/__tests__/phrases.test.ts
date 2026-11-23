@@ -32,3 +32,23 @@ describe('splitIntoPhrases', () => {
     expect(splitIntoPhrases('   ')).toEqual([]);
   });
 });
+
+describe('splitQuestion', () => {
+  test('splits at the commas and before "and", keeping the punctuation', async () => {
+    const { splitQuestion } = await import('@/lib/phrases');
+    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
+    expect(splitQuestion(maryCeleste.centralQuestion)).toEqual([
+      'Why would Captain Briggs abandon a sound ship,',
+      'one he partly owned,',
+      'and put his wife,',
+      'his two-year-old daughter',
+      'and his crew into a small lifeboat in the middle of the Atlantic?',
+    ]);
+    expect(splitQuestion(maryCeleste.centralQuestion).join(' ')).toBe(maryCeleste.centralQuestion);
+  });
+
+  test('a word that only starts with "and" is not split', async () => {
+    const { splitQuestion } = await import('@/lib/phrases');
+    expect(splitQuestion('Sails andirons anchors')).toEqual(['Sails andirons anchors']);
+  });
+});

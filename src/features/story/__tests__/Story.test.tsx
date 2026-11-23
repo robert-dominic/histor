@@ -17,7 +17,7 @@ import { setLenis, wheelMultiplier } from '@/lib/smooth-scroll';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { splitIntoBeats } from '@/lib/story-beats';
 import { COLUMN, columnLines, columnPlan } from '@/lib/story-column';
-import { splitIntoPhrases } from '@/lib/phrases';
+import { splitQuestion } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case, StorySection } from '@/types/case';
 
@@ -219,7 +219,7 @@ describe('Story: the full text is in the DOM', () => {
     const question = container.querySelector('[data-story="question"]') as HTMLElement;
     expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
     const phrases = [...question.querySelectorAll('[data-story="phrase"]')].map(phrase => phrase.textContent?.trim());
-    expect(phrases).toEqual(splitIntoPhrases(maryCeleste.centralQuestion));
+    expect(phrases).toEqual(splitQuestion(maryCeleste.centralQuestion));
   });
 });
 
@@ -697,6 +697,77 @@ describe('Story: the four entrances', () => {
     expect(chapter.querySelector('[data-story="column"]')?.getAttribute('aria-hidden')).toBe('true');
     expect(chapter.querySelector('[data-story="hook-moment"]')?.getAttribute('aria-hidden')).toBe('true');
     expect(chapter.querySelector('[data-story="text"]')?.textContent).toContain('ten people');
+  });
+});
+
+describe('Story: the central question as a chokepoint', () => {
+  function renderQuestion() {
+    return render(
+      <Story
+        story={maryCeleste.story}
+        centralQuestion={maryCeleste.centralQuestion}
+        centralQuestionEmphasis={maryCeleste.centralQuestionEmphasis}
+        references={maryCeleste.references}
+        sources={maryCeleste.sources}
+      />
+    );
+  }
+  const questionTrigger = () =>
+    ScrollTrigger.getAll().find(trigger => (trigger.vars.trigger as Element | undefined)?.matches?.('[data-story="question"]') && trigger.pin)!;
+
+  test('a pinned, full-black screen, scrubbed, snapping to each phrase like a magnet, never locking the scroll', () => {
+    const { container } = renderQuestion();
+    const question = container.querySelector<HTMLElement>('[data-story="question"]')!;
+    expect(question.className).toContain('bg-black');
+    const trigger = questionTrigger();
+    expect(trigger).toBeDefined();
+    expect(trigger.vars.scrub).toBe(COLUMN.scrub);
+    expect(trigger.vars.snap).toMatchObject({ snapTo: 'labelsDirectional', ease: 'power2.inOut', inertia: false });
+    // Snapping is a nudge after the reader stops: nothing stops the reader scrolling on.
+    expect(document.documentElement.style.overflow).toBe('');
+  });
+
+  test('it builds phrase by phrase, each written in with ink.in, each a stop, then the whole question and a hold', () => {
+    const { container } = renderQuestion();
+    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
+    expect(phrases).toHaveLength(5);
+    const timeline = questionTrigger().animation as gsap.core.Timeline;
+    const labels = Object.keys(timeline.labels);
+    expect(labels).toEqual([...phrases.map((_, index) => `phrase-${index}`), 'whole']);
+    const ins = phrases.map(phrase => gsap.getTweensOf(phrase)[0]);
+    expect(ins.every(tween => tween.vars.ease === 'power3.out' && tween.vars.opacity === 1)).toBe(true);
+    ins.forEach((tween, index) => expect(tween.startTime()).toBeLessThan(timeline.labels[`phrase-${index}`]));
+    // The fork waits: the timeline holds on the whole question before the pin lets go.
+    expect(timeline.duration()).toBeGreaterThan(timeline.labels.whole + 2);
+  });
+
+  test('its weighted parts land like weighted words, after their phrase, with a rust line', () => {
+    const { container } = renderQuestion();
+    const weighted = [...container.querySelectorAll<HTMLElement>('[data-story="question"] [data-story="weighted"]')];
+    expect(weighted.map(span => span.textContent)).toEqual(maryCeleste.centralQuestionEmphasis);
+    const land = gsap.getTweensOf(weighted[1])[0];
+    expect(land.vars).toMatchObject({ opacity: 1, ease: 'power4.out' });
+    const phraseIn = gsap.getTweensOf(weighted[1].closest('[data-story="phrase"]')!)[0];
+    expect(land.startTime()).toBeGreaterThan(phraseIn.startTime() + phraseIn.duration());
+    expect(gsap.getTweensOf(weighted[1].querySelector('[data-story="weight-line"]')!)[0].vars.scaleX).toBe(1);
+  });
+
+  test('screen readers get the whole question at once', () => {
+    const { container } = renderQuestion();
+    const question = container.querySelector<HTMLElement>('[data-story="question"]')!;
+    expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
+  });
+
+  test('reduced motion: no pin and no stops; the question is shown whole', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    vi.stubGlobal('scrollTo', vi.fn());
+    const { container } = renderQuestion();
+    expect(questionTrigger()).toBeUndefined();
+    const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
+    // jsdom has no layout, so the question is already in view: one fade for the whole question, all at once.
+    const tweens = new Set(phrases.map(phrase => gsap.getTweensOf(phrase)[0]));
+    expect(tweens.size).toBe(1);
   });
 });
 

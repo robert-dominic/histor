@@ -70,6 +70,7 @@ The Histor Data Foundation provides the core data model, type system, validation
 14. THE Type_System SHALL define StorySection with rollCall field of type optional array of { name: string; role: string }; WHEN a section has a rollCall, THE Validator SHALL verify that every name and role is a non-empty string
 15. THE Type_System SHALL define Case with voyage field of type optional { points: VoyagePoint[] }, where VoyagePoint has id, label, lat, lon, chapter, kind ('port' | 'record' | 'found') and optional unreached; WHEN a case has a voyage, THE Validator SHALL verify at least one point, unique non-empty ids, non-empty labels, lat from -90 to 90, lon from -180 to 180, a chapter id that is in story, a known kind, and that unreached, when present, is a boolean
 16. THE Type_System SHALL define StorySection with emphasis field of type optional string array (the chapter's weighted words); WHEN a section has emphasis, THE Validator SHALL verify that every phrase is a non-empty string that appears word for word in that section's plain text (a body paragraph or the hook, with {{ref:id|label}} markup read as its label)
+17. THE Type_System SHALL define Case with centralQuestionEmphasis field of type optional string array (the weighted parts of the central question); WHEN a case has centralQuestionEmphasis, THE Validator SHALL verify that every phrase is a non-empty string that appears word for word in case.centralQuestion
 
 ### Requirement 4: Case Registry
 

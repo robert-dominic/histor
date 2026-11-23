@@ -250,3 +250,22 @@ describe('validateCase: weighted words (StorySection.emphasis, data-foundation 3
     expect(validateCase(withEmphasis('Paragraph one'))).toContain('Field story[0].emphasis: Must be an array');
   });
 });
+
+describe('validateCase: weighted parts of the central question (data-foundation 3.17)', () => {
+  test('may be left out, and phrases from the question are valid', () => {
+    expect(validateCase(createCase())).toEqual([]);
+    expect(validateCase(createCase({ centralQuestionEmphasis: ['Test question'] }))).toEqual([]);
+  });
+
+  test('a phrase not word for word in the question, an empty phrase, or not a list, is an error', () => {
+    expect(validateCase(createCase({ centralQuestionEmphasis: ['test question'] }))).toContain(
+      "Field centralQuestionEmphasis[0]: 'test question' must appear word for word in centralQuestion"
+    );
+    expect(validateCase(createCase({ centralQuestionEmphasis: [' '] }))).toContain(
+      'Field centralQuestionEmphasis[0]: Must be a non-empty string'
+    );
+    expect(validateCase(createCase({ centralQuestionEmphasis: 'Test' as unknown as string[] }))).toContain(
+      'Field centralQuestionEmphasis: Must be an array'
+    );
+  });
+});

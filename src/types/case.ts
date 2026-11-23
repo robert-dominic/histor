@@ -216,6 +216,11 @@ export interface Case {
   legendIntro: LegendIntro;
   story: StorySection[];
   centralQuestion: string;
+  /**
+   * The weighted parts of the central question: phrases that arrive like weighted words as the question builds.
+   * Each must appear word for word in `centralQuestion`, e.g. "his two-year-old daughter".
+   */
+  centralQuestionEmphasis?: string[];
   fork: Fork;
   theories: Theory[];
   evidence: Evidence[];

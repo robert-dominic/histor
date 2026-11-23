@@ -45,3 +45,7 @@ The story's entrances play on the scrubbed timeline, so their durations are seco
 ### "6. GSAP and smooth scrolling": add
 
 - **The story's scroll feel** is one constant, `SCROLL_FEEL` in `src/lib/story-column.ts`: pixels of scroll per second of the timeline (0.3 of the screen, 160 to 280px; twice the old distance per sentence) and Lenis's wheel multiplier on the story page (0.8). Tune both by feel.
+
+### "4. The question and the fork" (product.md) / "The story" (design.md): add
+
+- **The central question is a chokepoint.** A pinned, full-black screen. The question builds phrase by phrase, split at its commas and before "and" (`splitQuestion`), each phrase on its own line, written in with `ink.in`; its weighted parts (`Case.centralQuestionEmphasis`) land like weighted words. Each phrase is a stop: ScrollTrigger snaps to its label (`labelsDirectional`, `story.settle`) once the reader stops, which works with Lenis (Lenis adopts native scrolls while it is not smoothing); the scroll is never locked. The fork only appears once the whole question is on screen, after a hold. "Play the story" reads through it at the same pace. Under reduced motion the question is shown whole, then the fork.
