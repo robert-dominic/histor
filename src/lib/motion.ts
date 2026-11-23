@@ -18,7 +18,6 @@ export type TokenName =
   | 'layout'
   | 'scene'
   | 'ghost'
-  | 'story.surface'
   | 'story.weighted'
   | 'story.breath'
   | 'story.hook'
@@ -34,8 +33,8 @@ export interface MotionToken {
 }
 
 /**
- * The story's entrances (story-dread 2.2): different moments enter differently, so calm lines and terrible ones do
- * not feel the same. They play on the scrubbed timeline, so their durations are in seconds of scroll.
+ * The story's moments: a weighted phrase, the breath before a hook, the hook's snap and decay, the central
+ * question's stops. Those on the scrubbed timeline have durations in seconds of scroll.
  */
 
 /** The tokens, with their starting values (to be tuned by eye). Exits are quicker than entrances. */
@@ -60,9 +59,6 @@ export const MOTION: Record<TokenName, MotionToken> = {
   scene: { ease: 'sine.inOut', duration: 1.2 },
   /** Ghost ink drifting and flickering: slow and irregular. */
   ghost: { ease: 'sine.inOut', duration: 3 },
-  /** A normal sentence rising out of the dark: each word slides up from behind its mask edge, like something
-   * surfacing from water. The `ink.in` ease; the whole sentence takes its share of the scroll. */
-  'story.surface': { ease: 'power3.out', duration: 0.9 },
   /** A weighted phrase landing on its own after a breath: it drops into its held space and settles, slightly
    * brighter than the words around it. No line is drawn under it. */
   'story.weighted': { ease: 'power4.out', duration: 0.7 },

@@ -26,14 +26,13 @@ Every GSAP tween spreads a token: `gsap.to(el, { ...tween('ink.in'), opacity: 1 
 | `layout` | `power2.inOut` | 0.5s | Anything that changes place or size (with Flip) |
 | `scene` | `sine.inOut` | 1.2s or more | Camera moves and scene changes |
 | `ghost` | `sine.inOut` | 2 to 4s | Ghost ink drifting and flickering: slow and irregular (`ghostDuration(key)`) |
-| `story.surface` | `power3.out` | 0.9s (its share of the scroll) | A normal sentence rising out of the dark: each word slides up from behind its own mask edge |
-| `story.weighted` | `power4.out` | 0.7s | A weighted phrase landing alone after a beat (`STEP.slow`); then a thin rust line grows under it |
-| `story.breath` | `sine.inOut` | 2.4s | Before a hook: the column has cleared, the image darkens, the camera creeps closer (1.05); nothing new appears |
-| `story.hook` | `back.out(2.2)` | 1.1s per word | A hook word by word (one every 0.55s of scroll), its letters snapping into place from slightly out of line |
-| `story.decay` | `power1.in` | 0.35s per letter | A hook leaving: letters go one at a time in a fixed random order, over 1.8s |
+| `story.weighted` | `power4.out` | 0.7s | A weighted part of the central question landing alone after a breath, slightly brighter (no line under it) |
+| `story.breath` | `sine.inOut` | 2.4s | Before a hook: the page has dimmed away, the image darkens, the camera creeps closer (1.05); nothing new appears |
+| `story.hook` | `back.out(2.2)` | 1.1s per word | A hook word by word, its letters snapping into place from slightly out of line |
+| `story.decay` | `power1.in` | 0.35s per letter | A hook leaving: letters go one at a time in a fixed random order |
 | `story.settle` | `power2.inOut` | 0.6s | The central question's stops: ScrollTrigger snaps to the next phrase (`labelsDirectional`) |
 
-The story's entrances play on the scrubbed timeline (durations are seconds of scroll; scrolling back reverses them). Words and letters are split by React (`StoryWords.tsx`), so portals stay whole; screen readers get the full text once. The scroll feel is one constant, `SCROLL_FEEL` in `src/lib/story-column.ts` (pixels per timeline second, and the story page's Lenis wheel multiplier, 0.8).
+**The pen** writes each chapter's page on its own timer (the quill writer, `src/lib/quill-writing.ts`), not on the scroll: a click or scrolling onward finishes it at once. Its words and letters are split by React (`PenText.tsx`, `StoryWords.tsx` for hooks), so portals stay whole; screen readers get the full text once. **Every timing of the story** (writing speed, the hold before a hook, the hook hold, auto-play reading time, the scroll per second and the story page's Lenis wheel multiplier) is in one commented object, `STORY_PACE` in `src/lib/story-pages.ts`.
 
 `QUICK_OUT` (the `ink.out` ease over half a fast step) is the exit for small things: a menu, a slip, a panel. **Duration steps** for everything that is not a token (delays, holds, staggers): `STEP.fast` 0.2s, `STEP.base` 0.45s, `STEP.slow` 0.9s, `STEP.scene` 1.2s.
 

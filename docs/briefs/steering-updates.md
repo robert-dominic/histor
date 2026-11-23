@@ -1,6 +1,6 @@
-# Proposed steering updates (from Claude Code)
+# Steering updates (from Claude Code): applied
 
-The briefs `desk-fixes.md` and `story-dread.md` ask for the steering docs to describe what was built. These notes were collected while `.kiro/` edits were blocked; the main points have since been written into `design.md` and `motion.md`. `product.md` was not changed and still says a sealed folder dropped on a theory is "read first and then pinned".
+These notes were collected while `.kiro/` edits were blocked during `desk-fixes` and `story-dread`. **All of them have now been written into the steering docs** (`design.md`, `motion.md`, `product.md`, `structure.md`), and `night-run` superseded several of them: the piles became always-visible cascades, the story's text column and its entrances became pages written by the pen, and the opening scene and play card were removed. The steering docs are the source of truth; what follows is kept only as history.
 
 ## design.md
 

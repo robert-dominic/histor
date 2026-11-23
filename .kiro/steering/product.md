@@ -36,7 +36,7 @@ The case's most famous legend, told dramatically. For the Mary Celeste this is t
 A scroll-driven telling of what the record says, built with GSAP ScrollTrigger.
 - Told in short sections. Each section ends on a moment of curiosity that pulls the user to keep scrolling.
 - The screen grows darker as the story goes on.
-- The story opens on the case's title, years and teaser. The chapter's sentences stay on screen in a text column that moves as the reader scrolls. "Play the story" or "Read at my pace" is offered on a small card after the first scroll.
+- After the legend intro the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. The case header carries the title. Each chapter is a page beside its image, written by a pen; scrolling on brings the chapter's hook, then the next chapter.
 - Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
 - Job: give a newcomer full context, so nobody finishes the story confused.
 
@@ -45,7 +45,7 @@ The story ends on the case's central question, stated plainly:
 
 > Why would Captain Briggs abandon a sound ship, one he partly owned, and put his wife, his two-year-old daughter and his crew into a small lifeboat in the middle of the Atlantic?
 
-Then the app speaks: "Most people stop here. Want to see what the evidence says?"
+Then, as the reader scrolls on, the app speaks in a modal over the question: "Most people stop here. Want to see what the evidence says?"
 - **Open the case files:** continue to the board.
 - **I've heard enough:** a short close with where historians stand. The casual reader leaves satisfied.
 
@@ -56,7 +56,8 @@ Two kinds of objects: theories and evidence.
 - Opening a file opens its own screen: what the claim is, the source, and its status revealed with a stamp (Record, Disputed or Legend).
 - At the end of each file the app asks: "Which theory does this point to?" The user picks a theory, or "None of them." The app then reveals how historians read that piece of evidence, so the user learns as they go.
 - The board updates: a thread connects the file to the theory it was pinned to, and that theory visibly strengthens or weakens.
-- On a desktop everything can also be moved by hand: a folder dragged from the floor onto a theory is read first and then pinned; a pinned or set-aside file can be dragged to another theory, to "None of them", or back to the floor, without opening it. The Pin menu does the same with the keyboard, and lists "Back to the floor" for a file that is pinned or set aside. A file taken off the board stays opened.
+- On a desktop everything can also be moved by hand: a file dragged from the floor onto a theory is pinned at once, without opening it (a sealed file stays sealed and does not count as opened); a pinned or set-aside file can be dragged to another theory, to "None of them", or back to the floor, without opening it. The Pin menu does the same with the keyboard: inside an open file, and on a floor file with the focus ("Pin to…", or P). It lists "Back to the floor" for a file that is pinned or set aside. A file taken off the board stays as it was, opened or sealed.
+- The report never reveals an unopened file: a file pinned without being opened shows as "Sealed".
 - The investigation needs a laptop-sized screen: below 1024px wide it shows a gate, with a "Continue anyway" link.
 
 ### 6. The verdict
