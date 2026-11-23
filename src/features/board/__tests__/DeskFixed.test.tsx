@@ -4,6 +4,7 @@
 // page that never scrolls, and pinned files in tidy piles. Below 1024px the phone desk scrolls as before.
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import maryCeleste from '@/cases/mary-celeste/case';
@@ -88,7 +89,7 @@ describe('the desktop desk', () => {
     expect(tray.dataset.fitted).toBe('true');
   });
 
-  test('the wax seal simply appears in the header once enough files are open, and presses in', () => {
+  test('the "Close the case" stamp simply appears in the header once enough files are open, and thunks in', () => {
     const opened = maryCeleste.evidence.slice(0, maryCeleste.closeThreshold).map(item => item.id);
     localStorage.setItem(KEY, JSON.stringify({ opened: opened.slice(0, -1), pins: {}, verdict: null }));
     renderDesk();
@@ -98,6 +99,9 @@ describe('the desktop desk', () => {
     renderDesk();
     const seal = desk().querySelector<HTMLElement>('header [data-seal="desk"]')!;
     expect(seal.textContent).toContain('Close the case');
+    // It thunks into the top bar like a rubber stamp (`stamp.hit`, the same press as a file's stamp).
+    const press = gsap.getTweensOf(seal.querySelector('[data-seal="mark"]')!);
+    expect(press.some(tween => tween.vars.ease === 'expo.in')).toBe(true);
     expect(desk().querySelector('header')?.textContent).not.toContain('You can close the case');
   });
 

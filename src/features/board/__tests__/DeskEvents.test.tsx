@@ -2,7 +2,7 @@
 // src/features/board/__tests__/DeskEvents.test.tsx
 // Task 14 of .kiro/specs/desk: the desk's moments are sent as events (so sound can follow later), each once at its
 // moment; the desk works from the keyboard; and under reduced motion nothing flips, drifts, moves or drags.
-// (The two `seal` events are tested with the wax seal and the verdict in Investigation.test.tsx.)
+// (The two `seal` events are tested with the "Close the case" stamp and the verdict in Investigation.test.tsx.)
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';

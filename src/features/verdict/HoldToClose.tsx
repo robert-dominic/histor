@@ -1,5 +1,5 @@
 // src/features/verdict/HoldToClose.tsx
-// "Hold to close the case": a press-and-hold that fills like a wax seal over about 1.5s (motion.md, rule 8).
+// "Hold to close the case": a press-and-hold that fills with ink over about 1.5s (motion.md, rule 8).
 // Letting go early snaps it back in 200ms. Works with a pointer, or by holding Space or Enter.
 // The fill is a GSAP tween on the element; its progress never enters React state.
 
@@ -100,7 +100,7 @@ export default function HoldToClose({ disabled, onComplete }: HoldToCloseProps) 
         onContextMenu={event => event.preventDefault()}
         className="relative isolate grid size-36 touch-none place-items-center overflow-hidden rounded-full border-2 border-rust-night font-voice text-sm leading-tight tracking-[0.12em] text-night-ink uppercase transition-[scale,opacity] duration-150 ease-out select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97] disabled:opacity-40"
       >
-        {/* The wax: it pools from the centre while the button is held. */}
+        {/* The ink: it pools from the centre while the button is held. */}
         <span
           ref={fillRef}
           aria-hidden="true"

@@ -10,6 +10,7 @@ import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useInvestigation } from '@/app/InvestigationProvider';
+import CloseStamp from '@/features/board/CloseStamp';
 import DeskGuide from '@/features/board/DeskGuide';
 import DeskHints from '@/features/board/DeskHints';
 import DeskHintsProvider from '@/features/board/DeskHintsProvider';
@@ -20,7 +21,6 @@ import { createDeskDrag } from '@/features/board/use-desk-drag';
 import Pile from '@/features/board/Pile';
 import SetAsideTray from '@/features/board/SetAsideTray';
 import Lamp from '@/features/board/Lamp';
-import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import type { DeskOutlet } from '@/features/board/desk-outlet';
 import { carryOut } from '@/features/board/pile';
@@ -414,11 +414,11 @@ function DeskScreen() {
         <DeskSurface />
         {desktop ? (
           <>
-            {/* The compact header: the first visit's hints and, once enough files are open, the wax seal that closes
-                the case (it presses in as it appears; the guide says when). No count of opened files, and no visible
+            {/* The compact header: the first visit's hints and, once enough files are open, the rubber stamp that
+                closes the case (it thunks in as it appears; the guide says when). No count of opened files, and no visible
                 title: the one "Case files" label is over the floor (its heading stays for screen readers). Above the
                 lamp's shadow, so all of it is always readable. Its height is fixed, so nothing that comes or goes in
-                it (a hint, the seal) changes the size of the board or the floor, and no folder moves. */}
+                it (a hint, the stamp) changes the size of the board or the floor, and no folder moves. */}
             <header className="relative z-[21] flex h-14 items-center gap-x-6 px-8">
               <h2 id="board-title" className="sr-only">
                 The case files
@@ -426,7 +426,7 @@ function DeskScreen() {
               <div className="min-w-0 flex-1 [&_[data-hint=desk]]:mt-0 [&_[data-hint=desk]]:min-h-6">
                 <DeskHints />
               </div>
-              {canClose && <WaxSeal to={`${base}/verdict`} />}
+              {canClose && <CloseStamp to={`${base}/verdict`} />}
             </header>
             {/* The board: above the floor, so a pile's panel can lie over it, and above the lamp's shadow, so the slate
                 theories keep their full contrast (7:1 or more) wherever the lamp is. */}
@@ -464,7 +464,7 @@ function DeskScreen() {
               <h2 id="board-title" className="font-voice text-xs tracking-[0.22em] text-ghost-night uppercase">
                 The case files
               </h2>
-              {canClose && <WaxSeal to={`${base}/verdict`} />}
+              {canClose && <CloseStamp to={`${base}/verdict`} />}
             </header>
             <div className="relative mt-6 lg:mt-10">
               <TheoryBoard caseData={caseData} layout={layout} filesHref={`${base}/files`} slips={slips} />

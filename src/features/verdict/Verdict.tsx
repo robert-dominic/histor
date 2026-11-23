@@ -1,24 +1,22 @@
 // src/features/verdict/Verdict.tsx
 // "Which theory do you believe?" The user picks one theory, then holds to close the case.
 // Before enough files are open, this page sends the user back to the board.
-// The five theories lie as notes on the desk, under a still lamp. When the hold completes, a wax seal is pressed
-// onto the chosen note, and then the case closes.
-// Reduced motion: a plain confirm button instead of the hold, and no seal animation.
+// The five theories lie as notes on the desk, under a still lamp. When the hold completes, the chosen note is
+// stamped "Chosen" (a rubber ink stamp, `stamp.hit`), and then the case closes.
+// Reduced motion: a plain confirm button instead of the hold, and the stamp simply appears.
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
 import { useInvestigation } from '@/app/InvestigationProvider';
 import DeskSurface from '@/features/board/DeskSurface';
 import Lamp from '@/features/board/Lamp';
-import SealMark from '@/features/board/SealMark';
 import HoldToClose from '@/features/verdict/HoldToClose';
 import { scatter } from '@/lib/desk';
-import { tween } from '@/lib/motion';
+import { stampHit } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 
-/** Seconds the pressed seal stays in view before the report opens. */
-const SEAL_HOLD = 0.4;
+/** Seconds the "Chosen" stamp stays in view before the report opens. */
+const STAMP_HOLD = 0.5;
 
 export default function Verdict() {
   const { state, dispatch, caseData } = useInvestigation();
@@ -46,20 +44,13 @@ export default function Verdict() {
       navigate(`${base}/report`, { state: { fresh: true } });
     };
     emitStoryEvent({ type: 'seal', where: 'verdict' });
-    const seal = rootRef.current?.querySelector('[data-verdict="seal"]');
-    if (reducedMotion || seal == null) {
+    const stamp = rootRef.current?.querySelector('[data-verdict="chosen"]');
+    if (stamp == null) {
       finish();
       return;
     }
-    // The wax is pressed onto the note: it lands from a little above, and rests a moment before the report.
-    pressRef.current = gsap
-      .timeline()
-      .fromTo(
-        seal,
-        { opacity: 0, scale: 1.4, rotation: -10 },
-        { opacity: 1, scale: 1, rotation: 0, ...tween('paper.lift') }
-      )
-      .call(finish, undefined, `+=${SEAL_HOLD}`);
+    // The chosen note is stamped, and rests a moment before the report.
+    pressRef.current = stampHit(stamp, { reduced: reducedMotion }).call(finish, undefined, `+=${STAMP_HOLD}`);
   };
 
   return (
@@ -103,13 +94,16 @@ export default function Verdict() {
                 <span aria-hidden="true" className="desk-pin absolute top-2 left-1/2 size-3 -translate-x-1/2 rounded-full" />
                 <span className="font-legend text-[1.375rem] leading-[1.05]">{theory.title}</span>
                 <span className="font-record text-[0.9375rem] leading-snug text-ink/85">{theory.claim}</span>
-                {/* The wax, pressed on when the case is closed. Hidden until then. */}
+                {/* The rubber stamp, pressed on when the case is closed. Hidden until then. */}
                 {chosen && (
-                  <SealMark
-                    data-verdict="seal"
-                    className="pointer-events-none absolute -right-3 -bottom-4 size-20 drop-shadow-[0_3px_5px_rgba(0,0,0,0.5)]"
+                  <span
+                    aria-hidden="true"
+                    data-verdict="chosen"
+                    className="rubber-stamp pointer-events-none absolute -right-2 -bottom-3 bg-paper/70 text-[1.125rem]"
                     style={{ opacity: 0 }}
-                  />
+                  >
+                    Chosen
+                  </span>
                 )}
               </button>
             );

@@ -234,7 +234,7 @@ describe('The guide', () => {
       'Legend',
     ]);
     expect(text).toContain('Drag it onto that theory.');
-    expect(text).toContain('Open six files and a wax seal appears.');
+    expect(text).toContain('Open six files and a “Close the case” stamp appears.');
     expect(guide.querySelector('[data-guide="warning"]')?.textContent).toBe(
       'One warning: the details everyone remembers are often the ones that never happened.'
     );

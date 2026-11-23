@@ -205,7 +205,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
                 Drag it onto that theory. If it points to none of them, drop it on “None of them”. You can change your mind
                 any time.
               </Part>
-              <Part lead={`Open ${numberWord(threshold)} files and a wax seal appears.`}>
+              <Part lead={`Open ${numberWord(threshold)} files and a “Close the case” stamp appears.`}>
                 Use it to close the case: choose the theory you believe, and see where you agree with the historians.
               </Part>
               <p data-guide="warning" className="font-record text-[1.0625rem] leading-normal italic">

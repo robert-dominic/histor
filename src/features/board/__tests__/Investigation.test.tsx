@@ -3,6 +3,7 @@
 // The investigation from the fork to the report (docs/briefs/board.md), rendered as the whole app at a URL,
 // the way a deep link or a refresh would open it. Titles and notes come from the case data.
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import App from '@/App';
@@ -280,7 +281,7 @@ describe('Closing the case', () => {
     expect(screen.queryByText('Which theory do you believe?')).toBeNull();
   });
 
-  test('with reduced motion, choosing a theory and confirming closes the case and opens the report', () => {
+  test('with reduced motion, choosing a theory and confirming stamps it, closes the case and opens the report', async () => {
     stubMatchMedia({ reducedMotion: true });
     seed({ opened: firstFiles(CASE.closeThreshold), pins: {}, verdict: null });
     renderAt(`${BASE}/verdict`);
@@ -293,7 +294,10 @@ describe('Closing the case', () => {
     expect(confirm.disabled).toBe(false);
     fireEvent.click(confirm);
 
-    expect(window.location.pathname).toBe(`${BASE}/report`);
+    // The stamp simply appears (a fade, no press), then the report opens.
+    const stamp = document.querySelector<HTMLElement>('[data-verdict="chosen"]')!;
+    expect(gsap.getTweensOf(stamp).every(tween => tween.vars.scale === undefined)).toBe(true);
+    await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/report`), { timeout: 4000 });
     expect(saved().verdict).toBe('t-explosion');
   });
 
@@ -305,13 +309,15 @@ describe('Closing the case', () => {
     expect(screen.queryByRole('button', { name: 'Close the case' })).toBeNull();
   });
 
-  test('the wax seal on the desk is a link to the verdict, and sounds `seal` when used', () => {
+  test('the "Close the case" stamp on the desk is a link to the verdict, with no logo mark, and sounds `seal` when used', () => {
     seed({ opened: firstFiles(CASE.closeThreshold), pins: {}, verdict: null });
     renderAt(`${BASE}/files`);
     const seal = document.querySelector<HTMLAnchorElement>('[data-seal="desk"]')!;
     expect(seal.getAttribute('href')).toBe(`${BASE}/verdict`);
     expect(seal.textContent).toBe('Close the case');
-    expect(seal.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    // A rubber ink stamp, like the header's UNSOLVED tag: no wax, no mark.
+    expect(seal.querySelector('svg')).toBeNull();
+    expect(seal.querySelector('[data-seal="mark"]')?.className).toContain('rubber-stamp');
     const heard = vi.fn();
     const stop = onStoryEvent(heard);
     fireEvent.click(seal);
@@ -336,13 +342,14 @@ describe('Closing the case', () => {
     expect(document.body.textContent).not.toContain('Leading');
   });
 
-  test('holding to close presses a wax seal onto the chosen note, then opens the report', async () => {
+  test('holding to close stamps the chosen note "Chosen", then opens the report', async () => {
     seed({ opened: firstFiles(CASE.closeThreshold), pins: {}, verdict: null });
     renderAt(`${BASE}/verdict`);
     fireEvent.click(screen.getByRole('button', { name: new RegExp(theory('t-explosion').title) }));
     const chosen = document.querySelector<HTMLElement>('[data-verdict="note"][data-theory-id="t-explosion"]')!;
-    expect(chosen.querySelector('[data-verdict="seal"]')).not.toBeNull();
-    expect(document.querySelectorAll('[data-verdict="seal"]')).toHaveLength(1);
+    expect(chosen.querySelector('[data-verdict="chosen"]')?.textContent).toBe('Chosen');
+    expect(chosen.querySelector('[data-verdict="chosen"]')?.className).toContain('rubber-stamp');
+    expect(document.querySelectorAll('[data-verdict="chosen"]')).toHaveLength(1);
     const heard = vi.fn();
     const stop = onStoryEvent(heard);
 
