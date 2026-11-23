@@ -3,6 +3,9 @@
 // the image fills the screen under a slow camera, the quill writes the heading, the chapter's sentences rise in
 // a text column as the reader scrolls, and the hook takes the whole screen before the next scene dissolves in. The scenes lie on top of
 // each other in one pinned stage, and one timeline, scrubbed by the scroll, plays them in turn.
+// The story opens on the first scene itself: the case's title, years, stamp and teaser lie over chapter 1's image
+// (StoryOpening). As the reader scrolls they clear, the title docks into the case header, and chapter 1 begins on
+// the same image: one image, one title.
 // A small chart in the corner draws the voyage as it goes. The reader can scroll, or let the story play itself.
 // Under reduced motion the chapters are plain stacked sections with still images, and the text only fades in.
 // Everything shown comes from props. Nothing about any one case is written in this file.
@@ -19,6 +22,7 @@ import PlayControl from '@/features/story/PlayControl';
 import { activeSceneIndex } from '@/features/story/active-scene';
 import StoryChapter from '@/features/story/StoryChapter';
 import StoryOpening, { type OpeningCard } from '@/features/story/StoryOpening';
+import { dockTitle, undockTitle } from '@/features/story/dock-title';
 import StoryScene from '@/features/story/StoryScene';
 import VoyageChart from '@/features/story/VoyageChart';
 import { pxPerSecond, useStoryPlayer } from '@/features/story/use-story-player';
@@ -78,6 +82,17 @@ const SCENE = {
     [0.5, 0.05],
     [0, 0.17],
   ],
+} as const;
+
+/**
+ * The opening, over the first scene, in seconds of the scrubbed timeline. Its parts leave (and the title docks) on
+ * their own timers once the scroll passes `leave`, so nothing is ever left half faded; chapter 1 starts at `span`.
+ */
+const OPENING = {
+  /** The scroll that passes before the opening clears and the title docks. */
+  leave: 0.5,
+  /** Where chapter 1 begins: its heading is written, then its column rises, on the same image. */
+  span: 1.6,
 } as const;
 
 /**
@@ -141,15 +156,18 @@ export default function Story({ story, centralQuestion, references, sources, voy
     return () => setWheelMultiplier(1);
   }, [cinematic]);
 
-  /** "Read at my pace": a short glide to the first scene. */
+  /** "Read at my pace": a short glide to where chapter 1 begins, unless the reader is already past it. */
   const goToFirstScene = useCallback(() => {
     const stage = rootRef.current?.querySelector<HTMLElement>('[data-story="stage"]');
     if (stage === null || stage === undefined) {
       return;
     }
-    const y = stage.getBoundingClientRect().top + window.scrollY;
-    scrollToY(y);
-  }, []);
+    const lead = opening !== undefined ? OPENING.span * pxPerSecond() : 0;
+    const y = stage.getBoundingClientRect().top + window.scrollY + lead;
+    if (y > window.scrollY + 1) {
+      scrollToY(y);
+    }
+  }, [opening]);
 
   useGSAP(
     () => {
@@ -237,7 +255,9 @@ export default function Story({ story, centralQuestion, references, sources, voy
             end: number;
           }
           const spans: Span[] = [];
-          let t = 0;
+          // With an opening, the first scene starts with it: its title, years, stamp and teaser over chapter 1's image.
+          const overlay = one('[data-story="opening"][data-overlay="true"]', stage);
+          let t = overlay !== null ? OPENING.span : 0;
           // One timer-driven heading per scene (see HEADING), and the timelines to clean up.
           // Which way the playhead is moving: the scrub brings it to the scroll, so it can trail the scroll's direction.
           let lastTime = 0;
@@ -269,8 +289,9 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 // Load this chapter's image, and the next one ahead of the reader.
                 setLoadedThrough(loaded => Math.max(loaded, index + 1));
                 emitStoryEvent({ type: 'chapter-enter', chapter: section.id, direction });
-                // Forward over the start of the scene, the heading is written; back over it, the heading fades.
-                if (index > 0) {
+                // Forward over the start of the scene, the heading is written; back over it, the heading fades. The
+                // first scene's heading is written as the stage comes up, or after the opening when there is one.
+                if (index > 0 || overlay !== null) {
                   (playheadForward() ? headings[index].enter : headings[index].leave)();
                 }
               },
@@ -428,18 +449,56 @@ export default function Story({ story, centralQuestion, references, sources, voy
             }
 
             // The camera: a slow push in and pan across the whole chapter, still moving as the next dissolves in.
+            // The first scene's camera starts with the opening, which lies over the same image.
             const image = one('[data-story="image"]', scene);
             const pan = PANS[index % PANS.length];
+            const cameraFrom = index === 0 ? 0 : start;
             if (image !== null) {
               timeline.fromTo(
                 image,
                 { scale: 1, xPercent: 0, yPercent: 0 },
-                { scale: SCENE.zoomTo, xPercent: pan.x, yPercent: pan.y, duration: t - start + SCENE.dissolve },
-                start
+                { scale: SCENE.zoomTo, xPercent: pan.x, yPercent: pan.y, duration: t - cameraFrom + SCENE.dissolve },
+                cameraFrom
               );
             }
             spans.push({ start, textFrom, textTo, end: t });
           });
+
+          // ---- The opening over the first scene. Once the scroll passes `OPENING.leave` its parts leave on their own
+          // timer (ink.out) and the title floats up into the case header; scrolling back brings them in again and
+          // takes the title out of the header. Never scrubbed, so nothing rests half faded.
+          if (overlay !== null) {
+            const bigTitle = one('[data-opening="title"]', overlay);
+            const parts = all('[data-opening="years"], [data-opening="stamp"], [data-opening="teaser"], [data-opening="cue"], [data-opening="shade"]', overlay);
+            let cleared = false;
+            root.dataset.pastOpening = 'false';
+            const clear = () => {
+              if (cleared) {
+                return;
+              }
+              cleared = true;
+              root.dataset.pastOpening = 'true';
+              gsap.to(parts, { opacity: 0, ...tween('ink.out'), overwrite: true });
+              if (bigTitle !== null) {
+                dockTitle(bigTitle, { reduced: false });
+              }
+            };
+            const bringBack = () => {
+              if (!cleared) {
+                return;
+              }
+              cleared = false;
+              root.dataset.pastOpening = 'false';
+              gsap.to(parts, { opacity: 1, ...tween('ink.in'), overwrite: true });
+              if (bigTitle !== null) {
+                undockTitle(bigTitle);
+              }
+            };
+            timeline.call(() => (playheadForward() ? clear() : bringBack()), undefined, OPENING.leave);
+            cleanups.push(() => {
+              delete root.dataset.pastOpening;
+            });
+          }
 
           // ---- The chart: each stretch of the route draws itself during the chapter it ends in, and the ship
           // follows the line. The stretch she sailed alone is dashed and ghostly (VoyageChart.tsx).
@@ -486,7 +545,9 @@ export default function Story({ story, centralQuestion, references, sources, voy
           const cameraOn = images.map(() => false);
           const syncWillChange = (time: number) => {
             spans.forEach((span, index) => {
-              const on = time >= span.start - SCENE.dissolve && time <= span.end + SCENE.dissolve;
+              // The first scene's camera runs from the very start, under the opening.
+              const from = index === 0 ? 0 : span.start - SCENE.dissolve;
+              const on = time >= from && time <= span.end + SCENE.dissolve;
               if (on !== cameraOn[index] && images[index] !== null) {
                 cameraOn[index] = on;
                 images[index].style.willChange = on ? 'transform' : '';
@@ -539,9 +600,10 @@ export default function Story({ story, centralQuestion, references, sources, voy
                 chartFrame.dataset.visible = String(self.isActive);
               }
             },
-            // The first scene has no dissolve to start it: its heading is written as the stage comes up.
-            onEnter: () => headings[0]?.enter(),
-            onLeaveBack: () => headings[0]?.leave(),
+            // The first scene has no dissolve to start it: without an opening, its heading is written as the stage
+            // comes up. (With one, it is written once the opening has cleared, above.)
+            onEnter: () => overlay === null && headings[0]?.enter(),
+            onLeaveBack: () => overlay === null && headings[0]?.leave(),
           });
 
           syncWillChange(0);
@@ -549,9 +611,9 @@ export default function Story({ story, centralQuestion, references, sources, voy
 
           // ---- Coming out of the legend's night, the start of the story eases into the first scene's sky.
           ScrollTrigger.create({
-            trigger: one('[data-story="opening"]') ?? stage,
+            trigger: stage,
             start: 'top bottom',
-            end: 'bottom bottom',
+            end: 'top top',
             onUpdate: self => {
               if (pinned.progress === 0) {
                 writeSky(1 + ((steps[0]?.mix ?? 0) - 1) * self.progress);
@@ -642,10 +704,13 @@ export default function Story({ story, centralQuestion, references, sources, voy
         className="group/sky relative bg-[var(--story-sky)]"
         style={{ '--story-sky': 'var(--color-night)' } as React.CSSProperties}
       >
-        {opening !== undefined && <StoryOpening card={opening} image={story[0]?.image} grade={grades[0]} />}
+        {/* Reduced motion: the opening has its own screen at night, before chapter 1 and its image. */}
+        {opening !== undefined && !cinematic && <StoryOpening card={opening} />}
 
         {cinematic ? (
           <div data-story="stage" className="relative h-svh overflow-hidden bg-[var(--story-sky)]">
+            {/* The opening lies over the first scene, on its image. */}
+            {opening !== undefined && <StoryOpening card={opening} overlay />}
             {story.map((section, index) => (
               <StoryScene
                 key={section.id}

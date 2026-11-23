@@ -20,3 +20,7 @@ On a screen 1024px wide or more the investigation is **one fixed screen** that n
 | `slate` | #2f3a3f | Theory cards on the desktop desk: the ship's log slate |
 | `chalk` | #ece6d6 | Writing on slate (9.4:1) |
 - **No count in the desktop header.** The header no longer says how many files are open. The wax seal "Close the case" simply appears there, pressing in, once enough files are open; the desk guide says when. The first-visit hint line stays. (The phone desk keeps its progress line beside the pile.)
+
+### "The story: cinematic scenes": replace the "The opening scene" bullet
+
+- **One opening, on the first scene.** After the legend intro the story opens on chapter 1's own scene: its image, full screen, under its camera. Over it the quill writes the case title large, the years are typed under it one letter at a time, the UNSOLVED stamp lands, then the teaser and a quiet scroll cue. As the reader scrolls, they clear (on their own timer, `ink.out`, never left half faded), the title floats up and docks into the case header (which stays empty until then), and chapter 1's heading and text column begin on the same image. One image, one title. Scrolling back brings the opening back and takes the title out of the header. Under reduced motion the opening is a plain screen at night before chapter 1.

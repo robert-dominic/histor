@@ -1,32 +1,24 @@
 // @vitest-environment jsdom
 // src/features/story/__tests__/StoryOpening.test.tsx
-// The opening scene shows the case's title, years, UNSOLVED stamp and teaser from its data, over the first
-// chapter's image; the title docks into the case header once, when the reader scrolls.
+// The opening shows the case's title, years, UNSOLVED stamp and teaser from its data. It has no image of its own:
+// in the cinematic story it lies over the first chapter's scene; on its own screen (reduced motion) it is night,
+// and the title docks into the case header once, when the reader scrolls.
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import CaseHeader from '@/components/CaseHeader';
-import { DOCK_AT, dockTitle, watchForDock } from '@/features/story/dock-title';
+import { DOCK_AT, dockTitle, undockTitle, watchForDock } from '@/features/story/dock-title';
 import StoryOpening from '@/features/story/StoryOpening';
-import { imageGrade } from '@/lib/day-night';
 import { stubMatchMedia } from '@/test/match-media';
-import type { ImageAsset } from '@/types/case';
 
 /** Test data, not history. */
 const card = { title: 'Test Case', years: '1900 – 1901', unsolved: true, teaser: 'A test teaser.' };
-const image: ImageAsset = {
-  src: '/one.webp',
-  alt: 'Test alt.',
-  credit: 'Test credit.',
-  caption: 'A test caption',
-  isIllustration: true,
-};
 
 const one = (container: HTMLElement, name: string) =>
   container.querySelector(`[data-opening="${name}"]`) as HTMLElement;
 
 function renderOpening(props: Partial<Parameters<typeof StoryOpening>[0]> = {}) {
-  return render(<StoryOpening card={card} image={image} grade={imageGrade(0, 6)} {...props} />);
+  return render(<StoryOpening card={card} {...props} />);
 }
 
 beforeEach(() => stubMatchMedia());
@@ -51,15 +43,37 @@ describe('StoryOpening: content', () => {
     expect(container.querySelector('[data-opening="stamp"]')).toBeNull();
   });
 
-  test('is a full screen, with the first chapter image and its labels and credit', () => {
+  test('on its own it is a full screen at night, with no image: one image, chapter 1\'s', () => {
     const { container } = renderOpening();
     const section = container.querySelector('[data-story="opening"]') as HTMLElement;
     expect(section.className).toContain('h-svh');
-    expect(one(container, 'image').getAttribute('alt')).toBe(image.alt);
-    expect(one(container, 'illustration').textContent).toBe('Illustration');
-    expect(one(container, 'caption').textContent).toBe('A test caption');
-    // The credit is behind the small ⓘ, never printed over the image.
-    expect(screen.getByRole('button', { name: /credit/i })).toBeDefined();
+    expect(section.className).toContain('bg-night');
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByRole('button', { name: /credit/i })).toBeNull();
+  });
+
+  test('as an overlay it lies over the first scene and lets every tap through to it', () => {
+    const { container } = renderOpening({ overlay: true });
+    const section = container.querySelector('[data-story="opening"]') as HTMLElement;
+    expect(section.dataset.overlay).toBe('true');
+    expect(section.className).toContain('absolute');
+    expect(section.className).toContain('pointer-events-none');
+    expect(section.className).not.toContain('bg-night');
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  test('as an overlay it never docks its own title: the story does', () => {
+    const { container } = render(
+      <>
+        <CaseHeader title={card.title} years={card.years} unsolved startHidden />
+        <StoryOpening card={card} overlay />
+      </>
+    );
+    const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
+    const opening = container.querySelector('[data-story="opening"]') as HTMLElement;
+    opening.getBoundingClientRect = () => ({ top: -400, height: 800, left: 0, width: 0 }) as DOMRect;
+    fireEvent.scroll(window);
+    expect(gsap.getTweensOf(bar)).toHaveLength(0);
   });
 
   test('the title, years and stamp are decoration: the case header is the page heading', () => {
@@ -75,14 +89,12 @@ describe('StoryOpening: content', () => {
     expect(one(container, 'stamp').style.opacity).toBe('0');
   });
 
-  test('reduced motion: the title is not split, and there is no camera', () => {
+  test('reduced motion: the title is not split, and everything fades in', () => {
     vi.unstubAllGlobals();
     stubMatchMedia({ reducedMotion: true });
     const { container } = renderOpening();
     expect(one(container, 'title').children).toHaveLength(0);
     expect(one(container, 'title').style.opacity).toBe('0');
-    expect(one(container, 'image').style.transform).toBe('');
-    expect(one(container, 'image').style.willChange).toBe('');
     expect(one(container, 'cue').textContent).toContain('Scroll to read');
   });
 
@@ -135,11 +147,27 @@ describe('watchForDock', () => {
 });
 
 describe('StoryOpening: docking', () => {
+  test('undockTitle takes the title back out of the header: the header fades out, the big title fades in', () => {
+    const { container } = render(
+      <>
+        <CaseHeader title={card.title} years={card.years} startHidden />
+        <span id="big" style={{ opacity: 0 }}>
+          {card.title}
+        </span>
+      </>
+    );
+    const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
+    const big = container.querySelector('#big') as HTMLElement;
+    undockTitle(big);
+    expect(gsap.getTweensOf(bar)[0].vars.opacity).toBe(0);
+    expect(gsap.getTweensOf(big)[0].vars.opacity).toBe(1);
+  });
+
   test('docks the title into the header once, when the reader scrolls', () => {
     const { container } = render(
       <>
         <CaseHeader title={card.title} years={card.years} unsolved startHidden />
-        <StoryOpening card={card} image={image} grade={imageGrade(0, 6)} />
+        <StoryOpening card={card} />
       </>
     );
     const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;

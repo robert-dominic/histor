@@ -8,6 +8,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
+import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
 import { AUTO_LEAVE } from '@/features/story/PlayCard';
 import { pxPerSecond } from '@/features/story/use-story-player';
@@ -50,6 +51,10 @@ function scrollPastOpening(container: HTMLElement, { storyBottom = 5000 }: { sto
   opening.getBoundingClientRect = () => ({ top: -900, bottom: -100, height: 800 }) as DOMRect;
   const root = container.querySelector('[data-story="root"]') as HTMLElement;
   root.getBoundingClientRect = () => ({ top: -900, bottom: storyBottom, height: storyBottom + 900 }) as DOMRect;
+  // Over the first scene the story says when the opening has cleared (its timeline does, as the scroll passes it).
+  if (root.dataset.pastOpening !== undefined) {
+    root.dataset.pastOpening = 'true';
+  }
   act(() => {
     fireEvent.scroll(window);
   });
@@ -605,6 +610,81 @@ describe('Story: sized images', () => {
     expect(images[0].getAttribute('srcset')).toMatch(/ 828w, .+ \d+w$/);
     expect(images[0].getAttribute('sizes')).toBe('100vw');
     expect(images[1].getAttribute('srcset')).toBeNull();
+  });
+});
+
+describe('Story: one opening, on the first scene', () => {
+  const stageTimeline = () => ScrollTrigger.getAll().find(trigger => trigger.pin)!.animation as gsap.core.Timeline;
+  function renderWithHeader() {
+    return render(
+      <>
+        <CaseHeader title={openingCard.title} years={openingCard.years} unsolved startHidden />
+        <Story
+          story={testCase.story}
+          centralQuestion={testCase.centralQuestion}
+          references={testCase.references}
+          sources={testCase.sources}
+          opening={openingCard}
+        />
+      </>
+    );
+  }
+
+  test('the title, years, stamp and teaser lie over chapter 1\'s scene, in the stage: one image, one title', () => {
+    const { container } = renderWithHeader();
+    const stage = container.querySelector('[data-story="stage"]') as HTMLElement;
+    const opening = container.querySelector<HTMLElement>('[data-story="opening"]')!;
+    expect(stage.contains(opening)).toBe(true);
+    expect(opening.dataset.overlay).toBe('true');
+    expect(container.querySelectorAll('[data-story="opening"]')).toHaveLength(1);
+    // The only image of chapter 1 is the scene's own.
+    expect(opening.querySelector('img')).toBeNull();
+    // The header stays empty until the title docks into it.
+    expect((container.querySelector('[data-case-header="bar"]') as HTMLElement).style.opacity).toBe('0');
+  });
+
+  test('chapter 1 begins after the opening, on the same image, whose camera starts with the opening', () => {
+    const { container } = renderWithHeader();
+    const timeline = stageTimeline();
+    expect(timeline.labels['chapter-0']).toBeGreaterThan(0);
+    const first = chapterOf(container, testCase.story[0]);
+    const firstSentence = first.querySelector('[data-story="sentence"]') as HTMLElement;
+    expect(gsap.getTweensOf(firstSentence)[0].startTime()).toBeGreaterThan(timeline.labels['chapter-0']);
+    const camera = gsap.getTweensOf(first.querySelector('[data-story="image"]')!)[0];
+    expect(camera.startTime()).toBe(0);
+  });
+
+  test('scrolling on clears the opening (ink.out) and docks the title; scrolling back undocks it', () => {
+    const { container } = renderWithHeader();
+    const root = container.querySelector<HTMLElement>('[data-story="root"]')!;
+    const timeline = stageTimeline();
+    const years = container.querySelector<HTMLElement>('[data-opening="years"]')!;
+    const bar = container.querySelector<HTMLElement>('[data-case-header="bar"]')!;
+    expect(root.dataset.pastOpening).toBe('false');
+    act(() => {
+      timeline.time(timeline.labels['chapter-0'] - 0.1, false);
+    });
+    expect(root.dataset.pastOpening).toBe('true');
+    const leaving = gsap.getTweensOf(years).find(tween => tween.vars.opacity === 0)!;
+    expect(leaving.vars).toMatchObject({ ease: 'power2.in', duration: 0.45 });
+    // jsdom has no layout, so the title does not fly: the header fades in.
+    expect(gsap.getTweensOf(bar).some(tween => tween.vars.opacity === 1)).toBe(true);
+    act(() => {
+      timeline.time(0, false);
+    });
+    expect(root.dataset.pastOpening).toBe('false');
+    expect(gsap.getTweensOf(bar).some(tween => tween.vars.opacity === 0)).toBe(true);
+    expect(gsap.getTweensOf(years).some(tween => tween.vars.opacity === 1)).toBe(true);
+  });
+
+  test('reduced motion: the opening has its own screen at night, with no image, before chapter 1', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    vi.stubGlobal('scrollTo', vi.fn());
+    const { container } = renderWithHeader();
+    const opening = container.querySelector<HTMLElement>('[data-story="opening"]')!;
+    expect(opening.dataset.overlay).toBe('false');
+    expect(opening.querySelector('img')).toBeNull();
   });
 });
 

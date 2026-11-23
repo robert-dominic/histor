@@ -1,22 +1,21 @@
 // src/features/story/StoryOpening.tsx
-// The opening of the story: a full screen of the first chapter's image under a slow camera push. The quill writes
-// the case title, the years are typed under it, the UNSOLVED stamp lands, then the teaser and a quiet scroll cue.
-// When the reader scrolls, the title docks into the case header (dock-title.ts).
-// Under reduced motion: no camera, no quill; everything fades in, and the title docks without flying.
+// The opening of the story: the quill writes the case title, the years are typed under it, the UNSOLVED stamp lands,
+// then the teaser and a quiet scroll cue. It has no picture of its own: there is one image and one title.
+//   The cinematic story (`overlay`): the opening lies over the first chapter's scene, on that chapter's own image and
+//   camera, in the pinned stage. Story.tsx clears it as the reader scrolls: the title floats up and docks into the
+//   case header (dock-title.ts), and the first chapter's text column begins on the same image.
+//   Reduced motion: a plain screen at night before the first chapter, everything fading in; the title docks
+//   without flying once the reader scrolls a little.
 // Everything shown comes from props. Nothing about any one case is written in this file.
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
-import CreditInfo from '@/components/CreditInfo';
 import Quill from '@/components/Quill';
 import { dockTitle, watchForDock } from '@/features/story/dock-title';
-import type { ImageGrade } from '@/lib/day-night';
-import { imageSources } from '@/lib/image-sources';
 import { INK_RISE, MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
-import type { ImageAsset } from '@/types/case';
 
 gsap.registerPlugin(useGSAP, SplitText);
 
@@ -40,44 +39,36 @@ const TIMING = {
   pauseBeforeStamp: 0.45,
   pauseBeforeTeaser: 0.35,
   pauseBeforeCue: 0.9,
-  /** The camera's slow push in. */
-  push: STEP.scene * 8,
-  pushTo: 1.06,
 } as const;
 
 /** Reduced motion: everything fades in, one after another. Seconds. */
 const REDUCED = { start: 0.2, gap: 0.35 } as const;
 
-const LABEL_CLASSES =
-  'bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase lg:text-[0.6875rem]';
-
 interface StoryOpeningProps {
   card: OpeningCard;
-  /** The first chapter's image: the scene's picture. */
-  image?: ImageAsset;
-  /** The first chapter's grade, so the opening and chapter 1 match. */
-  grade: ImageGrade;
+  /** True in the cinematic story: it lies over the first scene, and the story clears it and docks its title. */
+  overlay?: boolean;
 }
 
-export default function StoryOpening({ card, image, grade }: StoryOpeningProps) {
+export default function StoryOpening({ card, overlay = false }: StoryOpeningProps) {
   const rootRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const dockedRef = useRef(false);
   const reducedMotion = useReducedMotion();
-  const sources = image === undefined ? null : imageSources(image.src);
 
-  // The title docks into the case header once, when the reader has scrolled a little way past the opening.
+  // On its own screen, the title docks into the case header once, when the reader has scrolled a little way past
+  // the opening. Over the first scene, the story docks it.
   useEffect(() => {
     const root = rootRef.current;
     const title = titleRef.current;
-    if (root === null || title === null || dockedRef.current) {
+    if (overlay || root === null || title === null || dockedRef.current) {
       return;
     }
     return watchForDock(root, () => {
       dockedRef.current = true;
       dockTitle(title, { reduced: reducedMotion });
     });
-  }, [reducedMotion]);
+  }, [reducedMotion, overlay]);
 
   useGSAP(
     () => {
@@ -94,7 +85,6 @@ export default function StoryOpening({ card, image, grade }: StoryOpeningProps) 
         const stamp = select('stamp');
         const teaser = select('teaser');
         const cue = select('cue');
-        const picture = select('image');
         const timeline = gsap.timeline({ defaults: { ease: MOTION['ink.in'].ease } });
         const splits: SplitText[] = [];
 
@@ -112,21 +102,6 @@ export default function StoryOpening({ card, image, grade }: StoryOpeningProps) 
           });
           return () => undefined;
         }
-
-        // The camera: a slow push in, on the image alone. will-change only while it moves.
-        gsap.set(picture, { willChange: 'transform' });
-        gsap.fromTo(
-          picture,
-          { scale: 1 },
-          {
-            scale: TIMING.pushTo,
-            ease: MOTION.scene.ease,
-            duration: TIMING.push,
-            onComplete: () => {
-              gsap.set(picture, { clearProps: 'willChange' });
-            },
-          }
-        );
 
         // The title, written by the quill.
         const quill = createQuillWriter(select('quill')[0], select('quill-body')[0]);
@@ -171,49 +146,21 @@ export default function StoryOpening({ card, image, grade }: StoryOpeningProps) 
     <section
       ref={rootRef}
       data-story="opening"
+      data-overlay={overlay}
       aria-label={card.title}
-      className="relative isolate flex h-svh flex-col items-center justify-center overflow-hidden bg-night px-5 text-center"
+      // Over the first scene it lets every tap through to the scene (its credit, its portals).
+      className={
+        overlay
+          ? 'pointer-events-none absolute inset-0 z-[5] flex flex-col items-center justify-center px-5 text-center'
+          : 'relative isolate flex h-svh flex-col items-center justify-center overflow-hidden bg-night px-5 text-center'
+      }
     >
-      {image !== undefined && (
-        <figure data-opening="figure" className="absolute inset-0 -z-10 overflow-hidden bg-night">
-          <img
-            data-opening="image"
-            src={image.src}
-            srcSet={sources?.srcSet}
-            sizes={sources?.srcSet === undefined ? undefined : sources.sizes}
-            alt={image.alt}
-            decoding="async"
-            draggable={false}
-            className="h-full w-full origin-center object-cover"
-            style={{ filter: grade.filter }}
-          />
-          <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />
-        </figure>
-      )}
-      {/* Readability: dark over the bottom, where the teaser is, and a little over the top, under the labels. */}
-      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 -z-10 h-[55%] bg-linear-to-t from-night/95 via-night/75 to-transparent" />
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 -z-10 h-[20%] bg-linear-to-b from-night/60 to-transparent" />
-
-      {image !== undefined && (image.isIllustration || image.caption !== undefined) && (
-        <p className="absolute top-[calc(var(--case-header)+0.625rem)] left-2.5 z-10 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5 lg:left-3.5">
-          {image.isIllustration && (
-            <span data-opening="illustration" className={LABEL_CLASSES}>
-              Illustration
-            </span>
-          )}
-          {image.caption !== undefined && (
-            <span data-opening="caption" className={LABEL_CLASSES}>
-              {image.caption}
-            </span>
-          )}
-        </p>
-      )}
-      {image !== undefined && (
-        <CreditInfo
-          credit={image.credit}
-          attribute="data-opening"
-          placement="below"
-          className="top-[var(--case-header)] right-0 lg:right-1"
+      {/* Readability over the first scene's image: dark over the bottom, where the teaser is. It leaves with it. */}
+      {overlay && (
+        <div
+          aria-hidden="true"
+          data-opening="shade"
+          className="absolute inset-x-0 bottom-0 -z-10 h-[55%] bg-linear-to-t from-night/90 via-night/60 to-transparent"
         />
       )}
 

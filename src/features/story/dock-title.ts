@@ -1,7 +1,8 @@
 // src/features/story/dock-title.ts
-// The case title docks into the case header once the reader has scrolled the opening scene a little way out of
-// view. The big title flies up to where the header's title sits, and the header fades in over it. Under reduced
-// motion the title does not fly: the header just fades in. Docking happens once per page.
+// The case title docks into the case header as the reader scrolls on from the opening: the big title flies up to
+// where the header's title sits, and the header fades in over it. Under reduced motion the title does not fly: the
+// header just fades in. The header stays empty until then. In the cinematic story, scrolling back to the opening
+// takes the title out of the header again (`undockTitle`).
 import gsap from 'gsap';
 import { tween } from '@/lib/motion';
 
@@ -68,6 +69,7 @@ export function dockTitle(title: HTMLElement, { reduced }: { reduced: boolean })
     color: style.color,
   });
   document.body.appendChild(copy);
+  gsap.killTweensOf(title);
   gsap.set(title, { opacity: 0 });
   gsap.to(copy, {
     x: to.left - from.left,
@@ -79,4 +81,16 @@ export function dockTitle(title: HTMLElement, { reduced }: { reduced: boolean })
       gsap.to(copy, { opacity: 0, ...tween('hover'), onComplete: () => copy.remove() });
     },
   });
+}
+
+/**
+ * Takes the title back out of the case header, for a reader who scrolls back to the opening: the header fades out
+ * and the big title fades in where it was. Nothing flies back; a later `dockTitle` docks it again.
+ */
+export function undockTitle(title: HTMLElement): void {
+  const bar = document.querySelector<HTMLElement>('[data-case-header="bar"]');
+  if (bar !== null) {
+    gsap.to(bar, { opacity: 0, ...tween('hover'), overwrite: true });
+  }
+  gsap.to(title, { opacity: 1, ...tween('hover'), overwrite: true });
 }
