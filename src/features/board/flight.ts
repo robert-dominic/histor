@@ -80,6 +80,19 @@ export function settleOpenFolder(folder: HTMLElement | null): void {
     gsap.set(folder, { clearProps: 'transform,transformOrigin' });
   }
 }
+/** Who wants to know when a move on the desk has finished (the threads, which measure again). */
+const layoutListeners = new Set<() => void>();
+/** Listens for the end of every Flip on the desk. Returns a function that stops listening. */
+export function onDeskLayout(listener: () => void): () => void {
+  layoutListeners.add(listener);
+  return () => {
+    layoutListeners.delete(listener);
+  };
+}
+/** Says that a move on the desk (a Flip) has finished: everything is in its place again. */
+export function deskLayoutSettled(): void {
+  layoutListeners.forEach(listener => listener());
+}
 /** Forgets the recorded flight, once it has been flown. */
 export function clearFlight(): void {
   pending = null;

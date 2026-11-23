@@ -9,7 +9,7 @@ import HangingTab, { type SlipReading } from '@/features/board/HangingTab';
 import TheoryCard from '@/features/board/TheoryCard';
 import TheoryNote from '@/features/board/TheoryNote';
 import TheoryPile from '@/features/board/TheoryPile';
-import Threads from '@/features/board/Threads';
+import Threads, { type Thread } from '@/features/board/Threads';
 import type { DeskLayout } from '@/lib/desk';
 import { SMALL_PHONE_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import type { Case } from '@/types/case';
@@ -45,9 +45,18 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
   const setShown = (update: (current: string | null) => string | null) => setChosen(update(shown));
   const claimId = useId();
   const numberOf = new Map(layout.folders.map(folder => [folder.evidence.id, folder.number]));
-  const threads = caseData.theories.flatMap(theory =>
-    (layout.byTheory.get(theory.id) ?? []).map(evidence => ({ evidenceId: evidence.id, theoryId: theory.id }))
-  );
+  // The desktop desk: one thread per theory with files, to the top of its pile. The phone desk: one per file.
+  const threads: Thread[] = fitted
+    ? caseData.theories
+        .filter(theory => (layout.byTheory.get(theory.id) ?? []).length > 0)
+        .map(theory => ({
+          id: theory.id,
+          theoryId: theory.id,
+          evidenceIds: (layout.byTheory.get(theory.id) ?? []).map(evidence => evidence.id),
+        }))
+    : caseData.theories.flatMap(theory =>
+        (layout.byTheory.get(theory.id) ?? []).map(evidence => ({ id: evidence.id, theoryId: theory.id, evidenceIds: [evidence.id] }))
+      );
 
   const tabsOf = (theoryId: string) => {
     const files = layout.byTheory.get(theoryId) ?? [];
@@ -124,7 +133,7 @@ export default function TheoryBoard({ caseData, layout, filesHref, slips, fitted
         Theories
       </h3>
       {/* The threads run behind the paper, so they show in the gaps between a note and its files. */}
-      <Threads threads={threads} fresh={slips.fresh} />
+      <Threads threads={threads} perTheory={fitted} fresh={slips.fresh} />
       <div className="relative flex snap-x gap-5 overflow-x-auto pb-2 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0">
         {caseData.theories.map(theory => (
           <div key={theory.id} data-board="column" className="w-[15rem] shrink-0 snap-start lg:w-auto">

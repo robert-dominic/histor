@@ -13,7 +13,7 @@ import gsap from 'gsap';
 import Folder from '@/features/board/Folder';
 import type { DropOutcome } from '@/features/board/drag';
 import { createDeskDrag } from '@/features/board/use-desk-drag';
-import { Flip, pendingFlight } from '@/features/board/flight';
+import { Flip, deskLayoutSettled, pendingFlight } from '@/features/board/flight';
 import { droppedSpot, floorLayout, placeOnFloor, type DroppedSpot, type FloorPlace, type FolderBox } from '@/lib/floor';
 import type { DeskLayout } from '@/lib/desk';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
@@ -147,7 +147,7 @@ export default function Floor({ layout, filesHref, theories, dropped, onRearrang
         }
       }
       if (flip !== null) {
-        Flip.from(flip, { ...tween('layout'), scale: true, nested: false });
+        Flip.from(flip, { ...tween('layout'), scale: true, nested: false, onComplete: deskLayoutSettled });
       }
       // A folder that has just come back to the floor fades in; the first placement of all fades in together.
       // A folder arriving from a tab flies in with Flip (Desk.tsx): it must not fade as well.

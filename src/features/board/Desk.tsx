@@ -24,7 +24,7 @@ import WaxSeal from '@/features/board/WaxSeal';
 import TheoryBoard, { type DeskSlips } from '@/features/board/TheoryBoard';
 import { carryOut } from '@/features/board/pile';
 import type { SlipReading } from '@/features/board/HangingTab';
-import { Flip, clearFlight, flightFor, pendingFlight, recordFlight, recordTabs, takeTabs } from '@/features/board/flight';
+import { Flip, clearFlight, deskLayoutSettled, flightFor, pendingFlight, recordFlight, recordTabs, takeTabs } from '@/features/board/flight';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
@@ -205,7 +205,7 @@ function DeskScreen() {
         const button = pile.querySelector<HTMLElement>('[data-board="pile-button"]');
         button?.focus({ preventScroll: true });
         if (flight.state !== null && button !== null) {
-          gsap.fromTo(button, { scale: 1.05 }, { scale: 1, ...tween('paper.land'), clearProps: 'scale' });
+          gsap.fromTo(button, { scale: 1.05 }, { scale: 1, ...tween('paper.land'), clearProps: 'scale', onComplete: deskLayoutSettled });
         }
         return;
       }
@@ -219,7 +219,7 @@ function DeskScreen() {
           zIndex: 30,
           onComplete: () => {
             const scale = Number(gsap.getProperty(home, 'scale')) || 1;
-            gsap.fromTo(home, { scale: scale * 1.05 }, { scale, ...tween('paper.land') });
+            gsap.fromTo(home, { scale: scale * 1.05 }, { scale, ...tween('paper.land'), onComplete: deskLayoutSettled });
           },
         });
       }
@@ -234,7 +234,7 @@ function DeskScreen() {
     if (before === null || root === null || pendingFlight('out') !== null) {
       return;
     }
-    Flip.from(before, { targets: root.querySelectorAll('[data-board="tab"]'), ...tween('layout') });
+    Flip.from(before, { targets: root.querySelectorAll('[data-board="tab"]'), ...tween('layout'), onComplete: deskLayoutSettled });
   }, [openSlip]);
   // A file pinned straight from the desk (dragged onto a note while already opened) has no open file to fly home
   // from: its folder was recorded as it was let go, and flies to its tab (or the tray) as soon as it is there.
@@ -258,6 +258,7 @@ function DeskScreen() {
       Flip.from(others, {
         targets: [...root.querySelectorAll<HTMLElement>('[data-board="tab"]')].filter(tab => tab !== home),
         ...tween('layout'),
+        onComplete: deskLayoutSettled,
       });
     }
     if (flight.state !== null) {
@@ -267,7 +268,7 @@ function DeskScreen() {
         ...tween('paper.move'),
         zIndex: 30,
         onComplete: () => {
-          gsap.fromTo(home, { y: -4 }, { y: 0, ...tween('paper.land') });
+          gsap.fromTo(home, { y: -4 }, { y: 0, ...tween('paper.land'), onComplete: deskLayoutSettled });
         },
       });
     }

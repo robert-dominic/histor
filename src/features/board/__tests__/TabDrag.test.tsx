@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { Draggable } from '@/features/board/drag';
-import { Flip, clearFlight, takeTabs } from '@/features/board/flight';
+import { Flip, clearFlight, deskLayoutSettled, takeTabs } from '@/features/board/flight';
+import { THREAD_SAG } from '@/features/board/Threads';
 import { forgetShownThisLoad } from '@/features/board/hints';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
@@ -47,7 +48,8 @@ function renderDesk() {
 const saved = () => JSON.parse(localStorage.getItem(KEY) ?? 'null');
 const tab = (id: string) => document.querySelector<HTMLElement>(`[data-board="tab"][data-evidence-id="${id}"]`)!;
 const noteOf = (theoryId: string) => document.querySelector<HTMLElement>(`[data-board="theory"][data-drop-target="${theoryId}"]`)!;
-const threadOf = (id: string) => document.querySelector<SVGPathElement>(`[data-board="threads"] path[data-evidence-id="${id}"]`);
+/** A theory's thread on the desktop desk. */
+const threadOf = (theoryId: string) => document.querySelector<SVGPathElement>(`[data-board="threads"] path[data-thread-id="${theoryId}"]`);
 
 /** Drags `element` over `where` (a drop target element, or null for nothing) and lets go. */
 function drop(element: HTMLElement, where: Element | null) {
@@ -121,7 +123,7 @@ describe('dragging tabs', () => {
     drop(tab('e-lifeboat'), document.querySelector('[data-board="aside"]'));
     expect(saved().pins).toEqual({ 'e-lifeboat': 'none' });
     expect(document.querySelector('[data-board="aside"] [data-evidence-id="e-lifeboat"]')).not.toBeNull();
-    expect(threadOf('e-lifeboat')).toBeNull();
+    expect(document.querySelectorAll('[data-board="threads"] path[data-thread-id]')).toHaveLength(0);
   });
 
   test('a tab dropped on the floor is unpinned: still opened, lying where it was dropped', () => {
@@ -162,34 +164,29 @@ describe('dragging tabs', () => {
 });
 
 describe('threads and the other tabs when a pin changes', () => {
-  test('the thread that moves fades out where it was, and the others are not touched', () => {
+  test('one thread per theory: a file moving to another note leaves its old thread alone and draws the new one in', () => {
     seed({ 'e-lifeboat': A, 'e-sword': A });
     renderDesk();
+    expect(document.querySelectorAll('[data-board="threads"] path')).toHaveLength(1);
+    expect(threadOf(A)).not.toBeNull();
     drop(tab('e-lifeboat'), noteOf(B));
-    const moving = gsap.getTweensOf(threadOf('e-lifeboat'));
-    expect(moving.length).toBeGreaterThan(0);
-    expect(moving[0].vars.opacity).toBe(0);
-    expect(moving[0].vars.ease).toBe('power2.in');
-    expect(gsap.getTweensOf(threadOf('e-sword'))).toHaveLength(0);
-    // Once faded it is drawn again at its new note, and the stroke draws in.
-    act(() => {
-      moving[0].progress(1);
-    });
-    expect(threadOf('e-lifeboat')?.dataset.theoryId).toBe(B);
-    const drawing = gsap.getTweensOf(threadOf('e-lifeboat')).find(tween => tween.vars.attr !== undefined);
+    // A still has e-sword: its thread is not touched. B has its own thread now, and it draws in from the note.
+    expect(gsap.getTweensOf(threadOf(A))).toHaveLength(0);
+    expect(threadOf(B)).not.toBeNull();
+    const drawing = gsap.getTweensOf(threadOf(B)).find(tween => tween.vars.attr !== undefined);
     expect(drawing).toBeDefined();
     expect(drawing!.vars.ease).toBe('power2.inOut');
   });
 
-  test('a thread that goes away fades out where it hung, then is removed', () => {
+  test('a theory whose last file is set aside loses its thread: it fades out where it hung, and the tray has none', () => {
     seed({ 'e-lifeboat': A });
     renderDesk();
     expect(document.querySelectorAll('[data-board="threads"] path')).toHaveLength(1);
-    const before = threadOf('e-lifeboat')!.getAttribute('d') ?? 'M 0 0';
-    threadOf('e-lifeboat')!.setAttribute('d', before);
+    const before = threadOf(A)!.getAttribute('d') ?? 'M 0 0';
+    threadOf(A)!.setAttribute('d', before);
     drop(tab('e-lifeboat'), document.querySelector('[data-board="aside"]'));
     // The real thread is gone at once; its copy fades out.
-    const ghosts = [...document.querySelectorAll<SVGPathElement>('[data-board="threads"] path:not([data-evidence-id])')];
+    const ghosts = [...document.querySelectorAll<SVGPathElement>('[data-board="threads"] path:not([data-thread-id])')];
     expect(ghosts).toHaveLength(1);
     const fade = gsap.getTweensOf(ghosts[0])[0];
     expect(fade.vars.opacity).toBe(0);
@@ -197,6 +194,22 @@ describe('threads and the other tabs when a pin changes', () => {
       fade.progress(1);
     });
     expect(document.querySelectorAll('[data-board="threads"] path')).toHaveLength(0);
+  });
+
+  test("a thread runs from the note's pin to the pin on its pile's top file, with the one gentle sag", () => {
+    seed({ 'e-lifeboat': A, 'e-sword': A });
+    const boxAt = (x: number, y: number) => ({ left: x, top: y, width: 0, height: 0, right: x, bottom: y, x, y, toJSON: () => ({}) }) as DOMRect;
+    renderDesk();
+    const anchor = document.querySelector(`[data-board="theory"][data-theory-id="${A}"] [data-board="anchor"]`)!;
+    const end = document.querySelector(`[data-board="pile"][data-theory-id="${A}"] [data-board="pile-top"] [data-board="tab-pin"]`)!;
+    vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue(boxAt(100, 40));
+    vi.spyOn(end, 'getBoundingClientRect').mockReturnValue(boxAt(120, 140));
+    // Measured again once a move on the desk has finished.
+    act(() => deskLayoutSettled());
+    expect(threadOf(A)!.getAttribute('d')).toBe(`M 100 40 Q 110 ${90 + THREAD_SAG} 120 140`);
+    vi.spyOn(end, 'getBoundingClientRect').mockReturnValue(boxAt(300, 160));
+    act(() => deskLayoutSettled());
+    expect(threadOf(A)!.getAttribute('d')).toBe(`M 100 40 Q 200 ${100 + THREAD_SAG} 300 160`);
   });
 
   test('the other tabs move to their new places with Flip, using the layout token', () => {
