@@ -212,3 +212,41 @@ describe('validateCase: deskGuideIntro', () => {
     expect(validateCase(createCase({ deskGuideIntro: intro }))).toContain('Field deskGuideIntro: Must be a non-empty string when present');
   });
 });
+
+describe('validateCase: weighted words (StorySection.emphasis, data-foundation 3.16)', () => {
+  const withEmphasis = (emphasis: unknown, section: Partial<Case['story'][number]> = {}) =>
+    createCase({
+      story: [{ id: 's-one', heading: 'Heading one', body: ['Paragraph one, with {{ref:r-one|the captain}} in it.'], hook: 'A test hook.', ...section, emphasis } as Case['story'][number]],
+      references: [{ id: 'r-one', kind: 'person', label: 'Test person', profile: ['Test profile'] }],
+    });
+
+  test('may be left out', () => {
+    expect(validateCase(withEmphasis(undefined))).toEqual([]);
+  });
+
+  test('phrases from the body or the hook are valid, with markup read as its label', () => {
+    expect(validateCase(withEmphasis(['Paragraph one', 'the captain in it', 'test hook.']))).toEqual([]);
+  });
+
+  test('a phrase that is not word for word in the text is an error; the markup itself does not count', () => {
+    expect(validateCase(withEmphasis(['paragraph one']))).toContain(
+      "Field story[0].emphasis[0]: 'paragraph one' must appear word for word in the section's body or hook"
+    );
+    expect(validateCase(withEmphasis(['{{ref:r-one|the captain}}']))).toContain(
+      "Field story[0].emphasis[0]: '{{ref:r-one|the captain}}' must appear word for word in the section's body or hook"
+    );
+  });
+
+  test("a phrase from another section's text does not count", () => {
+    const caseData = createCase();
+    caseData.story[0].emphasis = ['Paragraph two'];
+    expect(validateCase(caseData)).toContain(
+      "Field story[0].emphasis[0]: 'Paragraph two' must appear word for word in the section's body or hook"
+    );
+  });
+
+  test('an empty phrase, or something that is not a list, is an error', () => {
+    expect(validateCase(withEmphasis(['  ']))).toContain('Field story[0].emphasis[0]: Must be a non-empty string');
+    expect(validateCase(withEmphasis('Paragraph one'))).toContain('Field story[0].emphasis: Must be an array');
+  });
+});

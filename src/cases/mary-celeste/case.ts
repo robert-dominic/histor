@@ -45,6 +45,7 @@ export const maryCeleste: Case = {
   story: [
     {
       id: 's-voyage',
+      emphasis: ['ten people', 'two-year-old daughter'],
       image: {
         src: voyageImage,
         alt: 'Painting of a tall sailing ship under full sail on choppy green water, with smaller boats around it and a red stone fort on the shore.',
@@ -75,6 +76,7 @@ export const maryCeleste: Case = {
     },
     {
       id: 's-last-entry',
+      emphasis: ['last entry', 'six miles'],
       image: {
         src: lastEntryImage,
         alt: 'Painting of a small ship with a slanted sail riding a large wave beside a rocky shore, under a hazy orange sun.',
@@ -92,6 +94,7 @@ export const maryCeleste: Case = {
     },
     {
       id: 's-found',
+      emphasis: ['Nine days later', 'alone for nine days'],
       image: {
         src: foundImage,
         alt: 'Painting of a two-masted sailing ship with pale sails and a red flag on calm blue water, seen from the side.',
@@ -110,6 +113,7 @@ export const maryCeleste: Case = {
     },
     {
       id: 's-aboard',
+      emphasis: ['No one was there.', 'Not little Sophia.', 'three and a half feet deep'],
       image: {
         src: aboardImage,
         alt: "A wet, empty wooden ship's deck under a grey sky, with coiled ropes, an open hatch and a mast.",
@@ -129,6 +133,7 @@ export const maryCeleste: Case = {
     },
     {
       id: 's-inquiry',
+      emphasis: ['not blood', 'Not one body was ever found.'],
       image: {
         src: inquiryImage,
         alt: 'Engraving of the Rock of Gibraltar seen across a bay, with a town at its foot, small sailing boats on the water and three people sitting on the shore.',
@@ -147,6 +152,7 @@ export const maryCeleste: Case = {
     },
     {
       id: 's-question',
+      emphasis: ['why they went'],
       image: {
         src: questionImage,
         alt: 'Painting of a dark, cloudy night at sea, with moonlight on the waves, a small boat pulled up on the beach and two ships far off on the horizon.',

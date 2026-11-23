@@ -134,6 +134,12 @@ export interface StorySection {
    * names the first of them, and go out one by one at the chapter's hook.
    */
   rollCall?: RollCallEntry[];
+  /**
+   * The weighted words of the chapter: phrases that arrive on their own in the story, after a beat of stillness,
+   * with a thin rust line growing under them. Each must appear word for word in the chapter's text (a body
+   * paragraph or the hook, with {{ref:…}} markup read as its label), e.g. "two-year-old daughter".
+   */
+  emphasis?: string[];
 }
 
 export interface RollCallEntry {

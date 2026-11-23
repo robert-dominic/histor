@@ -321,6 +321,35 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional weighted words (3.16): when present, an array of non-empty phrases, each found word for
+  // word in the section's own text (a body paragraph or the hook, with {{ref:…}} markup read as its label)
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const emphasis: unknown = section?.emphasis;
+      if (emphasis === undefined || emphasis === null) {
+        return;
+      }
+      if (!Array.isArray(emphasis)) {
+        errors.push(`Field story[${i}].emphasis: Must be an array`);
+        return;
+      }
+      const plain = (text: unknown) =>
+        typeof text === 'string'
+          ? parseRefs(text)
+              .map(segment => (segment.kind === 'text' ? segment.text : segment.label))
+              .join('')
+          : '';
+      const texts = [...(Array.isArray(section.body) ? section.body : []), section.hook].map(plain);
+      emphasis.forEach((phrase: unknown, j) => {
+        if (typeof phrase !== 'string' || phrase.trim() === '') {
+          errors.push(`Field story[${i}].emphasis[${j}]: Must be a non-empty string`);
+        } else if (!texts.some(text => text.includes(phrase))) {
+          errors.push(`Field story[${i}].emphasis[${j}]: '${phrase}' must appear word for word in the section's body or hook`);
+        }
+      });
+    });
+  }
+
   // Validate the optional voyage (3.15): unique non-empty ids, non-empty labels, latitudes from -90 to 90,
   // longitudes from -180 to 180, a chapter that is in the story, and a known kind
   const voyage: { points?: unknown } | undefined | null = caseData.voyage;
