@@ -12,6 +12,7 @@ import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import Quill from '@/components/Quill';
 import CardSignature from '@/features/verdict/CardSignature';
+import ShareMenu from '@/features/verdict/ShareMenu';
 import { caseRank, leadingTheories, legendsTrustedCount, verdictComparison } from '@/lib/case-rank';
 import type { CaseReport } from '@/lib/case-report';
 import { MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
@@ -26,7 +27,7 @@ import {
   saveShareCard,
   shareCardLines,
   shareCardText,
-  shareLinks,
+  canShareAFile,
   shareShareCard,
   shareUrl,
   type ShareCardInput,
@@ -47,12 +48,6 @@ const REVEAL_PACE = {
   beat: STEP.base,
 } as const;
 
-const LINK_CLASSES =
-  'inline-flex min-h-10 items-center rounded-sm px-3 font-voice text-[0.8125rem] tracking-[0.08em] text-night-ink/85 underline decoration-night-ink/30 underline-offset-4 transition-[color,text-decoration-color] duration-150 ease-out hover:text-night-ink hover:decoration-night-ink/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass';
-
-const BUTTON_CLASSES =
-  'inline-flex min-h-11 items-center rounded-sm border border-night-ink/40 px-5 font-voice text-sm tracking-[0.12em] text-night-ink uppercase transition-[scale,background-color,color] duration-150 ease-out hover:bg-night-ink/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97]';
-
 interface VerdictRevealProps {
   report: CaseReport;
   /** The case, for the card. */
@@ -69,6 +64,8 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
   const rootRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [shareNote, setShareNote] = useState('');
+  /** "More…" (the native share sheet, with the card) is offered only where the browser can share a file. */
+  const [canShareFiles] = useState(canShareAFile);
   // The player's signature: what is in the field, and what the card is signed with once they pause.
   const [typed, setTyped] = useState(loadPlayerName);
   const [signature, setSignature] = useState(() => loadPlayerName());
@@ -270,31 +267,18 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
           />
           <CardSignature name={typed} onSigned={sign} />
         </div>
-        <div className="flex w-full max-w-xl flex-wrap justify-center gap-3 lg:justify-start">
-          <button type="button" onClick={() => void save()} className={BUTTON_CLASSES}>
-            Save the card
-          </button>
-          <button type="button" onClick={() => void share()} className={BUTTON_CLASSES}>
-            Share
-          </button>
+        {/* One Share button (review-fixes brief, 10): its menu holds every way to share, and saving the image. */}
+        <div data-reveal="links" className="flex w-full max-w-xl justify-center lg:justify-start">
+          <ShareMenu
+            text={text}
+            url={url}
+            onCopy={() => void copyLink()}
+            onSave={() => void save()}
+            onMore={canShareFiles ? () => void share() : undefined}
+          />
         </div>
-        {/* Direct links: each site's own share page, in a new tab, with the words and the link filled in. */}
-        <ul aria-label="Share on" data-reveal="links" className="flex w-full max-w-xl flex-wrap justify-center gap-x-1 gap-y-1 lg:justify-start">
-          {shareLinks(text, url).map(link => (
-            <li key={link.id}>
-              <a href={link.href} target="_blank" rel="noopener noreferrer" data-share={link.id} className={LINK_CLASSES}>
-                {link.label}
-              </a>
-            </li>
-          ))}
-          <li>
-            <button type="button" onClick={() => void copyLink()} data-share="copy" className={LINK_CLASSES}>
-              Copy link
-            </button>
-          </li>
-        </ul>
         <p data-reveal="attach-note" className="max-w-xl font-voice text-[0.8125rem] leading-snug text-ghost-night">
-          Share links can’t carry images: save the card first, then attach it.
+          Share links can’t carry images: save the image first, then attach it.
         </p>
         <p aria-live="polite" data-reveal="share-note" className="min-h-5 font-voice text-[0.8125rem] text-ghost-night">
           {shareNote}

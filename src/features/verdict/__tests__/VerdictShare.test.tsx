@@ -2,7 +2,7 @@
 // src/features/verdict/__tests__/VerdictShare.test.tsx
 // The result screen (polish brief, A4): two columns on a laptop, the player's name signed onto the card by the pen,
 // and the share links.
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
@@ -77,7 +77,7 @@ describe('the result screen', () => {
     expect(left.querySelector('[data-reveal="compare"]')).not.toBeNull();
     expect(left.querySelector('[data-reveal="rank"]')).not.toBeNull();
     expect(right.querySelector('canvas')).not.toBeNull();
-    expect(right.textContent).toContain('Save the card');
+    expect(right.querySelector('[data-share="open"]')?.textContent).toContain('Share');
     // The report follows, across the width.
     const report = document.querySelector<HTMLElement>('article')!;
     expect(reveal().compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -180,18 +180,51 @@ describe('sharing', () => {
     }
   });
 
-  test('on the page: each link opens in a new tab; "Copy link" copies the link; a line says why the image is saved', async () => {
+  test('one Share button (review-fixes 10): its menu lists the six sites, "Copy link" and "Save the image"; Esc or a press outside closes it', () => {
+    vi.stubGlobal('navigator', { ...navigator, canShare: undefined, share: undefined });
+    renderReport();
+    expect(reveal().querySelectorAll('[data-reveal="links"] > ul, [data-reveal="links"] li')).toHaveLength(0);
+    expect(screen.queryByRole('menu')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    const menu = screen.getByRole('menu', { name: 'Share' });
+    expect(within(menu).getAllByRole('menuitem').map(item => item.textContent)).toEqual([
+      'X',
+      'Facebook',
+      'LinkedIn',
+      'WhatsApp',
+      'Reddit',
+      'Telegram',
+      'Copy link',
+      'Save the image',
+    ]);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.pointerDown(document.body);
+    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('"More…" (the native share sheet) only where the browser can share a file', () => {
+    vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share: vi.fn() });
+    renderReport();
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    expect(screen.getByRole('menuitem', { name: 'More…' })).toBeDefined();
+  });
+
+  test('in the menu: each site opens in a new tab; "Copy link" copies the link; a line says why the image is saved', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
     renderReport();
-    const anchors = [...reveal().querySelectorAll<HTMLAnchorElement>('[data-reveal="links"] a')];
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    const anchors = [...document.querySelectorAll<HTMLAnchorElement>('[data-share="menu"] a')];
     expect(anchors).toHaveLength(6);
     for (const anchor of anchors) {
       expect(anchor.target).toBe('_blank');
       expect(anchor.rel).toContain('noopener');
     }
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
     });
     expect(writeText).toHaveBeenCalledWith(shareUrl(CASE.id));
     expect(screen.getByText('Link copied.')).toBeDefined();
@@ -214,8 +247,9 @@ describe('sharing', () => {
     const share = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share });
     renderReport();
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'More…' }));
     });
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
     const data = (share.mock.calls[0] as unknown as [ShareData])[0];

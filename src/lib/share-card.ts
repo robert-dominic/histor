@@ -255,6 +255,18 @@ export async function shareShareCard(canvas: HTMLCanvasElement, name: string, te
   return copyText(`${text} ${url}`);
 }
 
+/** True where the browser's share sheet can take an image file (the Share menu's "More…"). */
+export function canShareAFile(): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function' || typeof File !== 'function') {
+    return false;
+  }
+  try {
+    return navigator.canShare({ files: [new File([''], 'card.png', { type: 'image/png' })] });
+  } catch {
+    return false;
+  }
+}
+
 /** Copies `text` to the clipboard ("Copy link", and Share where nothing else can). */
 export async function copyText(text: string): Promise<'copied' | 'none'> {
   try {

@@ -162,7 +162,7 @@ export function usePopover({ hover = false, focus = false, longPress = false, cl
     },
     onBlur: (event: FocusEvent) => {
       // Tab away: the focus leaves the trigger and the popover.
-      if (focus && !(event.relatedTarget instanceof Node && rootRef.current?.contains(event.relatedTarget))) {
+      if ((focus || clickToggles) && !(event.relatedTarget instanceof Node && rootRef.current?.contains(event.relatedTarget))) {
         if (event.relatedTarget !== null) {
           hide();
         }

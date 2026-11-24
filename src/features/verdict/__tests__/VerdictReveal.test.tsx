@@ -162,7 +162,7 @@ describe('the shareable card', () => {
     expect(fonts.some(font => font.includes('Special Elite'))).toBe(true);
   });
 
-  test('"Save the card" downloads the PNG; nothing is sent anywhere', async () => {
+  test('"Save the image" (in the Share menu) downloads the PNG; nothing is sent anywhere', async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (callback: BlobCallback) {
@@ -174,23 +174,25 @@ describe('the shareable card', () => {
       expect(this.download).toBe(`histor-${CASE.id}.png`);
     });
     renderReport(leading[0].id);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Save the card' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Save the image' }));
     });
     await waitFor(() => expect(clicks).toHaveBeenCalledTimes(1));
     expect(url).toHaveBeenCalledTimes(1);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  test('"Share": the browser\'s share sheet with the file where it can; otherwise the text is copied', async () => {
+  test('"More…": the browser\'s share sheet with the file where it can; otherwise no "More…", and "Copy link" copies', async () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (callback: BlobCallback) {
       callback(new Blob(['png'], { type: 'image/png' }));
     });
     const share = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share });
     renderReport(leading[0].id);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'More…' }));
     });
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
     expect((share.mock.calls[0] as unknown as [ShareData])[0].files?.[0].type).toBe('image/png');
@@ -198,11 +200,12 @@ describe('the shareable card', () => {
     const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, canShare: undefined, share: undefined, clipboard: { writeText } });
     renderReport(leading[0].id);
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    expect(screen.queryByRole('menuitem', { name: 'More…' })).toBeNull();
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
     });
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect((writeText.mock.calls[0] as unknown as [string])[0]).toContain('I closed the');
-    expect(screen.getByText('Copied to the clipboard.')).toBeDefined();
+    expect(screen.getByText('Link copied.')).toBeDefined();
   });
 });
