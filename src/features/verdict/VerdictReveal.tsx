@@ -12,6 +12,7 @@ import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import Quill from '@/components/Quill';
 import CardSignature from '@/features/verdict/CardSignature';
+import { shareLink } from '@/lib/share-link';
 import ShareMenu from '@/features/verdict/ShareMenu';
 import { caseRank, leadingTheories, legendsTrustedCount, verdictComparison } from '@/lib/case-rank';
 import type { CaseReport } from '@/lib/case-report';
@@ -29,7 +30,6 @@ import {
   shareCardText,
   canShareAFile,
   shareShareCard,
-  shareUrl,
   type ShareCardInput,
 } from '@/lib/share-card';
 import { emitStoryEvent } from '@/lib/story-events';
@@ -84,7 +84,8 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
   // name over it (CardSignature).
   const signedCard: ShareCardInput = useMemo(() => (signature === '' ? card : { ...card, name: signature }), [card, signature]);
   const fileName = `histor-${caseId}.png`;
-  const url = shareUrl(caseId);
+  // The share link carries the result (review-fixes brief, 11), so its preview shows the player's card.
+  const url = shareLink({ caseId, name: signature, rank, legends: card.legends });
   const text = shareCardText(card);
 
   // The card is drawn once the site's fonts are ready (a canvas does not wait for them by itself).
@@ -278,7 +279,7 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
           />
         </div>
         <p data-reveal="attach-note" className="max-w-xl font-voice text-[0.8125rem] leading-snug text-ghost-night">
-          Share links can’t carry images: save the image first, then attach it.
+          The link shows a preview of the case. To post your card itself, save the image and attach it.
         </p>
         <p aria-live="polite" data-reveal="share-note" className="min-h-5 font-voice text-[0.8125rem] text-ghost-night">
           {shareNote}

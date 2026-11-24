@@ -9,6 +9,7 @@ import maryCeleste from '@/cases/mary-celeste/case';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 import { PLAYER_NAME_MAX, cleanPlayerName, loadPlayerName, savePlayerName } from '@/lib/player-name';
 import { drawShareCard, shareCardText, shareLinks, shareUrl } from '@/lib/share-card';
+import { shareLink } from '@/lib/share-link';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { stubMatchMedia } from '@/test/match-media';
 import type { InvestigationState } from '@/types/case';
@@ -226,9 +227,10 @@ describe('sharing', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
     });
-    expect(writeText).toHaveBeenCalledWith(shareUrl(CASE.id));
+    // The share link carries the result (review-fixes 11).
+    expect(writeText).toHaveBeenCalledWith(shareLink({ caseId: CASE.id, name: '', rank: 'historian', legends: 0 }));
     expect(screen.getByText('Link copied.')).toBeDefined();
-    expect(reveal().querySelector('[data-reveal="attach-note"]')!.textContent).toMatch(/can’t carry images/);
+    expect(reveal().querySelector('[data-reveal="attach-note"]')!.textContent).toMatch(/save the image and attach it/);
   });
 
   test('"Share" with the native sheet: the signed card, and the words with the link', async () => {
@@ -255,7 +257,7 @@ describe('sharing', () => {
     const data = (share.mock.calls[0] as unknown as [ShareData])[0];
     expect(data.files?.[0].type).toBe('image/png');
     expect(data.text).toContain('Can you tell legend from history?');
-    expect(data.text).toContain(shareUrl(CASE.id));
+    expect(data.text).toContain(`https://histor.space/r/${CASE.id}?`);
     // The saved card is signed.
     expect(drawn).toContain('Ann');
   });
