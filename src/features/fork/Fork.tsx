@@ -6,7 +6,7 @@
 // or scrolling back up, closes it and returns to the question. Reduced motion: it appears without animation.
 // Everything shown comes from props.
 
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
@@ -38,9 +38,11 @@ export interface ForkProps {
   open: boolean;
   /** Escape: close it and go back to the question. */
   onClose: () => void;
+  /** The site's footer, closing the story for the reader who stops here (review-fixes brief, 9). */
+  footer?: ReactNode;
 }
 
-export default function Fork({ fork, historiansSummary, filesHref, open, onClose }: ForkProps) {
+export default function Fork({ fork, historiansSummary, filesHref, open, onClose, footer }: ForkProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLDivElement>(null);
@@ -157,7 +159,8 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
         aria-label="What next"
         tabIndex={-1}
         data-fork="root"
-        className="relative w-full max-w-2xl rounded-[2px] border border-night-ink/15 bg-night px-6 pt-10 pb-10 text-center text-night-ink shadow-2xl shadow-black/70 outline-none sm:px-12"
+        data-lenis-prevent
+        className="thin-scroll relative max-h-[calc(100svh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[2px] border border-night-ink/15 bg-night px-6 pt-10 pb-10 text-center text-night-ink shadow-2xl shadow-black/70 outline-none sm:px-12"
       >
         <p className="mx-auto max-w-[34rem] font-voice text-[clamp(1.125rem,1rem+0.5vw,1.4375rem)] leading-[1.6] text-pretty">
           <span className="sr-only">{fork.prompt}</span>
@@ -181,6 +184,7 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
                 Back to all cases
               </Link>
             </nav>
+            {footer}
           </div>
         ) : (
           <div data-fork="choices" className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">

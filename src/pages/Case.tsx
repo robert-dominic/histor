@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader, { type StoryStartState } from '@/components/CaseHeader';
+import SiteFooter from '@/components/SiteFooter';
 import { getCaseById } from '@/cases';
 import LegendIntro from '@/features/legend/LegendIntro';
 import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
@@ -183,6 +184,7 @@ export default function Case() {
               voyage={caseData.voyage}
               start={start}
               fork={{ fork: caseData.fork, historiansSummary: caseData.historiansSummary, filesHref: `/case/${caseData.id}/files` }}
+              footer={compact => <SiteFooter caseData={caseData} compact={compact} />}
             />
           </div>
         )}
