@@ -6,7 +6,9 @@
 // points to. On phones the file fills the screen, the cover's inside above the document. With reduced motion
 // it fades in, with no flight and no flip. Every opening plays the full reveal, a file read before as well (review-fixes
 // brief, 3): the pen writes the title, the text settles, the stamp has its moment. A click or a key skips it.
-// Escape and "Back to the board" close it; the desk flies the folder home and gives it the focus back.
+// Escape, a click outside it and the "Back to the floor" button close it; the desk flies the folder home and gives it
+// the focus back. Dragged by its manila edge, it is pinned when let go on a theory or the tray, and anywhere else it
+// goes back to the floor, where it was let go (review-fixes brief, 4): opening a file never forces a pin.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -129,6 +131,11 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const number = fileNumber(index);
 
   const target: PinTarget | undefined = state.pins[evidence.id];
+  /** Whether the file is pinned now, for the drag (set up once). */
+  const pinnedRef = useRef(target !== undefined);
+  useEffect(() => {
+    pinnedRef.current = target !== undefined;
+  }, [target]);
   // How historians read the pin comes from the case report, so the board and the report always agree.
   const pinReading = useMemo(
     () => buildCaseReport(caseData, state).pins.find(pin => pin.evidenceId === evidence.id),
@@ -432,6 +439,23 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
    * own spot (not to where it was last dropped).
    */
   const desk = useDeskOutlet();
+  /**
+   * The folder let go over the floor (or anywhere that is not a theory or the tray): it lies there, taken off its
+   * theory if it was pinned, and the file closes; the desk flies the folder from the hand to its new spot.
+   */
+  const putOnFloor = (point: { x: number; y: number }, unpinIt: boolean) => {
+    recordFlight(evidence.id, 'out', folderRef.current);
+    if (desk !== null) {
+      desk.dropOnFloor(evidence.id, point, unpinIt);
+    } else if (unpinIt) {
+      dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: evidence.id });
+    }
+    navigate(board);
+  };
+  const putOnFloorRef = useRef(putOnFloor);
+  useEffect(() => {
+    putOnFloorRef.current = putOnFloor;
+  });
   const unpin = () => {
     desk?.forgetFloorSpot(evidence.id);
     dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: evidence.id });
@@ -475,8 +499,9 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
 
   // Desktop, fine pointer, full motion: the folder can be grabbed by its manila edge (or the inside of its cover)
   // and dragged onto a theory note or the tray. It closes in the hand as it lifts, and shrinks to a held size;
-  // the desk shows through. Dropped on nothing, it goes back to the centre and opens again. Never required:
-  // the Pin menu does the same.
+  // the desk shows through. Let go anywhere else (the floor, the board's empty space, past the edges), it goes back
+  // to the floor where it was let go, kept inside it (review-fixes brief, 4). Never required: the Pin menu and
+  // "Back to the floor" do the same.
   useGSAP(
     () => {
       const root = rootRef.current;
@@ -516,18 +541,25 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         },
         onDragEnd() {
           clearHotTargets(targets);
-          const outcome = dropOutcome({ from: 'open-file' }, dropTargetFor(hot, caseData.theories, { x: 0, y: 0 }));
+          // Where it was let go: the folder's centre on the screen.
+          const box = folder.getBoundingClientRect();
+          const at = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+          const outcome = dropOutcome({ from: 'open-file', pinned: pinnedRef.current }, dropTargetFor(hot, caseData.theories, at), at);
+          hot = null;
           if (outcome.kind === 'pin') {
             finishPin(outcome.target);
-          } else {
-            // Back to the centre, open again, the desk dimmed again.
-            delete root.dataset.dragging;
-            emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
-            gsap.to(folder, { x: 0, y: 0, scale: 1, ...tween('paper.lift'), overwrite: 'auto' });
-            gsap.to(cover, { rotationY: COVER_OPEN, ...tween('paper.move'), delay: STEP.fast / 2, overwrite: true });
-            gsap.to(backdrop, { opacity: 1, ...tween('hover'), overwrite: true });
+            return;
           }
-          hot = null;
+          if (outcome.kind === 'settle' || outcome.kind === 'unpin') {
+            putOnFloorRef.current(at, outcome.kind === 'unpin');
+            return;
+          }
+          // (No other outcome for the open file; should one come, it opens again where it was.)
+          delete root.dataset.dragging;
+          emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
+          gsap.to(folder, { x: 0, y: 0, scale: 1, ...tween('paper.lift'), overwrite: 'auto' });
+          gsap.to(cover, { rotationY: COVER_OPEN, ...tween('paper.move'), delay: STEP.fast / 2, overwrite: true });
+          gsap.to(backdrop, { opacity: 1, ...tween('hover'), overwrite: true });
         },
       });
       return () => {
@@ -574,7 +606,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       onClick={closeOnOutsideClick}
       // On a desktop the open file fits the screen and the page never scrolls behind it: the document scrolls
       // inside its paper. On a phone the whole file scrolls.
-      className="fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-[calc(var(--case-header)+1.75rem)] pb-12 sm:px-6 lg:grid lg:place-items-center lg:overflow-hidden lg:px-10 lg:pt-[var(--case-header)] lg:pb-6"
+      className="group/file fixed inset-0 z-40 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-[calc(var(--case-header)+1.75rem)] pb-12 sm:px-6 lg:grid lg:place-items-center lg:overflow-hidden lg:px-10 lg:pt-[var(--case-header)] lg:pb-6"
     >
       {/* The desk dims behind the open file. */}
       <div data-file="backdrop" aria-hidden="true" className="fixed inset-0 bg-night/90" />
@@ -586,6 +618,20 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
         data-file="frame"
         className="relative mx-auto max-w-3xl lg:grid lg:w-[min(80vw,75rem)] lg:max-w-none lg:grid-cols-2"
       >
+        {/* The clear way back (review-fixes brief, 4): a file from the floor goes back to the floor; a pinned one back
+            to its place on the board. Escape and a click outside the file do the same. On a desktop it sits on the open
+            cover's top corner; it steps aside while the folder is carried. */}
+        <div className="mb-3 flex justify-end lg:pointer-events-none lg:absolute lg:inset-x-0 lg:top-0 lg:z-20 lg:mb-0 lg:justify-start lg:p-3">
+          <button
+            type="button"
+            data-file="back-to-floor"
+            onClick={close}
+            className="inline-flex min-h-10 items-center gap-2 rounded-sm border border-night-ink/35 bg-night/85 px-3.5 font-voice text-[0.8125rem] tracking-[0.12em] text-night-ink uppercase transition-[scale,background-color,border-color,opacity] duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:border-night-ink hover:bg-night focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97] group-data-[dragging=true]/file:pointer-events-none group-data-[dragging=true]/file:opacity-0 lg:pointer-events-auto lg:border-ink/30 lg:bg-paper/85 lg:text-ink lg:hover:border-ink lg:hover:bg-paper"
+          >
+            <span aria-hidden="true">↓</span>
+            {target === undefined && isDesktop ? 'Back to the floor' : 'Back to the board'}
+          </button>
+        </div>
         <div
           ref={folderRef}
           data-file="folder"

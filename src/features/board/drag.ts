@@ -20,7 +20,8 @@ export type DragSource =
   | { from: 'floor'; sealed: boolean }
   | { from: 'board'; theoryId: string }
   | { from: 'tray' }
-  | { from: 'open-file' };
+  /** The open file, carried off its desk; `pinned` when it is pinned to a theory or set aside. */
+  | { from: 'open-file'; pinned: boolean };
 
 /** Where a drag ends. */
 export type DropTarget =
@@ -47,9 +48,22 @@ export type DropOutcome =
 /**
  * The one rule for every drop on the desk (Requirement 17). Pure: the Draggables only report where a drag started
  * and where it ended, and this says what happens.
+ *
+ * A file carried off the board, off the tray, or out of the open file goes back to the floor when it is let go
+ * anywhere that is not a theory or the tray (review-fixes brief, 4): on the floor, on the board's empty space, or on
+ * nothing at all. It lands where it was released, at `at` (in floor coordinates; the floor keeps it inside). Opening
+ * a file never forces a pin.
  */
-export function dropOutcome(source: DragSource, target: DropTarget): DropOutcome {
+export function dropOutcome(source: DragSource, target: DropTarget, at: { x: number; y: number } = { x: 0, y: 0 }): DropOutcome {
+  const toFloor = (point: { x: number; y: number }, pinned: boolean): DropOutcome =>
+    pinned ? { kind: 'unpin', x: point.x, y: point.y } : { kind: 'settle', x: point.x, y: point.y };
   if (target.kind === 'nothing') {
+    if (source.from === 'open-file') {
+      return toFloor(at, source.pinned);
+    }
+    if (source.from === 'board' || source.from === 'tray') {
+      return toFloor(at, true);
+    }
     return { kind: 'return' };
   }
   switch (source.from) {
@@ -74,7 +88,8 @@ export function dropOutcome(source: DragSource, target: DropTarget): DropOutcome
         case 'floor':
           return { kind: 'unpin', x: target.x, y: target.y };
         case 'board':
-          return { kind: 'return' };
+          // The board's empty space counts as the floor.
+          return toFloor(at, true);
       }
       break;
     case 'tray':
@@ -83,8 +98,9 @@ export function dropOutcome(source: DragSource, target: DropTarget): DropOutcome
           return { kind: 'pin', target: target.theoryId };
         case 'floor':
           return { kind: 'unpin', x: target.x, y: target.y };
-        case 'tray':
         case 'board':
+          return toFloor(at, true);
+        case 'tray':
           return { kind: 'return' };
       }
       break;
@@ -94,9 +110,10 @@ export function dropOutcome(source: DragSource, target: DropTarget): DropOutcome
           return { kind: 'pin', target: target.theoryId };
         case 'tray':
           return { kind: 'pin', target: 'none' };
-        case 'board':
         case 'floor':
-          return { kind: 'return' };
+          return toFloor(target, source.pinned);
+        case 'board':
+          return toFloor(at, source.pinned);
       }
   }
   return { kind: 'return' };

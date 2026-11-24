@@ -31,6 +31,8 @@ interface FloorProps {
   theories: Theory[];
   /** Folders the player dropped on the floor, in the order they were dropped. Held (and stored) by the desk. */
   dropped: ReadonlyMap<string, DroppedSpot>;
+  /** Changes when a spot was set from outside the floor (the open file let go over it): the floor places again. */
+  droppedVersion?: number;
   /** A folder was dropped somewhere on the floor: the desk remembers the spot. */
   onRearrange: (id: string, spot: DroppedSpot) => void;
   /** A folder was dropped somewhere other than the floor: the desk opens it, or pins it. */
@@ -71,7 +73,7 @@ function measureFolder(folders: HTMLElement[]): FolderBox | null {
   };
 }
 
-export default function Floor({ layout, filesHref, theories, dropped, onRearrange, onDrop }: FloorProps) {
+export default function Floor({ layout, filesHref, theories, dropped, droppedVersion = 0, onRearrange, onDrop }: FloorProps) {
   const onDropRef = useRef(onDrop);
   const onRearrangeRef = useRef(onRearrange);
   useEffect(() => {
@@ -267,7 +269,7 @@ export default function Floor({ layout, filesHref, theories, dropped, onRearrang
     };
     // The folders on the floor change with `order`; the effect places the new ones and leaves the others be.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order, allKey]);
+  }, [order, allKey, droppedVersion]);
 
   return (
     <section

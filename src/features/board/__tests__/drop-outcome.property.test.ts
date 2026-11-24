@@ -10,8 +10,9 @@ const sources: fc.Arbitrary<DragSource> = fc.oneof(
   fc.boolean().map(sealed => ({ from: 'floor', sealed }) as const),
   theoryId.map(id => ({ from: 'board', theoryId: id }) as const),
   fc.constant({ from: 'tray' } as const),
-  fc.constant({ from: 'open-file' } as const)
+  fc.boolean().map(pinned => ({ from: 'open-file', pinned }) as const)
 );
+const points = fc.record({ x: fc.integer({ min: -500, max: 2500 }), y: fc.integer({ min: -500, max: 1000 }) });
 const targets: fc.Arbitrary<DropTarget> = fc.oneof(
   theoryId.map(id => ({ kind: 'theory', theoryId: id }) as const),
   fc.constant({ kind: 'board' } as const),
@@ -21,6 +22,20 @@ const targets: fc.Arbitrary<DropTarget> = fc.oneof(
 );
 
 describe('Property 7: every drop has exactly one outcome', () => {
+  test('the open file never comes back to the centre: it is pinned, or it goes back to the floor (review-fixes 4)', () => {
+    fc.assert(
+      fc.property(fc.boolean(), targets, points, (pinned, target, at) => {
+        const outcome = dropOutcome({ from: 'open-file', pinned }, target, at);
+        expect(outcome.kind).not.toBe('return');
+        expect(outcome.kind).not.toBe('open');
+        if (target.kind !== 'theory' && target.kind !== 'tray') {
+          expect(outcome.kind).toBe(pinned ? 'unpin' : 'settle');
+        }
+      }),
+      { numRuns: 300 }
+    );
+  });
+
   /**
    * Feature: fix-pack, Property 7: Every drop has exactly one outcome
    * **Validates: Requirements 17.2, 17.3, 17.4, 17.5, 17.6**
@@ -57,7 +72,7 @@ describe('Property 7: every drop has exactly one outcome', () => {
    * Feature: fix-pack, Property 7: Every drop has exactly one outcome
    * **Validates: Requirements 17.5, 17.6**
    */
-  test('a drop on the source\'s own note or the tray it came from, or on nothing, goes back', () => {
+  test('a drop on the source\'s own note or the tray it came from goes back; on nothing, only a floor file goes back', () => {
     fc.assert(
       fc.property(theoryId, fc.constantFrom('board', 'tray'), (id, from) => {
         const source: DragSource = from === 'board' ? { from, theoryId: id } : { from };
@@ -67,8 +82,15 @@ describe('Property 7: every drop has exactly one outcome', () => {
       { numRuns: 100 }
     );
     fc.assert(
-      fc.property(sources, source => {
-        expect(dropOutcome(source, { kind: 'nothing' })).toEqual({ kind: 'return' });
+      fc.property(sources, points, (source, at) => {
+        const outcome = dropOutcome(source, { kind: 'nothing' }, at);
+        if (source.from === 'floor') {
+          expect(outcome).toEqual({ kind: 'return' });
+        } else {
+          // Anything carried off the board, the tray or the open file goes back to the floor (review-fixes 4).
+          expect(['unpin', 'settle']).toContain(outcome.kind);
+          expect(outcome).toMatchObject(at);
+        }
       }),
       { numRuns: 100 }
     );
@@ -85,12 +107,16 @@ describe('Property 7: every drop has exactly one outcome', () => {
         if (source.from === 'floor') {
           expect(dropOutcome({ from: 'floor', sealed: !source.sealed }, target)).toEqual(outcome);
         }
-        if (outcome.kind === 'open' || outcome.kind === 'settle') {
+        if (outcome.kind === 'open') {
           expect(source.from).toBe('floor');
         }
+        if (outcome.kind === 'settle') {
+          // A floor file, or the open file that was not pinned.
+          expect(source.from === 'floor' || (source.from === 'open-file' && !source.pinned)).toBe(true);
+        }
         if (outcome.kind === 'unpin') {
-          expect(['board', 'tray']).toContain(source.from);
-          expect(target.kind).toBe('floor');
+          expect(source.from === 'board' || source.from === 'tray' || (source.from === 'open-file' && source.pinned)).toBe(true);
+          expect(target.kind === 'theory' || target.kind === 'tray').toBe(false);
         }
       }),
       { numRuns: 300 }

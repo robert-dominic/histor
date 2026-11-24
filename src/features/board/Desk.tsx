@@ -6,6 +6,7 @@
 // Everything shown comes from the case data and the investigation.
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -89,6 +90,22 @@ function DeskScreen() {
     dropped.delete(id);
     dropped.set(id, spot);
     saveFloorPositions(caseData.id, dropped);
+  };
+  /** Bumped when a spot changes from outside the floor's own drags (the open file), so the floor places it again. */
+  const [floorVersion, setFloorVersion] = useState(0);
+  /** The open file let go anywhere but a theory or the tray: it lies on the floor where it was let go. */
+  const dropOnFloor = (id: string, point: { x: number; y: number }, unpin: boolean) => {
+    const floor = rootRef.current?.querySelector<HTMLElement>('[data-board="floor"]');
+    flushSync(() => {
+      if (floor != null) {
+        const origin = floor.getBoundingClientRect();
+        rememberDrop(id, droppedSpot(point.x - origin.left, point.y - origin.top, { width: floor.clientWidth, height: floor.clientHeight }));
+      }
+      if (unpin) {
+        dispatch({ type: 'UNPIN_EVIDENCE', evidenceId: id });
+      }
+      setFloorVersion(version => version + 1);
+    });
   };
   const desktop = useMediaQuery(DESKTOP_QUERY);
   // The guide is the first thing the player sees on arriving at the desk (not on coming back from an open file),
@@ -461,6 +478,7 @@ function DeskScreen() {
                       filesHref={`${base}/files`}
                       theories={caseData.theories}
                       dropped={dropped}
+                      droppedVersion={floorVersion}
                       onRearrange={rememberDrop}
                       onDrop={handleFloorDrop}
                     />
@@ -508,7 +526,7 @@ function DeskScreen() {
           threshold={caseData.closeThreshold}
         />
       )}
-      <Outlet context={{ forgetFloorSpot } satisfies DeskOutlet} />
+      <Outlet context={{ forgetFloorSpot, dropOnFloor } satisfies DeskOutlet} />
     </>
   );
 }

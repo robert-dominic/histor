@@ -148,12 +148,19 @@ describe('dragging tabs', () => {
     expect(saved().pins).toEqual({ 'e-lifeboat': B });
   });
 
-  test('a tab dropped on the board outside any note goes back, and so does a tab dropped on nothing', () => {
+  test("a tab dropped on the board's empty space goes back to the floor (review-fixes 4)", () => {
     seed({ 'e-lifeboat': A });
     renderDesk();
-    drop(tab('e-lifeboat'), document.querySelector('[data-board="board"]'));
-    drop(tab('e-lifeboat'), null);
-    expect(saved().pins).toEqual({ 'e-lifeboat': A });
+    drop(tab('e-lifeboat'), document.querySelector('main [data-drop-target="board"]'));
+    expect(saved().pins).toEqual({});
+    expect(document.querySelector('[data-board="floor"] [data-evidence-id="e-lifeboat"]')).not.toBeNull();
+  });
+
+  test('a tab dropped on nothing goes back to the floor too (review-fixes 4)', () => {
+    seed({ 'e-sword': 'none' });
+    renderDesk();
+    drop(tab('e-sword'), null);
+    expect(saved().pins).toEqual({});
   });
 
   test('the drag does not open the file', () => {
