@@ -13,6 +13,13 @@ export interface PageWriter {
   seconds: number;
   /** Starts writing, from the beginning, unless it has started or is written. */
   start: () => void;
+  /** Clears the page: nothing written, the pen away, the slip off screen; `start` or `restart` writes it again. */
+  reset: () => void;
+  /**
+   * Writes the page again from the start, every time it is reached, forward or back (review-fixes brief, 3), at
+   * `speed` times the pen's pace (going back is quicker).
+   */
+  restart: (speed?: number) => void;
   /** Writes the rest at once, and puts the pen away. */
   finish: () => void;
   written: () => boolean;
@@ -29,13 +36,13 @@ export interface PageWriter {
    * investigation brief 5). Null without a roll call. Add the tween to a timeline; it drives the writing itself.
    */
   unwriteRoll: (seconds: number) => gsap.core.Tween | null;
-  /** The roll call written again over `seconds` (stepping back from the hook). */
-  rewriteRoll: (seconds: number) => gsap.core.Tween | null;
 }
 
 const NOTHING_TO_WRITE: PageWriter = {
   seconds: 0,
   start: () => undefined,
+  reset: () => undefined,
+  restart: () => undefined,
   finish: () => undefined,
   written: () => true,
   writing: () => false,
@@ -43,7 +50,6 @@ const NOTHING_TO_WRITE: PageWriter = {
   revert: () => undefined,
   slip: null,
   unwriteRoll: () => null,
-  rewriteRoll: () => null,
 };
 
 /** Builds the pen for the page in `scene`. Its letters are hidden until written. */
@@ -148,6 +154,10 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
   flushWeighted();
 
   const done = () => {
+    // Rewinding the page (reset) crosses this call too: only the end of the writing counts.
+    if (writing.progress() < 1) {
+      return;
+    }
     if (pageEl !== null) {
       pageEl.dataset.written = 'true';
     }
@@ -157,13 +167,33 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
   };
   writing.call(done, undefined, at);
 
+  function reset() {
+    started = false;
+    writing.pause().progress(0, true);
+    if (pageEl !== null) {
+      delete pageEl.dataset.written;
+    }
+    gsap.set(units, { opacity: 0 });
+    if (slip !== null) {
+      gsap.set(slip, { opacity: 0 });
+    }
+    pen.hide();
+    rollPen.hide();
+  }
+
   return {
     seconds: writing.duration(),
     start: () => {
       if (!started && writing.progress() < 1) {
         started = true;
-        writing.play(0);
+        writing.timeScale(1).play(0);
       }
+    },
+    reset,
+    restart: (speed = 1) => {
+      reset();
+      started = true;
+      writing.timeScale(speed).play(0);
     },
     finish: () => {
       started = true;
@@ -189,6 +219,5 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
       rollPen.hide();
       return writing.tweenFromTo(roll.end, roll.start, { duration: seconds, ease: LINEAR, immediateRender: false });
     },
-    rewriteRoll: seconds => (roll === null ? null : writing.tweenFromTo(roll.start, roll.end, { duration: seconds, ease: LINEAR, immediateRender: false })),
   };
 }

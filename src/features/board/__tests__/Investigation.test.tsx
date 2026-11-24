@@ -727,12 +727,18 @@ describe('The reveal', () => {
     expect(firstSentence(challenge)).toBe('The stains were tested.');
   });
 
-  test('a file opened before is shown as its status at once', () => {
+  test('a file opened before plays its reveal again, and reaches its status (review-fixes 3)', () => {
     seed({ opened: ['e-legend-breakfast'], pins: {}, verdict: null });
     renderAt(`${BASE}/files/e-legend-breakfast`);
 
+    expect(sheet().getAttribute('data-revealed')).toBeNull();
+    // Played to its end, it is stamped as before.
+    let reveal: gsap.core.Animation = gsap.getTweensOf(stamp())[0];
+    while (reveal.parent !== null && reveal.parent !== gsap.globalTimeline) {
+      reveal = reveal.parent;
+    }
+    reveal.progress(1);
     expect(sheet().getAttribute('data-revealed')).toBe('true');
-    expect(stamp().style.opacity).toBe('');
   });
 
   test('with reduced motion, a legend reaches the same end state, with no drifting ink', async () => {
@@ -782,7 +788,10 @@ describe('The case report', () => {
     seed(fixed);
     renderAt(`${BASE}/report`);
 
-    const sections = [...document.querySelectorAll<HTMLElement>('[data-report]')].filter(element => element.tagName === 'SECTION');
+    // The credits (music, images) close the page but are not part of the report itself.
+    const sections = [...document.querySelectorAll<HTMLElement>('[data-report]')].filter(
+      element => element.tagName === 'SECTION' && element.dataset.report !== 'credits'
+    );
     expect(sections.map(section => section.dataset.report)).toStrictEqual([
       'verdict',
       'relied-on',

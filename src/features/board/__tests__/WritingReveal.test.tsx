@@ -185,16 +185,19 @@ describe('skipping the reveal', () => {
 });
 
 describe('files already read, and reduced motion', () => {
-  test('a file read before opens already revealed: no nib, no hidden text, no stamp to wait for', () => {
+  test('a file read before plays the full reveal again: the nib writes the title, the stamp waits (review-fixes 3)', () => {
     localStorage.setItem(KEY, JSON.stringify({ opened: ['e-lifeboat'], pins: {}, verdict: null }));
     renderAt(`${BASE}/files/e-lifeboat`);
+    expect(sheet().getAttribute('data-revealed')).toBeNull();
+    expect(titleLetters().length).toBeGreaterThan(0);
+    expect(titleLetters().every(letter => letter.style.opacity === '0')).toBe(true);
+    expect(gsap.getTweensOf('[data-file-nib="quill-body"]').length).toBeGreaterThan(0);
+    // A key skips it, and it ends stamped; it is still counted as opened once.
+    const timeline = intoReveal();
+    fireEvent.keyDown(window, { key: 'a' });
+    expect(timeline.progress()).toBe(1);
     expect(sheet().getAttribute('data-revealed')).toBe('true');
-    expect(title().querySelectorAll('*')).toHaveLength(0);
-    expect(gsap.getTweensOf('[data-file-nib="quill-body"]')).toHaveLength(0);
-    expect(document.querySelectorAll('[data-file-ink]')).not.toHaveLength(0);
-    for (const paragraph of document.querySelectorAll<HTMLElement>('[data-file-ink]')) {
-      expect(paragraph.style.opacity).toBe('');
-    }
+    expect(JSON.parse(localStorage.getItem(KEY)!).opened).toEqual(['e-lifeboat']);
   });
 
   test('reduced motion: the text simply appears, with no nib and no blur', () => {
@@ -301,12 +304,12 @@ describe('every stamp is a moment (investigation 1)', () => {
     }
   });
 
-  test('a file read before opens quietly: its note is simply there, nothing typed', () => {
+  test('a file read before has its stamp moment again: the shake, and the note typed (review-fixes 3)', () => {
     localStorage.setItem(KEY, JSON.stringify({ opened: [ofStatus('record').id], pins: {}, verdict: null }));
     renderAt(`${BASE}/files/${ofStatus('record').id}`);
-    expect(sheet().getAttribute('data-revealed')).toBe('true');
-    expect(note()!.querySelectorAll('*')).toHaveLength(0);
-    expect(gsap.getTweensOf(document.querySelector('[data-file="grip"]')!)).toHaveLength(0);
+    expect(sheet().getAttribute('data-revealed')).toBeNull();
+    expect(note()!.querySelectorAll('*').length).toBeGreaterThan(0);
+    expect(gsap.getTweensOf(document.querySelector('[data-file="grip"]')!).length).toBeGreaterThan(0);
   });
 
   test('reduced motion: the stamp and the note simply appear', () => {

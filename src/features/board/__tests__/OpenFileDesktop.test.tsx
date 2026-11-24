@@ -84,14 +84,14 @@ describe('opening a file by clicking its folder', () => {
     expect(target).toBe(document.querySelector('[data-file="folder"]'));
   });
 
-  test('a file read before opens with the full flight too, and is already revealed', () => {
+  test('a file read before opens with the full flight too, and plays its reveal again (review-fixes 3)', () => {
     localStorage.setItem(KEY, JSON.stringify({ opened: ['e-sword'], pins: {}, verdict: null }));
     const from = vi.spyOn(Flip, 'from');
     renderAt(`${BASE}/files`);
     fireEvent.click(folderLink('e-sword'));
     expect(from).toHaveBeenCalledTimes(1);
-    // Already stamped: no writing reveal.
-    expect(document.querySelector('[data-file="sheet"]')?.getAttribute('data-revealed')).toBe('true');
+    // Every opening plays the reveal: the stamp is still to land.
+    expect(document.querySelector('[data-file="sheet"]')?.getAttribute('data-revealed')).toBeNull();
   });
 
   test('the cover swings open after the flight, for a file read before as well', () => {

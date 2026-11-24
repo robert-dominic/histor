@@ -10,7 +10,8 @@
 
 /* ---- The reveal: the paper becomes its status (FileDocument.tsx) ----
    A file's sheet starts as plain paper. When its stamp lands, OpenFile sets data-revealed="true" on the sheet,
-   and these end states take over. A file opened before is rendered revealed, so nothing plays. */
+   and these end states take over, on every opening (review-fixes brief, 3). Only where nothing can animate is a
+   file read before rendered revealed at once. */
 
 /* The paper layers under the sheet's text. Only their opacity changes. */
 [data-paper] {

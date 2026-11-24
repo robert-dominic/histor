@@ -30,6 +30,11 @@ export const STORY_PACE = {
   /** The next chapter's image cross-dissolves in over the last. Going back is quicker. */
   dissolve: 1,
   backDissolve: 0.5,
+  /**
+   * Going back plays every step's entrance too (review-fixes brief, 3): the page re-written by the pen, the hook
+   * snapping in, the crew list written again, a line of the question played in. This many times faster than forward.
+   */
+  backSpeed: 1.5,
   /** A jump from the progress rail: a quick dissolve. */
   jumpDissolve: 0.35,
   /** Before a hook, the pen un-writes the crew list's names over this long (and writes them again, going back). */

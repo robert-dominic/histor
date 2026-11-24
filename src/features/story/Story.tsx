@@ -527,8 +527,8 @@ export default function Story({
         /**
          * The exact state of a step, at once: only its scene shown, in its page's look or its hook's; every other
          * hook and page hidden; the pages before it written; the question's lines up to it; the chart, the sky, the
-         * fork. `fresh`: the step's page has just been reached going forward, so its pen and its stretch of chart
-         * are still to come.
+         * fork. `fresh`: the step's page has just been reached, forward or back, so its pen and its stretch of chart
+         * are still to come: every time a page is reached, the pen writes it again (review-fixes brief, 3).
          */
         const paint = (index: number, fresh: boolean) => {
           transition?.kill();
@@ -537,10 +537,13 @@ export default function Story({
           const shown = sceneOf(step);
           const question = onQuestion(step);
           const freshPage = fresh && step?.kind === 'page';
-          // Pages before this one count as written, and so does this one unless it has just been reached.
+          // Pages before this one count as written, and so does this one unless it has just been reached: then it is
+          // cleared, for the pen to write again.
           writers.forEach((writer, writerIndex) => {
             if (writerIndex < shown || question || (writerIndex === shown && !freshPage)) {
               writer.finish();
+            } else if (writerIndex === shown && freshPage) {
+              writer.reset();
             }
           });
           scenes.forEach((scene, sceneIndex) => {
@@ -598,16 +601,10 @@ export default function Story({
               );
             }
             if (fresh) {
-              writers[step.chapter].start();
+              // Every time the page is reached the pen writes it again; going back, a little quicker.
+              writers[step.chapter].restart(direction === 'backward' ? STORY_PACE.backSpeed : 1);
               drawStretches(step.chapter);
             }
-          }
-          // Stepping back onto a hook, or a line of the question: the sound follows (src/lib/sound).
-          if (direction === 'backward' && step?.kind === 'hook') {
-            emitStoryEvent({ type: 'hook', chapter: story[step.chapter].id, direction });
-          }
-          if (direction === 'backward' && step?.kind === 'line') {
-            emitStoryEvent({ type: 'question-line', index: step.line, direction });
           }
           const waiting = settled;
           settled = [];
@@ -742,6 +739,8 @@ export default function Story({
               // On to the next chapter: its image cross-dissolves in over the last, its page still to be written.
               if (to.kind === 'page' && toScene !== fromScene) {
                 look(toScene, 'page');
+                // The page comes in empty: the pen writes it once the image is in, every time.
+                writers[toScene].reset();
                 timeline.fromTo(scenes[toScene], { opacity: 0 }, { opacity: 1, duration: STORY_PACE.dissolve }, at);
                 const sky = { mix };
                 timeline.to(sky, { mix: dayNight[toScene]?.mix ?? 1, duration: STORY_PACE.dissolve, onUpdate: () => writeSky(sky.mix) }, at);
@@ -768,22 +767,41 @@ export default function Story({
             });
           }
 
-          // Back, one step: quicker, and the page it returns to is already written.
-          return moveTo(target, false, 'backward', timeline => {
+          // Back, one step: quicker, and every step's entrance plays again (review-fixes brief, 3): the page is
+          // re-written by the pen (and its crew list with it), the hook snaps in, a line of the question plays in,
+          // all `STORY_PACE.backSpeed` times faster than forward.
+          const toPage = to.kind === 'page';
+          return moveTo(target, toPage, 'backward', timeline => {
             const quick = { duration: STORY_PACE.backDissolve, ease: MOTION['ink.out'].ease };
             if (from.kind === 'fork') {
               return;
             }
             if (from.kind === 'line' && to.kind === 'line') {
+              // The line left goes; the one returned to plays in again.
               timeline.to([phrases[from.line], ...phraseWeighted[from.line]], { opacity: 0, ...quick });
+              const line = to.line;
+              const replay = phraseIns[line];
+              if (replay !== undefined) {
+                timeline.call(
+                  () => {
+                    gsap.set([phrases[line], ...phraseWeighted[line]], { opacity: 0 });
+                    replay.timeScale(STORY_PACE.backSpeed).restart();
+                    emitStoryEvent({ type: 'question-line', index: line, direction: 'backward' });
+                  },
+                  undefined,
+                  quick.duration
+                );
+                timeline.to({}, { duration: replay.duration() / STORY_PACE.backSpeed }, quick.duration);
+              }
               return;
             }
-            if (from.kind === 'hook' && to.kind === 'page' && toScene === fromScene) {
-              // Back from a hook to its page: all of it in reverse. The hook text leaves first; then the light
-              // returns with the page; then the slip comes back and the pen writes the names in again.
-              const { page, shade, corners, names, dim, figure, hook, slip } = parts[fromScene];
+            if (from.kind === 'hook' && toPage && toScene === fromScene) {
+              // Back from a hook to its page. The hook text leaves first; then the light returns with the page,
+              // empty; once it has, the pen writes it again from the top, crew list and all (`settle`).
+              const { page, shade, corners, names, dim, figure, hook } = parts[fromScene];
               const quiet = [page, shade, corners].filter((element): element is HTMLElement => element !== null);
               let at = 0;
+              writers[fromScene].reset();
               emitStoryEvent({ type: 'hook-out', chapter: story[fromScene].id, direction: 'backward' });
               if (hook !== null) {
                 timeline.to(hook, { opacity: 0, ...quick }, at);
@@ -797,31 +815,34 @@ export default function Story({
               if (figure !== null) {
                 timeline.to(figure, { scale: 1, ...quick }, at);
               }
-              at += quick.duration;
-              const rewrite = writers[fromScene].rewriteRoll(STORY_PACE.unwrite);
-              if (slip !== null && rewrite !== null) {
-                timeline.fromTo(slip, { opacity: 0, y: 14, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, ...tween('paper.lift') }, at);
-                at += MOTION['paper.lift'].duration;
-              }
-              if (rewrite !== null) {
-                timeline.add(rewrite, at);
-              }
               return;
             }
-            // Back across a scene (or from the question): the step returned to is laid underneath, then the one
-            // left fades away over it.
+            // Back across a scene (or from the question): the step returned to is laid underneath (a page empty, for
+            // the pen), then the one left fades away over it.
             const leaving = topOf(from);
-            paint(target, false);
+            paint(target, toPage);
             if (leaving !== null && leaving !== topOf(to)) {
               gsap.set(leaving, { opacity: 1 });
               timeline.to(leaving, { opacity: 0, ...quick });
             }
-            // Back into a hook: the darkness first, then the text (investigation brief, 6). The hook was painted
-            // whole underneath; it waits, hidden, until what is left has gone.
+            // Back into a hook: the darkness first, then the text (investigation brief, 6), snapping in as it does
+            // going forward, only quicker. It was painted whole underneath; it waits, hidden, until what is left
+            // has gone.
             const hookBack = to.kind === 'hook' ? parts[toScene].hook : null;
             if (hookBack !== null) {
-              gsap.set(hookBack, { opacity: 0 });
-              timeline.to(hookBack, { opacity: 1, ...tween('ink.in') }, quick.duration);
+              const snap = hookIns[toScene];
+              snap?.pause().progress(0);
+              gsap.set(hookBack, { opacity: 1, pointerEvents: 'auto' });
+              const chapterId = story[toScene].id;
+              timeline.call(
+                () => {
+                  snap?.timeScale(STORY_PACE.backSpeed).restart();
+                  emitStoryEvent({ type: 'hook', chapter: chapterId, direction: 'backward' });
+                },
+                undefined,
+                quick.duration
+              );
+              timeline.to({}, { duration: STORY_PACE.hookIn / STORY_PACE.backSpeed }, quick.duration);
             }
           });
         };
@@ -866,6 +887,12 @@ export default function Story({
           void step(1);
         };
         const back = () => {
+          // Any gesture finishes the pen at once and stays on the page, back as well as forward.
+          const at = steps[current];
+          if (at?.kind === 'page' && writers[at.chapter].writing()) {
+            writers[at.chapter].finish();
+            return;
+          }
           if (current > 0) {
             void step(-1);
           }

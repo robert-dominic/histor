@@ -32,11 +32,17 @@ Every GSAP tween spreads a token: `gsap.to(el, { ...tween('ink.in'), opacity: 1 
 | `story.breath` | `sine.inOut` | 2.4s | Before a hook: the page has dimmed away, the image darkens, the camera creeps closer (1.05); nothing new appears |
 | `story.hook` | `back.out(2.2)` | 0.45s per letter | A hook snapping in whole on a timer once reached (not scrubbed): its letters settle from slightly out of line, staggered over `STORY_PACE.hookIn` (about 0.8s) |
 | `story.decay` | `power1.in` | 0.35s per letter | A hook leaving: letters go one at a time in a fixed random order |
-**The story moves in steps, not on the scroll** (`docs/briefs/story-steps.md`): nothing in it is scrubbed. GSAP **Observer** turns one gesture into one step (`src/features/story/story-steps.ts`), and each step plays its own short timeline; input is ignored while it plays. Every step ends by setting that step's exact state. **The pen** writes each chapter's page on its own timer (`page-writer.ts`, using the quill writer in `src/lib/quill-writing.ts`): a click or a forward gesture finishes it at once. Its words and letters are split by React (`PenText.tsx`, `StoryWords.tsx` for hooks), so portals stay whole; screen readers get the full text once. **Every timing of the story** (writing speed, the gesture gap, each step's animation, the camera drift, and how long "Play the story" holds each step) is in one commented object, `STORY_PACE` in `src/lib/story-pages.ts`.
+**The story moves in steps, not on the scroll** (`docs/briefs/story-steps.md`): nothing in it is scrubbed. GSAP **Observer** turns one gesture into one step (`src/features/story/story-steps.ts`), and each step plays its own short timeline; input is ignored while it plays. Every step ends by setting that step's exact state. **The pen** writes each chapter's page on its own timer (`page-writer.ts`, using the quill writer in `src/lib/quill-writing.ts`), every time the page is reached: a click or any gesture finishes it at once. Its words and letters are split by React (`PenText.tsx`, `StoryWords.tsx` for hooks), so portals stay whole; screen readers get the full text once. **Every timing of the story** (writing speed, the gesture gap, each step's animation, the camera drift, and how long "Play the story" holds each step) is in one commented object, `STORY_PACE` in `src/lib/story-pages.ts`.
 
 `QUICK_OUT` (the `ink.out` ease over half a fast step) is the exit for small things: a menu, a slip, a panel. **Duration steps** for everything that is not a token (delays, holds, staggers): `STEP.fast` 0.2s, `STEP.base` 0.45s, `STEP.slow` 0.9s, `STEP.scene` 1.2s.
 
 Linear is only for constant motion and scroll-scrubbed timelines. Never use the browser's built-in `ease-in`. CSS hover and focus transitions use `--motion-hover-ease` and `--motion-hover-duration`.
+
+## 2b. Both ways, every time (review-fixes brief, 3)
+
+Motion gives the UI its life, so it is never a one-off. An entrance plays every time its moment is reached, not only the first time:
+- **The story:** stepping back plays each step's entrance too: the page re-written by the pen (`PageWriter.restart`), the crew list written again, the hook snapping in, a line of the question playing in. Going back runs `STORY_PACE.backSpeed` (1.5×) faster than forward. Any gesture, forward or back, finishes the pen at once and stays on the page.
+- **The desk:** every opening of a file plays its full reveal (the nib writing the title, the text settling, the stamp's moment, "You almost believed this." for a legend), a file read before as well. A click or a key skips it.
 
 ## 3. No instant visual changes
 

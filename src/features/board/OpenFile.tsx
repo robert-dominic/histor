@@ -4,7 +4,8 @@
 // typed label and the index card of sources), the document on the right, held by a paper clip. The file counts
 // as opened as the cover opens. After a short beat its status stamps onto it, and the app asks which theory it
 // points to. On phones the file fills the screen, the cover's inside above the document. With reduced motion
-// it fades in, with no flight and no flip. A file opened before is shown at once, stamped, with the user's choice.
+// it fades in, with no flight and no flip. Every opening plays the full reveal, a file read before as well (review-fixes
+// brief, 3): the pen writes the title, the text settles, the stamp has its moment. A click or a key skips it.
 // Escape and "Back to the board" close it; the desk flies the folder home and gives it the focus back.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
@@ -49,7 +50,7 @@ const TIMING = {
   slip: MOTION['paper.move'].duration,
 } as const;
 
-/** The writing reveal of a first opening, in seconds. */
+/** The writing reveal of every opening, in seconds. */
 const REVEAL = {
   /** The nib writes the title in about this long. */
   title: 1.2,
@@ -67,7 +68,7 @@ const DRIFT = {
   waves: 3,
 } as const;
 
-/** The stamp's moments on a first opening (investigation brief, item 1). */
+/** The stamp's moments, on every opening (investigation brief, item 1; review-fixes brief, 3). */
 const STAMP_MOMENT = {
   /** A record's folder shakes this far, in px. */
   shake: 2,
@@ -121,8 +122,9 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
   const pinRef = useRef<(target: PinTarget) => void>(() => undefined);
   /** Finishes the writing reveal at once, once it is under way; nothing before that, nothing after. */
   const skipRef = useRef<(() => void) | null>(null);
-  // Only the value when the file is first shown counts: a file opened before is shown stamped at once.
-  const [openedBefore] = useState(() => state.opened.includes(evidence.id));
+  // Every opening plays the whole reveal (review-fixes brief, 3). Only where nothing can animate (no matchMedia) is a
+  // file read before shown stamped at once. "Opened" is still kept for the case, as before.
+  const [shownStamped] = useState(() => typeof window.matchMedia !== 'function' && state.opened.includes(evidence.id));
   const board = `/case/${caseData.id}/files`;
   const number = fileNumber(index);
 
@@ -225,8 +227,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
               0
             );
           }
-          // Then the cover swings open around its left edge. A file read before then shows itself at once, already
-          // stamped; the writing reveal below is for a first opening only.
+          // Then the cover swings open around its left edge, and the writing reveal below plays, every time.
           timeline.call(
             () => {
               emitStoryEvent({ type: 'flip', evidence: evidence.id, direction: 'open' });
@@ -251,10 +252,6 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           markOpened();
         }
 
-        // Shown before: everything is simply there, already stamped.
-        if (openedBefore) {
-          return;
-        }
         // The writing reveal. Full motion: the nib writes the title letter by letter, then the rest of the text settles
         // in line by line, from a slight blur to sharp, with a fade and a small rise (the blur is only on these text
         // lines, only while they arrive). Reduced motion: the text is simply there.
@@ -628,7 +625,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             data-lenis-prevent
             className="thin-scroll desk-manila rounded-b-[3px] px-2.5 pt-5 pb-5 shadow-[0_8px_30px] shadow-black/50 sm:px-5 sm:pt-7 sm:pb-7 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:rounded-[3px] lg:[grid-area:1/1]"
           >
-            <FileDocument evidence={evidence} number={number} headingRef={headingRef} revealed={openedBefore}>
+            <FileDocument evidence={evidence} number={number} headingRef={headingRef} revealed={shownStamped}>
               <section aria-labelledby="pin-question" className="mx-2.5 mt-8 border-t border-ink/20 pt-6 sm:mx-5">
                 <h3 id="pin-question" className="font-voice text-[1.0625rem] text-ink">
                   Which theory does this point to?

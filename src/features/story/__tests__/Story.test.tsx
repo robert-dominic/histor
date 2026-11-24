@@ -572,7 +572,7 @@ describe('Story: one gesture, one step', () => {
     expect(stepOf(container)).toBe('hook-0');
   });
 
-  test('back works the same way, one step at a time, and a page returned to is already written', () => {
+  test('back works the same way, one step at a time, and a page returned to is written again by the pen', () => {
     const { container } = renderStory(testCase, READ);
     finishWriting(container);
     wheelBurst(stageOf(container));
@@ -580,13 +580,20 @@ describe('Story: one gesture, one step', () => {
     wheelBurst(stageOf(container));
     settleSteps();
     expect(stepOf(container)).toBe('page-1');
+    finishWriting(container);
     wheelBurst(stageOf(container), { deltaY: -60 });
     settleSteps();
     expect(stepOf(container)).toBe('hook-0');
     wheelBurst(stageOf(container), { deltaY: -60 });
     settleSteps();
     expect(stepOf(container)).toBe('page-0');
-    expect(container.querySelector<HTMLElement>('[data-story="page"]')?.dataset.written).toBe('true');
+    // The pen writes it again (review-fixes 3); a gesture back finishes it at once and stays.
+    const page = container.querySelector<HTMLElement>('[data-story="page"]')!;
+    expect(page.dataset.written).toBeUndefined();
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    expect(page.dataset.written).toBe('true');
     // Before the first page there is only the play modal: back goes nowhere.
     wheelBurst(stageOf(container), { deltaY: -60 });
     settleSteps();
@@ -607,6 +614,10 @@ describe('Story: one gesture, one step', () => {
     settleSteps();
     expect(stepOf(container)).toBe('hook-1');
     fireEvent.keyDown(window, { key: 'ArrowUp' });
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    // Back on a page, the pen writes it again: the first key back finishes it, the next one steps.
+    fireEvent.keyDown(window, { key: 'PageUp' });
     settleSteps();
     expect(stepOf(container)).toBe('page-1');
     fireEvent.keyDown(window, { key: 'PageUp' });
@@ -754,7 +765,7 @@ describe('Story: hooks', () => {
     expect([...chapter.querySelectorAll<HTMLElement>('[data-story="name"]')].every(name => name.style.opacity === '0')).toBe(true);
   });
 
-  test('stepping back from the hook reverses all of it: the text leaves, the light returns, the slip comes back, the names are written again', () => {
+  test('stepping back from the hook: the text leaves, the light returns, then the pen writes the page again, crew list and all, 1.5× quicker (review-fixes 3)', () => {
     const { container } = renderStory(maryCeleste, READ);
     finishWriting(container);
     wheelBurst(stageOf(container));
@@ -763,20 +774,23 @@ describe('Story: hooks', () => {
     const slip = chapter.querySelector<HTMLElement>('[data-story="crew-slip"]')!;
     const hook = chapter.querySelector<HTMLElement>('[data-story="hook-moment"]')!;
     const dim = chapter.querySelector<HTMLElement>('[data-story="dim"]')!;
+    const page = chapter.querySelector<HTMLElement>('[data-story="page"]')!;
     const writing = writingOf(container);
     wheelBurst(stageOf(container), { deltaY: -60 });
     const transition = transitionNow();
     const textOut = on(transition, hook).find(tween => tween.vars.opacity === 0)!;
     const light = on(transition, dim).find(tween => tween.vars.opacity === 0)!;
-    const slipIn = on(transition, slip).find(tween => tween.vars.opacity === 1)!;
-    const rewrite = childrenOf(transition).find(child => 'targets' in child && (child as gsap.core.Tween).targets()[0] === writing)!;
     expect(light.startTime()).toBeGreaterThanOrEqual(end(textOut) - 1e-6);
-    expect(slipIn.startTime()).toBeGreaterThanOrEqual(end(light) - 1e-6);
-    expect(rewrite.startTime()).toBeGreaterThanOrEqual(end(slipIn) - 1e-6);
+    // The page comes back empty, the slip off screen.
+    expect(page.dataset.written).toBeUndefined();
+    expect(slip.style.opacity).toBe('0');
     settleSteps();
     expect(stepOf(container)).toBe('page-0');
+    expect(writing.paused()).toBe(false);
+    expect(writing.timeScale()).toBe(STORY_PACE.backSpeed);
+    finishWriting(container);
     expect(slip.style.opacity).toBe('1');
-    expect(chapter.querySelector<HTMLElement>('[data-story="page"]')?.dataset.written).toBe('true');
+    expect(page.dataset.written).toBe('true');
   });
 
   test('darkness first, both ways: forward the image darkens before the text; back into a hook the text waits for the dark', () => {
@@ -800,17 +814,23 @@ describe('Story: hooks', () => {
     wheelBurst(stageOf(container));
     settleSteps();
     expect(stepOf(container)).toBe('page-2');
+    finishWriting(container);
     wheelBurst(stageOf(container), { deltaY: -60 });
     const back = transitionNow();
-    // Painted dark underneath, the text hidden until the lit scene has gone.
-    expect(hook.style.opacity).toBe('0');
+    // Painted dark underneath, the text's letters hidden until the lit scene has gone; then it snaps in.
+    const letters = [...hook.querySelectorAll<HTMLElement>('[data-story="hook-char"]')];
+    expect(letters.length).toBeGreaterThan(0);
+    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
     expect(second.querySelector<HTMLElement>('[data-story="dim"]')!.style.opacity).not.toBe('0');
     const leaving = on(back, chapterOf(container, maryCeleste.story[2])).find(tween => tween.vars.opacity === 0)!;
-    const textBack = on(back, hook).find(tween => tween.vars.opacity === 1)!;
-    expect(textBack.startTime()).toBeGreaterThanOrEqual(end(leaving) - 1e-6);
+    act(() => {
+      back.time(end(leaving) - 0.01);
+    });
+    expect(letters.every(letter => letter.style.opacity === '0')).toBe(true);
     settleSteps();
     expect(stepOf(container)).toBe('hook-1');
     expect(hook.style.opacity).toBe('1');
+    expect(letters.every(letter => letter.style.opacity === '1')).toBe(true);
   });
 
   test('story events: each chapter is entered, each hook comes and goes, in order', () => {
@@ -847,6 +867,7 @@ describe('Story: hooks', () => {
       settleSteps();
       wheelBurst(stageOf(container), { deltaY: -60 });
       settleSteps();
+      finishWriting(container);
       wheelBurst(stageOf(container));
       settleSteps();
       // Back from the hook to its page, then on to it again.
