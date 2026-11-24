@@ -250,9 +250,9 @@ describe('quality', () => {
 });
 
 describe('the table from events to sounds', () => {
-  test('a hook going forward ducks the ambience; stepping back onto one, no duck', () => {
+  test('a hook ducks the ambience both ways: stepping back, it snaps in again with its dread sound (review-fixes 3, 7)', () => {
     expect(soundFor({ type: 'hook', chapter: 'c', direction: 'forward' }, freshMemory())?.duck).toBe('hook');
-    expect(soundFor({ type: 'hook', chapter: 'c', direction: 'backward' }, freshMemory())?.duck).toBeUndefined();
+    expect(soundFor({ type: 'hook', chapter: 'c', direction: 'backward' }, freshMemory())?.duck).toBe('hook');
   });
 
   test('every stamp ducks the ambience', () => {

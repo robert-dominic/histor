@@ -1,5 +1,5 @@
 // src/lib/validate-case.ts
-import type { AmbienceCue, AmbienceLayer, Case } from '@/types/case';
+import { HOOK_SOUNDS, type AmbienceCue, type AmbienceLayer, type Case } from '@/types/case';
 import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
@@ -417,6 +417,21 @@ export function validateCase(caseData: Case): string[] {
     caseData.story.forEach((section, i) => checkNarration(section?.narration, `story[${i}].narration`));
   }
   checkNarration(caseData.centralQuestionNarration, 'centralQuestionNarration');
+
+  // Validate the optional dread sound of each hook (review-fixes brief, 7): one of the pool, on a section with a hook
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const hookSound: unknown = section?.hookSound;
+      if (hookSound === undefined) {
+        return;
+      }
+      if (typeof hookSound !== 'string' || !(HOOK_SOUNDS as readonly string[]).includes(hookSound)) {
+        errors.push(`Field story[${i}].hookSound: Must be one of ${HOOK_SOUNDS.join(', ')}`);
+      } else if (typeof section.hook !== 'string' || section.hook.trim() === '') {
+        errors.push(`Field story[${i}].hookSound: The section must have a hook`);
+      }
+    });
+  }
 
   // Validate the optional weighted parts of the central question (3.17): an array of non-empty phrases, each found
   // word for word in centralQuestion

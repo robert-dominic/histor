@@ -7,9 +7,9 @@
 import type { DuckName } from '@/lib/sound/engine';
 import { MOTION } from '@/lib/motion';
 import { SOUND } from '@/lib/sound/levels';
-import type { SoundName } from '@/lib/sound/voices';
+import { DREAD_POOL, type SoundName } from '@/lib/sound/voices';
 import type { StoryEvent } from '@/lib/story-events';
-import type { AmbienceCue } from '@/types/case';
+import { HOOK_SOUNDS, type AmbienceCue, type HookSound } from '@/types/case';
 
 export interface SoundCue {
   sound: SoundName;
@@ -40,10 +40,29 @@ export interface SoundMemory {
   played: Set<AmbienceCue>;
   /** Now, in ms: the time the rows read (tests set it). */
   now: number;
+  /** The dread sound the last hook played, so the next is never the same (review-fixes brief, 7). */
+  lastDread: HookSound | null;
+  /** Where the pool's picks come from (tests set it). */
+  random: () => number;
 }
 
 export function freshMemory(): SoundMemory {
-  return { lastPen: Number.NEGATIVE_INFINITY, lastBrush: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0 };
+  return { lastPen: Number.NEGATIVE_INFINITY, lastBrush: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
+}
+
+/**
+ * A hook's dread sound (review-fixes brief, 7): the chapter's own when it names one, otherwise a pick from the pool,
+ * never the same as the last.
+ */
+export function pickDread(own: HookSound | undefined, memory: SoundMemory): HookSound {
+  if (own !== undefined) {
+    memory.lastDread = own;
+    return own;
+  }
+  const choices = HOOK_SOUNDS.filter(name => name !== memory.lastDread);
+  const pick = choices[Math.floor(memory.random() * choices.length) % choices.length];
+  memory.lastDread = pick;
+  return pick;
 }
 
 type Rows = { [K in StoryEvent['type']]?: (event: Extract<StoryEvent, { type: K }>, memory: SoundMemory) => SoundRow | null };
@@ -76,8 +95,9 @@ export const SOUND_TABLE: Rows = {
     memory.lastPen = memory.now;
     return { cues: [{ sound: 'scratch' }] };
   },
-  // The hook: a deep drone fades in under it, and one low, distant boom as the text snaps in.
-  hook: event => (event.direction === 'forward' ? { duck: 'hook', drone: 'in', cues: [{ sound: 'boom' }] } : { drone: 'in' }),
+  // The hook: a deep drone fades in under it, and one dread sound as the text snaps in, forward or back (the
+  // chapter's own, or one from the pool, never the same twice running).
+  hook: (event, memory) => ({ duck: 'hook', drone: 'in', cues: [{ sound: DREAD_POOL[pickDread(event.sound, memory)] }] }),
   // The hook decays: a soft reversed whoosh, and the drone goes.
   'hook-out': event => (event.direction === 'forward' ? { cues: [{ sound: 'whoosh' }], drone: 'out' } : { drone: 'out' }),
   // Each name un-written: a breathy hiss, a little lower each time.

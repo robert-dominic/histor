@@ -79,12 +79,27 @@ It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned do
 | --- | --- |
 | `chapter-enter` (forward) | A soft low swell (low-passed brown noise rising, a 55 Hz sine under it) |
 | `pen` | A faint scratch: a short tick of high-passed noise, with a little random pitch and level; throttled to about 12 a second at most, never one per letter |
-| `hook` (forward) | A deep drone fading in under it (two detuned low oscillators, low-passed), plus one low, distant boom as the text snaps in; the ambience and the score duck |
+| `hook` (forward, and back: it snaps in again) | A deep drone fading in under it (two detuned low oscillators, low-passed), plus one **dread sound** from the pool as the text snaps in (see "The dread pool"); the ambience and the score duck |
 | `hook-out` (forward) | A soft reversed whoosh (band-passed noise rising out of nothing, cut off softly); the drone fades out |
 | `roll-call-out` | A breathy hiss for each name, a little lower in pitch for each |
 | `chapter-enter` of a cued chapter | The ship's bell, once per visit, far away: an inharmonic bell of eight sine partials with a long decay, the upper ones dying first, low-passed. The Mary Celeste cues it at `s-found`, as the *Dei Gratia* sights her (`CaseAmbience.cues`) |
 | `question-line` | The drone stays low and still; each line adds a faint, low pulse |
 | `modal` (the fork opening over the question) | A paper slide in (closing: out; see "Interface sounds") |
+
+### The dread pool (review-fixes brief, 7)
+
+Every hook used the same boom, which got boring. Six distinct dread sounds, all generated (`DREAD_POOL` in `voices.ts`, the names `HOOK_SOUNDS` in `src/types/case.ts`):
+
+| `HookSound` | Recipe | Sound |
+| --- | --- | --- |
+| `boom` | `dread-boom` | A deep boom with a long tail (a sine falling 46 → 27 Hz over about 5s, brown noise under it) |
+| `swell` | `dread-swell` | A rising reversed swell that cuts off (band-passed brown noise and a triangle rising, gone in 70ms) |
+| `scrape` | `dread-scrape` | A metallic scrape, like a hull (a bending sawtooth through a narrow moving band-pass, grit, three faint inharmonic partials) |
+| `thunder` | `dread-thunder` | Distant rolling thunder (four low rumbles of brown noise, each a little further off) |
+| `thumps` | `dread-thumps` | Two slow, heavy thumps, the second softer |
+| `cluster` | `dread-cluster` | A low, dissonant cluster swell (C2, C♯2, D2, F♯2, slightly detuned, low-passed) |
+
+Each hook picks one, never the same as the last (`pickDread`, `SoundMemory.lastDread`). A case can name one for a chapter, `StorySection.hookSound` (optional, validated: one of the six, on a chapter that has a hook); it wins over the pool. All six are on `/dev/sound`. None peaks above 70% of the heavy stamp.
 
 ## Desk sounds
 

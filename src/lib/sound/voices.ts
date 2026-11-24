@@ -3,6 +3,8 @@
 // nothing to download or license. Every sound has an attack and a release, so none of them clicks. Each recipe says
 // how long it lasts, so the engine can count it against the cap on voices.
 
+import type { HookSound } from '@/types/case';
+
 /** A recipe's options: when it starts (context time), and small variations the table asks for. */
 export interface VoiceOptions {
   at: number;
@@ -172,12 +174,110 @@ const scratch: Voice = {
     noiseBurst(ctx, out, { at, filter: 'highpass', frequency: 3600 * pitch * vary(0.12), q: 0.8, peak: 0.05 * gain * vary(0.3), attack: 0.004, release: 0.035, rate: vary(0.1) }),
 };
 
-/** As the hook's text snaps in: one low, distant boom. */
-const boom: Voice = {
-  seconds: 3,
+// ---- The dread pool (review-fixes brief, 7): six distinct sounds for the hooks. Each hook picks one, never the same
+// as the last, unless its chapter names its own (`StorySection.hookSound`). All low, slow and quiet; none louder than
+// the boom was.
+
+/** A deep boom with a long tail: the old boom, its rumble left to die away much longer. */
+const dreadBoom: Voice = {
+  seconds: 5.2,
   play: (ctx, out, { at, gain, pitch }) => {
-    tone(ctx, out, { at, frequency: 48 * pitch, glideTo: 31 * pitch, peak: 0.36 * gain, attack: 0.025, release: 2.7 });
-    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 170 * pitch, sweepTo: 70, peak: 0.3 * gain, attack: 0.02, release: 1.9 });
+    tone(ctx, out, { at, frequency: 46 * pitch, glideTo: 27 * pitch, peak: 0.36 * gain, attack: 0.03, release: 4.9 });
+    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'lowpass', frequency: 160 * pitch, sweepTo: 50, peak: 0.28 * gain, attack: 0.02, release: 3.6 });
+  },
+};
+
+/** A rising reversed swell that cuts off: something rushing up out of nothing, then gone. */
+const dreadSwell: Voice = {
+  seconds: 2.1,
+  play: (ctx, out, { at, gain, pitch }) => {
+    noiseBurst(ctx, out, { at, kind: 'brown', filter: 'bandpass', frequency: 180 * pitch, sweepTo: 1500 * pitch, q: 0.9, peak: 0.3 * gain, attack: 1.85, release: 0.07 });
+    tone(ctx, out, { at, type: 'triangle', frequency: 58 * pitch, glideTo: 92 * pitch, peak: 0.16 * gain, attack: 1.85, release: 0.06 });
+  },
+};
+
+/** A metallic scrape, like a hull dragged on rock: a rough, bending tone through a narrow, moving filter. */
+const dreadScrape: Voice = {
+  seconds: 2.6,
+  play: (ctx, out, { at, gain, pitch }) => {
+    const grind = ctx.createOscillator();
+    grind.type = 'sawtooth';
+    grind.frequency.setValueAtTime(96 * pitch, at);
+    grind.frequency.linearRampToValueAtTime(84 * pitch, at + 1.1);
+    grind.frequency.linearRampToValueAtTime(101 * pitch, at + 2.3);
+    const metal = ctx.createBiquadFilter();
+    metal.type = 'bandpass';
+    metal.Q.value = 9;
+    metal.frequency.setValueAtTime(820 * pitch, at);
+    metal.frequency.exponentialRampToValueAtTime(1350 * pitch, at + 1.4);
+    metal.frequency.exponentialRampToValueAtTime(980 * pitch, at + 2.4);
+    const amp = ctx.createGain();
+    const end = envelope(amp.gain, at, 0.2 * gain, 0.35, 1.2, 0.9);
+    grind.connect(metal).connect(amp).connect(out);
+    grind.start(at);
+    grind.stop(end + 0.05);
+    // The grit of it, and the hull ringing faintly (inharmonic partials).
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 2400 * pitch, sweepTo: 1700 * pitch, q: 6, peak: 0.05 * gain, attack: 0.3, hold: 1.2, release: 0.9 });
+    [
+      [311, 0.03],
+      [487, 0.02],
+      [733, 0.012],
+    ].forEach(([frequency, peak]) => tone(ctx, out, { at: at + 0.2, frequency: frequency * pitch, detune: (Math.random() - 0.5) * 12, peak: peak * gain, attack: 0.4, hold: 0.8, release: 1.1 }));
+  },
+};
+
+/** Distant rolling thunder: a few low rumbles, one after another, each a little further off. */
+const dreadThunder: Voice = {
+  seconds: 4.8,
+  play: (ctx, out, { at, gain, pitch }) => {
+    [
+      [0, 0.3, 240, 1.6],
+      [0.55, 0.24, 180, 1.9],
+      [1.3, 0.2, 140, 2.2],
+      [2.1, 0.12, 110, 2.5],
+    ].forEach(([offset, peak, frequency, release]) =>
+      noiseBurst(ctx, out, {
+        at: at + offset + Math.random() * 0.12,
+        kind: 'brown',
+        filter: 'lowpass',
+        frequency: frequency * pitch,
+        sweepTo: 60,
+        peak: peak * gain,
+        attack: 0.12,
+        hold: 0.15,
+        release,
+        rate: vary(0.15),
+      })
+    );
+  },
+};
+
+/** Two slow, heavy thumps, the second a little softer: something very large, close by, in the dark. */
+const dreadThumps: Voice = {
+  seconds: 2.2,
+  play: (ctx, out, { at, gain, pitch }) => {
+    [
+      [0, 1],
+      [0.95, 0.78],
+    ].forEach(([offset, weight]) => {
+      tone(ctx, out, { at: at + offset, frequency: 58 * pitch, glideTo: 36 * pitch, peak: 0.36 * weight * gain, attack: 0.012, release: 0.5 });
+      noiseBurst(ctx, out, { at: at + offset, kind: 'brown', filter: 'lowpass', frequency: 220 * pitch, sweepTo: 70, peak: 0.22 * weight * gain, attack: 0.008, release: 0.28 });
+    });
+  },
+};
+
+/** A low, dissonant cluster swelling up and away: four close notes beating against each other. */
+const dreadCluster: Voice = {
+  seconds: 4.6,
+  play: (ctx, out, { at, gain, pitch }) => {
+    const dark = ctx.createBiquadFilter();
+    dark.type = 'lowpass';
+    dark.frequency.value = 520;
+    dark.connect(out);
+    // C2, C#2, D2, F#2: semitones and a tritone, slightly detuned.
+    [65.41, 69.3, 73.42, 92.5].forEach((frequency, index) =>
+      tone(ctx, dark, { at, type: index % 2 === 0 ? 'sawtooth' : 'triangle', frequency: frequency * pitch, detune: (Math.random() - 0.5) * 14, peak: 0.075 * gain, attack: 1.9, hold: 0.5, release: 2.1 })
+    );
   },
 };
 
@@ -427,7 +527,12 @@ export const VOICES = {
   ding,
   swell,
   scratch,
-  boom,
+  'dread-boom': dreadBoom,
+  'dread-swell': dreadSwell,
+  'dread-scrape': dreadScrape,
+  'dread-thunder': dreadThunder,
+  'dread-thumps': dreadThumps,
+  'dread-cluster': dreadCluster,
   whoosh,
   hiss,
   bell,
@@ -436,3 +541,13 @@ export const VOICES = {
 } satisfies Record<string, Voice>;
 
 export type SoundName = keyof typeof VOICES;
+
+/** The dread pool: each hook sound (`HookSound`) and the recipe it plays. */
+export const DREAD_POOL = {
+  boom: 'dread-boom',
+  swell: 'dread-swell',
+  scrape: 'dread-scrape',
+  thunder: 'dread-thunder',
+  thumps: 'dread-thumps',
+  cluster: 'dread-cluster',
+} as const satisfies Record<HookSound, SoundName>;

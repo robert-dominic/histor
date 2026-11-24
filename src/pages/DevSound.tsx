@@ -11,7 +11,12 @@ const GROUPS: { title: string; sounds: [SoundName, string][] }[] = [
     sounds: [
       ['swell', 'A chapter enters'],
       ['scratch', 'The pen writes (throttled)'],
-      ['boom', 'A hook snaps in'],
+      ['dread-boom', 'A hook (pool): a deep boom, long tail'],
+      ['dread-swell', 'A hook (pool): a rising reversed swell, cut off'],
+      ['dread-scrape', 'A hook (pool): a metallic scrape, like a hull'],
+      ['dread-thunder', 'A hook (pool): distant rolling thunder'],
+      ['dread-thumps', 'A hook (pool): two slow, heavy thumps'],
+      ['dread-cluster', 'A hook (pool): a low, dissonant cluster swell'],
       ['whoosh', 'A hook decays'],
       ['hiss', 'A name un-written'],
       ['bell', "The ship's bell (s-found)"],

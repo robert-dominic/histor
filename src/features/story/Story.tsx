@@ -713,7 +713,7 @@ export default function Story({
                   timeline.call(
                     () => {
                       hookIns[fromScene]?.timeScale(1).restart();
-                      emitStoryEvent({ type: 'hook', chapter: section.id, direction: 'forward' });
+                      emitStoryEvent({ type: 'hook', chapter: section.id, direction: 'forward', sound: section.hookSound });
                     },
                     undefined,
                     at
@@ -833,11 +833,11 @@ export default function Story({
               const snap = hookIns[toScene];
               snap?.pause().progress(0);
               gsap.set(hookBack, { opacity: 1, pointerEvents: 'auto' });
-              const chapterId = story[toScene].id;
+              const { id: chapterId, hookSound } = story[toScene];
               timeline.call(
                 () => {
                   snap?.timeScale(STORY_PACE.backSpeed).restart();
-                  emitStoryEvent({ type: 'hook', chapter: chapterId, direction: 'backward' });
+                  emitStoryEvent({ type: 'hook', chapter: chapterId, direction: 'backward', sound: hookSound });
                 },
                 undefined,
                 quick.duration

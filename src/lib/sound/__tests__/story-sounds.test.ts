@@ -8,7 +8,8 @@ import { startSound } from '@/lib/sound';
 import { SoundEngine } from '@/lib/sound/engine';
 import { SOUND } from '@/lib/sound/levels';
 import { freshMemory, soundFor, type SoundRow } from '@/lib/sound/sound-map';
-import { VOICES } from '@/lib/sound/voices';
+import { DREAD_POOL, VOICES } from '@/lib/sound/voices';
+import { HOOK_SOUNDS } from '@/types/case';
 import { emitStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { FakeAudioContext, type FakeGain, fakeContextMaker } from '@/test/fake-audio';
 
@@ -38,9 +39,34 @@ describe('the story\'s rows', () => {
     expect(ticks.length).toBeLessThanOrEqual(SOUND.penTicksPerSecond);
   });
 
-  test('a hook arrives: a deep drone fades in under it, one low, distant boom, and the ambience ducks', () => {
+  test('a hook arrives: a deep drone fades in under it, one dread sound from the pool, and the ambience ducks', () => {
     const row = soundFor({ type: 'hook', chapter: 'c', direction: 'forward' }, freshMemory());
-    expect(row).toEqual({ duck: 'hook', drone: 'in', cues: [{ sound: 'boom' }] });
+    expect(row).toMatchObject({ duck: 'hook', drone: 'in' });
+    expect(Object.values(DREAD_POOL)).toContain(row!.cues![0].sound);
+  });
+
+  test('the dread pool (review-fixes 7): six distinct sounds, each hook a different one from the last', () => {
+    expect(new Set(Object.values(DREAD_POOL)).size).toBe(6);
+    expect(Object.keys(DREAD_POOL).sort()).toEqual([...HOOK_SOUNDS].sort());
+    const memory = freshMemory();
+    let last: string | null = null;
+    const heard = new Set<string>();
+    for (let i = 0; i < 300; i += 1) {
+      const sound = soundFor({ type: 'hook', chapter: 'c', direction: 'forward' }, memory)!.cues![0].sound;
+      expect(sound).not.toBe(last);
+      heard.add(sound);
+      last = sound;
+    }
+    expect(heard.size).toBe(6);
+  });
+
+  test("a chapter's own hook sound wins over the pool, forward and back", () => {
+    const memory = freshMemory();
+    expect(soundFor({ type: 'hook', chapter: 'c', direction: 'forward', sound: 'thunder' }, memory)!.cues).toEqual([{ sound: 'dread-thunder' }]);
+    expect(soundFor({ type: 'hook', chapter: 'c', direction: 'backward', sound: 'scrape' }, memory)!.cues).toEqual([{ sound: 'dread-scrape' }]);
+    // The pool's next pick is not the one just heard.
+    memory.random = () => 0;
+    expect(soundFor({ type: 'hook', chapter: 'd', direction: 'forward' }, memory)!.cues![0].sound).not.toBe('dread-scrape');
   });
 
   test('the hook decays: a soft reversed whoosh, and the drone goes', () => {

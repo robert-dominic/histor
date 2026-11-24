@@ -8,7 +8,7 @@
 // Desk events fire when the user does something at the investigation desk.
 
 import type { CaseRank } from '@/lib/case-rank';
-import type { CaseAmbience, CaseTheme, EvidenceStatus, PinTarget } from '@/types/case';
+import type { CaseAmbience, CaseTheme, EvidenceStatus, HookSound, PinTarget } from '@/types/case';
 
 export type StoryDirection = 'forward' | 'backward';
 
@@ -20,8 +20,8 @@ export type StoryEvent =
   | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number }
   // A sentence of the text column starts to rise into view. `index` is its place in the chapter.
   | { type: 'beat'; chapter: string; index: number; direction: StoryDirection }
-  // Forward: as the hook snaps in. Backward: on stepping back onto a hook.
-  | { type: 'hook'; chapter: string; direction: StoryDirection }
+  // As the hook snaps in, forward or back. `sound`: the chapter's own dread sound, when it names one.
+  | { type: 'hook'; chapter: string; direction: StoryDirection; sound?: HookSound }
   // A line of the central question plays in (forward), or is returned to (backward).
   | { type: 'question-line'; index: number; direction: StoryDirection }
   // The hook leaves: its letters decay (forward), or it gives way to its page again (backward).
