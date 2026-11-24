@@ -29,6 +29,7 @@ import { buildCaseReport } from '@/lib/case-report';
 import { coverLabel } from '@/lib/desk';
 import { INK_RISE, MOTION, MOTION_QUERIES, STEP, ghostDuration, stampHit, tween } from '@/lib/motion';
 import { createQuillWriter } from '@/lib/quill-writing';
+import { typeLetters } from '@/lib/typewriter';
 import { useDeskOutlet } from '@/features/board/desk-outlet';
 import { emitStoryEvent } from '@/lib/story-events';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
@@ -335,8 +336,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
           momentParts.push(typed);
           const letters = typed.chars as HTMLElement[];
           gsap.set(letters, { opacity: 0 });
-          letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, at + index / STAMP_MOMENT.typeRate));
-          return at + letters.length / STAMP_MOMENT.typeRate;
+          return typeLetters(timeline, letters, at, STAMP_MOMENT.typeRate, (element.textContent ?? '').trim().length);
         };
         const note = rootRef.current?.querySelector<HTMLElement>('[data-file="stamp-note"]');
         if (evidence.status === 'record' && !reduced) {

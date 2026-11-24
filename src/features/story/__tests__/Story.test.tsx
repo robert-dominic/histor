@@ -848,7 +848,7 @@ describe('Story: hooks', () => {
       stop();
     }
     expect(
-      events.filter(event => event.type !== 'beat' && event.type !== 'pen').map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)
+      events.filter(event => !['beat', 'pen', 'type-key', 'type-return'].includes(event.type)).map(event => `${event.type}:${(event as { chapter?: string }).chapter}`)
     ).toEqual(['chapter-enter:s-one', 'hook:s-one', 'hook-out:s-one', 'chapter-enter:s-two']);
     // Each chapter says how far into the night it is; the pen says when it writes.
     const depths = events.filter(event => event.type === 'chapter-enter').map(event => event.depth);

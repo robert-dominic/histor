@@ -10,7 +10,9 @@ const GROUPS: { title: string; sounds: [SoundName, string][] }[] = [
     title: 'The story',
     sounds: [
       ['swell', 'A chapter enters'],
-      ['scratch', 'The pen writes (throttled)'],
+      ['scratch', 'The pen writes (throttled): written text'],
+      ['type-key', 'A typed letter (14 a second at most): kickers, years, prompts, notes, the rank, the guide, hints'],
+      ['carriage-ding', 'The end of a typed line over 40 characters'],
       ['dread-boom', 'A hook (pool): a deep boom, long tail'],
       ['dread-swell', 'A hook (pool): a rising reversed swell, cut off'],
       ['dread-scrape', 'A hook (pool): a metallic scrape, like a hull'],

@@ -36,6 +36,8 @@ export const SOUND = {
   penTicksPerSecond: 12,
   /** The brush of a file on the floor: never more than this a second. */
   brushesPerSecond: 4,
+  /** The typewriter's keys (review-fixes brief, 8): never more than this many a second. */
+  typeKeysPerSecond: 14,
   /** The hook's drone: its level under a hook, its level held low under the question, and its release. */
   drone: { level: 0.22, low: 0.1, release: 2.6 },
   /** The ship's bell rings this long after its chapter enters: far away, after the swell. */

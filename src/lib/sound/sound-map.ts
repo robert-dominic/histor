@@ -34,6 +34,8 @@ export interface SoundRow {
 export interface SoundMemory {
   /** When the pen last scratched, and when a file on the floor was last brushed, in ms. */
   lastPen: number;
+  /** When the typewriter's last key sounded, in ms. */
+  lastKey: number;
   lastBrush: number;
   /** The case's one-off cues (from its ambience), and the ones already played. */
   cues: AmbienceCue[];
@@ -47,7 +49,7 @@ export interface SoundMemory {
 }
 
 export function freshMemory(): SoundMemory {
-  return { lastPen: Number.NEGATIVE_INFINITY, lastBrush: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
+  return { lastPen: Number.NEGATIVE_INFINITY, lastKey: Number.NEGATIVE_INFINITY, lastBrush: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
 }
 
 /**
@@ -95,6 +97,16 @@ export const SOUND_TABLE: Rows = {
     memory.lastPen = memory.now;
     return { cues: [{ sound: 'scratch' }] };
   },
+  // The typewriter (review-fixes brief, 8): a key's click for each typed letter, never more than about 14 a second;
+  // the carriage-return ding at the end of a longer line. (Pen-written text keeps the pen's scratch.)
+  'type-key': (_event, memory) => {
+    if (memory.now - memory.lastKey < 1000 / SOUND.typeKeysPerSecond) {
+      return null;
+    }
+    memory.lastKey = memory.now;
+    return { cues: [{ sound: 'type-key' }] };
+  },
+  'type-return': () => ({ cues: [{ sound: 'carriage-ding' }] }),
   // The hook: a deep drone fades in under it, and one dread sound as the text snaps in, forward or back (the
   // chapter's own, or one from the pool, never the same twice running).
   hook: (event, memory) => ({ duck: 'hook', drone: 'in', cues: [{ sound: DREAD_POOL[pickDread(event.sound, memory)] }] }),

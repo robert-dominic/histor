@@ -359,7 +359,10 @@ describe('Closing the case', () => {
     await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/report`), { timeout: 6000 });
     stop();
     expect(saved().verdict).toBe('t-explosion');
-    expect(heard.mock.calls.map(([event]) => event)).toStrictEqual([{ type: 'seal', where: 'verdict' }]);
+    // (The typewriter's keys of the lines typed meanwhile aside.)
+    expect(heard.mock.calls.map(([event]) => event).filter(event => event.type !== 'type-key' && event.type !== 'type-return')).toStrictEqual([
+      { type: 'seal', where: 'verdict' },
+    ]);
   });
 });
 

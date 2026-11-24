@@ -30,6 +30,9 @@ export type StoryEvent =
   | { type: 'roll-call-out'; chapter: string; name: string; order: number; direction: StoryDirection }
   // The pen writes a letter (anywhere: the legend, the story, a file, the verdict). Many a second.
   | { type: 'pen' }
+  // The typewriter types a letter of the app's voice (src/lib/typewriter.ts); a longer line's carriage returns.
+  | { type: 'type-key' }
+  | { type: 'type-return' }
   // A modal opens or closes: the play choice, the fork over the question.
   | { type: 'modal'; name: 'play-choice' | 'fork'; open: boolean }
   // The interface (music brief, 4): any button or link pressed (the app's own click listener sends these), a toggle

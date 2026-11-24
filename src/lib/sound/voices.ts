@@ -508,6 +508,30 @@ const switchClick: Voice = {
   },
 };
 
+// ---- The typewriter (review-fixes brief, 8): typed text gets the typewriter, written text gets the pen
+
+/** A typed letter: a short mechanical key click (the type bar striking, a knock in the carriage), a little different each time. */
+const typeKey: Voice = {
+  seconds: 0.07,
+  play: (ctx, out, { at, gain, pitch }) => {
+    const strike = vary(0.12);
+    noiseBurst(ctx, out, { at, filter: 'bandpass', frequency: 2300 * pitch * strike, q: 1.6, peak: 0.05 * gain * vary(0.25), attack: 0.0015, release: 0.022, rate: vary(0.1) });
+    tone(ctx, out, { at: at + 0.004, type: 'triangle', frequency: 170 * pitch * strike, glideTo: 120 * pitch, peak: 0.035 * gain * vary(0.2), attack: 0.002, release: 0.045 });
+  },
+};
+
+/** The end of a longer typed line: the carriage returns (a short ratchet), and its little bell rings. */
+const carriageDing: Voice = {
+  seconds: 1.3,
+  play: (ctx, out, { at, gain, pitch }) => {
+    for (let i = 0; i < 4; i += 1) {
+      noiseBurst(ctx, out, { at: at + i * 0.028, filter: 'highpass', frequency: 3200 * pitch, peak: 0.018 * gain, attack: 0.001, release: 0.012 });
+    }
+    tone(ctx, out, { at: at + 0.13, frequency: 2489 * pitch, peak: 0.05 * gain, attack: 0.002, release: 1.1 });
+    tone(ctx, out, { at: at + 0.13, frequency: 6220 * pitch, peak: 0.012 * gain, attack: 0.002, release: 0.4 });
+  },
+};
+
 /** Every one-shot sound, by name. */
 export const VOICES = {
   'paper-tick': paperTick,
@@ -527,6 +551,8 @@ export const VOICES = {
   ding,
   swell,
   scratch,
+  'type-key': typeKey,
+  'carriage-ding': carriageDing,
   'dread-boom': dreadBoom,
   'dread-swell': dreadSwell,
   'dread-scrape': dreadScrape,

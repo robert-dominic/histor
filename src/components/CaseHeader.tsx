@@ -6,8 +6,60 @@
 // The title is a link to the start of the case's story (review-fixes brief, 5), from anywhere in the case: the desk,
 // a file, the verdict, the report, the story itself. It carries a fresh `storyStart` token, so the case page goes
 // to the story's first step (the play choice) even when it is already showing the story.
+import { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import SoundControls from '@/components/SoundControls';
+import { MOTION_QUERIES } from '@/lib/motion';
+import { typeElement } from '@/lib/typewriter';
+
+gsap.registerPlugin(useGSAP);
+
+/**
+ * The years are typed, with the typewriter's keys (review-fixes brief, 8), the first time the header is seen: at once
+ * on the desk, or when the story fades the header in.
+ */
+function useTypedYears(bar: React.RefObject<HTMLElement | null>, startHidden: boolean) {
+  useGSAP(
+    () => {
+      const header = bar.current;
+      const years = header?.querySelector<HTMLElement>('[data-case-header="years"]');
+      if (header == null || years == null || typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches) {
+        return;
+      }
+      let timeline: gsap.core.Timeline | null = null;
+      let revert: (() => void) | null = null;
+      const type = () => {
+        timeline = gsap.timeline();
+        const typed = typeElement(timeline, years, 0);
+        if (typed !== null) {
+          revert = () => typed.split.revert();
+          timeline.call(() => revert?.(), undefined, typed.end);
+        }
+      };
+      const visible = () => Number.parseFloat(header.style.opacity || '1') > 0;
+      let observer: MutationObserver | null = null;
+      if (!startHidden || visible()) {
+        type();
+      } else if (typeof MutationObserver === 'function') {
+        observer = new MutationObserver(() => {
+          if (visible()) {
+            observer?.disconnect();
+            type();
+          }
+        });
+        observer.observe(header, { attributes: true, attributeFilter: ['style'] });
+      }
+      return () => {
+        observer?.disconnect();
+        (timeline as gsap.core.Timeline | null)?.kill();
+        (revert as (() => void) | null)?.();
+      };
+    },
+    { scope: bar }
+  );
+}
 
 /** What the title link tells the case page: go to the start of the story. A new token each click. */
 export interface StoryStartState {
@@ -29,8 +81,11 @@ interface CaseHeaderProps {
 export default function CaseHeader({ caseId, title, years, unsolved = false, startHidden = false }: CaseHeaderProps) {
   const navigate = useNavigate();
   const storyHref = `/case/${caseId}`;
+  const barRef = useRef<HTMLElement>(null);
+  useTypedYears(barRef, startHidden);
   return (
     <header
+      ref={barRef}
       data-case-header="bar"
       // Hidden by opacity only, so it is still the page's heading for screen readers.
       style={startHidden ? { opacity: 0 } : undefined}

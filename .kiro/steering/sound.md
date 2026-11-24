@@ -79,6 +79,10 @@ It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned do
 | --- | --- |
 | `chapter-enter` (forward) | A soft low swell (low-passed brown noise rising, a 55 Hz sine under it) |
 | `pen` | A faint scratch: a short tick of high-passed noise, with a little random pitch and level; throttled to about 12 a second at most, never one per letter |
+| `type-key` (review-fixes brief, 8) | A typewriter key: a short mechanical click (band-passed noise and a small low knock), a tiny random variation each time; throttled to about 14 a second at most (`SOUND.typeKeysPerSecond`) |
+| `type-return` | The end of a typed line over 40 characters: the carriage's short ratchet and its little bell (`carriage-ding`) |
+
+**Typed text gets the typewriter; written text gets the pen.** Every line that types itself in the app's voice (Special Elite) goes through `src/lib/typewriter.ts` (`typeLetters`, `typeElement`), which sends `type-key` for each letter and `type-return` at the end of a line longer than `TYPEWRITER.dingAfter` (40) characters: the kickers, the header's years, the legend intro's debunk, "Most people stop here…" in the fork, the stamps' notes, the verdict's lines and the rank card, the ? guide's lead-ins, the hints. Pen-written text (headings, pages, the legend, "You almost believed this.", the leading theories, the signature) keeps the pen's scratch. Both are on `/dev/sound`.
 | `hook` (forward, and back: it snaps in again) | A deep drone fading in under it (two detuned low oscillators, low-passed), plus one **dread sound** from the pool as the text snaps in (see "The dread pool"); the ambience and the score duck |
 | `hook-out` (forward) | A soft reversed whoosh (band-passed noise rising out of nothing, cut off softly); the drone fades out |
 | `roll-call-out` | A breathy hiss for each name, a little lower in pitch for each |

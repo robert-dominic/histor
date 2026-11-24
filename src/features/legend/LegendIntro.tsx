@@ -15,6 +15,7 @@ import { MOTION, MOTION_QUERIES, STEP, stampHit } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import type { CaseTheme, LegendIntro as LegendIntroData } from '@/types/case';
+import { typeLetters } from '@/lib/typewriter';
 
 gsap.registerPlugin(useGSAP, SplitText);
 
@@ -197,11 +198,8 @@ export default function LegendIntro({
             const setTyping = (typing: boolean) => caret.setAttribute('data-typing', String(typing));
             const typeEnd = typeStart + letters.length / FULL.typeRate;
             timeline.call(setTyping, [true], typeStart);
-            letters.forEach((letter, index) => {
-              const at = typeStart + index / FULL.typeRate;
-              timeline.set(letter, { opacity: 1 }, at);
-              timeline.call(moveCaret, [letter, false], at);
-            });
+            typeLetters(timeline, letters, typeStart, FULL.typeRate, (block.textContent ?? '').trim().length);
+            letters.forEach((letter, index) => timeline.call(moveCaret, [letter, false], typeStart + index / FULL.typeRate));
             timeline.call(setTyping, [false], typeEnd);
             timeline.set(caret, { opacity: 0 }, typeEnd + FULL.caretLinger);
           });

@@ -14,6 +14,7 @@ import { useGSAP } from '@gsap/react';
 import { MOTION_QUERIES, QUICK_OUT, STEP, tween } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 import type { Fork as ForkData } from '@/types/case';
+import { typeLetters } from '@/lib/typewriter';
 
 gsap.registerPlugin(useGSAP, SplitText);
 
@@ -94,8 +95,7 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
         split = SplitText.create(prompt, { type: 'words,chars', aria: 'none' });
         const letters = split.chars as HTMLElement[];
         gsap.set(letters, { opacity: 0 });
-        const typeAt = timeline.duration();
-        letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, typeAt + index / TYPE_RATE));
+        typeLetters(timeline, letters, timeline.duration(), TYPE_RATE, (prompt.textContent ?? '').trim().length);
       }
       timeline.fromTo('[data-fork="choices"]', { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, ...tween('paper.lift') }, `>+=${STEP.fast}`);
       return () => split?.revert();

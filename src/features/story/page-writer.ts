@@ -7,6 +7,7 @@ import gsap from 'gsap';
 import { LINEAR, MOTION, tween } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { STORY_PACE, penPlan } from '@/lib/story-pages';
+import { typeLetters } from '@/lib/typewriter';
 
 export interface PageWriter {
   /** How long the whole page takes to write, in seconds. */
@@ -75,8 +76,8 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
     const split = splitForQuill(kicker);
     splits.push(split);
     const letters = split.chars as HTMLElement[];
-    letters.forEach((letter, index) => writing.set(letter, { opacity: 1 }, index / STORY_PACE.kickerRate));
-    at += letters.length / STORY_PACE.kickerRate;
+    // Typed, with the typewriter's keys (the heading and the body are the pen's).
+    at = typeLetters(writing, letters, at, STORY_PACE.kickerRate, (kicker.textContent ?? '').trim().length);
   }
   if (heading !== null) {
     const split = splitForQuill(heading);

@@ -14,8 +14,12 @@ import { numberWord } from '@/features/board/hints';
 import { hasSeenDeskGuide, isDeskGuideOff, markDeskGuideSeen, setDeskGuideOff } from '@/lib/desk-guide-seen';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
 import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
+import { TYPEWRITER, typeElement } from '@/lib/typewriter';
 
 gsap.registerPlugin(useGSAP);
+
+/** The guide's lead-ins are typed quicker than a line on its own: there are several, and the guide is read often. */
+const GUIDE_TYPE_RATE = TYPEWRITER.rate * 2;
 
 interface DeskGuideProps {
   caseId: string;
@@ -33,7 +37,7 @@ interface DeskGuideProps {
 function Part({ lead, children }: { lead: string; children: ReactNode }) {
   return (
     <p className="font-record text-[1.0625rem] leading-normal">
-      <strong className="font-voice font-normal text-ink">{lead}</strong> {children}
+      <strong data-guide-typed="" className="font-voice font-normal text-ink">{lead}</strong> {children}
     </p>
   );
 }
@@ -116,11 +120,27 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
       const mm = gsap.matchMedia();
       mm.add(MOTION_QUERIES, context => {
         const reduced = context.conditions?.reduced === true;
-        gsap.fromTo(
-          panel,
-          reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 },
-          { opacity: 1, scale: 1, ...tween('hover') }
-        );
+        const timeline = gsap.timeline();
+        timeline.fromTo(panel, reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, ...tween('hover') });
+        if (reduced) {
+          return;
+        }
+        // The app's own words in the guide, its lead-ins in Special Elite, are typed one after another with the
+        // typewriter's keys (review-fixes brief, 8); the text around them is simply there.
+        const splits: { revert: () => void }[] = [];
+        let at = tween('hover').duration;
+        panel.querySelectorAll<HTMLElement>('[data-guide-typed]').forEach(lead => {
+          const typed = typeElement(timeline, lead, at, GUIDE_TYPE_RATE);
+          if (typed !== null) {
+            splits.push(typed.split);
+            at = typed.end;
+          }
+        });
+        timeline.call(() => splits.forEach(split => split.revert()), undefined, at);
+        return () => {
+          timeline.kill();
+          splits.forEach(split => split.revert());
+        };
       });
     },
     { dependencies: [open] }
@@ -198,15 +218,15 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
                 <Part lead="Every file you open gets a stamp:">{null}</Part>
                 <ul data-guide="stamps" className="mt-1.5 flex flex-col gap-1 pl-4 font-record text-[1.0625rem] leading-normal">
                   <li>
-                    <strong className="font-voice font-normal text-record">Record:</strong> written down at the time. The
+                    <strong data-guide-typed="" className="font-voice font-normal text-record">Record:</strong> written down at the time. The
                     logbook, sworn testimony, official papers. You can trust it.
                   </li>
                   <li>
-                    <strong className="font-voice font-normal text-rust">Disputed:</strong> real, but historians argue over
+                    <strong data-guide-typed="" className="font-voice font-normal text-rust">Disputed:</strong> real, but historians argue over
                     what it means.
                   </li>
                   <li>
-                    <strong className="font-voice font-normal text-ghost-ink">Legend:</strong> added later by storytellers.
+                    <strong data-guide-typed="" className="font-voice font-normal text-ghost-ink">Legend:</strong> added later by storytellers.
                     Famous, and false.
                   </li>
                 </ul>

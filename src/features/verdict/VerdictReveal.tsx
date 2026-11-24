@@ -33,6 +33,7 @@ import {
 } from '@/lib/share-card';
 import { emitStoryEvent } from '@/lib/story-events';
 import { RANK_COPY, REVEAL_COPY } from '@/lib/ui-copy';
+import { typeLetters } from '@/lib/typewriter';
 
 gsap.registerPlugin(useGSAP, SplitText);
 
@@ -128,11 +129,8 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
           return letters;
         };
         const timeline = gsap.timeline({ data: 'verdict-reveal' });
-        const type = (element: Element | null, at: number) => {
-          const letters = lettersOf(element);
-          letters.forEach((letter, index) => timeline.set(letter, { opacity: 1 }, at + index / REVEAL_PACE.typeRate));
-          return at + letters.length / REVEAL_PACE.typeRate;
-        };
+        const type = (element: Element | null, at: number) =>
+          typeLetters(timeline, lettersOf(element), at, REVEAL_PACE.typeRate, (element?.textContent ?? '').trim().length);
         const later = root.querySelectorAll('[data-reveal="reason"], [data-reveal="rank"], [data-reveal="share"]');
         gsap.set(later, { opacity: 0 });
 
