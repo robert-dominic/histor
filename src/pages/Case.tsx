@@ -4,9 +4,9 @@
 // case's title once the story starts (Story.tsx).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
-import CaseHeader from '@/components/CaseHeader';
+import CaseHeader, { type StoryStartState } from '@/components/CaseHeader';
 import { getCaseById } from '@/cases';
 import LegendIntro from '@/features/legend/LegendIntro';
 import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
@@ -57,8 +57,11 @@ export default function Case() {
     [title, year, yearEnd, unsolved]
   );
 
-  // The story is only there to scroll to once the intro has made its point (or was seen on an earlier visit).
-  const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
+  // The header's title was clicked (review-fixes brief, 5): to the start of the story.
+  const storyStart = (useLocation().state as Partial<StoryStartState> | null)?.storyStart;
+  // The story is only there to scroll to once the intro has made its point (or was seen on an earlier visit, or the
+  // reader asked for the story's start).
+  const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id || storyStart !== undefined);
 
   // However the reader reaches the story (the scroll cue, scrolling past the intro, a return visit, a reload or a
   // direct link), the play choice opens once on this page load, before chapter 1 starts: as soon as the story comes
@@ -80,6 +83,20 @@ export default function Case() {
     observer.observe(story);
     return () => observer.disconnect();
   }, [showStory]);
+
+  // The title clicked: to the story's first step (the play choice), from anywhere: arriving from the desk, a file,
+  // the verdict or the report, or already in the story.
+  useEffect(() => {
+    if (storyStart === undefined || caseId === undefined) {
+      return;
+    }
+    // Once the story is there: up to its top, and the play choice opens.
+    const frame = requestAnimationFrame(() => {
+      storyRef.current?.scrollIntoView?.({ behavior: 'auto', block: 'start' });
+      openChoice();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [storyStart, caseId]);
 
   // In development, check the case content and report every problem in the console.
   useEffect(() => {
@@ -126,7 +143,7 @@ export default function Case() {
     <InvestigationProvider key={caseData.id} caseData={caseData}>
       {/* The title stays at the top for the whole page. It is hidden until the story starts (Story.tsx). */}
       {headerCard !== undefined && (
-        <CaseHeader title={headerCard.title} years={headerCard.years} unsolved={headerCard.unsolved} startHidden />
+        <CaseHeader caseId={caseData.id} title={headerCard.title} years={headerCard.years} unsolved={headerCard.unsolved} startHidden />
       )}
       {/* After the legend intro: how to hear the story. The reader must choose; Escape means "Read at my pace". */}
       {choosing && showStory && (

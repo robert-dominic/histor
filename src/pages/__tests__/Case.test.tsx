@@ -128,6 +128,16 @@ describe('Case page: open case', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
+  test('the title is a link to the start of the story: a click there opens the play choice (review-fixes 5)', async () => {
+    renderCasePage(`/case/${openEntry.id}`);
+    const header = document.querySelector('[data-case-header="bar"]') as HTMLElement;
+    const link = within(header).getByRole('link', { name: openEntry.data.title });
+    expect(link.getAttribute('href')).toBe(`/case/${openEntry.id}`);
+    fireEvent.click(link);
+    expect(await screen.findByRole('dialog', { name: openEntry.data.title })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
+  });
+
   test('the legend intro has no title card, and there is no opening scene: the header carries the title and years', () => {
     renderCasePage(`/case/${openEntry.id}`);
 

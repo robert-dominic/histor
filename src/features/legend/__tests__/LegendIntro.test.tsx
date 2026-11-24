@@ -2,6 +2,7 @@
 // src/features/legend/__tests__/LegendIntro.test.tsx
 // The legend intro renders everything from its data, Skip jumps to the end state, and the scroll cue calls onDone.
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import CaseHeader from '@/components/CaseHeader';
 import LegendIntro from '@/features/legend/LegendIntro';
@@ -401,10 +402,10 @@ describe('LegendIntro: no title card', () => {
 
   test('it does not touch the case header: the header is not its business any more', () => {
     const { container } = render(
-      <>
-        <CaseHeader title="Test Case" years="1900 – 1901" unsolved startHidden />
+      <MemoryRouter>
+        <CaseHeader caseId="test-case" title="Test Case" years="1900 – 1901" unsolved startHidden />
         <LegendIntro legendIntro={legendIntro} onDone={vi.fn()} />
-      </>
+      </MemoryRouter>
     );
     const bar = container.querySelector('[data-case-header="bar"]') as HTMLElement;
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));

@@ -1018,6 +1018,9 @@ export default function Story({
             setStep(0);
             paint(0, true);
             settle(0, true, 'forward');
+          } else if (current > 0) {
+            // Begun again (the header's title, review-fixes brief 5): back to the first page.
+            jump(0);
           }
         };
         cleanups.push(() => {

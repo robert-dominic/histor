@@ -131,6 +131,18 @@ describe('the open file let go', () => {
   });
 });
 
+describe("the header's title (review-fixes 5)", () => {
+  test('from the desk, an open file, the verdict and the report, it links to the start of the story', () => {
+    for (const path of [`${BASE}/files`, `${BASE}/files/e-lifeboat`, `${BASE}/verdict`, `${BASE}/report`]) {
+      cleanup();
+      renderAt(path);
+      const link = document.querySelector<HTMLAnchorElement>('[data-case-header="title-link"]');
+      expect(link?.getAttribute('href')).toBe(BASE);
+      expect(link?.textContent).toBe(CASE.title);
+    }
+  });
+});
+
 describe('"Back to the floor"', () => {
   test('a visible button closes the file, the same as Escape; nothing is pinned', () => {
     renderAt(`${BASE}/files/e-lifeboat`);

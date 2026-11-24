@@ -54,6 +54,7 @@ export default function CaseInvestigation() {
   return (
     <InvestigationProvider key={caseData.id} caseData={caseData}>
       <CaseHeader
+        caseId={caseData.id}
         title={caseData.title}
         years={formatCaseYears(caseData.year, caseData.yearEnd)}
         unsolved={caseData.unsolved === true}

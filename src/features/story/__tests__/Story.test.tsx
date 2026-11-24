@@ -481,10 +481,10 @@ describe('Story: sized images', () => {
 describe('Story: no opening scene; the header shows the title once the story starts', () => {
   function renderWithHeader() {
     return render(
-      <>
-        <CaseHeader title="Test Case" years="1900 – 1901" unsolved startHidden />
+      <MemoryRouter>
+        <CaseHeader caseId="test-case" title="Test Case" years="1900 – 1901" unsolved startHidden />
         <Story story={testCase.story} centralQuestion={testCase.centralQuestion} references={testCase.references} sources={testCase.sources} />
-      </>
+      </MemoryRouter>
     );
   }
 

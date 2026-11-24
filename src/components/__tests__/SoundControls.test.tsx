@@ -4,6 +4,7 @@
 // a held press, a mouse hover or the keyboard shows its volume slider, remembered too.
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import CaseHeader from '@/components/CaseHeader';
 import { sound } from '@/lib/sound';
 import { SOUND_KEYS } from '@/lib/sound/levels';
@@ -21,7 +22,7 @@ afterEach(() => {
 
 describe('the sound controls', () => {
   test('two icons in the header, Music and Effects: each click turns its own on or off, kept apart', () => {
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const music = screen.getByRole('button', { name: 'Music' });
     const effects = screen.getByRole('button', { name: 'Effects' });
     expect(music.closest('header')).not.toBeNull();
@@ -40,7 +41,7 @@ describe('the sound controls', () => {
 
   test('pressing and holding shows the volume slider, and is not a click; the volume is remembered', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const music = screen.getByRole('button', { name: 'Music' });
     fireEvent.pointerDown(music, { pointerType: 'touch' });
     act(() => {
@@ -62,7 +63,7 @@ describe('the sound controls', () => {
 
   test('a short press is a click: no slider', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const effects = screen.getByRole('button', { name: 'Effects' });
     fireEvent.pointerDown(effects, { pointerType: 'touch' });
     act(() => {
@@ -76,7 +77,7 @@ describe('the sound controls', () => {
 
   test('hovering with a mouse shows the slider; moving into it keeps it; leaving both hides it after the grace', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const control = screen.getByRole('button', { name: 'Effects' }).parentElement!;
     fireEvent.pointerEnter(control, { pointerType: 'mouse' });
     act(() => {
@@ -103,7 +104,7 @@ describe('the sound controls', () => {
 
   test('a click only toggles: it never opens the popover, and a hover about to open is cancelled', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const music = screen.getByRole('button', { name: 'Music' });
     fireEvent.pointerEnter(music.parentElement!, { pointerType: 'mouse' });
     fireEvent.pointerDown(music, { pointerType: 'mouse' });
@@ -118,7 +119,7 @@ describe('the sound controls', () => {
 
   test('a hover-opened popover closes when the mouse leaves, even if the icon was clicked (it has the focus)', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const music = screen.getByRole('button', { name: 'Music' });
     fireEvent.pointerEnter(music.parentElement!, { pointerType: 'mouse' });
     act(() => {
@@ -136,7 +137,7 @@ describe('the sound controls', () => {
 
   test('only one popover at a time: opening the other closes the first at once', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const music = screen.getByRole('button', { name: 'Music' }).parentElement!;
     const effects = screen.getByRole('button', { name: 'Effects' }).parentElement!;
     fireEvent.pointerEnter(music, { pointerType: 'mouse' });
@@ -153,7 +154,7 @@ describe('the sound controls', () => {
 
   test('a tap elsewhere closes a long-pressed popover', () => {
     vi.useFakeTimers();
-    render(<CaseHeader title="Test Case" years="1900" />);
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
     const music = screen.getByRole('button', { name: 'Music' });
     fireEvent.pointerDown(music, { pointerType: 'touch' });
     act(() => {
