@@ -76,6 +76,28 @@ describe('the playlist', () => {
     expect(pickNext([], null)).toBeNull();
   });
 
+  test('the bug of review-fixes 6: the story said before the sound listens (the page\'s effect runs first) still plays', () => {
+    emitStoryEvent({ type: 'place', place: 'story', playlists });
+    const { engine, audios, stop } = setUp();
+    expect(playing(audios)).toHaveLength(0);
+    // The first click anywhere: the story's playlist starts.
+    window.dispatchEvent(new MouseEvent('click'));
+    expect(engine.running).toBe(true);
+    expect(playing(audios)).toHaveLength(1);
+    expect(playlists.story.map(entry => entry.src)).toContain(playing(audios)[0].src);
+    stop();
+    emitStoryEvent({ type: 'place', place: 'away' });
+  });
+
+  test('the first key press anywhere unlocks it too', () => {
+    const { engine, stop } = setUp();
+    emitStoryEvent({ type: 'place', place: 'story', playlists });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    expect(engine.running).toBe(true);
+    stop();
+    emitStoryEvent({ type: 'place', place: 'away' });
+  });
+
   test('no playlist: no music, and nothing breaks', () => {
     const { engine, audios, stop } = setUp();
     emitStoryEvent({ type: 'place', place: 'story' });

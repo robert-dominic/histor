@@ -13,7 +13,7 @@ import { MusicPlayer } from '@/lib/sound/music';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { VOICES, drone, vary, type Voice } from '@/lib/sound/voices';
-import { emitStoryEvent, onStoryEvent, type StoryEvent } from '@/lib/story-events';
+import { emitStoryEvent, lastPlaceEvent, onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import type { AmbienceLayer } from '@/types/case';
 
 /** The one engine. */
@@ -192,9 +192,18 @@ export function startSound(engine: SoundEngine = sound, setup: { createAudio?: (
     }
   };
   const options = { capture: true, passive: true } as const;
-  window.addEventListener('pointerdown', gesture, options);
-  window.addEventListener('keydown', gesture, options);
+  // The first click or key anywhere unlocks the sound (review-fixes brief, 6). A touch's pointerdown is not a user
+  // activation in every browser, so its click (and touchend) are heard too.
+  const gestures = ['pointerdown', 'keydown', 'click', 'touchend'] as const;
+  gestures.forEach(type => window.addEventListener(type, gesture, options));
   document.addEventListener('visibilitychange', visibility);
+  // The bug of review-fixes brief, 6: the case page says "story" before this listener exists (its effect runs before
+  // the app's), so the story's playlist never started; only the desk's, said later, did. Where the player already is
+  // is picked up now.
+  const already = lastPlaceEvent();
+  if (already !== null && already.place !== 'away') {
+    place(already);
+  }
   const stop = onStoryEvent(event => {
     // Where the player is, and how dark the story is, are kept even before the sound starts.
     if (event.type === 'place') {
@@ -224,8 +233,7 @@ export function startSound(engine: SoundEngine = sound, setup: { createAudio?: (
     }
   });
   return () => {
-    window.removeEventListener('pointerdown', gesture, options);
-    window.removeEventListener('keydown', gesture, options);
+    gestures.forEach(type => window.removeEventListener(type, gesture, options));
     document.removeEventListener('visibilitychange', visibility);
     document.removeEventListener('click', press, true);
     stop();

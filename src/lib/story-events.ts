@@ -70,8 +70,23 @@ export function onStoryEvent(listener: Listener): () => void {
   };
 }
 
+type PlaceEvent = Extract<StoryEvent, { type: 'place' }>;
+/** The last `place` said, kept: a page can say where the player is before anyone listens (review-fixes brief, 6). */
+let lastPlace: PlaceEvent | null = null;
+
+/**
+ * Where the player was last said to be, for a listener that starts late. The case page says "story" in its own effect,
+ * which runs before the app's (children's effects run first), so the sound would otherwise never hear it.
+ */
+export function lastPlaceEvent(): PlaceEvent | null {
+  return lastPlace;
+}
+
 /** Sends an event to every listener. A listener that throws never stops the story. */
 export function emitStoryEvent(event: StoryEvent): void {
+  if (event.type === 'place') {
+    lastPlace = event;
+  }
   for (const listener of [...listeners]) {
     try {
       listener(event);

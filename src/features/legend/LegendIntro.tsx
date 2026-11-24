@@ -9,6 +9,7 @@ import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 import CreditInfo from '@/components/CreditInfo';
+import SoundHint from '@/features/legend/SoundHint';
 import Quill from '@/components/Quill';
 import { MOTION, MOTION_QUERIES, STEP, stampHit } from '@/lib/motion';
 import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
@@ -349,6 +350,9 @@ export default function LegendIntro({
           </svg>
         </button>
       </div>
+
+      {/* Until the sound is unlocked: a quiet hint at the foot (review-fixes brief, 6). */}
+      <SoundHint />
 
       {/* Always visible: the video is an illustration. The full credit is behind the ⓘ, as on the chapter images. */}
       {video !== undefined && (
