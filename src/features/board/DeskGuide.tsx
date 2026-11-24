@@ -223,7 +223,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
               </p>
             </div>
             {!firstVisit && (
-              <label className="mt-6 flex cursor-pointer items-center gap-2.5 font-voice text-[0.9375rem]">
+              <label className="toggle-row mt-6 flex cursor-pointer font-voice text-[0.9375rem]">
                 <input
                   type="checkbox"
                   data-guide="dont-show"
@@ -234,7 +234,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
                   }}
                   className="size-4 accent-[var(--color-record)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-record"
                 />
-                Don’t show this again
+                <span className="toggle-text">Don’t show this again</span>
               </label>
             )}
             <button

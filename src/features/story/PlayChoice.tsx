@@ -185,7 +185,7 @@ function SoundSwitch({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2.5 font-voice text-[0.8125rem] tracking-[0.12em] text-night-ink/80 uppercase">
+    <label className="toggle-row inline-flex cursor-pointer font-voice text-[0.8125rem] tracking-[0.12em] text-night-ink/80 uppercase">
       <input
         ref={inputRef}
         type="checkbox"
@@ -197,9 +197,9 @@ function SoundSwitch({
       />
       <span
         aria-hidden="true"
-        className="relative h-4 w-7 rounded-full border border-night-ink/40 transition-colors duration-150 ease-out peer-checked:border-brass peer-checked:bg-brass/30 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass after:absolute after:top-[2px] after:left-[2px] after:size-2.5 after:rounded-full after:bg-night-ink/70 after:transition-[translate,background-color] after:duration-150 after:ease-out peer-checked:after:translate-x-3 peer-checked:after:bg-brass"
+        className="toggle-track relative h-4 w-7 rounded-full border border-night-ink/40 transition-colors duration-150 ease-out peer-checked:border-brass peer-checked:bg-brass/30 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass after:absolute after:top-[2px] after:left-[2px] after:size-2.5 after:rounded-full after:bg-night-ink/70 after:transition-[translate,background-color] after:duration-150 after:ease-out peer-checked:after:translate-x-3 peer-checked:after:bg-brass"
       />
-      {label}
+      <span className="toggle-text">{label}</span>
     </label>
   );
 }

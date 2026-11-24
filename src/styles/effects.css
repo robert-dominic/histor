@@ -381,3 +381,27 @@ html[data-story-stage='held'] {
     transparent 100%
   );
 }
+
+/* A toggle and its label on one line (review-fixes brief, 1). `align-items: center` centres the line box, but
+   Special Elite's box is taller above its letters than below, so a switch centred on it sat higher than the words.
+   The label's text is trimmed to its capital letters and baseline, so the centre is the centre of what you see.
+   Without `text-box` support, a line height of 1 and a nudge of the same size come close. The element sets its own
+   display (`flex` or `inline-flex`). */
+.toggle-row {
+  align-items: center;
+  gap: 0.625rem;
+}
+.toggle-row > .toggle-text {
+  line-height: 1;
+  padding-top: 0.12em;
+}
+@supports (text-box: trim-both cap alphabetic) {
+  .toggle-row > .toggle-text {
+    padding-top: 0;
+    text-box: trim-both cap alphabetic;
+  }
+}
+.toggle-row > :is(.toggle-track, input[type='checkbox']) {
+  flex: none;
+  margin: 0;
+}
