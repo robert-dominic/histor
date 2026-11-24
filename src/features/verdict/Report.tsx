@@ -18,6 +18,9 @@ import VerdictReveal from '@/features/verdict/VerdictReveal';
 import { formatCaseYears } from '@/lib/case-years';
 import { READING_LABEL, STANDING_LABEL, STATUS_LABEL, fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
+import { caseRank } from '@/lib/case-rank';
+import { loadPlayerName } from '@/lib/player-name';
+import { downloadReportPdf } from '@/lib/report-pdf';
 import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
 
 gsap.registerPlugin(useGSAP);
@@ -33,6 +36,7 @@ export default function Report() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLElement>(null);
   const [confirming, setConfirming] = useState(false);
+  const [pdfNote, setPdfNote] = useState('');
   // Just closed at the verdict: the reveal plays, under a narrowing lamp. Otherwise it is simply there.
   const location = useLocation();
   const [fresh] = useState(() => (location.state as { fresh?: boolean } | null)?.fresh === true);
@@ -289,6 +293,26 @@ export default function Report() {
           </Link>
         </nav>
       </article>
+      {/* The report to keep (review-fixes brief, 12): a PDF made here, in the browser. Nothing is sent anywhere. */}
+      <div className="relative z-[21] mx-auto mt-6 flex max-w-3xl flex-col items-center gap-2 lg:max-w-6xl">
+        <button
+          type="button"
+          data-report="pdf"
+          onClick={() =>
+            setPdfNote(
+              downloadReportPdf({ caseData, report, rank: caseRank(report), name: loadPlayerName(), date: new Date() })
+                ? ''
+                : 'This browser cannot save the PDF.'
+            )
+          }
+          className={`${ACTION_CLASSES} border border-night-ink/40 text-night-ink hover:bg-night-ink/10`}
+        >
+          Download your case report (PDF)
+        </button>
+        <p aria-live="polite" className="min-h-5 font-voice text-[0.8125rem] text-ghost-night">
+          {pdfNote}
+        </p>
+      </div>
       <CaseCredits playlists={caseData.theme.playlists} />
       <SiteFooter caseData={caseData} />
       <Lamp still narrow={narrow} />
