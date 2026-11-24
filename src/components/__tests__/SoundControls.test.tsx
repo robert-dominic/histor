@@ -7,9 +7,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import CaseHeader from '@/components/CaseHeader';
 import { sound } from '@/lib/sound';
 import { SOUND_KEYS } from '@/lib/sound/levels';
+import { POPOVER, closeAllPopovers } from '@/lib/use-popover';
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
+  act(() => closeAllPopovers());
   cleanup();
   vi.useRealTimers();
   sound.setOn('music', true);
@@ -72,12 +74,94 @@ describe('the sound controls', () => {
     expect(screen.queryByRole('slider')).toBeNull();
   });
 
-  test('hovering with a mouse shows the slider; leaving hides it', () => {
+  test('hovering with a mouse shows the slider; moving into it keeps it; leaving both hides it after the grace', () => {
+    vi.useFakeTimers();
     render(<CaseHeader title="Test Case" years="1900" />);
     const control = screen.getByRole('button', { name: 'Effects' }).parentElement!;
     fireEvent.pointerEnter(control, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.openAfterMs + 10);
+    });
+    expect(screen.getByRole('slider', { name: 'Effects volume' })).toBeDefined();
+    // Across the gap to the popover: out and back in within the grace keeps it.
+    fireEvent.pointerLeave(control, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.graceMs / 2);
+    });
+    fireEvent.pointerEnter(control, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.graceMs * 2);
+    });
     expect(screen.getByRole('slider', { name: 'Effects volume' })).toBeDefined();
     fireEvent.pointerLeave(control, { pointerType: 'mouse' });
+    expect(screen.getByRole('slider', { name: 'Effects volume' })).toBeDefined();
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.graceMs + 10);
+    });
+    expect(screen.queryByRole('slider')).toBeNull();
+  });
+
+  test('a click only toggles: it never opens the popover, and a hover about to open is cancelled', () => {
+    vi.useFakeTimers();
+    render(<CaseHeader title="Test Case" years="1900" />);
+    const music = screen.getByRole('button', { name: 'Music' });
+    fireEvent.pointerEnter(music.parentElement!, { pointerType: 'mouse' });
+    fireEvent.pointerDown(music, { pointerType: 'mouse' });
+    fireEvent.pointerUp(music, { pointerType: 'mouse' });
+    fireEvent.click(music);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(music.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByRole('slider')).toBeNull();
+  });
+
+  test('a hover-opened popover closes when the mouse leaves, even if the icon was clicked (it has the focus)', () => {
+    vi.useFakeTimers();
+    render(<CaseHeader title="Test Case" years="1900" />);
+    const music = screen.getByRole('button', { name: 'Music' });
+    fireEvent.pointerEnter(music.parentElement!, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.openAfterMs + 10);
+    });
+    music.focus();
+    fireEvent.click(music);
+    expect(screen.getByRole('slider', { name: 'Music volume' })).toBeDefined();
+    fireEvent.pointerLeave(music.parentElement!, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.graceMs + 10);
+    });
+    expect(screen.queryByRole('slider')).toBeNull();
+  });
+
+  test('only one popover at a time: opening the other closes the first at once', () => {
+    vi.useFakeTimers();
+    render(<CaseHeader title="Test Case" years="1900" />);
+    const music = screen.getByRole('button', { name: 'Music' }).parentElement!;
+    const effects = screen.getByRole('button', { name: 'Effects' }).parentElement!;
+    fireEvent.pointerEnter(music, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.openAfterMs + 10);
+    });
+    fireEvent.pointerLeave(music, { pointerType: 'mouse' });
+    fireEvent.pointerEnter(effects, { pointerType: 'mouse' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.openAfterMs + 10);
+    });
+    expect(screen.getAllByRole('slider').map(slider => slider.getAttribute('aria-label'))).toEqual(['Effects volume']);
+  });
+
+  test('a tap elsewhere closes a long-pressed popover', () => {
+    vi.useFakeTimers();
+    render(<CaseHeader title="Test Case" years="1900" />);
+    const music = screen.getByRole('button', { name: 'Music' });
+    fireEvent.pointerDown(music, { pointerType: 'touch' });
+    act(() => {
+      vi.advanceTimersByTime(POPOVER.longPressMs + 10);
+    });
+    fireEvent.pointerUp(music, { pointerType: 'touch' });
+    expect(screen.getByRole('slider')).toBeDefined();
+    fireEvent.pointerDown(document.body, { pointerType: 'touch' });
     expect(screen.queryByRole('slider')).toBeNull();
   });
 });
