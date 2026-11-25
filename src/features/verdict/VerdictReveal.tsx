@@ -14,6 +14,8 @@ import Quill from '@/components/Quill';
 import CardSignature from '@/features/verdict/CardSignature';
 import { shareLink } from '@/lib/share-link';
 import ShareMenu from '@/features/verdict/ShareMenu';
+import IconButton from '@/components/IconButton';
+import { DownloadIcon, ImageIcon, LinkIcon } from '@/components/icons';
 import { caseRank, leadingTheories, legendsTrustedCount, verdictComparison } from '@/lib/case-rank';
 import type { CaseReport } from '@/lib/case-report';
 import { MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
@@ -58,9 +60,14 @@ interface VerdictRevealProps {
   fresh: boolean;
   /** Asks the lamp to narrow onto the reveal (true), and to open again (false). */
   onNarrow?: (narrow: boolean) => void;
+  /** The action bar's Download: the case report as a PDF (Report.tsx). */
+  onDownloadPdf?: () => void;
 }
 
-export default function VerdictReveal({ report, caseId, title, years, fresh, onNarrow }: VerdictRevealProps) {
+/** How long the Copy icon's tooltip says "Link copied", in ms. */
+const COPIED_FOR_MS = 2000;
+
+export default function VerdictReveal({ report, caseId, title, years, fresh, onNarrow, onDownloadPdf }: VerdictRevealProps) {
   const rootRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [shareNote, setShareNote] = useState('');
@@ -181,8 +188,19 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
     const outcome = await shareShareCard(renderShareCard(signedCard), fileName, text, url);
     setShareNote(outcome === 'copied' ? 'Copied to the clipboard.' : outcome === 'shared' ? 'Shared.' : '');
   };
+  /** "Link copied" on the Copy icon's tooltip, for a moment after copying. */
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+    const timer = setTimeout(() => setCopied(false), COPIED_FOR_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
   const copyLink = async () => {
-    setShareNote((await copyText(url)) === 'copied' ? 'Link copied.' : 'This browser cannot copy the link.');
+    const done = (await copyText(url)) === 'copied';
+    setCopied(done);
+    setShareNote(done ? 'Link copied.' : 'This browser cannot copy the link.');
   };
 
   const rankCopy = RANK_COPY[rank];
@@ -197,6 +215,21 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
       // right. One column, centred, on a phone.
       className="relative z-[21] mx-auto mb-10 grid max-w-3xl grid-cols-1 items-start gap-10 px-2 text-center text-night-ink lg:max-w-6xl lg:grid-cols-2 lg:gap-14 lg:text-left"
     >
+      {/* The result screen's actions (ui-pass brief, 3): a small bar of icons, fixed at the top right while the result
+          and the report are on screen, each with a tooltip. */}
+      <div
+        role="toolbar"
+        aria-label="Your result"
+        data-result="actions"
+        className="fixed top-[calc(var(--case-header)+0.75rem)] right-3 z-30 flex items-center gap-1 rounded-full border border-night-ink/15 bg-night/85 p-1 shadow-lg shadow-black/40 sm:right-5"
+      >
+        {onDownloadPdf !== undefined && (
+          <IconButton label="Download your case report (PDF)" icon={<DownloadIcon />} data-result="pdf" onClick={onDownloadPdf} />
+        )}
+        <ShareMenu text={text} url={url} onCopy={() => void copyLink()} onSave={() => void save()} onMore={canShareFiles ? () => void share() : undefined} />
+        <IconButton label="Save the card" icon={<ImageIcon />} data-result="save" onClick={() => void save()} />
+        <IconButton label={copied ? 'Link copied' : 'Copy the link'} icon={<LinkIcon />} data-result="copy" onClick={() => void copyLink()} />
+      </div>
       <div data-reveal="column" data-side="reveal" className="flex flex-col items-center gap-6 lg:items-start">
         <div className="flex flex-col items-center gap-3 lg:items-start">
           <p id="reveal-lead" data-reveal="lead" className="font-voice text-[clamp(1.125rem,1rem+0.6vw,1.5rem)] tracking-[0.04em]">
@@ -269,15 +302,6 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
           <CardSignature name={typed} onSigned={sign} />
         </div>
         {/* One Share button (review-fixes brief, 10): its menu holds every way to share, and saving the image. */}
-        <div data-reveal="links" className="flex w-full max-w-xl justify-center lg:justify-start">
-          <ShareMenu
-            text={text}
-            url={url}
-            onCopy={() => void copyLink()}
-            onSave={() => void save()}
-            onMore={canShareFiles ? () => void share() : undefined}
-          />
-        </div>
         <p data-reveal="attach-note" className="max-w-xl font-voice text-[0.8125rem] leading-snug text-ghost-night">
           The link shows a preview of the case. To post your card itself, save the image and attach it.
         </p>

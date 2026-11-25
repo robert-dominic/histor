@@ -95,6 +95,13 @@ export default function Report() {
         years={formatCaseYears(caseData.year, caseData.yearEnd)}
         fresh={fresh}
         onNarrow={setNarrow}
+        onDownloadPdf={() =>
+          setPdfNote(
+            downloadReportPdf({ caseData, report, rank: caseRank(report), name: loadPlayerName(), date: new Date() })
+              ? ''
+              : 'This browser cannot save the PDF.'
+          )
+        }
       />
       <article className="desk-typed-paper relative z-[21] mx-auto flex max-w-3xl flex-col lg:max-w-6xl gap-8 rounded-[2px] px-5 pt-8 pb-8 text-ink sm:px-10 sm:pt-10">
         <h2 id="report-title" className="font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-none">
@@ -293,26 +300,10 @@ export default function Report() {
           </Link>
         </nav>
       </article>
-      {/* The report to keep (review-fixes brief, 12): a PDF made here, in the browser. Nothing is sent anywhere. */}
-      <div className="relative z-[21] mx-auto mt-6 flex max-w-3xl flex-col items-center gap-2 lg:max-w-6xl">
-        <button
-          type="button"
-          data-report="pdf"
-          onClick={() =>
-            setPdfNote(
-              downloadReportPdf({ caseData, report, rank: caseRank(report), name: loadPlayerName(), date: new Date() })
-                ? ''
-                : 'This browser cannot save the PDF.'
-            )
-          }
-          className={`${ACTION_CLASSES} border border-night-ink/40 text-night-ink hover:bg-night-ink/10`}
-        >
-          Download your case report (PDF)
-        </button>
-        <p aria-live="polite" className="min-h-5 font-voice text-[0.8125rem] text-ghost-night">
-          {pdfNote}
-        </p>
-      </div>
+      {/* The PDF is downloaded from the action bar's icon (ui-pass brief, 3); a browser that cannot says so here. */}
+      <p aria-live="polite" className="relative z-[21] mx-auto mt-4 min-h-5 max-w-3xl text-center font-voice text-[0.8125rem] text-ghost-night lg:max-w-6xl">
+        {pdfNote}
+      </p>
       <CaseCredits playlists={caseData.theme.playlists} />
       <SiteFooter caseData={caseData} />
       <Lamp still narrow={narrow} />

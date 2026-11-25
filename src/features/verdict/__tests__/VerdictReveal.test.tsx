@@ -174,7 +174,7 @@ describe('the shareable card', () => {
       expect(this.download).toBe(`histor-${CASE.id}.png`);
     });
     renderReport(leading[0].id);
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     await act(async () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Save the image' }));
     });
@@ -190,7 +190,7 @@ describe('the shareable card', () => {
     const share = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share });
     renderReport(leading[0].id);
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     await act(async () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'More…' }));
     });
@@ -200,7 +200,7 @@ describe('the shareable card', () => {
     const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, canShare: undefined, share: undefined, clipboard: { writeText } });
     renderReport(leading[0].id);
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     expect(screen.queryByRole('menuitem', { name: 'More…' })).toBeNull();
     await act(async () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));

@@ -78,7 +78,8 @@ describe('the result screen', () => {
     expect(left.querySelector('[data-reveal="compare"]')).not.toBeNull();
     expect(left.querySelector('[data-reveal="rank"]')).not.toBeNull();
     expect(right.querySelector('canvas')).not.toBeNull();
-    expect(right.querySelector('[data-share="open"]')?.textContent).toContain('Share');
+    // The actions are icons in the bar at the top right (ui-pass 3).
+    expect(document.querySelector('[data-result="actions"] [data-share="open"]')).not.toBeNull();
     // The report follows, across the width.
     const report = document.querySelector<HTMLElement>('article')!;
     expect(reveal().compareDocumentPosition(report) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -184,9 +185,9 @@ describe('sharing', () => {
   test('one Share button (review-fixes 10): its menu lists the six sites, "Copy link" and "Save the image"; Esc or a press outside closes it', () => {
     vi.stubGlobal('navigator', { ...navigator, canShare: undefined, share: undefined });
     renderReport();
-    expect(reveal().querySelectorAll('[data-reveal="links"] > ul, [data-reveal="links"] li')).toHaveLength(0);
+    expect(reveal().querySelector('[data-reveal="links"]')).toBeNull();
     expect(screen.queryByRole('menu')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     const menu = screen.getByRole('menu', { name: 'Share' });
     expect(within(menu).getAllByRole('menuitem').map(item => item.textContent)).toEqual([
       'X',
@@ -199,17 +200,17 @@ describe('sharing', () => {
       'Save the image',
     ]);
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Share your result' }).getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
+    expect(screen.getByRole('button', { name: 'Share your result' }).getAttribute('aria-expanded')).toBe('true');
     fireEvent.pointerDown(document.body);
-    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Share your result' }).getAttribute('aria-expanded')).toBe('false');
   });
 
   test('"More…" (the native share sheet) only where the browser can share a file', () => {
     vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share: vi.fn() });
     renderReport();
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     expect(screen.getByRole('menuitem', { name: 'More…' })).toBeDefined();
   });
 
@@ -217,7 +218,7 @@ describe('sharing', () => {
     const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
     renderReport();
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     const anchors = [...document.querySelectorAll<HTMLAnchorElement>('[data-share="menu"] a')];
     expect(anchors).toHaveLength(6);
     for (const anchor of anchors) {
@@ -249,7 +250,7 @@ describe('sharing', () => {
     const share = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share });
     renderReport();
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share your result' }));
     await act(async () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'More…' }));
     });

@@ -1,21 +1,21 @@
 // src/features/verdict/ShareMenu.tsx
-// One "Share" button on the result screen (review-fixes brief, 10), in place of the row of platform links. It opens a
-// small menu on typed paper: X, Facebook, LinkedIn, WhatsApp, Reddit and Telegram (each site's own share page, in a
+// The Share icon of the result screen's action bar (ui-pass brief, 3; review-fixes brief, 10). It opens a small menu on
+// typed paper: X, Facebook, LinkedIn, WhatsApp, Reddit and Telegram (each site's own share page, in a
 // new tab), "Copy link", "Save the image" and, where the browser can share files, "More…" (the native share sheet,
 // with the card). Escape or a press outside closes it. It follows the header's popover rules (`usePopover`): only one
-// open at a time, a mouse resting on it opens it, leaving both closes it after a short grace, a click opens and
-// closes it, Tab away closes it. The arrow keys move between its items.
+// open at a time, a click opens and closes it, Tab away closes it (the icon's tooltip, not the menu, answers a
+// resting mouse). The arrow keys move between its items.
 import { useRef, useState, type KeyboardEvent } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
 import { shareLinks } from '@/lib/share-card';
 import { usePopover } from '@/lib/use-popover';
+import IconButton from '@/components/IconButton';
+import { ShareIcon } from '@/components/icons';
 
 gsap.registerPlugin(useGSAP);
 
-const TRIGGER_CLASSES =
-  'inline-flex min-h-11 items-center gap-2 rounded-sm border border-brass bg-brass px-6 font-voice text-sm tracking-[0.12em] text-night uppercase transition-[scale,background-color,color] duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:bg-transparent hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass active:scale-[0.97]';
 const ITEM_CLASSES =
   'flex min-h-10 w-full items-center rounded-[1px] px-3 text-left font-voice text-[0.875rem] tracking-[0.04em] text-ink transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:bg-ink/8 focus-visible:bg-ink/8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-record';
 
@@ -31,7 +31,8 @@ interface ShareMenuProps {
 }
 
 export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMenuProps) {
-  const { open, hide, rootProps, triggerProps, consumeClick } = usePopover({ hover: true, clickToggles: true });
+  // A click opens and closes it (its icon's tooltip has the hover); Esc, a press outside or Tab away closes it.
+  const { open, hide, rootProps, triggerProps, consumeClick } = usePopover({ clickToggles: true });
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   // Drawn while open, and until it has finished leaving (exits are quick, never a snap).
@@ -79,9 +80,11 @@ export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMe
 
   return (
     <div {...rootProps} data-share-menu="" className="relative">
-      <button
+      <IconButton
         ref={triggerRef}
-        type="button"
+        label="Share your result"
+        icon={<ShareIcon />}
+        quiet={open}
         data-share="open"
         aria-haspopup="menu"
         {...triggerProps}
@@ -98,13 +101,7 @@ export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMe
             requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
           }
         }}
-        className={TRIGGER_CLASSES}
-      >
-        Share
-        <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
-          <path d="M8 10V2.5M5 5.5l3-3 3 3M3 9v4.5h10V9" />
-        </svg>
-      </button>
+      />
       {shown && (
         <div
           ref={menuRef}
@@ -112,8 +109,8 @@ export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMe
           aria-label="Share"
           data-share="menu"
           onKeyDown={onMenuKey}
-          // Opens above the button, so it never runs off the foot of the screen on a phone.
-          className="desk-typed-paper absolute bottom-[calc(100%+0.5rem)] left-1/2 z-40 w-60 -translate-x-1/2 origin-bottom rounded-[2px] p-1.5 lg:left-0 lg:translate-x-0 lg:origin-bottom-left"
+          // Opens below the action bar's icon, along the right edge.
+          className="desk-typed-paper absolute top-[calc(100%+0.5rem)] right-0 z-40 w-60 origin-top-right rounded-[2px] p-1.5"
         >
           {shareLinks(text, url).map(link => (
             <a
