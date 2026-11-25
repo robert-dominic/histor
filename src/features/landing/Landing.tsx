@@ -202,7 +202,7 @@ export default function Landing() {
       data-ready={ready}
       className="relative min-h-svh bg-night text-night-ink"
     >
-      <LandingHeader markRef={markRef} docked={docked} />
+      <LandingHeader onHome={() => go(0)} markRef={markRef} docked={docked} />
       <Opening
         targetRef={markRef}
         detail={detail}

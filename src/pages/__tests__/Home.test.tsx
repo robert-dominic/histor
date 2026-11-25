@@ -173,6 +173,19 @@ describe('the header (landing v3 brief)', () => {
     expect([...header.querySelectorAll('button')].map(button => button.getAttribute('data-landing'))).toEqual(['music']);
   });
 
+  test('pressing the wordmark scrolls softly back to the first case, without leaving the page', () => {
+    const to = vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);
+    renderHome();
+    const link = document.querySelector<HTMLAnchorElement>('[data-landing="header"] a[aria-label="Histor, back to the top"]')!;
+    const allowed = fireEvent.click(link);
+    // The click is handled (not a navigation), and the scroll is soft: a tween's ease and duration, not a jump.
+    expect(allowed).toBe(false);
+    expect(to).toHaveBeenCalledTimes(1);
+    expect(to.mock.calls[0][0]).toBe(0);
+    expect(typeof to.mock.calls[0][1]!.ease).toBe('string');
+    expect(to.mock.calls[0][1]!.duration).toBeGreaterThan(0.5);
+  });
+
   test('the music button is there, off until clicked, its tooltip "Play music" in the shared tooltip style', () => {
     renderHome();
     const button = document.querySelector<HTMLButtonElement>('[data-landing="music"]')!;
