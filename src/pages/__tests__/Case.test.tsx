@@ -129,14 +129,52 @@ describe('Case page: open case', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
-  test('the title is a link to the start of the story: a click there opens the play choice (review-fixes 5)', async () => {
+  test('the title is a link to the start of the story: a click there goes back to the legend intro, with no modal (sound-files 1)', () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => {
+      run(0);
+      return 0;
+    });
     renderCasePage(`/case/${openEntry.id}`);
     const header = document.querySelector('[data-case-header="bar"]') as HTMLElement;
     const link = within(header).getByRole('link', { name: openEntry.data.title });
     expect(link.getAttribute('href')).toBe(`/case/${openEntry.id}`);
+    scrollTo.mockClear();
     fireEvent.click(link);
-    expect(await screen.findByRole('dialog', { name: openEntry.data.title })).toBeDefined();
-    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('a fresh visit (storage cleared): the legend intro first, then the play modal after it', () => {
+    renderCasePage(`/case/${openEntry.id}`);
+    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
+    finishLegendIntro();
+    expect(screen.getByRole('dialog', { name: openEntry.data.title })).toBeDefined();
+  });
+
+  test('a return visit (intro seen, a mode chosen): the legend intro first, and no modal at all', () => {
+    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+    localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'read', music: true, effects: true }));
+    renderCasePage(`/case/${openEntry.id}`);
+    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'See what really happened' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('the page always opens at its top, with the browser\'s scroll restoration off while it is here', () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    window.history.scrollRestoration = 'auto';
+    const { unmount } = renderCasePage(`/case/${openEntry.id}`);
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(window.history.scrollRestoration).toBe('manual');
+    unmount();
+    expect(window.history.scrollRestoration).toBe('auto');
   });
 
   test('the legend intro has no title card, and there is no opening scene: the header carries the title and years', () => {

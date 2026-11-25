@@ -69,11 +69,29 @@ export default function Case() {
     [title, year, yearEnd, unsolved]
   );
 
-  // The header's title was clicked (review-fixes brief, 5): to the start of the story.
+  // The header's title was clicked (review-fixes brief, 5): back to the start, which is the legend intro.
   const storyStart = (useLocation().state as Partial<StoryStartState> | null)?.storyStart;
-  // The story is only there to scroll to once the intro has made its point (or was seen on an earlier visit, or the
-  // reader asked for the story's start).
-  const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id || storyStart !== undefined);
+  // The story is only there to scroll to once the intro has made its point, or was seen on an earlier visit. Nothing
+  // else brings it up first (sound-files brief, 1): the legend intro is always the first screen.
+  const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
+
+  // The legend intro is always the first screen, on every visit and from every path (sound-files brief, 1). The bug
+  // was that the play modal came first: a reload kept the title link's state (which brought the story up at once)
+  // and the browser put the page back where it was, with the story in view, which opened the modal. The page now
+  // always opens at its top, with the browser's own scroll restoration off while it is here.
+  useEffect(() => {
+    const history = window.history;
+    const before = 'scrollRestoration' in history ? history.scrollRestoration : null;
+    if (before !== null) {
+      history.scrollRestoration = 'manual';
+    }
+    window.scrollTo?.(0, 0);
+    return () => {
+      if (before !== null) {
+        history.scrollRestoration = before;
+      }
+    };
+  }, []);
 
   // However the reader reaches the story (the scroll cue, scrolling past the intro, a return visit, a reload or a
   // direct link), the play choice opens once on this page load, before chapter 1 starts: as soon as the story comes
@@ -96,19 +114,17 @@ export default function Case() {
     return () => observer.disconnect();
   }, [showStory, openChoice]);
 
-  // The title clicked: to the story's first step, from anywhere: arriving from the desk, a file, the verdict or the
-  // report, or already in the story (the play choice for a reader who has never chosen; otherwise the story itself).
+  // The title clicked, from anywhere (the desk, a file, the verdict, the report, or already in the story): back to the
+  // legend intro at the top. The story is drawn afresh (its key), so a stage holding the screen lets go. The play
+  // modal then comes after the intro, as on any visit, and only to a reader who has never chosen.
   useEffect(() => {
-    if (storyStart === undefined || caseId === undefined) {
+    if (storyStart === undefined) {
       return;
     }
-    // Once the story is there: up to its top, and the play choice opens.
-    const frame = requestAnimationFrame(() => {
-      storyRef.current?.scrollIntoView?.({ behavior: 'auto', block: 'start' });
-      openChoice();
-    });
+    choiceShownRef.current = false;
+    const frame = requestAnimationFrame(() => window.scrollTo?.(0, 0));
     return () => cancelAnimationFrame(frame);
-  }, [storyStart, caseId, openChoice]);
+  }, [storyStart]);
 
   // In development, check the case content and report every problem in the console.
   useEffect(() => {
@@ -170,7 +186,7 @@ export default function Case() {
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
         <LegendIntro
-          key={caseData.id}
+          key={`${caseData.id}:${storyStart ?? 0}`}
           legendIntro={caseData.legendIntro}
           video={caseData.theme.legendVideo}
           startAtEnd={introSeenBefore}
@@ -184,7 +200,7 @@ export default function Case() {
           // The scroll cue stops with the first chapter filling the screen.
           <div ref={storyRef}>
             <Story
-              key={caseData.id}
+              key={`${caseData.id}:${storyStart ?? 0}`}
               story={caseData.story}
               centralQuestion={caseData.centralQuestion}
               centralQuestionEmphasis={caseData.centralQuestionEmphasis}
