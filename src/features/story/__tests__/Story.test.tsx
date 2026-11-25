@@ -19,6 +19,7 @@ import { STORY_PACE } from '@/lib/story-pages';
 import { splitQuestion } from '@/lib/phrases';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case, StorySection } from '@/types/case';
+import { forgetApparitions } from '@/lib/apparition';
 
 // The story builds a pen for all six chapters' pages, and a jump writes several of them at once: thousands of
 // letter tweens. Alone each test takes a few seconds; give them room under the full suite's load.
@@ -1422,5 +1423,37 @@ describe('Story: the chart and the sky follow the steps', () => {
       expect(image.className).not.toContain('will-change');
     }
     expect(images.slice(1).every(image => image.style.willChange === '')).toBe(true);
+  });
+});
+
+describe('Story: the shadow on the deck (dread pass, 6)', () => {
+  test('once per visit, a faint figure drifts across s-aboard while its page is written; never again on that visit', () => {
+    forgetApparitions();
+    const { container } = renderStory(maryCeleste, READ);
+    const aboard = chapterOf(container, maryCeleste.story.find(section => section.id === 's-aboard')!);
+    const figure = aboard.querySelector<HTMLElement>('[data-story="apparition"]')!;
+    expect(figure.getAttribute('aria-hidden')).toBe('true');
+    // Only the chapter that names one has a figure.
+    expect(container.querySelectorAll('[data-story="apparition"]')).toHaveLength(1);
+    // On to s-aboard's page.
+    for (let step = 0; step < 12 && stepOf(container) !== 'page-3'; step += 1) {
+      finishWriting(container);
+      wheelBurst(stageOf(container));
+      settleSteps();
+    }
+    expect(stepOf(container)).toBe('page-3');
+    const crossing = gsap.getTweensOf(figure);
+    expect(crossing).toHaveLength(1);
+    expect(crossing[0].vars.delay).toBe(maryCeleste.story[3].apparition!.delay);
+    expect(Math.max(...((crossing[0].vars.keyframes as { opacity: number[] }).opacity))).toBeLessThan(0.3);
+    crossing[0].progress(1);
+    // Back to its hook's chapter and on again: no second crossing.
+    finishWriting(container);
+    wheelBurst(stageOf(container), { deltaY: -60 });
+    settleSteps();
+    wheelBurst(stageOf(container));
+    settleSteps();
+    expect(stepOf(container)).toBe('page-3');
+    expect(gsap.getTweensOf(figure).filter(tween => tween.isActive() || tween.progress() < 1)).toHaveLength(0);
   });
 });

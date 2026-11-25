@@ -1,5 +1,5 @@
 // src/lib/validate-case.ts
-import { BOARD_MATERIALS, HOOK_SOUNDS, STAIN_MATERIALS, type AmbienceCue, type AmbienceLayer, type Case } from '@/types/case';
+import { APPARITION_SILHOUETTES, BOARD_MATERIALS, HOOK_SOUNDS, STAIN_MATERIALS, type AmbienceCue, type AmbienceLayer, type Case } from '@/types/case';
 import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
@@ -452,6 +452,26 @@ export function validateCase(caseData: Case): string[] {
           errors.push(`Field story[${i}].eyeZones[${j}]: Must be { x, y, w, h } in percent, inside the image`);
         }
       });
+    });
+  }
+
+  // Validate the optional apparition of each chapter (dread pass, 6): a known silhouette, a direction, a delay >= 0
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const apparition: unknown = section?.apparition;
+      if (apparition === undefined) {
+        return;
+      }
+      const { silhouette, direction, delay } = (apparition ?? {}) as Record<string, unknown>;
+      if (!(APPARITION_SILHOUETTES as readonly unknown[]).includes(silhouette)) {
+        errors.push(`Field story[${i}].apparition.silhouette: Must be one of ${APPARITION_SILHOUETTES.join(', ')}`);
+      }
+      if (direction !== 'left-to-right' && direction !== 'right-to-left') {
+        errors.push(`Field story[${i}].apparition.direction: Must be left-to-right or right-to-left`);
+      }
+      if (typeof delay !== 'number' || !Number.isFinite(delay) || delay < 0) {
+        errors.push(`Field story[${i}].apparition.delay: Must be a number of seconds, 0 or more`);
+      }
     });
   }
 

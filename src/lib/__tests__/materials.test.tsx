@@ -66,3 +66,14 @@ describe('the preloader', () => {
     expect(again.container.querySelector('[data-preloader]')).toBeNull();
   });
 });
+
+describe('the apparition data (dread pass, 6)', () => {
+  test('s-aboard names a figure, a direction and a delay; anything else is an error', () => {
+    expect(maryCeleste.story.find(section => section.id === 's-aboard')?.apparition).toEqual({ silhouette: 'figure', direction: 'right-to-left', delay: 1.6 });
+    const bad = { ...maryCeleste, story: maryCeleste.story.map((section, i) => (i === 0 ? { ...section, apparition: { silhouette: 'ghost', direction: 'up', delay: -1 } } : section)) } as unknown as Case;
+    const errors = validateCase(bad);
+    expect(errors).toContain('Field story[0].apparition.silhouette: Must be one of figure');
+    expect(errors).toContain('Field story[0].apparition.direction: Must be left-to-right or right-to-left');
+    expect(errors).toContain('Field story[0].apparition.delay: Must be a number of seconds, 0 or more');
+  });
+});

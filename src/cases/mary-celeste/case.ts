@@ -127,6 +127,8 @@ export const maryCeleste: Case = {
       },
       // The eye may open in the dark bulwark on the right, away from the page (dread pass, 4).
       eyeZones: [{ x: 80, y: 45, w: 16, h: 22 }],
+      // Once per visit, a faint shadow crosses the empty deck while the page is written (dread pass, 6).
+      apparition: { silhouette: 'figure', direction: 'right-to-left', delay: 1.6 },
       kicker: 'What the boarders found',
       heading: 'Everything, except the people',
       body: [

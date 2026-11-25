@@ -157,6 +157,22 @@ export interface StorySection {
    * the image in percent (left, top, width, height). Optional: without them, the eye never opens on this image.
    */
   eyeZones?: EyeZone[];
+  /**
+   * Once per visit, a faint human-shaped shadow drifts across this chapter's image while its page is written (dread
+   * pass, 6): which silhouette, which way, and how long after the page starts. Optional.
+   */
+  apparition?: Apparition;
+}
+
+/** The silhouettes an apparition can be: soft, blurred, with no face or features. */
+export const APPARITION_SILHOUETTES = ['figure'] as const;
+
+export interface Apparition {
+  silhouette: (typeof APPARITION_SILHOUETTES)[number];
+  /** The way it drifts across the image. */
+  direction: 'left-to-right' | 'right-to-left';
+  /** Seconds after the page starts being written. */
+  delay: number;
 }
 
 /** A safe place for the eye on an image, in percent of the image: left, top, width, height. */

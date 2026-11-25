@@ -65,6 +65,23 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
             style={{ filter: grade.filter }}
           />
           <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />
+          {/* The shadow on the deck (dread pass, 6): a soft, blurred figure with no face or features, faint, crossing the
+              image once per visit while the page is written (Story.tsx moves it). */}
+          {section.apparition !== undefined && (
+            <div aria-hidden="true" data-story="apparition" className="pointer-events-none absolute bottom-[8%] left-0 h-[60%] w-[20%] opacity-0">
+              <svg viewBox="0 0 60 160" preserveAspectRatio="xMidYMax meet" className="h-full w-full">
+                <defs>
+                  <filter id={`apparition-${section.id}`} x="-40%" y="-20%" width="180%" height="140%">
+                    <feGaussianBlur stdDeviation="4.5" />
+                  </filter>
+                </defs>
+                <g filter={`url(#apparition-${section.id})`} fill="#06090b">
+                  <ellipse cx="30" cy="20" rx="10" ry="12" />
+                  <path d="M14 40 C18 33 42 33 46 40 L52 92 L45 94 L43 158 L34 158 L31 104 L29 104 L26 158 L17 158 L15 94 L8 92 Z" />
+                </g>
+              </svg>
+            </div>
+          )}
           {/* Where the eye may open on this image (dread pass, 4): its dark places, from the case data. */}
           {(section.eyeZones ?? []).map((zone, index) => (
             <span

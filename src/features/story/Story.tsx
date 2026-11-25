@@ -51,9 +51,13 @@ import { emitStoryEvent, type StoryDirection } from '@/lib/story-events';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { buildRoute } from '@/lib/voyage-chart';
 import type { Narration, Reference, Source, StorySection, Voyage } from '@/types/case';
+import { takeApparition } from '@/lib/apparition';
 
 // ScrollTrigger is registered inside the component: it needs window.matchMedia as soon as it is registered.
 gsap.registerPlugin(useGSAP, Observer);
+
+/** The shadow on the deck at its most visible (dread pass, 6): faint. */
+const APPARITION_PEAK = 0.24;
 
 /** How the scenes look as they move. Their pace is `STORY_PACE` (src/lib/story-pages.ts). */
 const SCENE = {
@@ -337,6 +341,7 @@ export default function Story({
           hook: one('[data-story="hook-moment"]', scene),
           hookChars: all('[data-story="hook-char"]', scene),
           slip: one('[data-story="crew-slip"]', scene),
+          apparition: one('[data-story="apparition"]', scene),
         }));
 
         // ---- The pen: one writer per page. A click on the page (or the roll call) finishes its writing at once.
@@ -589,6 +594,32 @@ export default function Story({
           setForkOpen(step?.kind === 'fork');
         };
 
+        /**
+         * The shadow on the deck (dread pass, 6): once per visit, while its page is being written, a faint figure drifts
+         * across the image and is gone. Only in the cinematic story (never under reduced motion).
+         */
+        const crossOnce = (chapter: number) => {
+          const section = story[chapter];
+          const figure = parts[chapter]?.apparition;
+          if (section?.apparition === undefined || figure == null || !takeApparition(section.id)) {
+            return;
+          }
+          const scene = scenes[chapter];
+          const width = scene.clientWidth;
+          const fromLeft = section.apparition.direction === 'left-to-right';
+          const span = width - figure.clientWidth;
+          gsap.fromTo(
+            figure,
+            { x: fromLeft ? -figure.clientWidth : width, opacity: 0 },
+            {
+              x: fromLeft ? span + figure.clientWidth : -figure.clientWidth,
+              keyframes: { opacity: [0, APPARITION_PEAK, APPARITION_PEAK, 0] },
+              ...tween('dread.drift'),
+              delay: section.apparition.delay,
+            }
+          );
+        };
+
         /** What follows a step once it has settled: the pen, the camera, the chart. */
         const settle = (index: number, fresh: boolean, direction: StoryDirection) => {
           const step = steps[index];
@@ -610,6 +641,7 @@ export default function Story({
               // Every time the page is reached the pen writes it again; going back, a little quicker.
               writers[step.chapter].restart(direction === 'backward' ? STORY_PACE.backSpeed : 1);
               drawStretches(step.chapter);
+              crossOnce(step.chapter);
             }
           }
           const waiting = settled;
