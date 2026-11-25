@@ -156,13 +156,12 @@ describe('Case page: open case', () => {
     expect(screen.getByRole('dialog', { name: openEntry.data.title })).toBeDefined();
   });
 
-  test('a return visit (intro seen, a mode chosen): the legend intro first, and no modal at all', () => {
+  test('a return visit (intro seen, a mode chosen): no intro, and no modal at all', () => {
     localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
-    localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'read', music: true, effects: true }));
+    localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'read', sound: true }));
     renderCasePage(`/case/${openEntry.id}`);
-    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
-    expect(screen.queryByRole('dialog')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'See what really happened' }));
+    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -231,16 +230,14 @@ describe('Case page: open case', () => {
     expect(localStorage.getItem(`histor:intro-seen:${openEntry.id}`)).toBe('1');
   });
 
-  test('on a later visit the intro opens at its end state, with the scroll cue focused, no Skip, and the story below', () => {
+  test('the intro is shown once ever: on a later visit it is not there, and the story starts at chapter 1 (the fix list)', () => {
     localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
 
     renderCasePage(`/case/${openEntry.id}`);
 
-    const intro = screen.getByRole('region', { name: 'The legend' });
-    expect(intro.getAttribute('data-ended')).toBe('true');
-    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'See what really happened' }));
-    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
+    const story = screen.getByRole('region', { name: 'The story' });
+    expect(story.querySelector('[data-story="chapter"]')).not.toBeNull();
   });
 
   test('a return visit (no intro played): the play choice opens once the story comes up the screen, once per page load', async () => {

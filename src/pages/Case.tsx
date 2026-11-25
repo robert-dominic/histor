@@ -72,8 +72,8 @@ export default function Case() {
 
   // The header's title was clicked (review-fixes brief, 5): back to the start, which is the legend intro.
   const storyStart = (useLocation().state as Partial<StoryStartState> | null)?.storyStart;
-  // The story is only there to scroll to once the intro has made its point, or was seen on an earlier visit. Nothing
-  // else brings it up first (sound-files brief, 1): the legend intro is always the first screen.
+  // The story is only there to scroll to once the intro has made its point, or was seen on an earlier visit. The intro
+  // is shown once ever (the fix list): seen before, it is not there at all and the story is the first screen.
   const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
 
   // The legend intro is always the first screen, on every visit and from every path (sound-files brief, 1). The bug
@@ -113,7 +113,8 @@ export default function Case() {
     );
     observer.observe(story);
     return () => observer.disconnect();
-  }, [showStory, openChoice]);
+    // The title clicked (storyStart) draws the story afresh: it is watched again, so it starts again.
+  }, [showStory, openChoice, storyStart]);
 
   // The title clicked, from anywhere (the desk, a file, the verdict, the report, or already in the story): back to the
   // legend intro at the top. The story is drawn afresh (its key), so a stage holding the screen lets go. The play
@@ -188,6 +189,8 @@ export default function Case() {
       <Preloader images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
+        {/* The legend intro is shown once ever (histor:intro-seen); after that the story starts at chapter 1. */}
+        {!introSeenBefore && (
         <LegendIntro
           key={`${caseData.id}:${storyStart ?? 0}`}
           legendIntro={caseData.legendIntro}
@@ -199,6 +202,7 @@ export default function Case() {
           }}
           onDone={openChoice}
         />
+        )}
         {showStory && (
           // The scroll cue stops with the first chapter filling the screen.
           <div ref={storyRef}>

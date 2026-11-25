@@ -420,22 +420,37 @@ describe('LegendIntro: no title card', () => {
   });
 });
 
-describe('LegendIntro: the editorial layout on a laptop (ui-pass 8)', () => {
-  test('left-aligned in the left 55%, below the top third; the image bleeding off the right; the cue bottom left; stacked and centred on a phone', () => {
+describe('LegendIntro: centred (the fix list)', () => {
+  test('stacked and centred on every screen, with no editorial layout', () => {
     const { container } = renderIntro({ video });
     const section = container.querySelector<HTMLElement>('section[aria-label="The legend"]')!;
-    // A phone: centred, as before.
     expect(section.className).toContain('items-center');
     expect(section.className).toContain('text-center');
-    // A laptop: left-aligned, starting a little below the top third.
-    expect(section.className).toContain('lg:text-left');
-    expect(section.className).toContain('lg:items-start');
-    expect(section.className).toContain('lg:pt-[36svh]');
-    expect(container.querySelector('[data-legend="stage"]')!.className).toContain('lg:max-w-[49vw]');
-    // The image starts at 35% and runs off the right edge, under a shade dark on the text's side.
-    expect(container.querySelector('[data-legend="media"]')!.className).toContain('lg:left-[35%]');
-    // The stamp toward the right, over the last line; the cue bottom left.
-    expect(container.querySelector('[data-legend="stamp"]')!.parentElement!.className).toContain('lg:place-items-end');
-    expect(container.querySelector('[data-legend="continue"]')!.className).toContain('lg:left-[6vw]');
+    expect(section.className).not.toContain('lg:text-left');
+    expect(container.querySelector('[data-legend="media"]')!.className).not.toContain('lg:left');
+  });
+});
+
+describe('LegendIntro: silent (the fix list)', () => {
+  test('nothing is heard while it plays; once it has ended, sound comes back', async () => {
+    const { startSound } = await import('@/lib/sound');
+    const { SoundEngine } = await import('@/lib/sound/engine');
+    const { SAMPLE_NAMES, samples } = await import('@/lib/sound/samples');
+    const { fakeContextMaker, loadFakeSamples } = await import('@/test/fake-audio');
+    const { emitStoryEvent } = await import('@/lib/story-events');
+    loadFakeSamples(samples, SAMPLE_NAMES);
+    const maker = fakeContextMaker();
+    const engine = new SoundEngine({ createContext: maker.create });
+    const stop = startSound(engine);
+    engine.unlock();
+    renderIntro();
+    const ctx = maker.made[0];
+    const before = ctx.started.length;
+    emitStoryEvent({ type: 'stamp-hit' });
+    expect(ctx.started.length).toBe(before);
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    emitStoryEvent({ type: 'stamp-hit' });
+    expect(ctx.started.length).toBeGreaterThan(before);
+    stop();
   });
 });

@@ -16,6 +16,7 @@ import { createQuillWriter, splitForQuill } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import type { CaseTheme, LegendIntro as LegendIntroData } from '@/types/case';
 import { typeLetters } from '@/lib/typewriter';
+import { silenceSound } from '@/lib/sound';
 
 gsap.registerPlugin(useGSAP, SplitText);
 
@@ -229,6 +230,12 @@ export default function LegendIntro({
     { scope: rootRef, dependencies: [legendIntro, markEnded] }
   );
 
+  // The intro is silent (the fix list): no pen, no typewriter, no stamp is heard until it has ended.
+  useEffect(() => {
+    silenceSound(!ended);
+    return () => silenceSound(false);
+  }, [ended]);
+
   /** Skip: jump straight to the end state, so everything can still be read. */
   const handleSkip = () => {
     // Suppress callbacks: the quill and the caret must not be moved by letters that were skipped.
@@ -245,13 +252,11 @@ export default function LegendIntro({
       ref={rootRef}
       aria-label="The legend"
       data-ended={ended}
-      // On a laptop, an editorial layout (ui-pass brief, 8): the legend left-aligned in the left 55%, starting a little
-      // below the top third; the image bleeding off the right edge, partly behind the text; the stamp crooked over the
-      // last line toward the right; the scroll cue bottom left. On a phone, stacked and centred as before.
-      className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-night px-5 pt-14 pb-20 text-center sm:px-10 sm:py-16 lg:items-start lg:justify-start lg:px-[6vw] lg:pt-[36svh] lg:pb-36 lg:text-left"
+      // Centred, on every screen (the fix list: back from the editorial layout).
+      className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-night px-5 pt-14 pb-20 text-center sm:px-10 sm:py-16"
     >
       {video !== undefined && (
-        <div aria-hidden="true" data-legend="media" className="absolute inset-0 -z-10 lg:left-[35%]">
+        <div aria-hidden="true" data-legend="media" className="absolute inset-0 -z-10">
           {showVideo ? (
             <video
               className="h-full w-full object-cover"
@@ -268,9 +273,8 @@ export default function LegendIntro({
           ) : (
             <img className="h-full w-full object-cover" src={video.poster} alt="" />
           )}
-          {/* Dark overlay: keeps the text readable whatever the frame behind it shows. On a laptop it darkens toward the
-              text's side, where the text overlaps it, and lets the image breathe on the right. */}
-          <div className="absolute inset-0 bg-night/78 lg:bg-transparent lg:bg-[linear-gradient(to_right,var(--color-night)_0%,color-mix(in_srgb,var(--color-night)_92%,transparent)_34%,color-mix(in_srgb,var(--color-night)_60%,transparent)_70%,color-mix(in_srgb,var(--color-night)_45%,transparent)_100%)]" />
+          {/* Dark overlay: keeps the text readable whatever the frame behind it shows. */}
+          <div className="absolute inset-0 bg-night/78" />
         </div>
       )}
 
@@ -284,7 +288,7 @@ export default function LegendIntro({
         </button>
       )}
 
-      <div data-legend="stage" className="relative w-full max-w-4xl lg:max-w-[49vw]">
+      <div data-legend="stage" className="relative w-full max-w-4xl">
         <div data-legend="myth" className="flex flex-col gap-3 sm:gap-4">
           {legendIntro.lines.map((line, index) => (
             <p
@@ -303,7 +307,7 @@ export default function LegendIntro({
         {/* The quill. Its point is moved to the letter being written. */}
         <Quill attribute="data-legend" />
 
-        <div className="pointer-events-none absolute inset-0 grid place-items-center lg:place-items-end lg:translate-x-[18%] lg:translate-y-[30%]">
+        <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <p
             data-legend="stamp"
             className="max-w-[94%] -rotate-6 rounded-[0.14em] border-[0.16em] border-rust-night bg-night/80 px-[0.55em] pt-[0.4em] pb-[0.26em] font-voice text-[clamp(1.2rem,0.85rem+2vw,2.75rem)] leading-[1.15] tracking-[0.06em] text-balance text-rust-night uppercase"
@@ -313,7 +317,7 @@ export default function LegendIntro({
         </div>
       </div>
 
-      <p className="relative mt-6 max-w-[40rem] font-voice lg:max-w-[min(40rem,49vw)] text-[clamp(0.9375rem,0.9rem+0.25vw,1.125rem)] leading-[1.7] text-pretty text-night-ink sm:mt-12">
+      <p className="relative mt-6 max-w-[40rem] font-voice text-[clamp(0.9375rem,0.9rem+0.25vw,1.125rem)] leading-[1.7] text-pretty text-night-ink sm:mt-12">
         <span className="sr-only">{legendIntro.debunk}</span>
         <span aria-hidden="true" data-legend="debunk">
           {legendIntro.debunk}
@@ -330,12 +334,12 @@ export default function LegendIntro({
       </p>
 
       {/* The scroll cue. GSAP animates this wrapper, not the button, so the button keeps its own press feedback. */}
-      <div data-legend="continue" className="mt-6 sm:mt-10 lg:absolute lg:bottom-12 lg:left-[6vw] lg:mt-0">
+      <div data-legend="continue" className="mt-6 sm:mt-10">
         <button
           ref={continueRef}
           type="button"
           onClick={onDone}
-          className="group flex min-h-11 flex-col items-center gap-2 px-4 pt-2 pb-1 lg:items-start lg:px-0 font-voice text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,color] duration-150 ease-out hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]"
+          className="group flex min-h-11 flex-col items-center gap-2 px-4 pt-2 pb-1 font-voice text-sm tracking-[0.14em] text-night-ink uppercase transition-[scale,color] duration-150 ease-out hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]"
         >
           <span>See what really happened</span>
           <svg

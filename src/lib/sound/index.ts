@@ -24,6 +24,12 @@ export const sound = new SoundEngine();
 /** The one narrator: a chapter or the question read aloud (narration.ts). */
 export const narrator = new Narrator(sound);
 
+/** While set, nothing is played (the legend intro is silent: the fix list). The loops still keep up. */
+let silenced = false;
+export function silenceSound(on: boolean): void {
+  silenced = on;
+}
+
 /** Plays one cue: its sound file on the effects bus, if a voice is free. */
 export function playCue(engine: SoundEngine, cue: SoundCue): void {
   playSample(engine, cue);
@@ -119,7 +125,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
     }
     // The loops keep up with the moments even before the sound starts, so they are right once it does.
     loops.hear(event);
-    if (!engine.running) {
+    if (!engine.running || silenced) {
       return;
     }
     const row = soundFor(event, memory);
