@@ -306,14 +306,14 @@ describe('the progress rail and the end (landing brief, 5)', () => {
     expect(to).toHaveBeenCalledTimes(1);
   });
 
-  test('after the last case: "More cases are being recovered.", its small line, then the footer', () => {
+  test('no "more cases" section: the last case is followed directly by the footer', () => {
     renderHome();
-    const end = screen.getByRole('region', { name: 'More to come' });
-    expect(end.textContent).toContain('More cases are being recovered.');
-    expect(end.textContent).toContain('Legend or history? You decide.');
+    expect(screen.queryByText('More cases are being recovered.')).toBeNull();
+    expect(document.querySelector('[data-landing="end"]')).toBeNull();
+    const cases = screen.getByRole('list', { name: 'The cases' });
     const footer = screen.getByRole('contentinfo');
-    expect(end.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole('list', { name: 'The cases' }).compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(cases.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.querySelector('[data-landing="stage"]')!.nextElementSibling).toBe(footer);
   });
 });
 
