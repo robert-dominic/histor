@@ -6,7 +6,10 @@ import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@te
 import gsap from 'gsap';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { exhibits } from '@/cases';
+import { FRAME_SHAPES } from '@/lib/frame-shapes';
 import { OPENING_WAIT_MS } from '@/features/landing/Opening';
 import { useLandingMusic } from '@/features/landing/use-landing-music';
 import Home from '@/pages/Home';
@@ -96,5 +99,62 @@ describe('the header (landing brief, 2)', () => {
   test('the Music pill is there once the landing has tracks', () => {
     expect(renderHook(() => useLandingMusic([])).result.current.available).toBe(false);
     expect(renderHook(() => useLandingMusic([{ src: '/a.mp3', title: 'A', credit: 'B' }])).result.current.available).toBe(true);
+  });
+});
+
+describe('one section per case (landing brief, 3)', () => {
+  test('each: its frame in its own shape, the title in italic with its years or "Sealed", the headline and subline', () => {
+    renderHome();
+    for (const exhibit of exhibits) {
+      const section = document.getElementById(`exhibit-${exhibit.id}`)!;
+      const title = within(section).getByRole('heading', { level: 2, name: exhibit.title });
+      expect(title.className).toContain('italic');
+      expect(title.nextElementSibling!.textContent).toBe(exhibit.status === 'open' ? exhibit.years : 'Sealed');
+      expect(section.querySelector('[data-exhibit-part="headline"]')!.textContent).toBe(exhibit.headline);
+      expect(section.querySelector('[data-exhibit-part="subline"]')!.textContent).toBe(exhibit.subline);
+      const frame = section.querySelector<HTMLElement>(':scope [data-exhibit-part="rise"] .haunted-frame')!;
+      expect(frame.dataset.frame).toBe(exhibit.frame);
+      expect(frame.style.aspectRatio).toBe(FRAME_SHAPES[exhibit.frame].ratio);
+    }
+    expect(new Set(exhibits.map(exhibit => exhibit.frame)).size).toBeGreaterThan(2);
+  });
+
+  test('an open case shows its image; a sealed one a dark veil with a brass plaque, "Sealed"', () => {
+    renderHome();
+    const open = document.getElementById('exhibit-mary-celeste')!;
+    expect(open.querySelector('[data-exhibit-part="rise"] .haunted-frame img')!.getAttribute('src')).toBe(exhibits[0].frameImage!.src);
+    expect(open.querySelector('[data-exhibit-part="rise"] .haunted-frame img')!.getAttribute('loading')).toBe('lazy');
+    const sealed = document.getElementById('exhibit-roanoke')!;
+    const veil = sealed.querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')!;
+    expect(veil.className).toContain('frame-veil');
+    expect(veil.querySelector('.frame-plaque')!.textContent).toBe('Sealed');
+  });
+
+  test('the "Scroll" cue on the first section only; the next frame peeks in on every section but the last', () => {
+    renderHome();
+    const sections = exhibits.map(exhibit => document.getElementById(`exhibit-${exhibit.id}`)!);
+    expect(sections.map(section => section.querySelector('[data-exhibit-part="cue"]') !== null)).toEqual(sections.map((_, index) => index === 0));
+    sections.forEach((section, index) => {
+      const peek = section.querySelector('[data-exhibit-part="peek"] .haunted-frame');
+      expect(peek?.getAttribute('data-frame') ?? null).toBe(exhibits[index + 1]?.frame ?? null);
+    });
+  });
+
+  test('the frames are haunted, not shiny: no bright, polished gold anywhere in their styles', () => {
+    const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    const frames = css.slice(css.indexOf("/* ---- The landing page's frames"), css.indexOf('/* The scroll cue'));
+    // Every warm colour in them is dull: its brightest channel stays low.
+    const warm = (r: number, b: number) => r - b > 20;
+    for (const [, r, g, b] of frames.matchAll(/rgb\((\d+) (\d+) (\d+)/g)) {
+      if (warm(Number(r), Number(b))) {
+        expect(Math.max(Number(r), Number(g))).toBeLessThanOrEqual(180);
+      }
+    }
+    for (const [hex] of frames.matchAll(/#[0-9a-f]{6}/gi)) {
+      const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+      if (warm(r, b)) {
+        expect(Math.max(r, g), hex).toBeLessThanOrEqual(0x70);
+      }
+    }
   });
 });

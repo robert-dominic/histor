@@ -709,3 +709,126 @@ body::after {
 .sound-locked[data-locked="true"] svg {
   animation: sound-locked 1.8s ease-in-out infinite;
 }
+
+/* ---- The landing page's frames (landing brief, 3; haunted, not shiny) ----
+   Old gilt gone black: a dark bronze ground, dull gold only where light catches the carving (top left, a little
+   bottom right), the carving's grain, grime in its grooves, cracks, chipped corners and dark rot creeping in from the
+   edges. No bright or polished gold anywhere: the lightest tone is a dull, brownish gold at low opacity. Static
+   layers only; the glint and the tilt are transforms (Frame.tsx). */
+.haunted-frame {
+  position: relative;
+  isolation: isolate;
+  padding: clamp(12px, 6.5%, 44px);
+  background:
+    radial-gradient(70% 45% at 18% 6%, rgb(132 108 58 / 0.38), transparent 60%),
+    radial-gradient(55% 38% at 86% 97%, rgb(104 84 44 / 0.22), transparent 62%),
+    linear-gradient(180deg, rgb(122 100 56 / 0.2), transparent 7%, transparent 93%, rgb(0 0 0 / 0.45)),
+    linear-gradient(90deg, rgb(110 90 50 / 0.14), transparent 6%, transparent 94%, rgb(0 0 0 / 0.4)),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.22) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.16) 0 1px, transparent 1px 5px),
+    linear-gradient(155deg, #33291a 0%, #1f180f 28%, #2a2215 50%, #17120b 74%, #0c0906 100%);
+  /* Chipped corners, and a bite out of the left side and the bottom. */
+  /* The carving: an outer bead, a sunk channel, and a raised inner band, each dark and only faintly lit. */
+  box-shadow:
+    inset 0 0 0 2px #0a0805,
+    inset 0 0 0 3px rgb(118 96 52 / 0.22),
+    inset 0 0 0 6px #120d07,
+    inset 0 0 0 7px rgb(96 78 42 / 0.16),
+    inset 0 0 22px 6px rgb(0 0 0 / 0.7);
+  clip-path: polygon(
+    0 2.4%, 1.1% 0.9%, 2.6% 0, 61% 0, 62.2% 0.7%, 63.6% 0, 97.4% 0, 98.8% 1.2%, 100% 3%, 100% 96.2%, 99.2% 98%,
+    97.8% 100%, 41% 100%, 39.6% 99.3%, 38.4% 100%, 3.8% 100%, 1.5% 98.8%, 0 97%, 0 58%, 0.7% 56.6%, 0 55%
+  );
+}
+/* Rot from the edges, darker at the corners, and grime in the carving: on the gilt only (the picture sits above). */
+.haunted-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(34% 30% at 0 0, rgb(4 3 2 / 0.85), transparent 75%),
+    radial-gradient(30% 34% at 100% 0, rgb(4 3 2 / 0.7), transparent 75%),
+    radial-gradient(36% 30% at 100% 100%, rgb(4 3 2 / 0.85), transparent 75%),
+    radial-gradient(30% 30% at 0 100%, rgb(4 3 2 / 0.8), transparent 75%),
+    radial-gradient(120% 120% at 50% 50%, transparent 52%, rgb(6 5 3 / 0.7) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0 0.02 0 0 0 1.6 -0.75'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+/* Cracks across the gilt: hairline dark lines, each with a faint lighter lip. */
+.haunted-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.7;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M0 18 L3 20 L5.5 19 L7 22' stroke='%23050403' stroke-width='0.14'/%3E%3Cpath d='M28 0 L27 2.5 L29.5 4 L28.6 6' stroke='%23050403' stroke-width='0.12'/%3E%3Cpath d='M100 64 L97 62.5 L95.6 65 L93.8 64' stroke='%23050403' stroke-width='0.14'/%3E%3Cpath d='M72 100 L73 97.2 L71.2 95.6 L72.4 93.6' stroke='%23050403' stroke-width='0.12'/%3E%3Cpath d='M0 81 L2.4 82.6 L4 81.8' stroke='%23050403' stroke-width='0.12'/%3E%3Cpath d='M0.1 18.4 L3.1 20.4' stroke='%23856c3a' stroke-opacity='0.25' stroke-width='0.15'/%3E%3Cpath d='M99.9 64.4 L97 62.9' stroke='%23856c3a' stroke-opacity='0.2' stroke-width='0.15'/%3E%3C/g%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+}
+/* The picture's opening: a carved lip, dark, sunk into the frame. */
+.haunted-frame__opening {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  overflow: hidden;
+  background: #070605;
+  box-shadow:
+    0 0 0 2px #0d0a06,
+    0 0 0 4px rgb(96 78 42 / 0.28),
+    0 0 0 7px #120e08,
+    0 0 0 9px rgb(70 56 30 / 0.2),
+    inset 0 0 34px rgb(0 0 0 / 0.9);
+}
+.haunted-frame__opening > img {
+  filter: saturate(0.7) sepia(0.18) brightness(0.82) contrast(1.06);
+}
+/* The light catching the gilt on hover: a dull band, moved by transform (Frame.tsx). */
+.haunted-frame__glint {
+  position: absolute;
+  inset: -10% auto -10% 0;
+  z-index: 0;
+  width: 45%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(150 124 70 / 0.16) 50%, transparent 80%);
+  mix-blend-mode: screen;
+}
+/* The shadow under a frame: its own soft layer, never a filter. */
+.haunted-frame-shadow {
+  position: absolute;
+  inset: 6% -4% -8%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgb(0 0 0 / 0.75), transparent);
+}
+/* A sealed case: a dark cloth veil over the picture, hung from the top, with soft folds. */
+.frame-veil {
+  position: absolute;
+  inset: -2% -1% 0;
+  transform-origin: 50% 0;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent 22%, rgb(0 0 0 / 0.5) 100%),
+    repeating-linear-gradient(90deg, #0b0c0e 0, #15171a 5%, #0d0e10 9%, #191b1e 14%, #0a0b0d 19%);
+}
+/* The brass plaque on a veil: dull, worn brass, never bright. */
+.frame-plaque {
+  background: linear-gradient(170deg, #6d5b34 0%, #54452a 45%, #3f3420 100%);
+  box-shadow: inset 0 1px 0 rgb(170 144 90 / 0.25), inset 0 -1px 0 rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.6);
+  color: #1b150c;
+}
+/* The scroll cue's thin line: a slow drop of light down it (constant motion). */
+@keyframes landing-cue {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.landing-cue-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent, rgb(230 225 211 / 0.8), transparent);
+  animation: landing-cue 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-cue-line::after { animation: none; }
+}

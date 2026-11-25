@@ -4,6 +4,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import LandingHeader from '@/features/landing/LandingHeader';
+import ExhibitSection from '@/features/landing/ExhibitSection';
 import Opening from '@/features/landing/Opening';
 import { exhibits } from '@/cases';
 
@@ -18,11 +19,18 @@ export default function Landing() {
       <LandingHeader startHref={start === undefined ? '/' : `/case/${start.id}`} markRef={markRef} docked={docked} />
       <Opening targetRef={markRef} onDock={dock} />
       <ol aria-label="The cases">
-        {exhibits.map(exhibit => (
-          <li key={exhibit.id} data-exhibit={exhibit.id} className="min-h-svh px-6 pt-24">
-            <h2 className="font-record text-3xl italic">{exhibit.status === 'open' ? <Link to={`/case/${exhibit.id}`}>{exhibit.title}</Link> : exhibit.title}</h2>
-            <p>{exhibit.headline}</p>
-          </li>
+        {exhibits.map((exhibit, index) => (
+          <ExhibitSection key={exhibit.id} exhibit={exhibit} index={index} next={exhibits[index + 1]} revealed={docked}>
+            {frame =>
+              exhibit.status === 'open' ? (
+                <Link to={`/case/${exhibit.id}`} aria-label={`Open the case: ${exhibit.title}`} data-exhibit-part="open" className="block rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-brass">
+                  {frame}
+                </Link>
+              ) : (
+                frame
+              )
+            }
+          </ExhibitSection>
         ))}
       </ol>
     </main>
