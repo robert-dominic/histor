@@ -81,7 +81,7 @@ All files, nothing generated. Quiet beats loud, rare beats constant.
 
 ## Music: off, kept (`music.ts`)
 
-`MUSIC_ENABLED = false`: no playlist plays, there is no Music control, and no music is credited. The playlist player (`music.ts`: shuffled, crossfaded, streamed, resumed where it stopped), `CaseTheme.playlists`, the Mary Celeste's `music.ts` data, `npm run music:import` and their tests are kept, unused, in case music comes back.
+`MUSIC_ENABLED = false`: no case playlist plays, there is no Music control in a case, and no case music is credited. **The one exception is the landing page** (`src/lib/landing-music.ts`): its header's music button plays the Mary Celeste's story playlist as a quiet bed (`LANDING_MUSIC_VOLUME = 0.15`), off until clicked, with no volume control; it is credited on `/credits`. The playlist player (`music.ts`: shuffled, crossfaded, streamed, resumed where it stopped), `CaseTheme.playlists`, the Mary Celeste's `music.ts` data, `npm run music:import` and their tests are kept, unused, in case music comes back.
 
 ## Narration (`narration.ts`), ready for recordings
 
