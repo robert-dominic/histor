@@ -47,12 +47,12 @@ describe('the case\'s materials', () => {
   });
 });
 
-describe('the preloader', () => {
-  test('"Recovering the files…" once per page load, never taking a click, gone within about three seconds', () => {
+describe('the loading screens (landing v2 brief, 5)', () => {
+  test('the desk\'s "Recovering the files…": once per page load, never taking a click, gone within about three seconds', () => {
     stubMatchMedia();
     forgetPreloader();
     vi.useFakeTimers();
-    const { container, unmount } = render(<Preloader images={[]} />);
+    const { container, unmount } = render(<Preloader label="Recovering the files…" once images={[]} />);
     const screen = container.querySelector<HTMLElement>('[data-preloader]')!;
     expect(screen.textContent).toContain('Recovering the files…');
     expect(screen.getAttribute('aria-hidden')).toBe('true');
@@ -65,8 +65,38 @@ describe('the preloader', () => {
     });
     unmount();
     // Not again on this page load.
-    const again = render(<Preloader images={[]} />);
+    const again = render(<Preloader label="Recovering the files…" once images={[]} />);
     expect(again.container.querySelector('[data-preloader]')).toBeNull();
+  });
+
+  test('the story\'s "Opening the case…" only shows if loading takes longer than about 400ms', async () => {
+    stubMatchMedia();
+    forgetPreloader();
+    vi.useFakeTimers();
+    // Quick: everything is in before 400ms, so there is no loader at all.
+    const quick = render(<Preloader label="Opening the case…" showAfterMs={400} images={[]} />);
+    expect(quick.container.querySelector('[data-preloader]')).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450);
+    });
+    expect(quick.container.querySelector('[data-preloader]')).toBeNull();
+    quick.unmount();
+    // Slow: an image that never arrives holds it past 400ms, and the loader shows.
+    vi.stubGlobal('Image', class { onload: (() => void) | null = null; onerror: (() => void) | null = null; set src(_value: string) {} });
+    const slow = render(<Preloader label="Opening the case…" showAfterMs={400} images={['/slow.webp']} />);
+    expect(slow.container.querySelector('[data-preloader]')).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(410);
+    });
+    expect(slow.container.querySelector('[data-preloader]')!.textContent).toContain('Opening the case…');
+    // And it is every time, not once per page load.
+    slow.unmount();
+    const again = render(<Preloader label="Opening the case…" showAfterMs={400} images={['/slow.webp']} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(410);
+    });
+    expect(again.container.querySelector('[data-preloader]')).not.toBeNull();
+    vi.unstubAllGlobals();
   });
 });
 

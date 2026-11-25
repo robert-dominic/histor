@@ -38,6 +38,7 @@ import { droppedSpot, type DroppedSpot } from '@/lib/floor';
 import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
 import { isDeskGuideOff } from '@/lib/desk-guide-seen';
+import Preloader from '@/features/dread/Preloader';
 import GhostLines from '@/features/dread/GhostLines';
 import LegendTwitch from '@/features/dread/LegendTwitch';
 
@@ -422,6 +423,8 @@ function DeskScreen() {
 
   return (
     <>
+      {/* Entering the desk: the files being recovered, while the fonts and the files' images load (landing v2 brief, 5). */}
+      <Preloader label="Recovering the files…" once images={caseData.evidence.flatMap(evidence => (evidence.image === undefined ? [] : [evidence.image.src]))} />
       <main
         ref={rootRef}
         data-page="case"

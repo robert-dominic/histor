@@ -178,8 +178,8 @@ export default function Case() {
           }}
         />
       )}
-      {/* On the first load: the files being recovered, while the fonts and the first images load (dread pass, 1). */}
-      <Preloader images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
+      {/* "Opening the case…", only if the fonts and the first images take longer than about 400ms (landing v2 brief, 5). */}
+      <Preloader label="Opening the case…" showAfterMs={400} images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
         {/* The legend intro is shown once ever (histor:intro-seen); after that the story starts at chapter 1. */}
