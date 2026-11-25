@@ -5,7 +5,7 @@ import { formatCaseYears } from '@/lib/case-years';
 import { validateCase } from '@/lib/validate-case';
 
 /** The shape of a case's frame on the landing page (landing brief, 1): the frames are not all the same. */
-export type FrameShape = 'landscape' | 'portrait' | 'square' | 'wide';
+export type FrameShape = 'landscape' | 'portrait' | 'square';
 
 /**
  * One exhibit on the landing page (landing brief, 1): a case, its frame and its section's words.
@@ -78,7 +78,7 @@ const SOURCES: ExhibitSource[] = [
     year: 1587,
     yearEnd: 1590,
     teaser: 'An English colony vanished from the coast of America, leaving almost nothing behind.',
-    frame: 'wide',
+    frame: 'landscape',
     headline: 'A hundred people. One carved word.',
     subline: 'An English colony vanished from the coast of America, leaving almost nothing behind.',
   },

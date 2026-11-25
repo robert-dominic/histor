@@ -1,8 +1,9 @@
 // src/features/landing/ExhibitSection.tsx
-// One case on the landing page (landing brief, 3), a full screen on a laptop, laid out like a gallery's wall:
-// - the frame, large, centred a little left, in the case's own shape;
-// - the title to the right of the frame, low: the case in italic serif, its years (or "Sealed") small under it;
-// - the editorial block at the bottom left: the headline large (Old Standard TT), the subline under it;
+// One case on the landing page (landing brief, 3; v3), a full screen on a laptop, laid out like a gallery's wall,
+// with plenty of empty space around everything and the frame always the biggest thing on screen:
+// - the frame, about 60% of the screen's height, centred a little left, in the case's own shape;
+// - the title beside the frame's bottom right: the case in italic serif (about 26px), its years (or "Sealed") under it;
+// - the editorial block at the bottom left: the headline (about 44px, Old Standard TT), the subline (18px) under it;
 // - on the first section, a "Scroll" cue at the bottom centre; on every section but the last, the next frame peeking
 //   in at the bottom right, sliding up and away as the page scrolls.
 // Motion: the frame rises in (`paper.move`) as the section arrives (the first one as the wordmark docks), and drifts
@@ -229,15 +230,15 @@ export default function ExhibitSection({ exhibit, index, next, staged, isStart, 
       }`}
     >
       {/* The frame, and its title to its right, low. The title stays put while the frame moves. */}
-      <div data-exhibit-part="place" className="flex flex-col gap-5 lg:absolute lg:top-[40%] lg:left-[45%] lg:block lg:-translate-x-1/2 lg:-translate-y-1/2">
+      <div data-exhibit-part="place" className="flex flex-col gap-5 lg:absolute lg:top-[43%] lg:left-[45%] lg:block lg:-translate-x-1/2 lg:-translate-y-1/2">
         <div data-exhibit-part="anchor">
           <div data-exhibit-part="rise" className="relative [perspective:1400px]">
             <span aria-hidden="true" className="haunted-frame-shadow" />
             {children === undefined ? frame : children(frame)}
           </div>
         </div>
-        <div data-exhibit-part="title" className="lg:absolute lg:bottom-1 lg:left-[calc(100%+2.75rem)] lg:w-[17rem]">
-          <h2 id={titleId} className="font-record text-[clamp(1.5rem,1.2rem+0.9vw,2.125rem)] leading-tight italic">
+        <div data-exhibit-part="title" className="lg:absolute lg:bottom-1 lg:left-[calc(100%+2rem)] lg:w-[15rem]">
+          <h2 id={titleId} className="font-record text-[clamp(1.375rem,1.1rem+0.5vw,1.625rem)] leading-tight italic">
             {exhibit.title}
           </h2>
           <p className="mt-2 font-voice text-[0.75rem] tracking-[0.2em] text-night-ink/60 uppercase">{exhibit.status === 'open' ? exhibit.years : 'Sealed'}</p>
@@ -245,11 +246,11 @@ export default function ExhibitSection({ exhibit, index, next, staged, isStart, 
       </div>
 
       {/* The editorial block: bottom left on a laptop. */}
-      <div data-exhibit-part="words" className="max-w-[44rem] lg:absolute lg:bottom-[7svh] lg:left-[5.5vw]">
-        <p data-exhibit-part="headline" className="font-record text-[clamp(2rem,1.1rem+2.7vw,3.75rem)] leading-[1.06] text-night-ink">
+      <div data-exhibit-part="words" className="max-w-[34rem] lg:absolute lg:bottom-[6svh] lg:left-[5.5vw]">
+        <p data-exhibit-part="headline" className="font-record text-[clamp(1.75rem,0.9rem+2.25vw,2.75rem)] leading-[1.1] text-night-ink">
           {exhibit.headline}
         </p>
-        <p data-exhibit-part="subline" className="mt-4 max-w-xl font-record text-[clamp(1rem,0.92rem+0.35vw,1.25rem)] leading-snug text-night-ink/70">
+        <p data-exhibit-part="subline" className="mt-3 max-w-xl font-record text-[1.125rem] leading-snug text-night-ink/70">
           {exhibit.subline}
         </p>
       </div>

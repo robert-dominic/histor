@@ -10,7 +10,7 @@ describe('the exhibits', () => {
     expect(exhibits.map(exhibit => [exhibit.title, exhibit.years, exhibit.frame, exhibit.status])).toEqual([
       ['The Mary Celeste', '1872 – 1873', 'landscape', 'open'],
       ['Jack the Ripper', '1888', 'portrait', 'sealed'],
-      ['The Lost Colony of Roanoke', '1587 – 1590', 'wide', 'sealed'],
+      ['The Lost Colony of Roanoke', '1587 – 1590', 'landscape', 'sealed'],
       ['The Princes in the Tower', '1483', 'square', 'sealed'],
       ['The Dyatlov Pass', '1959', 'portrait', 'sealed'],
       ['Amelia Earhart', '1937', 'landscape', 'sealed'],
