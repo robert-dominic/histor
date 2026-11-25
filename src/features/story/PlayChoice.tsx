@@ -4,7 +4,8 @@
 // "Read at my pace". The reader must choose: the story does not start until they do, and Escape means "Read at my
 // pace". The focus stays inside while it is open and goes back where it was afterwards.
 // Two small switches under the choices, "Music" and "Effects", ticked unless turned off before (music brief, 1): the
-// choice's click is the gesture that starts the sound.
+// choice's click is the gesture that starts the sound. The choice is remembered (`histor:story-mode`): the modal shows
+// only to a reader who has never chosen (ui-pass brief, 2).
 // Reduced motion: it simply appears, with no writing and no movement.
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import gsap from 'gsap';
@@ -16,6 +17,7 @@ import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 import { sound } from '@/lib/sound';
 import { emitStoryEvent } from '@/lib/story-events';
 import { STORY_PACE } from '@/lib/story-pages';
+import { saveStoryMode } from '@/lib/story-mode';
 
 gsap.registerPlugin(useGSAP);
 
@@ -95,6 +97,8 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
     // This click (or key) is the gesture that may start the sound.
     sound.setOn('music', musicOn);
     sound.setOn('effects', effectsOn);
+    // Remembered: the modal never shows again; the story starts in this mode (ui-pass brief, 2).
+    saveStoryMode({ mode, music: musicOn, effects: effectsOn });
     sound.unlock();
     const root = rootRef.current;
     if (root === null || typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches) {

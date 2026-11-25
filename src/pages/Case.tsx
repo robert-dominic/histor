@@ -3,7 +3,7 @@
 // end, the story follows below it: the reader scrolls on, or presses the scroll cue. The case header shows the
 // case's title once the story starts (Story.tsx).
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader, { type StoryStartState } from '@/components/CaseHeader';
@@ -15,6 +15,7 @@ import Story from '@/features/story/Story';
 import { formatCaseYears } from '@/lib/case-years';
 import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
 import { emitStoryEvent } from '@/lib/story-events';
+import { loadStoryMode } from '@/lib/story-mode';
 import { validateCase } from '@/lib/validate-case';
 
 /** The story has "arrived" once its top is this far up the screen (an IntersectionObserver root margin). */
@@ -43,10 +44,20 @@ export default function Case() {
   const [start, setStart] = useState<{ mode: PlayMode; token: number } | null>(null);
   /** The play choice has been shown on this page load (it shows once, before chapter 1, however the reader arrives). */
   const choiceShownRef = useRef(false);
-  const openChoice = () => {
+  /** The reader's saved choice (ui-pass brief, 2): once made, the modal never shows again. Read once per page. */
+  const [savedMode] = useState(() => (caseData === undefined ? null : loadStoryMode()));
+  /**
+   * Time for the reader to choose: the modal, for someone who has never chosen; otherwise the story starts at once,
+   * at its very beginning, in the saved mode.
+   */
+  const openChoice = useCallback(() => {
     choiceShownRef.current = true;
+    if (savedMode !== null) {
+      setStart(current => ({ mode: savedMode.mode, token: (current?.token ?? 0) + 1 }));
+      return;
+    }
     setChoosing(true);
-  };
+  }, [savedMode]);
 
   const title = caseData?.title;
   const year = caseData?.year;
@@ -83,10 +94,10 @@ export default function Case() {
     );
     observer.observe(story);
     return () => observer.disconnect();
-  }, [showStory]);
+  }, [showStory, openChoice]);
 
-  // The title clicked: to the story's first step (the play choice), from anywhere: arriving from the desk, a file,
-  // the verdict or the report, or already in the story.
+  // The title clicked: to the story's first step, from anywhere: arriving from the desk, a file, the verdict or the
+  // report, or already in the story (the play choice for a reader who has never chosen; otherwise the story itself).
   useEffect(() => {
     if (storyStart === undefined || caseId === undefined) {
       return;
@@ -97,7 +108,7 @@ export default function Case() {
       openChoice();
     });
     return () => cancelAnimationFrame(frame);
-  }, [storyStart, caseId]);
+  }, [storyStart, caseId, openChoice]);
 
   // In development, check the case content and report every problem in the console.
   useEffect(() => {

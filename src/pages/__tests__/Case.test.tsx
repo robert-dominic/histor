@@ -7,6 +7,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registry } from '@/cases';
 import { formatCaseYears } from '@/lib/case-years';
+import { STORY_MODE_KEY } from '@/lib/story-mode';
 import { validateCase } from '@/lib/validate-case';
 import Case from '@/pages/Case';
 import { finishLegendIntro } from '@/test/legend-intro';
@@ -274,6 +275,33 @@ describe('Case page: open case', () => {
       // jsdom has no scrollIntoView of its own.
       delete (Element.prototype as Partial<Element>).scrollIntoView;
     }
+  });
+
+  test('the choice is remembered (ui-pass 2): histor:story-mode keeps the mode and the two switches', async () => {
+    renderCasePage(`/case/${openEntry.id}`);
+    finishLegendIntro();
+    const choice = screen.getByRole('dialog', { name: openEntry.data.title });
+    fireEvent.click(within(choice).getByRole('switch', { name: 'Effects' }));
+    fireEvent.click(within(choice).getByRole('button', { name: 'Play the story' }));
+    expect(JSON.parse(localStorage.getItem(STORY_MODE_KEY)!)).toEqual({ mode: 'play', music: true, effects: false });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
+  });
+
+  test('once chosen, the modal never shows again: the scroll cue and the title start the story at once', () => {
+    localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'read', music: true, effects: true }));
+    renderCasePage(`/case/${openEntry.id}`);
+    finishLegendIntro();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
+    fireEvent.click(document.querySelector<HTMLAnchorElement>('[data-case-header="title-link"]')!);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('a broken saved choice counts as no choice: the modal shows', () => {
+    localStorage.setItem(STORY_MODE_KEY, '{"mode":"loud"}');
+    renderCasePage(`/case/${openEntry.id}`);
+    finishLegendIntro();
+    expect(screen.getByRole('dialog', { name: openEntry.data.title })).toBeDefined();
   });
 
   test('loads the saved investigation for that case', () => {
