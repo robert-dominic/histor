@@ -1,18 +1,17 @@
 // src/components/SiteFooter.tsx
 // The site's footer (landing v2 brief, 4): big and typographic, in Histor's dark palette. A thin rule, then "HISTOR"
 // set across nearly the full width in the logo's own letterforms (the H keeps its missing-person crossbar), with
-// "LEGEND OR HISTORY" running up the right edge (a line under it on a phone); below, three columns (the archive,
-// about, one line of personality: a random legend from the open cases); at the foot "© 2026 Histor" and "Designed and
-// built by Robert". The letters rise in one by one as the footer scrolls into view (a fade under reduced motion).
+// "LEGEND OR HISTORY" running up the right edge (a line under it on a phone); below, two columns spread across the
+// width (v3: the archive at the left, about at the right end; no line of personality); at the foot "© 2026 Histor"
+// and "Designed and built by Robert". The letters rise in one by one as the footer scrolls into view (a fade under reduced motion).
 // On the landing page, the credits and the sources; no case page has one.
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { exhibits } from '@/cases';
 import { DESIGNER_URL, FOOTER } from '@/lib/footer-links';
-import { pickLegend } from '@/lib/legend-of-the-day';
 import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { WORDMARK_LETTERS, WORDMARK_VIEWBOX } from '@/lib/wordmark';
 
@@ -23,12 +22,6 @@ const HEADING = 'font-voice text-[0.75rem] tracking-[0.22em] text-night-ink/55 u
 
 export default function SiteFooter() {
   const rootRef = useRef<HTMLElement>(null);
-  const [legend] = useState(() =>
-    pickLegend(
-      exhibits.flatMap(exhibit => (exhibit.status === 'open' && exhibit.data !== undefined ? [exhibit.data] : [])),
-      Math.random()
-    )
-  );
 
   useGSAP(
     () => {
@@ -91,7 +84,7 @@ export default function SiteFooter() {
       </p>
 
       {/* The columns, under a thin rule. */}
-      <div className="mx-4 mt-10 grid gap-10 border-t border-night-ink/15 pt-8 sm:mx-8 lg:grid-cols-3 lg:gap-12">
+      <div className="mx-4 mt-10 grid gap-10 border-t border-night-ink/15 pt-8 sm:mx-8 lg:grid-cols-2 lg:gap-12">
         <nav aria-label="The archive" data-footer="archive">
           <h2 className={HEADING}>The archive</h2>
           <ul className="mt-4 flex flex-col gap-2">
@@ -112,7 +105,7 @@ export default function SiteFooter() {
           </ul>
         </nav>
 
-        <div data-footer="about">
+        <div data-footer="about" className="lg:justify-self-end lg:text-left">
           <h2 className={HEADING}>About</h2>
           <p data-footer="description" className="mt-4 max-w-sm">
             {FOOTER.about}
@@ -133,14 +126,6 @@ export default function SiteFooter() {
           </nav>
         </div>
 
-        <div data-footer="legend">
-          {legend !== null && (
-            <p className="font-record text-[1.25rem] leading-snug text-night-ink/85">
-              Today&rsquo;s legend: <em data-footer="legend-name">{legend.legend}</em>
-              <span className="text-night-ink/60"> ({legend.caseTitle})</span>. It never happened.
-            </p>
-          )}
-        </div>
       </div>
 
       {/* The foot. */}

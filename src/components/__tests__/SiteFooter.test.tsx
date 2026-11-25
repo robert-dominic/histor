@@ -8,7 +8,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { exhibits } from '@/cases';
-import { legendsOf, pickLegend } from '@/lib/legend-of-the-day';
 import { stubMatchMedia } from '@/test/match-media';
 import App from '@/App';
 import { MemoryRouter } from 'react-router-dom';
@@ -73,25 +72,14 @@ describe('the footer: big and typographic (landing v2 brief, 4)', () => {
     ]);
   });
 
-  test('"Today\'s legend": a legend file from an open case, a different one for a different draw', () => {
-    const titles = legendsOf([maryCeleste]).map(entry => entry.legend);
-    expect(titles.length).toBeGreaterThan(3);
-    const seen = new Set<string>();
-    for (const draw of [0, 0.5, 0.99]) {
-      vi.spyOn(Math, 'random').mockReturnValue(draw);
-      const { container, unmount } = renderFooter();
-      const line = container.querySelector('[data-footer="legend"]')!;
-      const name = line.querySelector('em')!.textContent!;
-      expect(titles).toContain(name);
-      expect(line.textContent).toContain("Today\u2019s legend:");
-      expect(line.textContent).toContain('It never happened.');
-      seen.add(name);
-      unmount();
-      vi.restoreAllMocks();
-    }
-    expect(seen.size).toBeGreaterThan(1);
-    expect(pickLegend([maryCeleste], 0)).toEqual({ legend: 'the warm breakfast', caseTitle: maryCeleste.title });
-    expect(pickLegend([], 0.5)).toBeNull();
+  test('no "Today\'s legend" any more; about sits at the right end of the columns, the archive at the left', () => {
+    const { container } = renderFooter();
+    expect(container.textContent).not.toContain('Today');
+    expect(container.querySelector('[data-footer="legend"]')).toBeNull();
+    const columns = [...container.querySelectorAll('[data-footer="archive"], [data-footer="about"]')];
+    expect(columns.map(column => column.getAttribute('data-footer'))).toEqual(['archive', 'about']);
+    expect(columns[1].className).toContain('justify-self-end');
+    expect(columns[0].parentElement!.className).toContain('lg:grid-cols-2');
   });
 
   test('the foot: © 2026 Histor on the left; "Designed and built by Robert" on the right, Robert linking to DESIGNER_URL', () => {
