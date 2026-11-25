@@ -38,6 +38,13 @@ export default function Landing() {
   /** The opening is over: the first section's words come into focus and the rail appears. */
   const [ready, setReady] = useState(false);
   const phases = useRef({ settled: false, ready: false });
+  /** The reader has scrolled on past the cases, into the footer: the rail steps aside. */
+  const [pastCases, setPastCases] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setPastCases(window.scrollY > window.innerHeight * 0.4);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const dock = useCallback(() => setDocked(true), []);
   const settle = useCallback(() => setSettled(true), []);
   const finish = useCallback(() => setReady(true), []);
@@ -167,7 +174,7 @@ export default function Landing() {
         </ol>
       </div>
       <SiteFooter />
-      <ProgressRail exhibits={exhibits} current={current} onGo={go} shown={ready} />
+      <ProgressRail exhibits={exhibits} current={current} onGo={go} shown={ready && !pastCases} />
       {/* The black an open case's frame fades the screen to, before its page. */}
       <div aria-hidden="true" data-landing="blackout" className="pointer-events-none invisible fixed inset-0 z-[60] bg-black opacity-0" />
     </main>

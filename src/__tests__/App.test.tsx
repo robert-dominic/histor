@@ -44,7 +44,7 @@ describe('App routing', () => {
 
     expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
     for (const entry of registry) {
-      expect(screen.getByText(entry.title, { exact: false })).toBeDefined();
+      expect(screen.getAllByText(entry.title, { exact: false }).length).toBeGreaterThan(0);
     }
   });
 
@@ -73,7 +73,7 @@ describe('App routing', () => {
   test('clicking an open case on the home page navigates to its case page', () => {
     renderAppAt('/');
 
-    fireEvent.click(screen.getByRole('link', { name: new RegExp(openEntry.title) }));
+    fireEvent.click(screen.getByRole('link', { name: `Open the case: ${openEntry.title}` }));
     // The frame's short transition (landing brief, 4), then the case.
     act(() => gsap.globalTimeline.getChildren(false, false, true).filter(child => child.data === 'landing-enter').forEach(child => child.progress(1)));
 

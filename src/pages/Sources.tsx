@@ -8,7 +8,8 @@ import { registry } from '@/cases';
 export default function Sources() {
   const cases = registry.flatMap(entry => (entry.sealed || entry.data === undefined ? [] : [entry.data]));
   return (
-    <main data-page="sources" className="min-h-svh bg-night px-4 pt-14 text-night-ink sm:px-8">
+    <>
+    <main data-page="sources" className="min-h-svh bg-night px-4 pt-14 pb-24 text-night-ink sm:px-8">
       <div className="mx-auto max-w-3xl">
         <h1 className="font-legend text-[clamp(2.25rem,1.8rem+2vw,3.25rem)] leading-none">Sources</h1>
         <p className="mt-3 font-voice text-[0.875rem] text-night-ink/70">
@@ -36,7 +37,8 @@ export default function Sources() {
           </article>
         ))}
       </div>
-      <SiteFooter />
     </main>
+    <SiteFooter />
+    </>
   );
 }

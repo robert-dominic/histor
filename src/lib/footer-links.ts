@@ -6,6 +6,9 @@ export const FOOTER = {
   kiro: 'https://kiro.dev',
   year: 2026,
   /** What Histor is, in one line: the footer's description. */
+  about: 'Histor separates what really happened from what was added later.',
+  /** The vertical line beside the giant wordmark. */
+  vertical: 'Legend or history',
   description: 'An interactive archive of real historical mysteries. Legend or history? You decide.',
 } as const;
 

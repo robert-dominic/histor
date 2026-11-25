@@ -1,55 +1,159 @@
 // src/components/SiteFooter.tsx
-// The site's footer (landing brief, 5): a normal, standard footer at the end of a page that scrolls, after its last
-// section: the landing page, the credits and the sources (no case page has one). The Histor wordmark and its
-// description; Credits, Sources, GitHub and "Built with Kiro"; "Designed and built by Robert", Robert linking to
-// DESIGNER_URL; © and "Back to the top". Small, quiet, in Special Elite, a thin rule above. Nothing moves.
+// The site's footer (landing v2 brief, 4): big and typographic, in Histor's dark palette. A thin rule, then "HISTOR"
+// set across nearly the full width in the logo's own letterforms (the H keeps its missing-person crossbar), with
+// "LEGEND OR HISTORY" running up the right edge (a line under it on a phone); below, three columns (the archive,
+// about, one line of personality: a random legend from the open cases); at the foot "© 2026 Histor" and "Designed and
+// built by Robert". The letters rise in one by one as the footer scrolls into view (a fade under reduced motion).
+// On the landing page, the credits and the sources; no case page has one.
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import IconButton from '@/components/IconButton';
-import { ArrowUpIcon } from '@/components/icons';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
+import { exhibits } from '@/cases';
 import { DESIGNER_URL, FOOTER } from '@/lib/footer-links';
-import { MOTION_QUERIES } from '@/lib/motion';
+import { pickLegend } from '@/lib/legend-of-the-day';
+import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
+import { WORDMARK_LETTERS, WORDMARK_VIEWBOX } from '@/lib/wordmark';
 
-const LINK =
-  'inline-flex min-h-11 items-center underline-offset-4 transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-night-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass';
+gsap.registerPlugin(useGSAP);
+
+const LINK = 'draw-link min-h-6 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass';
+const HEADING = 'font-voice text-[0.75rem] tracking-[0.22em] text-night-ink/55 uppercase';
 
 export default function SiteFooter() {
-  const toTop = () => {
-    const reduced = typeof window.matchMedia === 'function' && window.matchMedia(MOTION_QUERIES.reduced).matches;
-    window.scrollTo?.({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
-  };
+  const rootRef = useRef<HTMLElement>(null);
+  const [legend] = useState(() =>
+    pickLegend(
+      exhibits.flatMap(exhibit => (exhibit.status === 'open' && exhibit.data !== undefined ? [exhibit.data] : [])),
+      Math.random()
+    )
+  );
+
+  useGSAP(
+    () => {
+      const root = rootRef.current;
+      if (root === null || typeof window.matchMedia !== 'function') {
+        return;
+      }
+      gsap.registerPlugin(ScrollTrigger);
+      const letters = gsap.utils.toArray<SVGGElement>('[data-footer-letter]', root);
+      const mm = gsap.matchMedia();
+      mm.add({ full: MOTION_QUERIES.full, reduced: MOTION_QUERIES.reduced }, context => {
+        const reduced = context.conditions?.reduced === true;
+        // The letters sit below their line (the svg clips them) and rise one by one; reduced: a fade in place.
+        gsap.set(letters, reduced ? { opacity: 0 } : { y: WORDMARK_VIEWBOX[3] });
+        const rise = gsap.to(letters, {
+          ...(reduced ? { opacity: 1 } : { y: 0 }),
+          ...tween(reduced ? 'ink.in' : 'paper.move'),
+          stagger: reduced ? 0 : STEP.fast / 2,
+          paused: true,
+        });
+        const trigger = ScrollTrigger.create({ trigger: root, start: 'top 85%', once: true, onEnter: () => void rise.play() });
+        return () => {
+          trigger.kill();
+          rise.kill();
+          gsap.set(letters, { clearProps: 'all' });
+        };
+      });
+      return () => mm.revert();
+    },
+    { scope: rootRef }
+  );
+
   return (
-    <footer data-site-footer="" className="relative z-[21] border-t border-night-ink/15 font-voice text-[0.8125rem] leading-relaxed text-night-ink/60">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 pt-12 pb-10 sm:px-8 lg:flex-row lg:items-start lg:justify-between lg:px-10">
-        <div className="max-w-sm">
-          <img src="/brand/histor-logo-cream.svg" alt="Histor" className="h-6 w-auto opacity-90" />
-          <p data-footer="description" className="mt-4">
-            {FOOTER.description}
-          </p>
-        </div>
-        <nav aria-label="About Histor" className="flex flex-wrap gap-x-6 gap-y-0 lg:justify-end">
-          <Link to="/credits" className={LINK}>
-            Credits
-          </Link>
-          <Link to="/sources" className={LINK}>
-            Sources
-          </Link>
-          <a href={FOOTER.repository} target="_blank" rel="noreferrer" className={LINK}>
-            GitHub
-          </a>
-          <a href={FOOTER.kiro} target="_blank" rel="noreferrer" className={LINK}>
-            Built with Kiro
-          </a>
-        </nav>
+    <footer ref={rootRef} data-site-footer="" className="relative z-[21] border-t border-night-ink/20 bg-night font-voice text-[0.875rem] leading-relaxed text-night-ink/70">
+      {/* The giant wordmark, and the line up its right edge. */}
+      <div className="flex items-stretch gap-3 px-4 pt-12 sm:px-8 lg:gap-6 lg:pt-16">
+        <svg
+          viewBox={WORDMARK_VIEWBOX.join(' ')}
+          role="img"
+          aria-label="Histor"
+          data-footer="wordmark"
+          className="block h-auto min-w-0 flex-1 overflow-hidden"
+        >
+          {WORDMARK_LETTERS.map(({ letter, path }) => (
+            <g key={letter} data-footer-letter={letter}>
+              <path d={path} fill="var(--color-night-ink)" fillRule="evenodd" />
+            </g>
+          ))}
+        </svg>
+        <p
+          aria-hidden="true"
+          data-footer="vertical"
+          className="hidden shrink-0 rotate-180 font-voice text-[0.8125rem] tracking-[0.5em] text-night-ink/70 uppercase [writing-mode:vertical-rl] lg:block"
+        >
+          {FOOTER.vertical}
+        </p>
       </div>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 border-t border-night-ink/10 px-4 py-5 sm:px-8 lg:px-10">
+      <p data-footer="line" className="px-4 pt-3 text-[0.75rem] tracking-[0.4em] text-night-ink/60 uppercase sm:px-8 lg:hidden">
+        {FOOTER.vertical}
+      </p>
+
+      {/* The columns, under a thin rule. */}
+      <div className="mx-4 mt-10 grid gap-10 border-t border-night-ink/15 pt-8 sm:mx-8 lg:grid-cols-3 lg:gap-12">
+        <nav aria-label="The archive" data-footer="archive">
+          <h2 className={HEADING}>The archive</h2>
+          <ul className="mt-4 flex flex-col gap-2">
+            {exhibits.map(exhibit => (
+              <li key={exhibit.id} className="flex items-baseline gap-3">
+                {exhibit.status === 'open' ? (
+                  <Link to={`/case/${exhibit.id}`} className={`${LINK} text-night-ink`}>
+                    {exhibit.title}
+                  </Link>
+                ) : (
+                  <span data-footer="sealed" className="text-night-ink/50">
+                    {exhibit.title}
+                  </span>
+                )}
+                {exhibit.status === 'sealed' && <span className="text-[0.6875rem] tracking-[0.18em] text-night-ink/40 uppercase">Sealed</span>}
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div data-footer="about">
+          <h2 className={HEADING}>About</h2>
+          <p data-footer="description" className="mt-4 max-w-sm">
+            {FOOTER.about}
+          </p>
+          <nav aria-label="About Histor" className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+            <Link to="/credits" className={LINK}>
+              Credits
+            </Link>
+            <Link to="/sources" className={LINK}>
+              Sources
+            </Link>
+            <a href={FOOTER.repository} target="_blank" rel="noreferrer" className={LINK}>
+              GitHub
+            </a>
+            <a href={FOOTER.kiro} target="_blank" rel="noreferrer" className={LINK}>
+              Built with Kiro
+            </a>
+          </nav>
+        </div>
+
+        <div data-footer="legend">
+          {legend !== null && (
+            <p className="font-record text-[1.25rem] leading-snug text-night-ink/85">
+              Today&rsquo;s legend: <em data-footer="legend-name">{legend.legend}</em>
+              <span className="text-night-ink/60"> ({legend.caseTitle})</span>. It never happened.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* The foot. */}
+      <div className="mx-4 mt-12 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-night-ink/15 py-5 sm:mx-8">
+        <p data-footer="copyright" className="tabular-nums">
+          © {FOOTER.year} Histor
+        </p>
         <p data-footer="byline">
           Designed and built by{' '}
-          <a href={DESIGNER_URL} target="_blank" rel="noreferrer" className="text-night-ink/85 underline underline-offset-4 hover:text-night-ink">
+          <a href={DESIGNER_URL} target="_blank" rel="noreferrer" className={`${LINK} text-night-ink`}>
             Robert
           </a>
-          <span className="tabular-nums"> · © {FOOTER.year} Histor</span>
         </p>
-        <IconButton label="Back to the top" icon={<ArrowUpIcon />} tipSide="above" data-footer="top" onClick={toTop} />
       </div>
     </footer>
   );
