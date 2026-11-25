@@ -26,7 +26,7 @@ function zone() {
   const element = document.createElement('span');
   element.dataset.eyeZone = 'desk';
   document.body.append(element);
-  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 300, 160, 80));
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 300, 160, 160));
   return element;
 }
 /** Seconds of activity: a pointer moving every second. */
@@ -67,7 +67,7 @@ describe('when', () => {
 });
 
 describe('the eye', () => {
-  test('opens in a clear zone after 30s of activity, with its sound, follows, blinks and closes', () => {
+  test('a face without flesh, about 120px tall, in a clear dark zone after 30s of activity, with its sound (the fix list)', () => {
     stubMatchMedia();
     const element = zone();
     (document as unknown as { elementsFromPoint: () => Element[] }).elementsFromPoint = () => [element];
@@ -82,6 +82,12 @@ describe('the eye', () => {
     expect(heard).toContain('eye');
     expect(eye!.getAttribute('aria-hidden')).toBe('true');
     expect(eye!.className).toContain('pointer-events-none');
+    expect(eye!.style.height).toBe(`${EYE.height}px`);
+    expect(EYE.height).toBe(120);
+    // Hollow eyes and a nose only.
+    const face = eye!.querySelector('[data-face="svg"]')!;
+    expect(face.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(2);
+    expect(face.querySelector('[data-face="gaze"]')).not.toBeNull();
     stop();
   });
 
@@ -91,6 +97,18 @@ describe('the eye', () => {
     (document as unknown as { elementsFromPoint: () => Element[] }).elementsFromPoint = () => [element];
     render(<EyeWatcher />);
     beActive(EYE.firstAfter + 130);
+    expect(document.querySelector('[data-eye-showing]')).toBeNull();
+  });
+});
+
+describe('only where it fits', () => {
+  test('a zone smaller than the face is never used', () => {
+    stubMatchMedia();
+    const element = zone();
+    vi.mocked(element.getBoundingClientRect).mockReturnValue(new DOMRect(20, 300, 160, 60));
+    (document as unknown as { elementsFromPoint: () => Element[] }).elementsFromPoint = () => [element];
+    render(<EyeWatcher />);
+    beActive(EYE.firstAfter + 5);
     expect(document.querySelector('[data-eye-showing]')).toBeNull();
   });
 });

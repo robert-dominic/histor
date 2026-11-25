@@ -47,7 +47,8 @@ describe('the jump scare', () => {
     const scare = document.querySelector<HTMLElement>('[data-scare]')!;
     expect(scare).not.toBeNull();
     expect(scare.className).toContain('bg-black');
-    expect(scare.querySelector('[data-eye="svg"]')).not.toBeNull();
+    // A face without flesh, about 30% of the screen tall (the fix list).
+    expect(scare.querySelector('[data-face="svg"]')!.getAttribute('class')).toContain('h-[30svh]');
     expect(screen.getByRole('status').textContent).toBe(JUMP_SCARE.line);
     // The reveal waits.
     expect(document.querySelector('[data-reveal="root"]')).toBeNull();

@@ -1,5 +1,5 @@
 // src/lib/eye-watch.ts
-// When the eye opens (dread pass, 4): rarely. Never in the first 30 seconds of activity, then at most once every 60 to
+// When the face appears (dread pass, 4; a face without flesh since the fix list: hollow eyes and a nose): rarely. Never in the first 30 seconds of activity, then at most once every 60 to
 // 120 seconds of it. Activity is time with the page in view and the player doing something (an input in the last
 // 15 seconds), so it never opens on an idle screen. Where: a zone marked `[data-eye-zone]` that is on screen, in a
 // scene that is showing, and that holds no text and no control. Pure parts, tested.
@@ -11,10 +11,11 @@ export const EYE = {
   between: [60, 120],
   /** An input this recent (s) counts as activity. */
   activeWithin: 15,
-  /** How long it follows the cursor once open (s). */
-  followFor: [2, 3],
-  /** Its size: at most this wide (px), and never more than the zone allows. */
-  maxWidth: 140,
+  /** How long it looks to one side, before it fades (s). */
+  lookFor: [2, 3],
+  /** Its size: this tall (px), and this wide; a zone smaller than that is not used. */
+  height: 120,
+  width: 100,
 } as const;
 
 /** Whether an eye may open now: enough activity, and enough since the last. */
@@ -28,10 +29,8 @@ export function nextEyeAt(now: number, random: () => number = Math.random): numb
   return now + low + random() * (high - low);
 }
 
-/** How far the lids travel to open (in the eye drawing's units): the upper lid stays heavy, part of the iris covered. */
-export const EYE_OPEN = { upper: -34, lower: 22 } as const;
-/** How far the gaze can move from the centre, in the drawing's units. */
-export const EYE_GAZE = { x: 34, y: 9 } as const;
+/** How far the points of light inside the sockets move when it looks to one side, in the drawing's units. */
+export const FACE_GLANCE = 8;
 
 const CONTROL = 'a[href], button, input, select, textarea, [role="button"], [role="link"], [role="menuitem"], [tabindex]:not([tabindex="-1"]), [data-portal-trigger]';
 

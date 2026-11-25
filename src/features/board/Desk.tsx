@@ -522,12 +522,11 @@ function DeskScreen() {
         <Lamp />
         {/* The lamp dips when a Legend stamp lands; opened legends twitch now and then (dread pass, 5). */}
         <LegendTwitch />
-        {/* The desk's own dark places for the eye (dread pass, 4): its corners, and the board's edge. */}
+        {/* The desk's own dark places for the face (dread pass, 4): its bottom corners, tall enough for it. */}
         {desktop && (
           <>
-            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute bottom-2 left-2 h-16 w-32" />
-            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute right-2 bottom-2 h-16 w-32" />
-            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute top-[calc(var(--case-header)+3rem)] left-1 h-14 w-12" />
+            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute bottom-2 left-2 h-36 w-32" />
+            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute right-2 bottom-2 h-36 w-32" />
           </>
         )}
       </main>

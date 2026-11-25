@@ -113,7 +113,7 @@ export const SOUND_TABLE: Rows = {
   'stamp:legend': () => ({ duck: 'stamp' }),
   seal: event => (event.where === 'verdict' ? { duck: 'stamp' } : null),
   // ---- The dread pass
-  // The eye opening: a barely audible wet blink and a low breath.
+  // The face in the dark appearing: a barely audible breath.
   eye: () => ({ cues: [{ sound: 'eye' }] }),
   // Too quiet for too long on the desk: a distant creak, or a door somewhere far off.
   quiet: () => ({ cues: [{ sound: 'creak' }] }),
