@@ -5,32 +5,20 @@
 // popover with its volume slider, remembered too; only one popover is open at a time (`usePopover`, the popover
 // rules of the review-fixes brief, 2). Turning one on is a gesture, so it starts the sound at once.
 // Sound after a reload (the fix list): while the sound is on but still locked (a saved choice, so no play modal to
-// unlock it), the icon gently pulses with a small "Click anywhere for sound" under it; the first click or key anywhere
-// unlocks it, and the pulse and the hint fade. Not under reduced motion, where a gesture alone starts nothing.
-import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react';
+// unlock it), the icon gently pulses (the header shows the hint: CaseHeader); the first click or key anywhere unlocks
+// it, and the pulse stops (`useSoundWaiting`).
+import type { CSSProperties, ReactNode } from 'react';
 import Popover from '@/components/Popover';
 import { sound, useSoundChannel } from '@/lib/sound';
 import type { Channel, SoundEngine } from '@/lib/sound/engine';
-import { SOUND_HINT } from '@/lib/sound-hint';
+import { useSoundWaiting } from '@/lib/sound-hint';
 import { usePopover } from '@/lib/use-popover';
-import { useReducedMotion } from '@/lib/use-reduced-motion';
 
 const SPEAKER = <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor" fillOpacity="0.2" />;
 
-/** On, but waiting for the browser's first gesture. */
-function useLocked(engine: SoundEngine): boolean {
-  return useSyncExternalStore(
-    listener => engine.subscribe(listener),
-    () => engine.enabled && !engine.running,
-    () => false
-  );
-}
-
 function SoundControl({ channel, label, icon, waves, hint, engine }: { channel: Channel; label: string; icon: ReactNode; waves: boolean; hint: boolean; engine: SoundEngine }) {
   const { on, volume, setOn, setVolume } = useSoundChannel(channel, engine);
-  const locked = useLocked(engine);
-  const reduced = useReducedMotion();
-  const waiting = hint && on && locked && !reduced;
+  const waiting = useSoundWaiting(hint, engine);
   const { open, rootProps, triggerProps, consumeClick } = usePopover({ hover: true, focus: true, longPress: true });
 
   return (
@@ -66,15 +54,6 @@ function SoundControl({ channel, label, icon, waves, hint, engine }: { channel: 
           )}
         </svg>
       </button>
-      {/* The hint: small, under the icon, so the header's layout never moves. Fades in, and out once unlocked. */}
-      <span
-        aria-hidden={!waiting}
-        data-sound="hint"
-        data-shown={waiting && !open}
-        className="pointer-events-none absolute top-[calc(100%+0.4rem)] right-0 font-voice text-[0.6875rem] whitespace-nowrap text-night-ink/70 opacity-0 transition-opacity duration-500 ease-out data-[shown=true]:opacity-100"
-      >
-        {SOUND_HINT}
-      </span>
       <Popover open={open} data-sound="popover" className="top-[calc(100%+0.625rem)] right-[-0.5rem] w-52">
         <span className="block font-voice text-[0.6875rem] tracking-[0.14em] text-ink/75 uppercase">{label}</span>
         <span className="mt-2 flex items-center gap-3">

@@ -90,7 +90,7 @@ export default function Report() {
       ref={rootRef}
       data-page="case"
       aria-labelledby="report-title"
-      className="relative isolate min-h-svh bg-night px-3 pt-[calc(var(--case-header)+1.25rem)] pb-16 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
+      className="relative isolate min-h-svh bg-night px-3 pt-[calc(var(--case-header)+5.25rem)] pb-16 sm:px-6 lg:pt-[calc(var(--case-header)+2.5rem)]"
     >
       <DeskSurface />
       {/* The reveal, the rank and the shareable card; the full report follows below, as before. */}

@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import SoundControls from '@/components/SoundControls';
+import { MemoryRouter } from 'react-router-dom';
+import CaseHeader from '@/components/CaseHeader';
 import { startSound } from '@/lib/sound';
 import { SoundEngine } from '@/lib/sound/engine';
 import { SOUND_HINT } from '@/lib/sound-hint';
@@ -33,7 +34,7 @@ describe('the sound waiting for a gesture', () => {
     stubMatchMedia({ reducedMotion: false });
     const engine = new SoundEngine({ createContext: fakeContextMaker().create });
     const stop = startSound(engine);
-    render(<SoundControls engine={engine} />);
+    render(<MemoryRouter><CaseHeader caseId="t" title="T" years="1900" engine={engine} /></MemoryRouter>);
     expect(toggle().dataset.locked).toBe('true');
     expect(hint().dataset.shown).toBe('true');
     expect(hint().textContent).toBe(SOUND_HINT);
@@ -49,17 +50,17 @@ describe('the sound waiting for a gesture', () => {
   test('not while the play modal is up (its choice unlocks it), with the sound off, or under reduced motion', () => {
     stubMatchMedia({ reducedMotion: false });
     const engine = new SoundEngine({ createContext: fakeContextMaker().create });
-    const { unmount } = render(<SoundControls engine={engine} hint={false} />);
+    const { unmount } = render(<MemoryRouter><CaseHeader caseId="t" title="T" years="1900" engine={engine} soundHint={false} /></MemoryRouter>);
     expect(hint().dataset.shown).toBe('false');
     unmount();
     engine.setOn('effects', false);
-    const off = render(<SoundControls engine={engine} />);
+    const off = render(<MemoryRouter><CaseHeader caseId="t" title="T" years="1900" engine={engine} /></MemoryRouter>);
     expect(toggle().dataset.locked).toBe('false');
     off.unmount();
     engine.setOn('effects', true);
     vi.unstubAllGlobals();
     stubMatchMedia({ reducedMotion: true });
-    render(<SoundControls engine={engine} />);
+    render(<MemoryRouter><CaseHeader caseId="t" title="T" years="1900" engine={engine} /></MemoryRouter>);
     expect(hint().dataset.shown).toBe('false');
   });
 

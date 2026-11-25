@@ -84,7 +84,19 @@
 /* The gutter shows the page's own background. The case page starts in night (its header, its intro), so the
    gutter is night there too, instead of a white strip. Once the story is on the page it writes its current sky
    colour to the root element over this (features/story/Story.tsx), so the gutter follows day into night. */
-:root:has(main[data-page="case"]) {
+/* While the header's "Click anywhere for sound" shows under its speaker (the fix list), what sits just under the
+   header on the right (the result's icon bar) moves down by this much, and back once the sound is unlocked. */
+:root {
+  --sound-hint: 0rem;
+}
+:root:has([data-sound="hint"][data-shown="true"]) {
+  --sound-hint: 1.25rem;
+}
+
+/* The credits and sources pages are night too (the fix list). */
+:root:has(main[data-page="case"]),
+:root:has(main[data-page="credits"]),
+:root:has(main[data-page="sources"]) {
   background-color: var(--color-night);
 }
 

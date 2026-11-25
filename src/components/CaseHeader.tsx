@@ -13,6 +13,9 @@ import { useGSAP } from '@gsap/react';
 import SoundControls from '@/components/SoundControls';
 import { MOTION_QUERIES, stampHit } from '@/lib/motion';
 import { typeElement } from '@/lib/typewriter';
+import { sound } from '@/lib/sound';
+import type { SoundEngine } from '@/lib/sound/engine';
+import { SOUND_HINT, useSoundWaiting } from '@/lib/sound-hint';
 
 gsap.registerPlugin(useGSAP);
 
@@ -84,9 +87,12 @@ interface CaseHeaderProps {
   startHidden?: boolean;
   /** False while the play modal is up: its choice unlocks the sound, so the header's hint waits (the fix list). */
   soundHint?: boolean;
+  /** The sound engine (tests). */
+  engine?: SoundEngine;
 }
 
-export default function CaseHeader({ caseId, title, years, unsolved = false, startHidden = false, soundHint = true }: CaseHeaderProps) {
+export default function CaseHeader({ caseId, title, years, unsolved = false, startHidden = false, soundHint = true, engine = sound }: CaseHeaderProps) {
+  const waiting = useSoundWaiting(soundHint, engine);
   const navigate = useNavigate();
   const storyHref = `/case/${caseId}`;
   const barRef = useRef<HTMLElement>(null);
@@ -119,7 +125,17 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
           </span>
         </Link>
       </h1>
-      <div className="flex shrink-0 items-center gap-3 lg:gap-4">
+      <div className="relative flex shrink-0 items-center gap-3 lg:gap-4">
+        {/* Sound after a reload (the fix list): placed, not laid out, so nothing moves as it comes and goes. Under the
+            speaker on a phone and a tablet; to the left of the years on a laptop, in the header's own line. */}
+        <span
+          aria-hidden={!waiting}
+          data-sound="hint"
+          data-shown={waiting}
+          className="pointer-events-none absolute top-[calc(100%+0.45rem)] right-0 font-voice text-[0.6875rem] whitespace-nowrap text-night-ink/70 opacity-0 transition-opacity duration-500 ease-out data-[shown=true]:opacity-100 lg:top-1/2 lg:right-full lg:mr-5 lg:-translate-y-1/2"
+        >
+          {SOUND_HINT}
+        </span>
         <p className="shrink-0 font-voice text-[0.6875rem] leading-none tracking-[0.18em] text-ghost-night tabular-nums lg:text-xs">
           <span data-case-header="years">{years}</span>
           {/* A small typed tag beside the years, for a case with no accepted answer. */}
@@ -132,7 +148,7 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
             </span>
           )}
         </p>
-        <SoundControls hint={soundHint} />
+        <SoundControls hint={soundHint} engine={engine} />
       </div>
     </header>
   );

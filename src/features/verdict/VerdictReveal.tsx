@@ -223,7 +223,7 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
         role="toolbar"
         aria-label="Your result"
         data-result="actions"
-        className="fixed top-[calc(var(--case-header)+0.75rem)] right-3 z-30 flex items-center gap-1 rounded-full border border-night-ink/15 bg-night/85 p-1 shadow-lg shadow-black/40 sm:right-5"
+        className="fixed top-[calc(var(--case-header)+0.75rem)] right-3 z-30 flex max-lg:translate-y-(--sound-hint) items-center gap-1 rounded-full border border-night-ink/15 bg-night/85 p-1 shadow-lg shadow-black/40 transition-[translate] duration-500 ease-out sm:right-5"
       >
         {onDownloadPdf !== undefined && (
           <IconButton label="Download your case report (PDF)" icon={<DownloadIcon />} data-result="pdf" onClick={onDownloadPdf} />
