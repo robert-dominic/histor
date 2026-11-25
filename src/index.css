@@ -96,7 +96,8 @@
 /* The credits and sources pages are night too (the fix list). */
 :root:has(main[data-page="case"]),
 :root:has(main[data-page="credits"]),
-:root:has(main[data-page="sources"]) {
+:root:has(main[data-page="sources"]),
+:root:has(main[data-page="landing"]) {
   background-color: var(--color-night);
 }
 

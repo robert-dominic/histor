@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/__tests__/App.test.tsx
 // Task 7.3: the app routes "/" to the home page and "/case/:id" to the case page.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import { registry } from '@/cases';
@@ -38,10 +38,10 @@ afterEach(() => {
 });
 
 describe('App routing', () => {
-  test('"/" renders the home page with every registry entry', () => {
+  test('"/" renders the landing page with every registry entry', () => {
     renderAppAt('/');
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(registry.length);
+    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
     for (const entry of registry) {
       expect(screen.getByText(entry.title, { exact: false })).toBeDefined();
     }
@@ -85,7 +85,7 @@ describe('App routing', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Return to home' }));
 
     expect(window.location.pathname).toBe('/');
-    expect(screen.getAllByRole('listitem')).toHaveLength(registry.length);
+    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
   });
 
   test.each(['/about', '/case', '/case/mary-celeste/extra', '/cases/mary-celeste'])(
@@ -105,13 +105,13 @@ describe('App routing', () => {
 
     expect(window.location.pathname).toBe('/');
     expect(screen.queryByText('Page not found')).toBeNull();
-    expect(screen.getAllByRole('listitem')).toHaveLength(registry.length);
+    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
   });
 
   test('none of the Vite starter content is left', () => {
     renderAppAt('/');
 
     expect(screen.queryByText('Get started')).toBeNull();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByText('Vite + React')).toBeNull();
   });
 });
