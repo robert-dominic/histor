@@ -364,7 +364,7 @@ describe('the progress rail and the end (landing brief, 5)', () => {
     const cases = screen.getByRole('list', { name: 'The cases' });
     const footer = screen.getByRole('contentinfo');
     expect(cases.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(document.querySelector('[data-landing="stage"]')!.nextElementSibling).toBe(footer);
+    expect(document.querySelector('[data-landing="track"]')!.nextElementSibling).toBe(footer);
   });
 });
 
@@ -409,6 +409,9 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     const ripper = () => document.getElementById('exhibit-jack-the-ripper')!;
     // The stage: only the case on screen is there; the others wait, hidden.
     expect(document.querySelector('main')!.dataset.staged).toBe('true');
+    // A tall track (a screen of scroll for each case) holding a sticky stage: free scrolling, not locked steps.
+    expect(document.querySelector<HTMLElement>('[data-landing="track"]')!.style.height).toBe(`${exhibits.length * 100}svh`);
+    expect(document.querySelector('[data-landing="stage"]')!.className).toContain('sticky');
     expect(ripper().style.visibility).toBe('hidden');
     expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')).some(tween => tween.vars.repeat === -1)).toBe(true);
     unmount();

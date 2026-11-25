@@ -41,6 +41,7 @@ export type TokenName =
   | 'landing.blur'
   | 'landing.dock'
   | 'landing.dockRise'
+  | 'landing.snap'
   | 'landing.swing'
   | 'landing.write'
   | 'landing.musicIn'
@@ -127,6 +128,8 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.dock': { ease: 'power3.inOut', duration: 0.8 },
   /** ...and its rise, which runs ahead of the sideways move, so the path is a curve, not a diagonal. */
   'landing.dockRise': { ease: 'power2.out', duration: 0.8 },
+  /** The soft snap to the nearest case when scrolling stops (its duration is `LANDING_SNAP`'s, 0.4 to 0.8s). */
+  'landing.snap': { ease: 'power2.inOut', duration: 0.6 },
   /** A frame swinging like a painting on a wire: it settles from its slight lean with one soft sway back. */
   'landing.swing': { ease: 'back.out(1.4)', duration: 1.5 },
   /** One letter of a frame's title being written (staggered by about a fifth of a second over four). */
@@ -196,3 +199,6 @@ export const MOTION_QUERIES = {
   full: '(prefers-reduced-motion: no-preference)',
   reduced: '(prefers-reduced-motion: reduce)',
 } as const;
+
+/** The landing page's soft snap (landing fixes brief): after a short delay, in seconds, over 0.4 to 0.8s. Never blocks. */
+export const LANDING_SNAP = { delay: 0.15, min: 0.4, max: 0.8 } as const;

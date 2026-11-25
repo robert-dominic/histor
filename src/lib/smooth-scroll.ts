@@ -78,3 +78,13 @@ export function jumpToY(y: number): void {
   }
   window.scrollTo(0, y);
 }
+
+/** The default of Lenis, in case a page changes it and puts it back. */
+const DEFAULT_LERP = 0.1;
+
+/** Sets how softly the page follows the wheel (Lenis's lerp; lower is softer), or puts the default back with null. */
+export function setSmoothLerp(lerp: number | null): void {
+  if (instance !== null) {
+    instance.options.lerp = lerp ?? DEFAULT_LERP;
+  }
+}
