@@ -1,13 +1,13 @@
 // src/features/landing/Opening.tsx
-// The landing page's opening (landing v2 brief, 1), about 3 to 4s:
-//   1. a black screen; the Histor wordmark fades in, centred;
-//   2. behind it, a blurred, zoomed-in detail of the first case's picture fades in;
-//   3. the detail sharpens and pulls back until the whole picture shows, and settles into its haunted frame;
-//   4. at the same time the wordmark shrinks to the top left to become the header's logo, and the header's pills
-//      fade in; then the first section's words come into focus and the rail appears (Landing.tsx).
-// A scroll, touch, key or click skips to the end. The page does not scroll until it is over. Reduced motion: straight
-// to the end state, with a fade. Transform and opacity only: the blurred look is a small soft copy of the picture
-// (src/lib/blurred-copy.ts) that cross-fades to the sharp one, never a live blur on a large layer.
+// The landing page's opening (landing v2 brief, 1; v3), about 3 to 4s, as two separate motions:
+//   the wordmark fades in, centred, on black, then rises and shrinks into the header on its own path and timing
+//   (starting first, about 0.8s), and the header's pills fade in;
+//   meanwhile the picture starts big (a blurred, zoomed-in detail of the first case's picture behind the wordmark)
+//   and shrinks down into its frame, sharpening and settling into place.
+// The words come in only after the frame has settled (Landing.tsx). A scroll, touch, key or click skips to the end.
+// The page does not scroll until it is over. Reduced motion: straight to the end state, with a fade. Transform and
+// opacity only: the blurred look is a small soft copy of the picture (src/lib/blurred-copy.ts) that cross-fades to
+// the sharp one, never a live blur on a large layer.
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import gsap from 'gsap';
 import { blurredCopy, loadImage } from '@/lib/blurred-copy';
@@ -67,7 +67,9 @@ export default function Opening({ targetRef, detail, onDock, onSettle, onDone }:
     const reduced = typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches;
     const fired = { dock: false, settle: false, done: false };
     let timeline: gsap.core.Timeline | null = null;
-    let skipped = false;
+    const timelines: gsap.core.Timeline[] = [];
+    let imageTimeline: gsap.core.Timeline | null = null;
+    let pending = 2;
     let alive = true;
 
     const fire = (name: 'dock' | 'settle') => {
@@ -97,11 +99,16 @@ export default function Opening({ targetRef, detail, onDock, onSettle, onDone }:
       calls.current.onDone();
       setGone(true);
     };
+    const part = () => {
+      pending -= 1;
+      if (pending <= 0) {
+        end();
+      }
+    };
     const skip = () => {
-      skipped = true;
-      if (timeline !== null) {
+      if (imageTimeline !== null) {
         // Events on, so every step the skip passes over still happens.
-        timeline.progress(1, false);
+        timelines.forEach(each => each.progress(1, false));
       } else {
         // Still waiting for the picture: no need to wait any longer.
         end();
@@ -142,27 +149,34 @@ export default function Opening({ targetRef, detail, onDock, onSettle, onDone }:
       };
     }
 
-    // The wordmark fades in at once, on the black.
-    gsap.fromTo(mark, { opacity: 0 }, { opacity: 1, ...tween('landing.wordmark') });
+    // ---- The wordmark: fades in on the black, then rises and shrinks into the header, on its own timing.
+    const target = targetRef.current;
+    const from = mark.getBoundingClientRect();
+    const to = target?.getBoundingClientRect();
+    const markTimeline = gsap.timeline({ onComplete: part });
+    timelines.push(markTimeline);
+    markTimeline.fromTo(mark, { opacity: 0 }, { opacity: 1, ...tween('landing.wordmark'), duration: STEP.base }, 0);
+    markTimeline.addLabel('dock', STEP.base + STEP.fast / 2);
+    markTimeline.call(() => fire('dock'), undefined, 'dock');
+    if (to !== undefined && from.width > 0) {
+      markTimeline
+        .to(mark, { x: to.left - from.left, scale: to.width / from.width, transformOrigin: '0 0', ...tween('landing.dock') }, 'dock')
+        .to(mark, { y: to.top - from.top, ...tween('landing.dockRise') }, 'dock');
+    }
 
-    const build = (picture: HTMLImageElement | null) => {
+    // ---- The picture: starts big and blurred, shrinks into its frame, sharpens and settles.
+    const buildImage = (picture: HTMLImageElement | null) => {
       if (!alive || fired.done) {
         return;
       }
-      const target = targetRef.current;
-      const from = mark.getBoundingClientRect();
-      const to = target?.getBoundingClientRect();
-      const wordmarkTween =
-        to === undefined || from.width === 0
-          ? null
-          : { x: to.left - from.left, y: to.top - from.top, scale: to.width / from.width, transformOrigin: '0 0', ...tween('scene') };
       const rect = picture === null ? null : (frameRect.current?.() ?? null);
       const detailEl = detailRef.current;
       const inner = innerRef.current;
       const soft = softRef.current;
-      const tl = gsap.timeline({ onComplete: end });
-      timeline = tl;
-      let pullAt = STEP.slow;
+      const tl = gsap.timeline({ onComplete: part });
+      imageTimeline = tl;
+      timelines.push(tl);
+      let settleAt = STEP.slow;
       if (picture !== null && rect !== null && rect.width > 0 && detailEl !== null && inner !== null) {
         const copy = blurredCopy(picture);
         if (soft !== null) {
@@ -181,44 +195,34 @@ export default function Opening({ targetRef, detail, onDock, onSettle, onDone }:
           gsap.set(soft, { opacity: 1 });
         }
         tl.to(detailEl, { opacity: DETAIL.dimmed, ...tween('landing.wordmark') }, STEP.fast);
-        pullAt = STEP.fast + tween('landing.wordmark').duration;
         const pull = tween('landing.pull');
+        const pullAt = STEP.fast + STEP.base;
         tl.addLabel('pull', pullAt);
         if (soft !== null) {
           tl.to(soft, { opacity: 0, ...pull }, 'pull');
         }
-        tl.to(detailEl, { scale: 1, opacity: 1, ...pull }, 'pull')
-          .to(inner, { scale: 1, ...pull }, 'pull')
-          .call(() => fire('settle'), undefined, `pull+=${pull.duration}`)
-          .to(detailEl, { opacity: 0, ...tween('hover'), duration: STEP.fast * 1.5 }, `pull+=${pull.duration + STEP.base}`);
-        // The wordmark leaves for the header while the picture is still settling.
-        if (wordmarkTween !== null) {
-          tl.call(() => fire('dock'), undefined, `pull+=${pull.duration * 0.4}`).to(mark, wordmarkTween, `pull+=${pull.duration * 0.4}`);
-        }
-        tl.to(black, { opacity: 0, ...tween('ink.out') }, `pull+=${pull.duration}`);
+        tl.to(detailEl, { scale: 1, opacity: 1, ...pull }, 'pull').to(inner, { scale: 1, ...pull }, 'pull');
+        settleAt = pullAt + pull.duration;
+        tl.to(black, { opacity: 0, ...tween('ink.out') }, settleAt);
+        tl.call(() => fire('settle'), undefined, settleAt);
+        tl.to(detailEl, { opacity: 0, ...tween('hover'), duration: STEP.fast * 1.5 }, settleAt + STEP.base);
       } else {
-        // No picture to show: a beat on the black, then the wordmark goes to the header.
-        tl.call(() => fire('settle'), undefined, pullAt);
-        tl.call(() => fire('dock'), undefined, pullAt);
-        if (wordmarkTween !== null) {
-          tl.to(mark, wordmarkTween, pullAt);
-        }
-        tl.to(black, { opacity: 0, ...tween('scene') }, pullAt);
-      }
-      if (skipped) {
-        tl.progress(1, false);
+        // No picture to show: a beat on the black, then the page comes in.
+        tl.to(black, { opacity: 0, ...tween('scene') }, settleAt);
+        tl.call(() => fire('settle'), undefined, settleAt);
+        tl.to({}, { duration: STEP.base }, settleAt);
       }
     };
 
     if (detailSrc === undefined) {
-      build(null);
+      buildImage(null);
     } else {
-      void loadImage(detailSrc, OPENING_IMAGE_WAIT_MS).then(build);
+      void loadImage(detailSrc, OPENING_IMAGE_WAIT_MS).then(buildImage);
     }
     return () => {
       alive = false;
       detach();
-      timeline?.kill();
+      timelines.forEach(each => each.kill());
       html.style.overflow = overflow;
       resumeSmoothScroll();
     };

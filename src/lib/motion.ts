@@ -39,6 +39,8 @@ export type TokenName =
   | 'landing.wordmark'
   | 'landing.pull'
   | 'landing.blur'
+  | 'landing.dock'
+  | 'landing.dockRise'
   | 'landing.stage';
 
 export interface MotionToken {
@@ -115,6 +117,10 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.pull': { ease: 'power3.inOut', duration: 1.9 },
   /** Text coming into focus (from blur and transparent to sharp); going out is `ink.out`. */
   'landing.blur': { ease: 'power2.out', duration: 0.9 },
+  /** The wordmark docking into the header: its sideways move and its shrink (about 0.8s, on its own path). */
+  'landing.dock': { ease: 'power3.inOut', duration: 0.8 },
+  /** ...and its rise, which runs ahead of the sideways move, so the path is a curve, not a diagonal. */
+  'landing.dockRise': { ease: 'power2.out', duration: 0.8 },
   /** One case giving way to the next: the frames travelling, the screen's one step. */
   'landing.stage': { ease: 'power3.inOut', duration: 1.1 },
 };

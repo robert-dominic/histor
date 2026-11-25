@@ -34,6 +34,8 @@ const NAMES: TokenName[] = [
   'landing.wordmark',
   'landing.pull',
   'landing.blur',
+  'landing.dock',
+  'landing.dockRise',
   'landing.stage',
 ];
 

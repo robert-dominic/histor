@@ -103,6 +103,20 @@ describe('the opening (landing v2 brief, 1)', () => {
     expect(document.querySelector<HTMLElement>('[data-landing="header-mark"]')!.style.opacity).toBe('1');
   });
 
+  test('the wordmark docks on its own timing, before the picture has settled into its frame (landing v3 brief)', async () => {
+    vi.useFakeTimers();
+    renderHome();
+    const main = document.querySelector('main')!;
+    // The picture is still loading (it never does here); the wordmark has gone to the header regardless.
+    const markTimeline = gsap.getTweensOf(document.querySelector('[data-landing="opening-mark"]'))[0].parent!;
+    act(() => {
+      markTimeline.seek(1, false);
+    });
+    expect(main.dataset.docked).toBe('true');
+    expect(main.dataset.settled).toBe('false');
+    expect(main.dataset.ready).toBe('false');
+  });
+
   test('a picture that never loads does not hold the opening: the wordmark still docks', async () => {
     vi.useFakeTimers();
     renderHome();
