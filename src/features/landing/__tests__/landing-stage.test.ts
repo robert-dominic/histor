@@ -5,10 +5,18 @@
 import { act } from '@testing-library/react';
 import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createLandingStage, poseOver, STAGE_AWAY, STAGE_HELD_ATTRIBUTE, type StageHandle } from '@/features/landing/landing-stage';
+import { createLandingStage, FRAME_SWING, poseOver, STAGE_AWAY, STAGE_HELD_ATTRIBUTE, type StageHandle } from '@/features/landing/landing-stage';
 import * as smoothScroll from '@/lib/smooth-scroll';
 
 const settle = () => act(() => gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1)));
+/** When a tween starts on the stage's own clock: its start plus every timeline it sits in. */
+function startOf(tween: gsap.core.Animation): number {
+  let at = tween.startTime();
+  for (let parent = tween.parent; parent && parent !== gsap.globalTimeline; parent = parent.parent) {
+    at += parent.startTime();
+  }
+  return at;
+}
 const press = (key: string) => act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })));
 
 function build(count = 3) {
@@ -17,7 +25,7 @@ function build(count = 3) {
   const sections = Array.from({ length: count }, (_, index) => {
     const section = document.createElement('li');
     section.id = `exhibit-${index}`;
-    section.innerHTML = `<div data-exhibit-part="anchor"><div class="haunted-frame"></div></div><div data-exhibit-part="title">T${index}</div><div data-exhibit-part="words">W${index}</div>${
+    section.innerHTML = `<div data-exhibit-part="anchor"><div data-exhibit-part="rise"><div class="haunted-frame"></div></div></div><div data-exhibit-part="title"><h2>Case title ${index}</h2><p>1872</p></div><div data-exhibit-part="words">W${index}</div>${
       index < count - 1 ? '<div data-exhibit-part="peek"><div class="haunted-frame"></div></div>' : ''
     }`;
     root.appendChild(section);
@@ -36,7 +44,12 @@ const make = (count = 3, start = 0) => {
   changes = [];
   stage = createLandingStage({ root: built.root, sections, start, shown: false, onChange: index => changes.push(index) });
 };
-const part = (index: number, name: string) => sections[index].querySelector<HTMLElement>(`[data-exhibit-part="${name}"]`)!;
+const part = (index: number, name: string) => {
+  if (name === 'name' || name === 'years') {
+    return sections[index].querySelector<HTMLElement>(name === 'name' ? '[data-exhibit-part="title"] h2' : '[data-exhibit-part="title"] p')!;
+  }
+  return sections[index].querySelector<HTMLElement>(`[data-exhibit-part="${name}"]`)!;
+};
 
 beforeEach(() => {
   vi.spyOn(smoothScroll, 'holdSmoothScroll').mockImplementation(() => undefined);
@@ -102,6 +115,59 @@ describe('the landing stage', () => {
     const keys = gsap.getTweensOf([part(0, 'anchor'), part(1, 'anchor')]).flatMap(tween => Object.keys(tween.vars));
     expect(keys.filter(key => ['width', 'height', 'top', 'left', 'margin', 'padding', 'filter'].includes(key))).toEqual([]);
     settle();
+  });
+
+  test('the frames swing like a painting on a wire: a degree or two as they travel, one soft sway back as the new one settles', () => {
+    make();
+    stage.ready();
+    settle();
+    press('ArrowDown');
+    expect(FRAME_SWING).toBeGreaterThanOrEqual(1);
+    expect(FRAME_SWING).toBeLessThanOrEqual(2);
+    expect(part(0, 'rise').style.transformOrigin).toContain('0%');
+    const leaving = gsap.getTweensOf(part(0, 'rise'))[0];
+    expect(Math.abs(leaving.vars.rotation as number)).toBe(FRAME_SWING);
+    // The new frame starts leaning the other way and settles flat with a single overshoot (not a bounce).
+    expect(gsap.getProperty(part(1, 'rise'), 'rotation')).toBe(-(leaving.vars.rotation as number));
+    const settling = gsap.getTweensOf(part(1, 'rise'))[0];
+    expect(settling.vars.rotation).toBe(0);
+    expect(settling.vars.ease).toBe('back.out(1.4)');
+    expect(settling.duration()).toBeGreaterThan(gsap.getTweensOf(part(1, 'anchor'))[0].duration());
+    settle();
+    expect(gsap.getProperty(part(0, 'rise'), 'rotation')).toBe(0);
+  });
+
+  test('the title is written in letter by letter once the frame has settled, its years fading in after; leaving, it fades out quickly', () => {
+    make();
+    stage.ready();
+    settle();
+    press('ArrowDown');
+    const landed = gsap.getTweensOf(part(1, 'anchor'))[0].duration();
+    // The old title goes quickly, from the start.
+    const out = gsap.getTweensOf(part(0, 'title'))[0];
+    expect(out.vars.opacity).toBe(0);
+    expect(out.startTime()).toBe(0);
+    expect(out.duration()).toBeLessThanOrEqual(0.3);
+    // The new one: split into letters, each appearing one after another, only after the frame has landed.
+    const letters = [...part(1, 'name').querySelectorAll<HTMLElement>('div, span')].filter(element => element.textContent!.length === 1);
+    expect(letters.length).toBeGreaterThan(5);
+    const tweens = gsap.getTweensOf(letters);
+    expect(tweens.length).toBeGreaterThan(0);
+    const first = Math.min(...tweens.map(tween => startOf(tween)));
+    expect(first).toBeGreaterThanOrEqual(landed);
+    const starts = tweens.map(tween => startOf(tween)).sort((a, b) => a - b);
+    // One tween over every letter, staggered: they come one after another, not together.
+    expect(tweens[0].vars.stagger as number).toBeGreaterThan(0);
+    expect(tweens[0].targets().length).toBe(letters.length);
+    expect(tweens[0].duration()).toBeGreaterThan(gsap.getTweensOf(letters)[0].vars.duration as number);
+    // The years fade in after the last letter has begun.
+    const years = gsap.getTweensOf(part(1, 'years'))[0];
+    expect(startOf(years)).toBeGreaterThanOrEqual(Math.max(...starts));
+    expect(startOf(gsap.getTweensOf(part(1, 'words')).find(tween => tween.vars.filter === 'blur(0px)')!)).toBeGreaterThanOrEqual(landed);
+    settle();
+    // The split is undone; the title reads as it was.
+    expect(part(1, 'name').textContent).toBe('Case title 1');
+    expect(part(1, 'name').querySelector('[style]')).toBeNull();
   });
 
   test('keys: PageDown, Space and Home and End; Space on a button is the button\'s', () => {

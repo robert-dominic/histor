@@ -4,9 +4,11 @@
 // moves exactly one case: a gesture that meets a transition still playing is swallowed, tail and all.
 //
 // The move to the next case: the current frame scales up and leaves up and to the left; the next frame, which was
-// peeking at the bottom right, rises and grows into the centre. Text only when the frame is still: the headline,
-// subline and title blur out at once as the move starts, and the new ones blur in only after the new frame has landed.
-// Going back plays it the other way. After the last case the
+// peeking at the bottom right, rises and grows into the centre. Each frame hangs from a wire: it leans a degree or
+// two as it travels and the one coming in settles with one soft sway back. Text only when the frame is still: the
+// headline and subline blur out at once as the move starts (the old title fades out quickly), and once the new frame
+// has landed and settled the new ones blur in and the new title is written in letter by letter, its years fading in
+// after. Going back plays it the other way. After the last case the
 // next gesture lets go of the stage and the page scrolls on into the footer; scrolling back up to the top takes the
 // stage again, at the last case.
 //
@@ -14,12 +16,13 @@
 // section markup of ExhibitSection.tsx (`data-exhibit-part`) and knows nothing about any case.
 import gsap from 'gsap';
 import { Observer } from 'gsap/Observer';
+import { SplitText } from 'gsap/SplitText';
 import { createWheelGate } from '@/features/story/story-steps';
 import { LANDING_BLUR, STEP, tween } from '@/lib/motion';
 import { holdSmoothScroll, jumpToY, releaseSmoothScroll, scrollToY } from '@/lib/smooth-scroll';
 import { STORY_PACE } from '@/lib/story-pages';
 
-gsap.registerPlugin(Observer);
+gsap.registerPlugin(Observer, SplitText);
 
 /** Where the held stage is marked on the page, so its overflow rule is a stylesheet's (effects.css). */
 export const STAGE_HELD_ATTRIBUTE = 'data-landing-stage';
@@ -27,13 +30,23 @@ export const STAGE_HELD_ATTRIBUTE = 'data-landing-stage';
 /** How far a leaving frame goes, as a share of the screen, and how big it grows on the way out. */
 export const STAGE_AWAY = { x: -0.62, y: -0.8, scale: 1.7 } as const;
 
+/** How far a frame leans as it travels, in degrees: it hangs from a wire, so it swings from its top edge. */
+export const FRAME_SWING = 1.8;
+
+/** How long after the new frame lands before its words come in: the swing has all but settled. */
+export const SETTLE_BEAT = STEP.fast;
+
 /** The section's pieces that move. */
 interface Parts {
   section: HTMLElement;
   /** The frame, and what moves with it. */
   anchor: HTMLElement;
-  /** The title beside the frame. */
+  /** The frame's own wrapper inside it: what swings, from its top edge. */
+  rise: HTMLElement | null;
+  /** The title beside the frame, with its name (written in) and its years (faded in after). */
   title: HTMLElement | null;
+  name: HTMLElement | null;
+  years: HTMLElement | null;
   /** The headline and the subline together. */
   words: HTMLElement | null;
   /** The next case's frame, peeking in at the bottom right. */
@@ -42,19 +55,24 @@ interface Parts {
 
 function partsOf(section: HTMLElement): Parts | null {
   const anchor = section.querySelector<HTMLElement>('[data-exhibit-part="anchor"]');
+  const title = section.querySelector<HTMLElement>('[data-exhibit-part="title"]');
   if (anchor === null) {
     return null;
   }
   return {
     section,
     anchor,
-    title: section.querySelector<HTMLElement>('[data-exhibit-part="title"]'),
+    rise: section.querySelector<HTMLElement>('[data-exhibit-part="rise"]'),
+    title,
+    name: title?.querySelector<HTMLElement>('h2') ?? null,
+    years: title?.querySelector<HTMLElement>('p') ?? null,
     words: section.querySelector<HTMLElement>('[data-exhibit-part="words"]'),
     peek: section.querySelector<HTMLElement>('[data-exhibit-part="peek"]'),
   };
 }
 
-const textOf = (parts: Parts): HTMLElement[] => [parts.words, parts.title].filter((element): element is HTMLElement => element !== null);
+/** The headline and subline: they blur in and out. (The title is written, not blurred.) */
+const wordsOf = (parts: Parts): HTMLElement[] => (parts.words === null ? [] : [parts.words]);
 
 /** The pose (x, y, scale) that puts a box with the rectangle `rest` over the rectangle `target`. */
 export function poseOver(rest: { left: number; top: number; width: number; height: number }, target: { left: number; top: number; width: number; height: number }) {
@@ -110,6 +128,7 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
   let scrolledAway = false;
   let alive = true;
   const timelines = new Set<gsap.core.Animation>();
+  const splits = new Set<SplitText>();
   const track = <T extends gsap.core.Animation>(animation: T): T => {
     timelines.add(animation);
     return animation;
@@ -126,8 +145,15 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
       const here = index === current;
       gsap.set(p.section, { visibility: here ? 'visible' : 'hidden', zIndex: 1 });
       gsap.set(p.anchor, { x: 0, y: 0, scale: 1, opacity: here && !shown ? 0 : 1 });
+      // The frame hangs from its top edge.
+      if (p.rise !== null) {
+        gsap.set(p.rise, { rotation: 0, transformOrigin: '50% 0%' });
+      }
       if (here) {
-        gsap.set([...textOf(p), ...(p.peek === null ? [] : [p.peek])], shown ? { opacity: 1 } : blurred);
+        gsap.set([...wordsOf(p), ...(p.peek === null ? [] : [p.peek])], shown ? { opacity: 1 } : blurred);
+        if (p.title !== null) {
+          gsap.set(p.title, { opacity: shown ? 1 : 0 });
+        }
       }
     });
   };
@@ -149,6 +175,36 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
     holding = false;
     html.removeAttribute(STAGE_HELD_ATTRIBUTE);
     releaseSmoothScroll();
+  };
+
+  // ---- A frame's title is written in, letter by letter, once the frame has settled; its years fade in after.
+  const writeTitle = (p: Parts, tl: gsap.core.Timeline, at: number | string) => {
+    if (p.title === null) {
+      return;
+    }
+    gsap.set(p.title, { opacity: 1 });
+    if (p.name === null) {
+      return;
+    }
+    const split = SplitText.create(p.name, { type: 'chars', aria: 'auto' });
+    splits.add(split);
+    gsap.set(split.chars, { opacity: 0 });
+    if (p.years !== null) {
+      gsap.set(p.years, { opacity: 0 });
+    }
+    const write = tween('landing.write');
+    tl.to(split.chars, { opacity: 1, ...write, stagger: STEP.fast / 4 }, at);
+    if (p.years !== null) {
+      tl.to(p.years, { opacity: 1, ...tween('ink.in'), duration: STEP.base }, '>');
+    }
+    tl.call(
+      () => {
+        split.revert();
+        splits.delete(split);
+      },
+      undefined,
+      '>'
+    );
   };
 
   // ---- One transition: from one case to another, either way.
@@ -175,7 +231,16 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
         onComplete: () => {
           gsap.set(A.section, { visibility: 'hidden' });
           gsap.set(A.anchor, { x: 0, y: 0, scale: 1, opacity: 1 });
-          gsap.set(textOf(A), { opacity: 1, clearProps: 'filter' });
+          gsap.set(wordsOf(A), { opacity: 1, clearProps: 'filter' });
+          if (A.title !== null) {
+            gsap.set(A.title, { opacity: 1 });
+          }
+          if (A.years !== null) {
+            gsap.set(A.years, { opacity: 1 });
+          }
+          if (A.rise !== null) {
+            gsap.set(A.rise, { rotation: 0 });
+          }
           if (A.peek !== null) {
             gsap.set(A.peek, { opacity: 1 });
           }
@@ -213,10 +278,29 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
         .set(A.anchor, { opacity: 0 }, stage.duration)
         .to(B.anchor, { x: 0, y: 0, scale: 1, ...stage }, 0);
     }
-    // The words move only while the frames are still: the old ones blur out at once, as the scroll starts; the new
-    // ones blur in only after the new frame has landed.
-    gsap.set(textOf(B), blurred);
-    tl.to(textOf(A), { opacity: 0, filter: `blur(${LANDING_BLUR}px)`, ...tween('ink.out'), duration: STEP.fast }, 0).to(textOf(B), { ...sharp, ...tween('landing.blur') }, stage.duration);
+    // Hanging from a wire: each frame leans a little as it travels and the one coming in settles from its lean with
+    // one soft sway back (`landing.swing`), a little after it has landed.
+    const lean = direction * FRAME_SWING;
+    if (A.rise !== null) {
+      tl.to(A.rise, { rotation: -lean, ...stage }, 0);
+    }
+    if (B.rise !== null) {
+      gsap.set(B.rise, { rotation: lean });
+      tl.to(B.rise, { rotation: 0, ...tween('landing.swing') }, 0);
+    }
+    // Text only when the frame is still: the old headline and subline blur out at once, as the scroll starts, and the
+    // old title fades out quickly; once the new frame has landed and settled, the new words blur in and the new
+    // title is written in letter by letter, its years fading in after.
+    const after = stage.duration + SETTLE_BEAT;
+    gsap.set(wordsOf(B), blurred);
+    tl.to(wordsOf(A), { opacity: 0, filter: `blur(${LANDING_BLUR}px)`, ...tween('ink.out'), duration: STEP.fast }, 0).to(wordsOf(B), { ...sharp, ...tween('landing.blur') }, after);
+    if (A.title !== null) {
+      tl.to(A.title, { opacity: 0, ...tween('ink.out'), duration: STEP.fast }, 0);
+    }
+    if (B.title !== null) {
+      gsap.set(B.title, { opacity: 0 });
+    }
+    writeTitle(B, tl, after);
   };
 
   const forward = () => {
@@ -356,7 +440,8 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
     ready: () => {
       const p = parts[current];
       if (p !== null && !shown) {
-        track(gsap.to(textOf(p), { ...sharp, ...tween('landing.blur') }));
+        track(gsap.to(wordsOf(p), { ...sharp, ...tween('landing.blur') }));
+        writeTitle(p, track(gsap.timeline()), 0);
         if (p.peek !== null) {
           track(gsap.to(p.peek, { opacity: 1, ...tween('landing.blur') }));
         }
@@ -373,6 +458,8 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
       }
       alive = false;
       timelines.forEach(animation => animation.kill());
+      splits.forEach(split => split.revert());
+      splits.clear();
       observer.kill();
       window.removeEventListener('wheel', noteWheel, { capture: true });
       window.removeEventListener('keydown', onKey);
