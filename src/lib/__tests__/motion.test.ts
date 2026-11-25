@@ -36,6 +36,8 @@ const NAMES: TokenName[] = [
   'landing.blur',
   'landing.dock',
   'landing.dockRise',
+  'landing.tilt',
+  'landing.tiltRelease',
   'landing.stage',
 ];
 

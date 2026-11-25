@@ -41,6 +41,8 @@ export type TokenName =
   | 'landing.blur'
   | 'landing.dock'
   | 'landing.dockRise'
+  | 'landing.tilt'
+  | 'landing.tiltRelease'
   | 'landing.stage';
 
 export interface MotionToken {
@@ -121,6 +123,10 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.dock': { ease: 'power3.inOut', duration: 0.8 },
   /** ...and its rise, which runs ahead of the sideways move, so the path is a curve, not a diagonal. */
   'landing.dockRise': { ease: 'power2.out', duration: 0.8 },
+  /** A frame following the cursor in 3D: smooth, a little behind (used with gsap.quickTo). */
+  'landing.tilt': { ease: 'power3.out', duration: 0.6 },
+  /** ...and settling back flat when the cursor leaves: a soft spring. */
+  'landing.tiltRelease': { ease: 'elastic.out(1, 0.7)', duration: 1.3 },
   /** One case giving way to the next: the frames travelling, the screen's one step. */
   'landing.stage': { ease: 'power3.inOut', duration: 1.1 },
 };

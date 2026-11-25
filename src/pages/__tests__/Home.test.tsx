@@ -280,24 +280,48 @@ describe('hover and click (landing brief, 4)', () => {
     stop();
   });
 
-  test('hover: the frame tilts toward the cursor, at most ±5°, and a dull glint moves across the gilt; a veil stirs', () => {
+  test('hover: the frame turns in 3D toward the cursor (up to about 8°, with perspective) and shifts; its shadow goes the other way; the glint follows the cursor; it springs back flat', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: !query.includes('prefers-reduced-motion: reduce'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }));
     renderHome();
     const button = document.querySelector<HTMLButtonElement>('button[aria-label="The Lost Colony of Roanoke: sealed"]')!;
     const frame = button.querySelector<HTMLElement>('.haunted-frame')!;
+    const shadow = button.closest('[data-exhibit-part="rise"]')!.querySelector<HTMLElement>('.haunted-frame-shadow')!;
+    const glint = button.querySelector<HTMLElement>('[data-frame-part="glint"]')!;
     frame.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100, x: 0, y: 0, toJSON: () => ({}) });
+    Object.defineProperty(frame, 'offsetWidth', { value: 200 });
+    Object.defineProperty(frame, 'offsetHeight', { value: 100 });
     act(() => {
       fireEvent.pointerEnter(button, { pointerType: 'mouse' });
       fireEvent.pointerMove(button, { pointerType: 'mouse', clientX: 200, clientY: 0 });
     });
-    // At the frame's right edge: turned toward it, as far as it goes.
     act(() => {
-      gsap.getTweensOf(frame).forEach(tween => tween.progress(1));
+      gsap.getTweensOf([frame, shadow, glint]).forEach(tween => tween.progress(1));
     });
+    expect(FRAME_TILT).toBe(8);
+    // At the frame's top right corner: turned toward it as far as it goes, with its own perspective.
     expect(Number(gsap.getProperty(frame, 'rotationY'))).toBeCloseTo(FRAME_TILT, 0);
-    expect(Math.abs(Number(gsap.getProperty(frame, 'rotationX')))).toBeLessThanOrEqual(FRAME_TILT);
-    expect(gsap.getTweensOf(button.querySelector('[data-frame-part="glint"]')).length).toBeGreaterThan(0);
+    expect(Number(gsap.getProperty(frame, 'rotationX'))).toBeCloseTo(FRAME_TILT, 0);
+    expect(Number(gsap.getProperty(frame, 'transformPerspective'))).toBeGreaterThan(0);
+    // Shifted toward the cursor; the shadow the opposite way.
+    expect(Number(gsap.getProperty(frame, 'x'))).toBeGreaterThan(0);
+    expect(Number(gsap.getProperty(frame, 'y'))).toBeLessThan(0);
+    expect(Number(gsap.getProperty(shadow, 'x'))).toBeLessThan(0);
+    expect(Number(gsap.getProperty(shadow, 'y'))).toBeGreaterThan(0);
+    // The glint is where the cursor is.
+    expect(Number(gsap.getProperty(glint, 'x'))).toBeCloseTo(200, 0);
+    expect(Number(gsap.getProperty(glint, 'y'))).toBeCloseTo(0, 0);
     expect(gsap.getTweensOf(button.querySelector('[data-frame-part="veil"]')).some(tween => tween.vars.rotation !== undefined)).toBe(true);
+    // The cursor leaves: back to flat, with the spring.
+    act(() => {
+      fireEvent.pointerLeave(button, { pointerType: 'mouse' });
+    });
+    const back = gsap.getTweensOf(frame).find(tween => tween.vars.rotationX === 0)!;
+    expect(back.vars.ease).toBe('elastic.out(1, 0.7)');
+    act(() => {
+      back.progress(1);
+    });
+    expect(Number(gsap.getProperty(frame, 'rotationY'))).toBe(0);
+    expect(Number(gsap.getProperty(frame, 'x'))).toBe(0);
   });
 });
 
