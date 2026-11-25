@@ -165,7 +165,7 @@ describe('Case page: open case', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  test('the page always opens at its top, with the browser\'s scroll restoration off while it is here', () => {
+  test('the page always opens at its top, with the browser\'s scroll restoration off (for the whole app now: quick fixes 2)', () => {
     const scrollTo = vi.fn();
     vi.stubGlobal('scrollTo', scrollTo);
     window.history.scrollRestoration = 'auto';
@@ -173,7 +173,7 @@ describe('Case page: open case', () => {
     expect(scrollTo).toHaveBeenCalledWith(0, 0);
     expect(window.history.scrollRestoration).toBe('manual');
     unmount();
-    expect(window.history.scrollRestoration).toBe('auto');
+    expect(window.history.scrollRestoration).toBe('manual');
   });
 
   test('the legend intro has no title card, and there is no opening scene: the header carries the title and years', () => {

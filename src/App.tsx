@@ -10,6 +10,7 @@ import Report from '@/features/verdict/Report';
 import Verdict from '@/features/verdict/Verdict';
 import Case from '@/pages/Case';
 import Home from '@/pages/Home';
+import ScrollToTop from '@/app/ScrollToTop';
 import Credits from '@/pages/Credits';
 import Sources from '@/pages/Sources';
 import DevSound from '@/pages/DevSound';
@@ -25,6 +26,8 @@ export default function App() {
       {/* Rarely, an eye opens in a dark place, watches, blinks and closes (dread pass, 4). */}
       <EyeWatcher />
       <BrowserRouter>
+        {/* Every page starts at its top (quick fixes, 2). */}
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/case/:id" element={<Case />} />

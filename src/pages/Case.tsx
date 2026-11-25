@@ -79,18 +79,12 @@ export default function Case() {
   // was that the play modal came first: a reload kept the title link's state (which brought the story up at once)
   // and the browser put the page back where it was, with the story in view, which opened the modal. The page now
   // always opens at its top, with the browser's own scroll restoration off while it is here.
+  // (The browser's restoration is off for the whole app: ScrollToTop, quick fixes 2.)
   useEffect(() => {
-    const history = window.history;
-    const before = 'scrollRestoration' in history ? history.scrollRestoration : null;
-    if (before !== null) {
-      history.scrollRestoration = 'manual';
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
     }
     window.scrollTo?.(0, 0);
-    return () => {
-      if (before !== null) {
-        history.scrollRestoration = before;
-      }
-    };
   }, []);
 
   // However the reader reaches the story (the scroll cue, scrolling past the intro, a return visit, a reload or a
