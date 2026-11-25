@@ -1,9 +1,11 @@
 // src/lib/share-link.ts
-// The share link (review-fixes brief, 11): https://histor.space/r/{caseId}?n={name}&r={rank}&l={legendsTrusted}.
+// The share link (review-fixes brief, 11): https://histor.space/r/{caseId}?n={name}&r={rank}&l={legendsTrusted}
+// &t={theoryId}&d={YYYY-MM-DD}: the theory and the day the case closed are for the certificate (quick fixes, 5).
 // Social sites read `og:image` from the page they are given and run no JavaScript, so the link goes to a small
 // function (api/r.ts) that answers with the preview tags and sends people on to the case at once.
 // Every value is checked, here and on the server: the rank is one of the three, the legends 0 to 99, the name plain
-// text (letters, numbers, spaces and a little punctuation), at most 32 characters. Nothing else gets through, so
+// text (letters, numbers, spaces and a little punctuation), at most 32 characters, the theory a short kebab-case id
+// (the image draws only a theory it knows), the day a real one. Nothing else gets through, so
 // nothing can be injected into the page. Imported by the function too: no '@/' imports here.
 import { RANK_COPY } from './ui-copy';
 
@@ -20,8 +22,22 @@ export interface SharedResult {
   name: string;
   rank: SharedRank;
   legends: number;
-  /** The player chose a theory historians ruled out: the card says "I sided against the historians." */
+  /** The player chose a theory historians ruled out (links made before the theory was carried). */
   against?: boolean;
+  /** The theory the player chose. */
+  theory?: string;
+  /** The day the case closed, YYYY-MM-DD. */
+  date?: string;
+}
+
+/** A real day, YYYY-MM-DD. */
+function isDay(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (match === null) {
+    return false;
+  }
+  const day = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return day.toISOString().slice(0, 10) === value;
 }
 
 /** A case id as the registry writes them: short kebab-case. */
@@ -45,7 +61,7 @@ export function cleanShareName(raw: string): string {
 }
 
 /** The link a result is shared with. */
-export function shareLink({ caseId, name, rank, legends, against = false }: SharedResult): string {
+export function shareLink({ caseId, name, rank, legends, against = false, theory, date }: SharedResult): string {
   const params = new URLSearchParams();
   const signed = cleanShareName(name);
   if (signed !== '') {
@@ -55,6 +71,12 @@ export function shareLink({ caseId, name, rank, legends, against = false }: Shar
   params.set('l', String(Math.min(SHARE_LEGENDS_MAX, Math.max(0, Math.round(legends)))));
   if (against) {
     params.set('a', '1');
+  }
+  if (theory !== undefined && isShareCaseId(theory)) {
+    params.set('t', theory);
+  }
+  if (date !== undefined && isDay(date)) {
+    params.set('d', date);
   }
   return `${SHARE_ORIGIN}/r/${encodeURIComponent(caseId)}?${params.toString()}`;
 }
@@ -66,7 +88,18 @@ export function readShareLink(caseId: string, params: URLSearchParams): SharedRe
   if (!isShareCaseId(caseId) || !(SHARE_RANKS as string[]).includes(rank) || !/^\d{1,2}$/.test(legendsText)) {
     return null;
   }
-  return { caseId, name: cleanShareName(params.get('n') ?? ''), rank: rank as SharedRank, legends: Number(legendsText), against: params.get('a') === '1' };
+  const theory = params.get('t') ?? '';
+  const date = params.get('d') ?? '';
+  return {
+    caseId,
+    name: cleanShareName(params.get('n') ?? ''),
+    rank: rank as SharedRank,
+    legends: Number(legendsText),
+    against: params.get('a') === '1',
+    // A theory or a day that is not as it must be is simply left out.
+    ...(isShareCaseId(theory) ? { theory } : {}),
+    ...(isDay(date) ? { date } : {}),
+  };
 }
 
 /** A case's title from its id, for a page that cannot load the case: "mary-celeste" reads "Mary Celeste". */

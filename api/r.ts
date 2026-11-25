@@ -26,7 +26,7 @@ export function sharePage(requestUrl: string): string {
   const copy = result === null ? { title: 'Histor', description: 'Legend or history? You decide.' } : shareCopy(result);
   const image =
     result !== null && OG_CARD_READY
-      ? `${SHARE_ORIGIN}/api/og?${new URLSearchParams({ c: result.caseId, ...(result.name === '' ? {} : { n: result.name }), r: result.rank, l: String(result.legends), ...(result.against === true ? { a: '1' } : {}) }).toString()}`
+      ? `${SHARE_ORIGIN}/api/og?${new URLSearchParams({ c: result.caseId, ...(result.name === '' ? {} : { n: result.name }), r: result.rank, l: String(result.legends), ...(result.against === true ? { a: '1' } : {}), ...(result.theory === undefined ? {} : { t: result.theory }), ...(result.date === undefined ? {} : { d: result.date }) }).toString()}`
       : `${SHARE_ORIGIN}/og-default.png`;
   const tags = [
     ['og:type', 'website'],

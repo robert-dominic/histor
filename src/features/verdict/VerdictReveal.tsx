@@ -17,6 +17,7 @@ import ShareMenu from '@/features/verdict/ShareMenu';
 import IconButton from '@/components/IconButton';
 import { DownloadIcon, ImageIcon, InfoIcon, LinkIcon } from '@/components/icons';
 import IconLink from '@/components/IconLink';
+import { certificateLabel, certificateModel } from '@/lib/certificate';
 import { caseRank, leadingTheories, legendsTrustedCount, verdictComparison } from '@/lib/case-rank';
 import type { CaseReport } from '@/lib/case-report';
 import { MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
@@ -26,10 +27,9 @@ import {
   SHARE_CARD,
   copyText,
   drawShareCard,
-  loadShareCardFonts,
+  loadShareCardAssets,
   renderShareCard,
   saveShareCard,
-  shareCardLines,
   shareCardText,
   canShareAFile,
   shareShareCard,
@@ -57,6 +57,8 @@ interface VerdictRevealProps {
   caseId: string;
   title: string;
   years: string;
+  /** The day the case was closed, YYYY-MM-DD (closed-on.ts): the certificate's date. */
+  closedOn: string;
   /** The player has just closed the case: the reveal plays. Otherwise it is simply shown. */
   fresh: boolean;
   /** Asks the lamp to narrow onto the reveal (true), and to open again (false). */
@@ -68,7 +70,7 @@ interface VerdictRevealProps {
 /** How long the Copy icon's tooltip says "Link copied", in ms. */
 const COPIED_FOR_MS = 2000;
 
-export default function VerdictReveal({ report, caseId, title, years, fresh, onNarrow, onDownloadPdf }: VerdictRevealProps) {
+export default function VerdictReveal({ report, caseId, title, years, closedOn, fresh, onNarrow, onDownloadPdf }: VerdictRevealProps) {
   const rootRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [shareNote, setShareNote] = useState('');
@@ -84,32 +86,41 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
   const leading = useMemo(() => leadingTheories(report), [report]);
   const comparison = useMemo(() => verdictComparison(report), [report]);
   const rank = useMemo(() => caseRank(report), [report]);
+  // The certificate (quick fixes, 5): the verdict (against the historians when it was ruled out), the legends, the
+  // day it closed, and the signature.
   const card: ShareCardInput = useMemo(
-    // Against the historians: the theory chosen was ruled out (the fix list).
-    () => ({ title, years, rank, legends: legendsTrustedCount(report), against: report.verdict?.standing === 'rejected' }),
-    [title, years, rank, report]
+    () => ({
+      title,
+      years,
+      rank,
+      legends: legendsTrustedCount(report),
+      verdict: report.verdict === null ? undefined : { title: report.verdict.title, rejected: report.verdict.standing === 'rejected' },
+      date: closedOn,
+    }),
+    [title, years, rank, report, closedOn]
   );
-  // What is saved and shared: the card with its signature. The preview draws it without, and the pen writes the
-  // name over it (CardSignature).
-  const signedCard: ShareCardInput = useMemo(() => (signature === '' ? card : { ...card, name: signature }), [card, signature]);
+  // What is saved and shared: the card with its signature. The preview draws it with the name left out, and the pen
+  // writes the name over it (CardSignature).
+  const signedCard: ShareCardInput = useMemo(() => ({ ...card, name: signature }), [card, signature]);
   const fileName = `histor-${caseId}.png`;
-  // The share link carries the result (review-fixes brief, 11), so its preview shows the player's card.
-  const url = shareLink({ caseId, name: signature, rank, legends: card.legends, against: card.against });
+  // The share link carries the result (review-fixes brief, 11), so its preview is the player's own certificate.
+  const url = shareLink({ caseId, name: signature, rank, legends: card.legends, theory: report.verdict?.theoryId, date: closedOn });
   const text = shareCardText(card);
+  const model = useMemo(() => certificateModel(signedCard), [signedCard]);
 
-  // The card is drawn once the site's fonts are ready (a canvas does not wait for them by itself).
+  // The card is drawn once the site's fonts and its sheet are ready (a canvas does not wait for them by itself).
   useEffect(() => {
     let live = true;
     const canvas = canvasRef.current;
     if (canvas === null) {
       return;
     }
-    drawShareCard(canvas, card);
-    void loadShareCardFonts().then(() => live && drawShareCard(canvas, card));
+    drawShareCard(canvas, signedCard, { penName: true });
+    void loadShareCardAssets().then(() => live && drawShareCard(canvas, signedCard, { penName: true }));
     return () => {
       live = false;
     };
-  }, [card]);
+  }, [signedCard]);
 
   useGSAP(
     () => {
@@ -206,7 +217,6 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
   };
 
   const rankCopy = RANK_COPY[rank];
-  const lines = shareCardLines(card);
 
   return (
     <section
@@ -300,15 +310,12 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
             width={SHARE_CARD.width}
             height={SHARE_CARD.height}
             role="img"
-            aria-label={`${lines.closed} ${lines.rank}.${lines.against === '' ? '' : ` ${lines.against}`} ${lines.legends}${signature === '' ? '' : ` Signed ${signature}.`} ${lines.site}`}
+            aria-label={certificateLabel(model)}
             className="block aspect-[1200/630] w-full rounded-[2px] shadow-lg shadow-black/50"
           />
           <CardSignature name={typed} onSigned={sign} />
         </div>
-        {/* One Share button (review-fixes brief, 10): its menu holds every way to share, and saving the image. */}
-        <p data-reveal="attach-note" className="max-w-xl font-voice text-[0.8125rem] leading-snug text-ghost-night">
-          The link shows a preview of the case. To post your card itself, save the image and attach it.
-        </p>
+        {/* No note under the card (quick fixes, 5): the link shows the card itself now. */}
         <p aria-live="polite" data-reveal="share-note" className="min-h-5 font-voice text-[0.8125rem] text-ghost-night">
           {shareNote}
         </p>

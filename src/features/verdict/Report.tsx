@@ -23,6 +23,7 @@ import { caseRank } from '@/lib/case-rank';
 import { loadPlayerName } from '@/lib/player-name';
 import { downloadReportPdf } from '@/lib/report-pdf';
 import { MOTION, MOTION_QUERIES, STEP, stampHit, tween } from '@/lib/motion';
+import { dayAsDate, loadClosedOn } from '@/lib/closed-on';
 
 gsap.registerPlugin(useGSAP);
 
@@ -48,6 +49,8 @@ export default function Report() {
     () => fresh && buildCaseReport(caseData, state).legendsTrusted.length > 0 && takeJumpScare(location.key)
   );
   const report = useMemo(() => buildCaseReport(caseData, state), [caseData, state]);
+  // The day the case closed (the certificate's date, and the PDF's): kept as it closed, or today.
+  const [closedOn] = useState(() => loadClosedOn(caseData.id));
   const base = `/case/${caseData.id}`;
 
   const numberOf = (evidenceId: string) => fileNumber(caseData.evidence.findIndex(item => item.id === evidenceId));
@@ -101,11 +104,12 @@ export default function Report() {
         caseId={caseData.id}
         title={caseData.title}
         years={formatCaseYears(caseData.year, caseData.yearEnd)}
+        closedOn={closedOn}
         fresh={fresh}
         onNarrow={setNarrow}
         onDownloadPdf={() =>
           setPdfNote(
-            downloadReportPdf({ caseData, report, rank: caseRank(report), name: loadPlayerName(), date: new Date() })
+            downloadReportPdf({ caseData, report, rank: caseRank(report), name: loadPlayerName(), date: dayAsDate(closedOn) })
               ? ''
               : 'This browser cannot save the PDF.'
           )

@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- scripts/certificate-paper.html
+     The case certificate's paper (quick fixes, 5), drawn once and saved as public/cards/certificate-paper.jpg by
+     scripts/certificate-paper.mjs, so the card on screen, the saved PNG and the /api/og image all lie on the very same
+     sheet: aged paper with torn, water-darkened edges on the night, two faint stains, light grain, darker corners, the
+     inked double rule, and the Histor mark watermarked large in the centre at about 6%. Seeded: the same every time. -->
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; background: #0d1317; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<svg id="sheet" xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"></svg>
+<script>
+  // A small seeded random, so the tears and the stains are the same on every run.
+  let seed = 1872;
+  const random = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
+
+  // The torn edge: points along each side, a little in and out, now and then a deeper bite.
+  const inset = 14;
+  const points = [];
+  const side = (x1, y1, x2, y2, nx, ny) => {
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    const steps = Math.round(length / 7);
+    for (let i = 0; i < steps; i += 1) {
+      const t = i / steps;
+      let depth = random() * 3.2;
+      if (random() < 0.045) depth += 4 + random() * 6;
+      points.push([x1 + (x2 - x1) * t + nx * depth, y1 + (y2 - y1) * t + ny * depth]);
+    }
+  };
+  const [l, t, r, b] = [inset, inset, 1200 - inset, 630 - inset];
+  side(l, t, r, t, 0, 1);
+  side(r, t, r, b, -1, 0);
+  side(r, b, l, b, 0, -1);
+  side(l, b, l, t, 1, 0);
+  const torn = `M${points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L')}Z`;
+
+  // Two faint stains: a ring of tide line with a paler wash inside, pushed out of round by the turbulence.
+  const stain = (cx, cy, rx, ry, rotate, alpha) => `
+    <g transform="rotate(${rotate} ${cx} ${cy})" filter="url(#warp)">
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#7a5a2e" fill-opacity="${alpha * 0.35}" />
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#6b4a22" stroke-opacity="${alpha}" stroke-width="3" />
+    </g>`;
+
+  document.getElementById('sheet').innerHTML = `
+    <defs>
+      <clipPath id="paper"><path d="${torn}" /></clipPath>
+      <filter id="grain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="noise" />
+        <feColorMatrix type="matrix" values="0 0 0 0 0.14  0 0 0 0 0.12  0 0 0 0 0.09  0 0 0 0.09 0" />
+      </filter>
+      <filter id="mottle" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="3" />
+        <feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.36  0 0 0 0 0.22  0 0 0 0.16 -0.02" />
+      </filter>
+      <filter id="warp" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="11" result="turb" />
+        <feDisplacementMap in="SourceGraphic" in2="turb" scale="18" />
+        <feGaussianBlur stdDeviation="1.2" />
+      </filter>
+      <filter id="damp" x="-5%" y="-5%" width="110%" height="110%">
+        <feGaussianBlur stdDeviation="9" />
+      </filter>
+      <radialGradient id="corners" cx="50%" cy="50%" r="72%">
+        <stop offset="55%" stop-color="#3b2d17" stop-opacity="0" />
+        <stop offset="100%" stop-color="#3b2d17" stop-opacity="0.34" />
+      </radialGradient>
+      <linearGradient id="light" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.16" />
+        <stop offset="0.45" stop-color="#ffffff" stop-opacity="0" />
+        <stop offset="1" stop-color="#000000" stop-opacity="0.06" />
+      </linearGradient>
+    </defs>
+    <rect width="1200" height="630" fill="#0d1317" />
+    <!-- A shadow under the sheet. -->
+    <path d="${torn}" fill="#000" fill-opacity="0.55" transform="translate(0 4)" filter="url(#damp)" />
+    <g clip-path="url(#paper)">
+      <rect width="1200" height="630" fill="#e2ddcf" />
+      <rect width="1200" height="630" filter="url(#mottle)" />
+      <rect width="1200" height="630" fill="url(#light)" />
+      ${stain(1010, 470, 92, 70, -18, 0.16)}
+      ${stain(262, 262, 54, 44, 24, 0.11)}
+      <!-- The watermark: the Histor mark, large, at about 6%. -->
+      <image href="../public/brand/histor-mark-ink.svg" x="${600 - 190}" y="${315 - 197}" width="380" height="394" opacity="0.06" />
+      <rect width="1200" height="630" fill="url(#corners)" />
+      <!-- Water-darkened edges: the torn line, browned and soaked inwards. -->
+      <path d="${torn}" fill="none" stroke="#5a4222" stroke-opacity="0.55" stroke-width="30" filter="url(#damp)" />
+      <path d="${torn}" fill="none" stroke="#4a361b" stroke-opacity="0.5" stroke-width="5" />
+      <rect width="1200" height="630" filter="url(#grain)" />
+      <!-- The inked double rule. -->
+      <rect x="40" y="40" width="1120" height="550" fill="none" stroke="#23211d" stroke-width="3" />
+      <rect x="50" y="50" width="1100" height="530" fill="none" stroke="#23211d" stroke-width="1" />
+    </g>`;
+</script>
+</body>
+</html>

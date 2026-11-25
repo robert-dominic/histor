@@ -1,42 +1,30 @@
 // src/lib/share-card.ts
-// The shareable card at the end of a case (investigation brief, 3.3): a 1200×630 image drawn on a canvas in the
-// site's style (paper, ink, the case title and years), saved or shared from the browser. Nothing is uploaded or sent
-// anywhere: "Save the card" downloads it, "Share" hands the file to the browser's share sheet, or copies the text.
-// The share links (polish brief, A4) open each site's own share page with the text and the link filled in; they cannot
-// carry the image, so it is saved for attaching.
+// The shareable card at the end of a case (investigation brief, 3.3), now a case certificate (quick fixes, 5): a
+// 1200×630 image drawn on a canvas from the certificate's model (certificate.ts) on its aged sheet
+// (public/cards/certificate-paper.jpg), saved or shared from the browser. /api/og draws the same model, so the preview
+// of a shared link is the card itself. Nothing is uploaded or sent anywhere: "Save the card" downloads it, "Share"
+// hands the file to the browser's share sheet, or copies the text.
 import { RANK_COPY } from '@/lib/ui-copy';
 import type { CaseRank } from '@/lib/case-rank';
-import { CARD_MARK as SHARE_MARK, MARK_PATH, MARK_VIEWBOX, markWidth } from '@/lib/brand';
+import { MARK_INK, MARK_PATH, MARK_VIEWBOX } from '@/lib/brand';
+import { CERTIFICATE, CERTIFICATE_PAPER, CERT_INK, certificateModel, type CertFace, type CertInput, type CertModel } from '@/lib/certificate';
 
 /** The card's size, in px: the size social sites show a link preview at. */
-export const SHARE_CARD = { width: 1200, height: 630 } as const;
+export const SHARE_CARD = CERTIFICATE;
 
 /** Where the card says it came from. */
 export const SHARE_SITE = 'histor.space';
 
-export interface ShareCardInput {
-  title: string;
-  years: string;
+export interface ShareCardInput extends CertInput {
   rank: CaseRank;
-  /** Legends trusted: opened legend files pinned to a theory (buildCaseReport's `legendsTrusted`). */
-  legends: number;
-  /** The player chose a theory historians ruled out (the fix list): the card says so. */
-  against?: boolean;
-  /** The player's signature, when they signed (player-name.ts). No name, no signature line. */
-  name?: string;
 }
-
-/**
- * Where the signature sits on the card, in its own px: "Signed" small, then the name in the legend's face, on one
- * baseline. The preview places its pen-written copy by the same numbers (VerdictReveal.tsx).
- */
-export const SHARE_SIGNATURE = { left: 96, baseline: 560, labelPx: 20, namePx: 50, gap: 14 } as const;
 
 /** The line on the card of a player who chose a theory historians ruled out. */
 export const AGAINST_LINE = 'I sided against the historians.';
 
-/** The card's words, in order: the line about the case, the rank, the line against the historians (or empty), the legends, the site. */
-export function shareCardLines({ title, rank, legends, against = false }: ShareCardInput): { closed: string; rank: string; against: string; legends: string; site: string } {
+/** The shared words' parts, in order: the line about the case, the rank, the line against the historians (or empty), the legends, the site. */
+export function shareCardLines({ title, rank, legends, verdict }: ShareCardInput): { closed: string; rank: string; against: string; legends: string; site: string } {
+  const against = verdict?.rejected === true;
   return {
     // "The Mary Celeste" reads "I closed the Mary Celeste case.", not "the The Mary Celeste".
     closed: `I closed the ${title.replace(/^the\s+/i, '')} case.`,
@@ -85,144 +73,140 @@ export function shareLinks(text: string, url: string): ShareLink[] {
   ];
 }
 
-/** A colour token of the site (index.css `@theme`), read from the page. */
-function token(name: string, fallback: string): string {
-  if (typeof document === 'undefined') {
-    return fallback;
-  }
-  const value = getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim();
-  return value === '' ? fallback : value;
-}
-
 /** The fonts the card is set in: the site's own three voices. */
-const FONTS = {
+const FONTS: Record<CertFace, string> = {
   legend: '"Grenze Gotisch", serif',
   voice: '"Special Elite", monospace',
   record: '"Old Standard TT", serif',
-} as const;
+};
 
-/** Waits until the card's fonts are ready, so the canvas draws in them (it will not wait by itself). */
-export async function loadShareCardFonts(): Promise<void> {
-  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
-  if (fonts === undefined) {
-    return;
+/** The sheet, once it has loaded: until then (and in tests) the card is drawn on plain paper with its double rule. */
+let paperImage: HTMLImageElement | null = null;
+let paperLoading: Promise<void> | null = null;
+
+function loadPaper(): Promise<void> {
+  if (typeof Image === 'undefined') {
+    return Promise.resolve();
   }
-  await Promise.all(
-    [`72px ${FONTS.legend}`, `36px ${FONTS.voice}`, `32px ${FONTS.record}`].map(font => fonts.load(font).catch(() => []))
-  );
+  paperLoading ??= new Promise<void>(resolve => {
+    const image = new Image();
+    image.onload = () => {
+      paperImage = image;
+      resolve();
+    };
+    image.onerror = () => {
+      paperLoading = null;
+      resolve();
+    };
+    image.src = CERTIFICATE_PAPER;
+  });
+  return paperLoading;
 }
 
+/** Waits until the card's fonts and its sheet are ready, so the canvas draws in them (it will not wait by itself). */
+export async function loadShareCardAssets(): Promise<void> {
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+  await Promise.all([
+    loadPaper(),
+    ...(fonts === undefined
+      ? []
+      : [`60px ${FONTS.legend}`, `17px ${FONTS.voice}`, `30px ${FONTS.record}`, `italic 20px ${FONTS.record}`].map(font => fonts.load(font).catch(() => []))),
+  ]);
+}
+
+/** The plain sheet, for before the paper has loaded: paper, and the double rule where the image has it. */
+function plainSheet(context: CanvasRenderingContext2D) {
+  const { width, height } = CERTIFICATE;
+  context.fillStyle = '#0d1317';
+  context.fillRect(0, 0, width, height);
+  context.fillStyle = '#e2ddcf';
+  context.fillRect(14, 14, width - 28, height - 28);
+  context.strokeStyle = CERT_INK.ink;
+  context.lineWidth = 3;
+  context.strokeRect(40, 40, width - 80, height - 80);
+  context.lineWidth = 1;
+  context.strokeRect(50, 50, width - 100, height - 100);
+}
+
+/** Draws a certificate model; `skip` leaves out the pieces drawn by something else (the preview's pen-written name). */
+export function drawCertificate(context: CanvasRenderingContext2D, model: CertModel, skip: ReadonlySet<string> = new Set()): void {
+  if (paperImage !== null) {
+    context.drawImage(paperImage, 0, 0, CERTIFICATE.width, CERTIFICATE.height);
+  } else {
+    plainSheet(context);
+  }
+  // The small mark before the top line. Where Path2D is missing (tests), it is left out.
+  if (typeof Path2D !== 'undefined') {
+    const { x, top, height } = model.mark;
+    const scale = height / MARK_VIEWBOX[3];
+    context.save();
+    context.translate(x, top);
+    context.scale(scale, scale);
+    context.translate(-MARK_VIEWBOX[0], -MARK_VIEWBOX[1]);
+    context.fillStyle = MARK_INK.ink;
+    context.fill(new Path2D(MARK_PATH), 'evenodd');
+    context.restore();
+  }
+  const spacing = (px: number) => {
+    if ('letterSpacing' in context) {
+      context.letterSpacing = `${px}px`;
+    }
+  };
+  context.textBaseline = 'top';
+  for (const text of model.texts) {
+    if (skip.has(text.key)) {
+      continue;
+    }
+    context.font = `${text.italic === true ? 'italic ' : ''}${text.size}px ${FONTS[text.face]}`;
+    context.fillStyle = CERT_INK[text.ink];
+    context.textAlign = text.align;
+    spacing(text.tracking ?? 0);
+    context.fillText(text.text, text.x, text.top);
+  }
+  spacing(0);
+  for (const rule of model.rules) {
+    context.strokeStyle = CERT_INK[rule.ink];
+    context.lineWidth = rule.width;
+    context.beginPath();
+    context.moveTo(rule.x1, rule.y + 0.5);
+    context.lineTo(rule.x2, rule.y + 0.5);
+    context.stroke();
+  }
+  // The rank, a rubber stamp in rust: a frame of ink around typed capitals, tilted.
+  const { stamp } = model;
+  context.save();
+  context.translate(stamp.cx, stamp.cy);
+  context.rotate((stamp.rotate * Math.PI) / 180);
+  context.globalAlpha = 0.9;
+  context.strokeStyle = CERT_INK.rust;
+  context.lineWidth = STAMP_BORDER;
+  context.strokeRect(-stamp.width / 2 + STAMP_BORDER / 2, -stamp.height / 2 + STAMP_BORDER / 2, stamp.width - STAMP_BORDER, stamp.height - STAMP_BORDER);
+  context.fillStyle = CERT_INK.rust;
+  context.font = `${stamp.size}px ${FONTS.voice}`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  spacing(STAMP_TRACKING);
+  context.fillText(stamp.text, STAMP_TRACKING / 2, 0);
+  spacing(0);
+  context.restore();
+}
+
+/** The stamp's frame and letter spacing, in px (the same in /api/og). */
+export const STAMP_BORDER = 4;
+export const STAMP_TRACKING = 2;
+
 /**
- * Draws the card onto `canvas` (resized to 1200×630). Paper with an inked double rule, the case title in the
- * legend's face and its years, the closing line, the rank stamped in rust, the legends line and the site.
- * Does nothing where the canvas cannot draw (no 2D context).
+ * Draws the card onto `canvas` (resized to 1200×630). `penName`: the preview, whose name the pen writes over it
+ * (CardSignature), so the canvas leaves the name out. Does nothing where the canvas cannot draw (no 2D context).
  */
-export function drawShareCard(canvas: HTMLCanvasElement, input: ShareCardInput): void {
+export function drawShareCard(canvas: HTMLCanvasElement, input: ShareCardInput, { penName = false }: { penName?: boolean } = {}): void {
   canvas.width = SHARE_CARD.width;
   canvas.height = SHARE_CARD.height;
   const context = canvas.getContext?.('2d') ?? null;
   if (context === null) {
     return;
   }
-  // Fallbacks are the Ash palette's own values (design.md), for a page that has not loaded its styles.
-  const paper = token('paper', '#e2ddcf');
-  const ink = token('ink', '#23211d');
-  const muted = token('muted', '#6c6a62');
-  const rust = token('rust', '#9e3326');
-  const { width, height } = SHARE_CARD;
-  const lines = shareCardLines(input);
-
-  context.fillStyle = paper;
-  context.fillRect(0, 0, width, height);
-  // A faint fold of light across the paper, and darker edges.
-  const light = context.createLinearGradient(0, 0, width, height);
-  light.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
-  light.addColorStop(0.45, 'rgba(255, 255, 255, 0)');
-  light.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
-  context.fillStyle = light;
-  context.fillRect(0, 0, width, height);
-
-  // The double rule, inked.
-  context.strokeStyle = ink;
-  context.lineWidth = 3;
-  context.strokeRect(36, 36, width - 72, height - 72);
-  context.lineWidth = 1;
-  context.strokeRect(48, 48, width - 96, height - 96);
-
-  // The Histor mark, small, in the top right corner (quick fixes, 4). Where Path2D is missing (tests), it is left out.
-  if (typeof Path2D !== 'undefined') {
-    const { x, y, height: markHeight } = SHARE_MARK;
-    const scale = markHeight / MARK_VIEWBOX[3];
-    context.save();
-    context.translate(x - markWidth(markHeight), y);
-    context.scale(scale, scale);
-    context.translate(-MARK_VIEWBOX[0], -MARK_VIEWBOX[1]);
-    context.fillStyle = ink;
-    context.fill(new Path2D(MARK_PATH), 'evenodd');
-    context.restore();
-  }
-
-  context.textBaseline = 'alphabetic';
-  context.textAlign = 'left';
-  const left = 96;
-
-  // The case, in the legend's face, with its years.
-  context.fillStyle = ink;
-  context.font = `76px ${FONTS.legend}`;
-  context.fillText(input.title, left, 170, width - 2 * left);
-  context.fillStyle = muted;
-  context.font = `28px ${FONTS.voice}`;
-  context.fillText(input.years.toUpperCase(), left, 214);
-
-  // The closing line, in the record's face.
-  context.fillStyle = ink;
-  context.font = `40px ${FONTS.record}`;
-  context.fillText(lines.closed, left, 300, width - 2 * left);
-
-  // The rank, as a rubber stamp in rust: a rectangle of ink around typed capitals, a little crooked.
-  context.save();
-  context.translate(left, 400);
-  context.rotate(-0.04);
-  context.font = `44px ${FONTS.voice}`;
-  const label = lines.rank.toUpperCase();
-  const labelWidth = context.measureText(label).width;
-  context.strokeStyle = rust;
-  context.lineWidth = 5;
-  context.strokeRect(-18, -50, labelWidth + 36, 70);
-  context.fillStyle = rust;
-  context.fillText(label, 0, 0);
-  context.restore();
-
-  // The legends, and the site.
-  context.fillStyle = ink;
-  context.font = `34px ${FONTS.voice}`;
-  // Against the historians, when the player was: just under the rank, then the legends.
-  if (lines.against !== '') {
-    context.font = `30px ${FONTS.voice}`;
-    context.fillText(lines.against, left, 456, width - 2 * left);
-    context.font = `34px ${FONTS.voice}`;
-  }
-  // The legends keep their place, clear of the signature (baseline 560).
-  context.fillText(lines.legends, left, 500, width - 2 * left);
-  context.fillStyle = muted;
-  context.font = `26px ${FONTS.voice}`;
-  context.textAlign = 'right';
-  context.fillText(lines.site, width - left, height - 84);
-
-  // The signature, when the player signed: "Signed", then the name in the legend's face.
-  const name = input.name?.trim() ?? '';
-  if (name !== '') {
-    const sign = SHARE_SIGNATURE;
-    context.textAlign = 'left';
-    context.fillStyle = muted;
-    context.font = `${sign.labelPx}px ${FONTS.voice}`;
-    const label = 'SIGNED';
-    context.fillText(label, sign.left, sign.baseline);
-    const labelWidth = context.measureText(label).width;
-    context.fillStyle = ink;
-    context.font = `${sign.namePx}px ${FONTS.legend}`;
-    context.fillText(name, sign.left + labelWidth + sign.gap, sign.baseline, width / 2);
-  }
+  drawCertificate(context, certificateModel(input), penName ? new Set(['name']) : undefined);
 }
 
 /** The card drawn on a canvas of its own, signature and all: what is saved and shared. */

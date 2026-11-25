@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
+import { certificateModel } from '@/lib/certificate';
 import { SHARE_CARD, drawShareCard, shareCardLines, shareCardText } from '@/lib/share-card';
 import { RANK_COPY, REVEAL_COPY } from '@/lib/ui-copy';
 import { stubMatchMedia } from '@/test/match-media';
@@ -110,13 +111,23 @@ describe('the rank card', () => {
 });
 
 describe('the shareable card', () => {
-  test('a theory historians ruled out: the card says "I sided against the historians."; a leading one does not', () => {
+  test('the certificate (quick fixes, 5): its words for screen readers; a theory ruled out is "against the historians"', () => {
+    localStorage.setItem(`histor:closed-on:${CASE.id}`, '2026-11-25');
     renderReport(rejected.id);
     const card = () => part('preview')!.querySelector('canvas')!.getAttribute('aria-label') ?? '';
-    expect(card()).toContain('I sided against the historians.');
+    expect(card()).toContain(`This certifies that an unnamed investigator closed the case.`);
+    expect(card()).toContain(`Verdict: ${rejected.title}, against the historians.`);
+    expect(card()).toContain('Closed 25 November 2026.');
+    expect(card()).toMatch(/^Histor case file, No\. \d{4}\./);
     cleanup();
     renderReport(CASE.theories.find(theory => theory.standing === 'leading')!.id);
-    expect(card()).not.toContain('I sided against the historians.');
+    expect(card()).not.toContain('against the historians');
+  });
+
+  test('no note under the card: the link shows the card itself (quick fixes, 5)', () => {
+    renderReport(rejected.id);
+    expect(part('attach-note')).toBeNull();
+    expect(reveal().textContent).not.toContain('The link shows a preview of the case');
   });
 
   test('its words: the case closed, the rank, the legends, the site', () => {
@@ -128,9 +139,10 @@ describe('the shareable card', () => {
       legends: 'I trusted 3 legends.',
       site: 'histor.space',
     });
-    // A theory historians ruled out (the fix list): the card says so, and so do the shared words.
-    expect(shareCardLines({ ...input, against: true }).against).toBe('I sided against the historians.');
-    expect(shareCardText({ ...input, against: true })).toBe(
+    // A theory historians ruled out (the fix list): the shared words say so.
+    const against = { ...input, verdict: { title: 'Drunken mutiny', rejected: true } };
+    expect(shareCardLines(against).against).toBe('I sided against the historians.');
+    expect(shareCardText(against)).toBe(
       'I closed the Mary Celeste case on Histor. Deckhand. I sided against the historians. I trusted 3 legends. Can you tell legend from history?'
     );
     expect(shareCardLines({ ...input, legends: 0 }).legends).toBe('I trusted no legends.');
@@ -171,8 +183,9 @@ describe('the shareable card', () => {
     const input = { title: 'Test Case', years: '1900 – 1901', rank: 'historian' as const, legends: 0 };
     drawShareCard(canvas, input);
     expect([canvas.width, canvas.height]).toEqual([SHARE_CARD.width, SHARE_CARD.height]);
-    const lines = shareCardLines(input);
-    expect(drawn).toEqual(expect.arrayContaining(['Test Case', lines.closed, lines.rank.toUpperCase(), lines.legends, lines.site]));
+    // Every piece of the certificate's model.
+    expect(drawn).toEqual([...certificateModel(input).texts.map(text => text.text), 'HISTORIAN']);
+    expect(drawn).toEqual(expect.arrayContaining(['Test Case', 'This certifies that', 'an unnamed investigator', 'closed the case.', 'VERDICT', 'LEGENDS TRUSTED', '0', 'HISTORIAN', 'histor.space']));
     expect(fonts.some(font => font.includes('Grenze Gotisch'))).toBe(true);
     expect(fonts.some(font => font.includes('Special Elite'))).toBe(true);
   });

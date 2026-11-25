@@ -24,8 +24,5 @@ export function markSvg(fill: string, opacity = 1): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${MARK_VIEWBOX.join(' ')}"><path fill="${fill}" fill-opacity="${opacity}" fill-rule="evenodd" d="${MARK_PATH}"/></svg>`;
 }
 
-/** The small mark in the shareable card's corner: its right edge, top and height (the canvas and /api/og). */
-export const CARD_MARK = { x: 1104, y: 92, height: 48 } as const;
-
 /** Its width for a given height. */
 export const markWidth = (height: number) => (height * MARK_VIEWBOX[2]) / MARK_VIEWBOX[3];

@@ -10,6 +10,7 @@ import { useInvestigation } from '@/app/InvestigationProvider';
 import DeskSurface from '@/features/board/DeskSurface';
 import Lamp from '@/features/board/Lamp';
 import HoldToClose from '@/features/verdict/HoldToClose';
+import { saveClosedOn } from '@/lib/closed-on';
 import { scatter } from '@/lib/desk';
 import { stampHit } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
@@ -41,6 +42,8 @@ export default function Verdict() {
       return;
     }
     const finish = () => {
+      // The day it closed, for the certificate (quick fixes, 5).
+      saveClosedOn(caseData.id);
       dispatch({ type: 'CLOSE_CASE', theoryId: choice });
       // The report opens on its reveal (VerdictReveal.tsx).
       navigate(`${base}/report`, { state: { fresh: true } });

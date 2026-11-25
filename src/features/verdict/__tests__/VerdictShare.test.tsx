@@ -23,6 +23,7 @@ const opened = CASE.evidence.slice(0, CASE.closeThreshold).map(evidence => evide
 function renderReport() {
   const state: InvestigationState = { opened, pins: {}, verdict: leading.id };
   localStorage.setItem(`histor:case:${CASE.id}`, JSON.stringify(state));
+  localStorage.setItem(`histor:closed-on:${CASE.id}`, '2026-11-25');
   window.history.pushState({}, '', `${BASE}/report`);
   return render(<App />);
 }
@@ -124,7 +125,7 @@ describe('the player signs the card', () => {
     expect(reveal().querySelector('[data-sign="name"]')!.textContent).toBe('');
     await waitFor(() => expect(reveal().querySelector('[data-sign="name"]')!.textContent).toBe('Ann Lee'), { timeout: 3000 });
     expect(localStorage.getItem('histor:player-name')).toBe('Ann Lee');
-    expect(reveal().querySelector('canvas')!.getAttribute('aria-label')).toContain('Signed Ann Lee.');
+    expect(reveal().querySelector('canvas')!.getAttribute('aria-label')).toContain('This certifies that Ann Lee closed the case.');
     unmount();
     renderReport();
     expect((screen.getByLabelText('Sign your case file') as HTMLInputElement).value).toBe('Ann Lee');
@@ -144,18 +145,25 @@ describe('the player signs the card', () => {
     expect(loadPlayerName()).toBe('');
   });
 
-  test('the canvas draws the signature line with the name, and none without one', () => {
+  test('the canvas draws the name on the signature line, or "an unnamed investigator"; the preview leaves the name to the pen', () => {
     const input = { title: 'Test Case', years: '1900', rank: 'historian' as const, legends: 0 };
     const signed = recordingCanvas();
     const canvas = document.createElement('canvas');
     vi.spyOn(canvas, 'getContext').mockReturnValue(signed.context);
     drawShareCard(canvas, { ...input, name: 'Ann Lee' });
-    expect(signed.drawn).toEqual(expect.arrayContaining(['SIGNED', 'Ann Lee']));
+    expect(signed.drawn).toContain('Ann Lee');
+    expect(signed.drawn).not.toContain('an unnamed investigator');
     const unsigned = recordingCanvas();
     const plain = document.createElement('canvas');
     vi.spyOn(plain, 'getContext').mockReturnValue(unsigned.context);
     drawShareCard(plain, input);
-    expect(unsigned.drawn).not.toContain('SIGNED');
+    expect(unsigned.drawn).toContain('an unnamed investigator');
+    const preview = recordingCanvas();
+    const penned = document.createElement('canvas');
+    vi.spyOn(penned, 'getContext').mockReturnValue(preview.context);
+    drawShareCard(penned, { ...input, name: 'Ann Lee' }, { penName: true });
+    expect(preview.drawn).not.toContain('Ann Lee');
+    expect(preview.drawn).not.toContain('an unnamed investigator');
   });
 });
 
@@ -214,7 +222,7 @@ describe('sharing', () => {
     expect(screen.getByRole('menuitem', { name: 'More…' })).toBeDefined();
   });
 
-  test('in the menu: each site opens in a new tab; "Copy link" copies the link; a line says why the image is saved', async () => {
+  test('in the menu: each site opens in a new tab; "Copy link" copies the link, with the theory and the day it closed', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
     renderReport();
@@ -229,9 +237,8 @@ describe('sharing', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: 'Copy link' }));
     });
     // The share link carries the result (review-fixes 11).
-    expect(writeText).toHaveBeenCalledWith(shareLink({ caseId: CASE.id, name: '', rank: 'historian', legends: 0 }));
+    expect(writeText).toHaveBeenCalledWith(shareLink({ caseId: CASE.id, name: '', rank: 'historian', legends: 0, theory: leading.id, date: '2026-11-25' }));
     expect(screen.getByText('Link copied.')).toBeDefined();
-    expect(reveal().querySelector('[data-reveal="attach-note"]')!.textContent).toMatch(/save the image and attach it/);
   });
 
   test('"Share" with the native sheet: the signed card, and the words with the link', async () => {

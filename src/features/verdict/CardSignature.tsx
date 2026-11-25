@@ -3,9 +3,9 @@
 // the pen writes onto the card once they pause (debounced). The pen adds; it never rewrites (ui-pass brief, 5): only
 // the new letters are written, where they go; a letter deleted fades out quickly on its own; a pasted name is written
 // as it comes. Each letter is its own element, kept by React from one name to the next, so nothing already written is
-// touched. It lies over the canvas at the card's own signature place (SHARE_SIGNATURE), in the card's units: the
-// container is a size container as wide as the canvas, so 1cqw is 12 of the card's 1200px. The canvas that is saved
-// draws the same signature itself (share-card.ts). A name already saved is simply there; reduced motion: letters
+// touched. It lies over the canvas at the certificate's name place (CERT_LAYOUT.name: centred on the signature line,
+// quick fixes 5), in the card's units: the container is a size container as wide as the canvas, so 1cqw is 12 of the
+// card's 1200px. The canvas that is saved draws the same name itself (share-card.ts). A name already saved is simply there; reduced motion: letters
 // simply appear and go.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -13,7 +13,8 @@ import gsap from 'gsap';
 import Quill from '@/components/Quill';
 import { QUICK_OUT } from '@/lib/motion';
 import { cleanPlayerName } from '@/lib/player-name';
-import { SHARE_CARD, SHARE_SIGNATURE } from '@/lib/share-card';
+import { CERT_INK, CERT_LAYOUT, fitSize } from '@/lib/certificate';
+import { SHARE_CARD } from '@/lib/share-card';
 import { createQuillWriter } from '@/lib/quill-writing';
 import { useReducedMotion } from '@/lib/use-reduced-motion';
 import { diffSignature, lettersOf, type Letter } from '@/lib/signature-letters';
@@ -95,18 +96,14 @@ export default function CardSignature({ name, onSigned }: CardSignatureProps) {
       ref={rootRef}
       data-sign="root"
       aria-hidden="true"
-      className="pointer-events-none absolute flex items-baseline leading-none text-ink"
+      className="pointer-events-none absolute inset-x-0 flex justify-center leading-none"
       style={{
-        left: cq(SHARE_SIGNATURE.left),
-        top: cq(SHARE_SIGNATURE.baseline - SHARE_SIGNATURE.namePx * 0.82),
-        gap: cq(SHARE_SIGNATURE.gap),
+        top: cq(CERT_LAYOUT.name.top),
+        color: CERT_INK.ink,
         visibility: signed === '' && letters.length === 0 ? 'hidden' : undefined,
       }}
     >
-      <span className="font-voice tracking-[0.02em] text-muted" style={{ fontSize: cq(SHARE_SIGNATURE.labelPx) }}>
-        SIGNED
-      </span>
-      <span className="relative" style={{ fontSize: cq(SHARE_SIGNATURE.namePx) }}>
+      <span className="relative" style={{ fontSize: cq(fitSize(signed, CERT_LAYOUT.name.size, CERT_LAYOUT.name.max, 'legend')) }}>
         {/* Each letter its own element, kept from one name to the next: the pen only ever touches the new ones. */}
         <span data-sign="name" className="font-legend whitespace-pre">
           {letters.map(letter => (

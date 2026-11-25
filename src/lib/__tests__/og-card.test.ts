@@ -4,9 +4,10 @@
 // the link's values, checked as before; the shared page (api/r.ts) points og:image at it. (The PNG itself is drawn by
 // @vercel/og, whose Node build does not load under Vitest; it was checked by rendering it once outside the suite.)
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import handler, { ogCardElement, ogCardLines, readOgRequest } from '../../../api/og';
+import handler, { certificateInput, ogCardElement, readOgRequest } from '../../../api/og';
 import { sharePage } from '../../../api/r';
-import { CARD_MARK, MARK_PATH } from '@/lib/brand';
+import { MARK_PATH } from '@/lib/brand';
+import { certificateModel } from '@/lib/certificate';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,6 +23,19 @@ function texts(node: unknown): string[] {
   return (Array.isArray(children) ? children : [children]).flatMap(texts);
 }
 
+/** The element placed for one piece of the certificate (its data-og). */
+function byOg(node: unknown, key: string): { props: Record<string, unknown> } | null {
+  if (node === null || typeof node !== 'object') {
+    return null;
+  }
+  const props = (node as { props?: Record<string, unknown> }).props ?? {};
+  if (props['data-og'] === key) {
+    return node as { props: Record<string, unknown> };
+  }
+  const children = props.children;
+  return (Array.isArray(children) ? children : [children]).map(child => byOg(child, key)).find(found => found !== null) ?? null;
+}
+
 describe('the card image (api/og.ts)', () => {
   test('its values are checked as before: anything invalid gives no card', async () => {
     expect(readOgRequest('https://histor.space/api/og?c=mary-celeste&n=Ann&r=historian&l=0')).toEqual({ caseId: 'mary-celeste', name: 'Ann', rank: 'historian', legends: 0, against: false });
@@ -32,38 +46,47 @@ describe('the card image (api/og.ts)', () => {
     expect(response.status).toBe(404);
   });
 
-  test('against the historians (a=1): the preview says so too; without it, no such line', () => {
-    const against = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1&a=1')!;
-    expect(ogCardLines(against).against).toBe('I sided against the historians.');
-    expect(texts(ogCardElement(against))).toContain('I sided against the historians.');
-    const plain = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1')!;
-    expect(texts(ogCardElement(plain))).not.toContain('I sided against the historians.');
+  test('the certificate (quick fixes, 5): the very model the canvas draws, on the same sheet, every piece in its place', () => {
+    const result = readOgRequest('https://histor.space/api/og?c=mary-celeste&n=Ann%20Lee&r=investigator&l=2&t=t-mutiny&d=2026-11-25')!;
+    expect(result).toMatchObject({ theory: 't-mutiny', date: '2026-11-25' });
+    const input = certificateInput(result);
+    expect(input).toEqual({
+      title: 'The Mary Celeste',
+      years: '1872 – 1873',
+      rank: 'investigator',
+      legends: 2,
+      verdict: { title: 'Drunken mutiny', rejected: true },
+      name: 'Ann Lee',
+      date: '2026-11-25',
+    });
+    const model = certificateModel(input);
+    const element = ogCardElement(result, 'paper.jpg');
+    // The sheet first, then the mark, then every text at the model's own top.
+    expect(byOg(element, 'paper')!.props.src).toBe('paper.jpg');
+    expect(byOg(element, 'mark')!.props.style).toMatchObject({ position: 'absolute', left: model.mark.x, top: model.mark.top });
+    expect(String(byOg(element, 'mark')!.props.src)).toContain(encodeURIComponent(MARK_PATH));
+    for (const text of model.texts) {
+      const placed = byOg(element, text.key)!;
+      expect(placed.props.children, text.key).toBe(text.text);
+      expect(placed.props.style, text.key).toMatchObject({ position: 'absolute', top: text.top, fontSize: text.size });
+    }
+    expect(texts(element)).toEqual(
+      expect.arrayContaining(['HISTOR · CASE FILE', model.number, 'This certifies that', 'Ann Lee', 'closed the case.', 'VERDICT', 'Drunken mutiny', 'Against the historians', 'LEGENDS TRUSTED', '2', 'INVESTIGATOR', 'Closed 25 November 2026', 'histor.space'])
+    );
   });
 
-  test('the Histor mark, small, in the top right corner, where the canvas card draws it (quick fixes, 4)', () => {
-    const result = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1')!;
-    const find = (node: unknown): { props: Record<string, unknown> } | null => {
-      if (node === null || typeof node !== 'object') {
-        return null;
-      }
-      const props = (node as { props?: Record<string, unknown> }).props ?? {};
-      if (props['data-og'] === 'mark') {
-        return node as { props: Record<string, unknown> };
-      }
-      const children = props.children;
-      return (Array.isArray(children) ? children : [children]).map(find).find(found => found !== null) ?? null;
-    };
-    const mark = find(ogCardElement(result))!;
-    expect(String(mark.props.src)).toContain(encodeURIComponent(MARK_PATH));
-    expect(mark.props.style).toMatchObject({ position: 'absolute', top: CARD_MARK.y });
-  });
-
-  test('the same words as the canvas card, the signature when signed, a name cleaned of markup', () => {
-    const result = readOgRequest(`https://histor.space/api/og?c=mary-celeste&n=${encodeURIComponent('Ann <b>')}&r=investigator&l=2`)!;
-    expect(ogCardLines(result)).toMatchObject({ closed: 'I closed the Mary Celeste case.', rank: 'INVESTIGATOR', legends: 'I trusted 2 legends.', signature: 'Ann b' });
-    const words = texts(ogCardElement(result));
-    expect(words).toEqual(expect.arrayContaining(['Mary Celeste', 'I closed the Mary Celeste case.', 'INVESTIGATOR', 'I trusted 2 legends.', 'SIGNED', 'Ann b', 'histor.space']));
-    expect(texts(ogCardElement({ ...result, name: '' }))).not.toContain('SIGNED');
+  test('no name: "an unnamed investigator"; a leading theory: no line against; an unknown theory or a bad day: left out', () => {
+    const plain = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=historian&l=0&t=t-sinking&d=2026-11-25')!;
+    const words = texts(ogCardElement(plain));
+    expect(words).toContain('an unnamed investigator');
+    expect(words).toContain('She was sinking');
+    expect(words).not.toContain('Against the historians');
+    const odd = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=historian&l=0&t=t-nothing&d=2026-02-30')!;
+    expect(odd.date).toBeUndefined();
+    expect(certificateInput(odd).verdict).toBeUndefined();
+    expect(texts(ogCardElement(odd)).some(word => word.startsWith('Closed'))).toBe(false);
+    // A link from before the theory was carried, against the historians: still says so.
+    expect(certificateInput(readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1&a=1')!).verdict).toEqual({ title: '—', rejected: true });
   });
 });
 
@@ -72,6 +95,10 @@ describe('the shared page points its preview at the card', () => {
     const html = sharePage('https://histor.space/api/r?path=mary-celeste&n=Ann&r=historian&l=0');
     expect(html).toContain('<meta property="og:image" content="https://histor.space/api/og?c=mary-celeste&amp;n=Ann&amp;r=historian&amp;l=0" />');
     expect(html).toContain('<meta name="twitter:image" content="https://histor.space/api/og?c=mary-celeste&amp;n=Ann&amp;r=historian&amp;l=0" />');
+    // The theory and the day go through to the image.
+    expect(sharePage('https://histor.space/api/r?path=mary-celeste&r=historian&l=0&t=t-sinking&d=2026-11-25')).toContain(
+      'content="https://histor.space/api/og?c=mary-celeste&amp;r=historian&amp;l=0&amp;t=t-sinking&amp;d=2026-11-25"'
+    );
     // An invalid link: the site's title card.
     expect(sharePage('https://histor.space/api/r?path=mary-celeste&r=admiral&l=0')).toContain('content="https://histor.space/og-default.png"');
   });

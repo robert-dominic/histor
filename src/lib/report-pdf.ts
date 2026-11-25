@@ -42,7 +42,7 @@ export interface ReportPdfInput {
   rank: CaseRank;
   /** The player's signature; empty when they did not sign. */
   name: string;
-  /** When the report is downloaded. */
+  /** The day the case was closed (closed-on.ts). */
   date: Date;
 }
 
