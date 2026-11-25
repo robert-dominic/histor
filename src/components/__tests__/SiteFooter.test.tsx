@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 // src/components/__tests__/SiteFooter.test.tsx
-// The footer (review-fixes brief, 9): on the pages that scroll (the end of the story, the report), never on the fixed
-// desk. "Histor" with its line, the case's sources and credits (music, images), GitHub, "Built with Kiro", © 2026.
+// The footer (landing brief, 5): a normal, standard footer on the pages that scroll and are not a case's: the landing
+// page, the credits and the sources.
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
+import { MemoryRouter } from 'react-router-dom';
 import maryCeleste from '@/cases/mary-celeste/case';
 import SiteFooter from '@/components/SiteFooter';
-import { FOOTER } from '@/lib/footer-links';
+import { DESIGNER_URL, FOOTER } from '@/lib/footer-links';
 import { continuePastGate, resetPhoneGate } from '@/lib/phone-gate';
 
 afterEach(() => {
@@ -18,53 +19,43 @@ afterEach(() => {
   window.history.pushState({}, '', '/');
 });
 
-describe('the footer', () => {
-  test('Histor, its line, GitHub, Built with Kiro and © 2026', () => {
-    render(<SiteFooter caseData={maryCeleste} />);
+const renderFooter = () =>
+  render(
+    <MemoryRouter>
+      <SiteFooter />
+    </MemoryRouter>
+  );
+
+describe('the footer: a normal, standard footer (landing brief, 5)', () => {
+  test('the description; Credits, Sources, GitHub and Built with Kiro; "Designed and built by Robert"; © 2026', () => {
+    renderFooter();
     const footer = screen.getByRole('contentinfo');
-    expect(footer.textContent).toContain('Histor');
-    expect(footer.textContent).toContain(FOOTER.tagline);
-    expect(within(footer).getByRole('link', { name: 'GitHub' }).getAttribute('href')).toBe(FOOTER.repository);
-    expect(within(footer).getByRole('link', { name: 'Built with Kiro' }).getAttribute('href')).toBe(FOOTER.kiro);
+    expect(within(footer).getByRole('img', { name: 'Histor' }).getAttribute('src')).toBe('/brand/histor-logo-cream.svg');
+    expect(footer.querySelector('[data-footer="description"]')!.textContent).toBe(FOOTER.description);
+    const nav = within(footer).getByRole('navigation', { name: 'About Histor' });
+    expect(within(nav).getAllByRole('link').map(link => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['Credits', '/credits'],
+      ['Sources', '/sources'],
+      ['GitHub', FOOTER.repository],
+      ['Built with Kiro', FOOTER.kiro],
+    ]);
+    expect(footer.querySelector('[data-footer="byline"]')!.textContent).toContain('Designed and built by Robert');
     expect(footer.textContent).toContain('© 2026');
   });
 
-  test('with life (ui-pass 7): the logo as Histor, a fog layer, a brass rule, a "Back to the top" icon button', () => {
-    render(<SiteFooter caseData={maryCeleste} />);
-    const footer = screen.getByRole('contentinfo');
-    expect(within(footer).getByRole('img', { name: 'Histor' }).getAttribute('src')).toBe('/brand/histor-logo-cream.svg');
-    expect(footer.querySelector('.footer-fog')).not.toBeNull();
-    expect(footer.querySelector('[data-footer="rule"]')).not.toBeNull();
+  test('"Robert" links to DESIGNER_URL, kept in one constant (the current Vercel site for now)', () => {
+    renderFooter();
+    expect(screen.getByRole('link', { name: 'Robert' }).getAttribute('href')).toBe(DESIGNER_URL);
+    expect(DESIGNER_URL).toBe('https://histor-vestigia.vercel.app/');
+  });
+
+  test('"Back to the top"; nothing moves on its own', () => {
     const scrollTo = vi.fn();
     vi.stubGlobal('scrollTo', scrollTo);
-    fireEvent.click(within(footer).getByRole('button', { name: 'Back to the top' }));
+    renderFooter();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the top' }));
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
-    expect(within(footer).getByRole('link', { name: 'GitHub' }).className).toContain('footer-link');
-  });
-
-  test("the case's sources and its credits (images and music) open in place", () => {
-    render(<SiteFooter caseData={maryCeleste} />);
-    const sources = screen.getByRole('button', { name: /Sources/ });
-    expect(sources.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(sources);
-    expect(sources.getAttribute('aria-expanded')).toBe('true');
-    const list = screen.getByRole('region', { name: 'Sources' });
-    for (const source of maryCeleste.sources) {
-      expect(list.textContent).toContain(source.title);
-    }
-    fireEvent.click(screen.getByRole('button', { name: /Credits/ }));
-    expect(screen.queryByRole('region', { name: 'Sources' })).toBeNull();
-    const credits = screen.getByRole('region', { name: 'Credits' });
-    expect(credits.textContent).toContain('Images');
-    // The music is off (sound-files 3): no music is credited.
-    expect(credits.textContent).not.toContain('Music');
-    expect(credits.textContent).toContain('Mixkit');
-  });
-
-  test('without a case: no sources or credits, the rest as ever', () => {
-    render(<SiteFooter />);
-    expect(screen.queryByRole('button', { name: /Sources/ })).toBeNull();
-    expect(screen.getByRole('link', { name: 'GitHub' })).toBeDefined();
+    expect(screen.getByRole('contentinfo').querySelector('.footer-fog')).toBeNull();
   });
 
   test('on no case page (the fix list): not the story, the desk, the verdict or the report; on /credits and /sources', () => {

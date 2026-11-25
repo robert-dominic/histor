@@ -5,4 +5,9 @@ export const FOOTER = {
   repository: 'https://github.com/robert-dominic/histor',
   kiro: 'https://kiro.dev',
   year: 2026,
+  /** What Histor is, in one line: the footer's description. */
+  description: 'An interactive archive of real historical mysteries. Legend or history? You decide.',
 } as const;
+
+/** Where "Robert" in "Designed and built by Robert" links to: the current Vercel site for now; change it here. */
+export const DESIGNER_URL = 'https://histor-vestigia.vercel.app/';

@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { exhibits } from '@/cases';
 import { FRAME_SHAPES } from '@/lib/frame-shapes';
+import * as smoothScroll from '@/lib/smooth-scroll';
 import { OPENING_WAIT_MS } from '@/features/landing/Opening';
 import { useLandingMusic } from '@/features/landing/use-landing-music';
 import { FRAME_TILT } from '@/features/landing/use-frame-tilt';
@@ -235,3 +236,27 @@ function Probe({ onPath }: { onPath: (path: string) => void }) {
   onPath(location.pathname);
   return null;
 }
+
+describe('the progress rail and the end (landing brief, 5)', () => {
+  test('one tick per case on the left, the first current; a tick goes to its case', () => {
+    const to = vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);
+    renderHome();
+    const rail = screen.getByRole('navigation', { name: 'Cases', hidden: true });
+    const ticks = within(rail).getAllByRole('button', { hidden: true });
+    expect(ticks.map(tick => tick.getAttribute('aria-label'))).toEqual(exhibits.map(exhibit => `Go to ${exhibit.title}`));
+    expect(ticks[0].getAttribute('aria-current')).toBe('true');
+    expect(ticks.slice(1).every(tick => tick.getAttribute('aria-current') === null)).toBe(true);
+    fireEvent.click(ticks[3]);
+    expect(to).toHaveBeenCalledTimes(1);
+  });
+
+  test('after the last case: "More cases are being recovered.", its small line, then the footer', () => {
+    renderHome();
+    const end = screen.getByRole('region', { name: 'More to come' });
+    expect(end.textContent).toContain('More cases are being recovered.');
+    expect(end.textContent).toContain('Legend or history? You decide.');
+    const footer = screen.getByRole('contentinfo');
+    expect(end.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'The cases' }).compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
