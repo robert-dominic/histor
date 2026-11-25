@@ -691,3 +691,21 @@ body::after {
     cursor: grabbing !important;
   }
 }
+
+/* ---- The sound waiting for a gesture (the fix list) ----
+   The header's speaker breathes gently while the sound is on but locked; it stops as the first click or key unlocks
+   it. Constant motion, so keyframes; opacity and scale only. Off under reduced motion (SoundControls never sets it). */
+@keyframes sound-locked {
+  0%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+  50% {
+    opacity: 0.45;
+    scale: 1.12;
+  }
+}
+.sound-locked[data-locked="true"] svg {
+  animation: sound-locked 1.8s ease-in-out infinite;
+}

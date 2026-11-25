@@ -172,7 +172,7 @@ export default function Case() {
     <InvestigationProvider key={caseData.id} caseData={caseData}>
       {/* The title stays at the top for the whole page. It is hidden until the story starts (Story.tsx). */}
       {headerCard !== undefined && (
-        <CaseHeader caseId={caseData.id} title={headerCard.title} years={headerCard.years} unsolved={headerCard.unsolved} startHidden />
+        <CaseHeader caseId={caseData.id} title={headerCard.title} years={headerCard.years} unsolved={headerCard.unsolved} startHidden soundHint={!(choosing && showStory)} />
       )}
       {/* After the legend intro: how to hear the story. The reader must choose; Escape means "Read at my pace". */}
       {choosing && showStory && (

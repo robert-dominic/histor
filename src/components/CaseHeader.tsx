@@ -82,9 +82,11 @@ interface CaseHeaderProps {
   unsolved?: boolean;
   /** Starts invisible: the story fades it in once it starts. */
   startHidden?: boolean;
+  /** False while the play modal is up: its choice unlocks the sound, so the header's hint waits (the fix list). */
+  soundHint?: boolean;
 }
 
-export default function CaseHeader({ caseId, title, years, unsolved = false, startHidden = false }: CaseHeaderProps) {
+export default function CaseHeader({ caseId, title, years, unsolved = false, startHidden = false, soundHint = true }: CaseHeaderProps) {
   const navigate = useNavigate();
   const storyHref = `/case/${caseId}`;
   const barRef = useRef<HTMLElement>(null);
@@ -130,7 +132,7 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
             </span>
           )}
         </p>
-        <SoundControls />
+        <SoundControls hint={soundHint} />
       </div>
     </header>
   );
