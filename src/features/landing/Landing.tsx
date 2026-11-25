@@ -2,9 +2,9 @@
 // The landing page (landing brief): an archive of cases in the style of a gallery's dark rooms. It opens black with
 // the Histor wordmark, which docks into the header; then one full-screen section per case, each a frame.
 import { useCallback, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import LandingHeader from '@/features/landing/LandingHeader';
 import ExhibitSection from '@/features/landing/ExhibitSection';
+import { OpenFrame, SealedFrame } from '@/features/landing/FrameActions';
 import Opening from '@/features/landing/Opening';
 import { exhibits } from '@/cases';
 
@@ -22,17 +22,13 @@ export default function Landing() {
         {exhibits.map((exhibit, index) => (
           <ExhibitSection key={exhibit.id} exhibit={exhibit} index={index} next={exhibits[index + 1]} revealed={docked}>
             {frame =>
-              exhibit.status === 'open' ? (
-                <Link to={`/case/${exhibit.id}`} aria-label={`Open the case: ${exhibit.title}`} data-exhibit-part="open" className="block rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-brass">
-                  {frame}
-                </Link>
-              ) : (
-                frame
-              )
+              exhibit.status === 'open' ? <OpenFrame exhibit={exhibit}>{frame}</OpenFrame> : <SealedFrame exhibit={exhibit}>{frame}</SealedFrame>
             }
           </ExhibitSection>
         ))}
       </ol>
+      {/* The black an open case's frame fades the screen to, before its page. */}
+      <div aria-hidden="true" data-landing="blackout" className="pointer-events-none invisible fixed inset-0 z-[60] bg-black opacity-0" />
     </main>
   );
 }

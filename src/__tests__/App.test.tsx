@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // src/__tests__/App.test.tsx
 // Task 7.3: the app routes "/" to the home page and "/case/:id" to the case page.
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import { registry } from '@/cases';
@@ -73,6 +74,8 @@ describe('App routing', () => {
     renderAppAt('/');
 
     fireEvent.click(screen.getByRole('link', { name: new RegExp(openEntry.title) }));
+    // The frame's short transition (landing brief, 4), then the case.
+    act(() => gsap.globalTimeline.getChildren(false, false, true).filter(child => child.data === 'landing-enter').forEach(child => child.progress(1)));
 
     expect(window.location.pathname).toBe(`/case/${openEntry.id}`);
     finishLegendIntro();
