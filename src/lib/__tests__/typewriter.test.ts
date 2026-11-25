@@ -73,8 +73,9 @@ describe('the typewriter in the event table', () => {
     expect(keys[0]).toEqual({ cues: [{ sound: 'typewriter-key' }] });
   });
 
-  test('the carriage return: its ding', () => {
-    expect(soundFor({ type: 'type-return' }, freshMemory())).toEqual({ cues: [{ sound: 'typewriter-ding' }] });
+  test('the end of a long line is quiet now: the ding is the rank\'s alone (the fix list)', () => {
+    expect(soundFor({ type: 'type-return' }, freshMemory())).toBeNull();
+    expect(soundFor({ type: 'rank', rank: 'historian' }, freshMemory())).toEqual({ cues: [{ sound: 'typewriter-ding' }] });
   });
 
   test('written text keeps the pen', () => {

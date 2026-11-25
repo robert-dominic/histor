@@ -89,7 +89,10 @@ export const SOUND_TABLE: Rows = {
     memory.lastKey = memory.now;
     return { cues: [{ sound: 'typewriter-key' }] };
   },
-  'type-return': () => ({ cues: [{ sound: 'typewriter-ding' }] }),
+  // The end of a long typed line is silent now: the ding is the rank's alone (the fix list).
+  'type-return': () => null,
+  // A modal's buttons appearing: the chapter's whoosh.
+  choices: () => ({ cues: [{ sound: 'chapter' }] }),
   // The hook: one dread sound as the text snaps in, forward or back (the chapter's own, or one from the pool, never
   // the same twice running).
   hook: (event, memory) => ({ duck: 'hook', cues: [{ sound: pickDread(event.sound, memory) }] }),

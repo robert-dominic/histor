@@ -36,6 +36,8 @@ export type StoryEvent =
   | { type: 'stamp-hit' }
   // A popover (the share menu, the volume) opening or closing (use-popover.ts).
   | { type: 'popover'; open: boolean }
+  // A modal's buttons appearing (the fork's two choices, after its prompt): the fix list.
+  | { type: 'choices' }
   // How many ghost lines are on the desk now (dread pass): the murmur follows them.
   | { type: 'ghosts'; count: number }
   // A final choice hovered at the verdict (dread pass), or no longer: the heartbeat.

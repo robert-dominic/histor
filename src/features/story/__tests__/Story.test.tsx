@@ -1450,3 +1450,33 @@ describe('Story: the shadow on the deck (dread pass, 6)', () => {
     expect(gsap.getTweensOf(figure).filter(tween => tween.isActive() || tween.progress() < 1)).toHaveLength(0);
   });
 });
+
+describe('Story: the fork\'s buttons appearing (the fix list)', () => {
+  test('are heard as the chapter whoosh (choices), never the typewriter ding', () => {
+    const events: StoryEvent[] = [];
+    const stop = onStoryEvent(event => events.push(event));
+    render(
+      <MemoryRouter>
+        <Story
+          story={testCase.story}
+          centralQuestion={maryCeleste.centralQuestion}
+          references={testCase.references}
+          sources={testCase.sources}
+          fork={{ fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/files' }}
+          start={READ}
+        />
+      </MemoryRouter>
+    );
+    const ticks = [...document.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
+    fireEvent.click(ticks.at(-1)!);
+    settleSteps();
+    wheelBurst(document.querySelector('[data-story="stage"]')!);
+    settleSteps();
+    act(() => {
+      const choices = document.querySelector('[data-fork="choices"]');
+      gsap.getTweensOf(choices).forEach(tween => (tween.parent ?? tween).progress(1));
+    });
+    expect(events.some(event => event.type === 'choices')).toBe(true);
+    stop();
+  });
+});

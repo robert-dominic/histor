@@ -100,6 +100,8 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
         typeLetters(timeline, letters, timeline.duration(), TYPE_RATE, (prompt.textContent ?? '').trim().length);
       }
       timeline.fromTo('[data-fork="choices"]', { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, ...tween('paper.lift') }, `>+=${STEP.fast}`);
+      // The buttons appearing are heard: the chapter's whoosh, not the typewriter's ding (the fix list).
+      timeline.call(() => emitStoryEvent({ type: 'choices' }), undefined, '<');
       return () => split?.revert();
     },
     { scope: rootRef, dependencies: [open], revertOnUpdate: true }

@@ -50,7 +50,9 @@ describe('every moment plays its file', () => {
     expect(one({ type: 'pen' })).toEqual(['scratch']);
     expect(one({ type: 'pen', hand: 'legend' })).toEqual(['scratch']);
     expect(one({ type: 'type-key' })).toEqual(['typewriter-key']);
-    expect(one({ type: 'type-return' })).toEqual(['typewriter-ding']);
+    // The ding is the rank's alone (the fix list): a long typed line ends quietly; a modal's buttons whoosh.
+    expect(one({ type: 'type-return' })).toEqual([]);
+    expect(one({ type: 'choices' })).toEqual(['chapter']);
     expect(HOOK_SOUNDS).toContain(one({ type: 'hook', chapter: 'c', direction: 'forward' })[0]);
     expect(one({ type: 'question-line', index: 0, direction: 'forward' })).toEqual(['question-pulse']);
     expect(one({ type: 'modal', name: 'fork', open: true })).toEqual(['modal']);
