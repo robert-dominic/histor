@@ -58,6 +58,7 @@ describe('the footer', () => {
     expect(credits.textContent).toContain('Images');
     // The music is off (sound-files 3): no music is credited.
     expect(credits.textContent).not.toContain('Music');
+    expect(credits.textContent).toContain('Mixkit');
   });
 
   test('without a case: no sources or credits, the rest as ever', () => {

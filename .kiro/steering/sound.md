@@ -8,153 +8,87 @@ inclusion: always
 
 ## The rule
 
-**Effects are generated; music is real.** Every effect is generated in code with the Web Audio API: noise, oscillators, filters and envelopes. Nothing to download or license, no added weight. Each is small and tasteful; quieter is better. The aim is atmosphere and weight, never a cartoon effect. The music is real tracks the owner chooses (see "Music"), streamed; and a narration clip, when a case has one, is a file too.
+**Every sound is a real file. Nothing is generated** (sound-files brief). The effects are recordings from Mixkit, chosen by the owner, imported by `npm run sfx:import` into `public/audio/sfx/`, and credited in the case credits ("Sound": Mixkit needs no attribution; it is credited as good practice). A narration clip, when a case has one, is a file too. **The music is off** (`MUSIC_ENABLED = false`). Quieter is better: the aim is atmosphere and weight, never a cartoon. **One thing is in focus at a time** (see "The mix").
 
 ## The engine (`src/lib/sound/engine.ts`)
 
-- **One `AudioContext`**, created lazily on the first user gesture (a pointer, a click, a touch or a key, anywhere), never before. A browser without Web Audio simply has no sound.
-- **Sound starts at the legend intro** (review-fixes brief, 6). Until the first click or key, the legend intro shows a small, quiet hint at its foot, "🔊 Click anywhere for sound" (`SoundHint`), which fades once the sound is unlocked. Choosing in the play modal counts too. Not shown with both channels off, or under reduced motion (where a gesture alone starts nothing).
-- **Where the player is, said early, is not lost.** The case page says `place: story` in its own effect, which runs before the app's `startSound` (children's effects run first); the last `place` is kept (`lastPlaceEvent`) and picked up when the sound starts listening. (This was the bug: the story's playlist never started; only the desk's, said later, did.)
-- **Two controls, the popover rules (review-fixes brief, 2):** a click on an icon only turns its channel on or off; it never opens the popover. With a mouse, hovering opens it; moving into it keeps it; leaving both closes it after a 200ms grace. Only one popover is open at a time. Focus opens it; Escape or Tab away closes it. On touch, a long press opens it and a tap elsewhere closes it (`src/lib/use-popover.ts`, also used by the result screen's Share menu).
-- **Buses:** master, then a gate per control. Under the music gate, the music side (`music`, and the kept `ambience` and `score`) passes through a duck: it **dips under hooks and stamps, gently, and to about 12% under the voice**, and comes back after the moment's hold. Overlapping ducks keep the deepest dip and the latest end. Under the effects gate, `effects`, which never dip.
-- **Two controls (music brief, 1):** two icons in the case header (`SoundControls`). **Music** (a note) controls the music; **Effects** (a speaker) controls the effects and the narrator's voice. Each is on or off, remembered apart (`histor:music`, `histor:effects`; absent means on; the old single `histor:sound` off is read as both off until a new choice). Pressing and holding an icon, hovering it with a mouse, or reaching it with the keyboard shows a small popover with its volume slider (remembered: `histor:music-volume`, `histor:effects-volume`). Each channel has its own gate under the master. The play modal ("Play the story" / "Read at my pace") has two small switches, "Music" and "Effects", ticked unless turned off before; that click is the gesture that starts the sound.
-- **The tab hidden:** everything fades out, and back in when it returns.
-- **Components never call sounds.** They emit their moments (`src/lib/story-events.ts`); the engine listens, and the table in `src/lib/sound/sound-map.ts` says what each moment sounds like. To change a sound, change its row there, or its recipe in `voices.ts`.
-- **Every level and timing to tune is in `src/lib/sound/levels.ts`** (`SOUND`).
+- **One `AudioContext`**, created lazily on the first user gesture (a pointer, a click, a touch or a key, anywhere), never before. A browser without Web Audio simply has no sound. Once it starts, the sound files load (`samples.ts`, about 1.4 MB, decoded once).
+- **Sound starts at the legend intro** (review-fixes brief, 6). Until the first click or key, the legend intro shows a small, quiet hint at its foot, "🔊 Click anywhere for sound" (`SoundHint`), which fades once the sound is unlocked. Choosing in the play modal counts too. Not shown with the sound off, or under reduced motion (where a gesture alone starts nothing).
+- **Where the player is, said early, is not lost.** The case page says `place: story` in its own effect, which runs before the app's `startSound` (children's effects run first); the last `place` is kept (`lastPlaceEvent`) and picked up when the sound starts listening.
+- **One control, Sound** (sound-files brief, 3): one icon in the case header (`SoundControls`, a speaker) for the effects and the narrator's voice, on or off (`histor:effects`; absent means on), with its volume (`histor:effects-volume`) in a popover. The play modal has one small switch, "Sound". There is no Music control while the music is off.
+- **The popover rules (review-fixes brief, 2):** a click on the icon only turns the sound on or off; it never opens the popover. With a mouse, hovering opens it; moving into it keeps it; leaving both closes it after a 200ms grace. Only one popover is open at a time. Focus opens it; Escape or Tab away closes it. On touch, a long press opens it and a tap elsewhere closes it (`src/lib/use-popover.ts`, also used by the result screen's Share menu). Every popover is the one paper `Popover`.
+- **Buses:** master, then a gate per channel; under the effects gate, the effects bus, and under it one gain per tier of the mix (`mix.ts`). The music side (its gate and duck) is kept for when music comes back.
+- **The tab hidden:** everything fades out, and back in when it returns; the context then rests.
+- **Components never call sounds.** They emit their moments (`src/lib/story-events.ts`); the engine listens, and the table in `src/lib/sound/sound-map.ts` says which file each moment plays. To change a sound, change its row there, or its file.
+- **Every level and timing to tune is in `src/lib/sound/levels.ts`:** `SAMPLES` (each file's level, tier and whether it varies), `MIX` (the focus dip, the loops' levels and fades), `SOUND` (master, voices cap, throttles).
 
-## Music: a rotating playlist (`music.ts`)
+## The files (`npm run sfx:import`)
 
-- Each case names its music in its theme: `CaseTheme.playlists = { story?: Track[], desk?: Track[] }`, with `Track = { src, title, credit }` (validated; optional: without a playlist there is no music, and nothing breaks). The Mary Celeste's come from `src/cases/mary-celeste/music.ts`, written by `npm run music:import` (see "Importing music").
-- The player plays the playlist of the place the player is in: `story` tracks from the legend intro (the very first screen) through the story, `desk` tracks on the desk, the verdict and the report. It **shuffles**, never plays the same track twice in a row, **crossfades** over about 3s from one track to the next, and loops the playlist for ever. Moving between places crossfades to the other playlist.
-- **Turning the music off pauses the track where it is; turning it back on resumes it from there, never from the start.** The tab hidden pauses it too, after the fade.
-- Tracks **stream**: an `<audio>` with `preload="none"`, routed into the music bus through its own gain. Only the current track and the next one load (the next starts loading a few seconds into the current).
-- Levels (`MUSIC` and `SOUND` in `levels.ts`): the music sits under everything; the desk's playlist a little quieter than the story's; ducked under the voice to about 12%, and gently under hooks and stamps.
-- **Credits:** the report ends with a "Credits" section listing each track's title and credit under "Music".
+1. The owner keeps the WAVs (from Mixkit) in `~/histor-media/sfx/`, outside the repo (`HISTOR_MEDIA` overrides the folder).
+2. `npm run sfx:import` converts each with `ffmpeg` (`src/lib/sfx-import.ts`, tested): MP3 at 96 kbps, mono for a short effect and stereo for a loop; the leading silence trimmed; loudness matched (`loudnorm`, about −18 LUFS); tiny fades so nothing clicks. A sound heard per letter keeps only its first key or stroke (`typewriter-key`, `pen`); a loop is capped at 24s. It prints each file's size before and after.
+3. It makes the one missing file, **`pen-legend`**: the pen slowed to about 75% and pitched down a little (`asetrate`, `atempo`), slower and creakier.
 
-## Importing music (`npm run music:import -- <caseId>`)
-
-1. The owner saves the chosen tracks (from Pixabay) in `~/histor-media/music/story/` and `~/histor-media/music/desk/`, outside the repo (`HISTOR_MEDIA` overrides the folder).
-2. `npm run music:import -- mary-celeste` converts each with `ffmpeg` to MP3 (128 kbps stereo), trims the silence at both ends, matches loudness (`loudnorm`, about −18 LUFS), and writes them to `public/audio/music/<caseId>/story/` and `.../desk/`, printing each file's size before and after.
-3. It writes `src/cases/<caseId>/music.ts` with the playlists: each title from its file name (without Pixabay's trailing number), each credit "Pixabay" with a `TODO` until the artist is filled in. Running it again keeps credits already filled in.
-4. The case's theme imports `music.ts` when it exists (`import.meta.glob`); until the script has run there are no playlists.
-
-It needs `ffmpeg` and Node 22.18 or newer, and installs nothing: without either it says so and stops. Its pure parts are `src/lib/music-import.ts`, tested.
-
-## Ambience and score: kept, off (`AMBIENCE_ENABLED = false`)
-
-The generated ambience (sea, wind and the other layers below) and the generated score no longer play: real music replaced them (music brief, 2). Their code, recipes and tests are kept behind `AMBIENCE_ENABLED` in `levels.ts`, in case they come back. The effects, the ship's bell among them, still play.
-
-## Ambience: the case's theme (`ambience.ts`)
-
-Each case names its ambience in its theme: `CaseTheme.ambience = { story: AmbienceLayer[], desk: AmbienceLayer[] }` (optional; without it, silence). The pages say where the player is with a `place` event: the story page (legend intro and story) is `story`; the investigation layout (desk, verdict, report) is `desk`. Layers both places share play on unbroken; the others fade out and in.
-
-| Layer | How it is made |
-| --- | --- |
-| `sea` | Brown noise through a slowly moving low-pass, swelling like waves: two slow, unrelated LFOs on the filter and two on the gain, so it never repeats exactly |
-| `wind` | Band-passed noise with a slow, uneven sweep; rarely (every 25–60s) a gust |
-| `timber` | An occasional low creak (a short resonant sawtooth pulse that bends in pitch), every 8–20s; sometimes the hull answers itself |
-| `room-tone` | Brown noise, low-passed, very quiet |
-| `lamp-hum` | A faint 60 Hz hum with its 120 Hz partial |
-| `distant-sea` | The sea, far away: a lower low-pass and a lower level |
-
-**Day into night:** as the story darkens (`chapter-enter`'s `depth`), the sea gets lower and duller, and the wind louder. The Mary Celeste: `story: ['sea', 'wind', 'timber']`, `desk: ['room-tone', 'lamp-hum', 'distant-sea']`. A later case adds its own layers (rain, fog, distant carriages) to `AmbienceLayer`, `ambience.ts` and the validator.
-
-## The score (`score.ts`)
-
-Background music, generated: a quiet, slowly evolving **pad** under the whole story. A few soft, detuned oscillators (two sawtooth roots a few cents apart, a triangle third and fifth) through a low-pass, playing long **minor chords** that change rarely (every 10–20s, crossfaded between two groups of oscillators that run all the time). No melody and no beat; it sits just above silence.
-
-| Moment | The score |
-| --- | --- |
-| A chapter enters | The chord shifts slightly darker with the chapter's depth: lower (up to 2 semitones) and duller |
-| A hook | Thinned to the drone: only the roots |
-| The question | Dropped to almost nothing |
-| The desk | Thinner still: a single low held tone that moves rarely (every 20–40s) |
-| Away from a case | Fades out |
-
-It has its own `score` bus and level (`SOUND.bus.score`), so it can be turned down without losing the effects; its moods and timings are `SCORE` in `levels.ts`.
-
-## Story sounds (`sound-map.ts`, recipes in `voices.ts`)
-
-| Event | Sound |
-| --- | --- |
-| `chapter-enter` (forward) | A soft low swell (low-passed brown noise rising, a 55 Hz sine under it) |
-| `pen` | A faint scratch: a short tick of high-passed noise, with a little random pitch and level; throttled to about 12 a second at most, never one per letter |
-| `type-key` (review-fixes brief, 8) | A typewriter key: a short mechanical click (band-passed noise and a small low knock), a tiny random variation each time; throttled to about 14 a second at most (`SOUND.typeKeysPerSecond`) |
-| `type-return` | The end of a typed line over 40 characters: the carriage's short ratchet and its little bell (`carriage-ding`) |
-
-**Typed text gets the typewriter; written text gets the pen.** Every line that types itself in the app's voice (Special Elite) goes through `src/lib/typewriter.ts` (`typeLetters`, `typeElement`), which sends `type-key` for each letter and `type-return` at the end of a line longer than `TYPEWRITER.dingAfter` (40) characters: the kickers, the header's years, the legend intro's debunk, "Most people stop here…" in the fork, the stamps' notes, the verdict's lines and the rank card, the ? guide's lead-ins, the hints. Pen-written text (headings, pages, the legend, "You almost believed this.", the leading theories, the signature) keeps the pen's scratch. Both are on `/dev/sound`.
-| `hook` (forward, and back: it snaps in again) | A deep drone fading in under it (two detuned low oscillators, low-passed), plus one **dread sound** from the pool as the text snaps in (see "The dread pool"); the ambience and the score duck |
-| `hook-out` (forward) | A soft reversed whoosh (band-passed noise rising out of nothing, cut off softly); the drone fades out |
-| `roll-call-out` | A breathy hiss for each name, a little lower in pitch for each |
-| `chapter-enter` of a cued chapter | The ship's bell, once per visit, far away: an inharmonic bell of eight sine partials with a long decay, the upper ones dying first, low-passed. The Mary Celeste cues it at `s-found`, as the *Dei Gratia* sights her (`CaseAmbience.cues`) |
-| `question-line` | The drone stays low and still; each line adds a faint, low pulse |
-| `modal` (the fork opening over the question) | A paper slide in (closing: out; see "Interface sounds") |
-
-### The dread pool (review-fixes brief, 7)
-
-Every hook used the same boom, which got boring. Six distinct dread sounds, all generated (`DREAD_POOL` in `voices.ts`, the names `HOOK_SOUNDS` in `src/types/case.ts`):
-
-| `HookSound` | Recipe | Sound |
+| File | Used for | Tier |
 | --- | --- | --- |
-| `boom` | `dread-boom` | A deep boom with a long tail (a sine falling 46 → 27 Hz over about 5s, brown noise under it) |
-| `swell` | `dread-swell` | A rising reversed swell that cuts off (band-passed brown noise and a triangle rising, gone in 70ms) |
-| `scrape` | `dread-scrape` | A metallic scrape, like a hull (a bending sawtooth through a narrow moving band-pass, grit, three faint inharmonic partials) |
-| `thunder` | `dread-thunder` | Distant rolling thunder (four low rumbles of brown noise, each a little further off) |
-| `thumps` | `dread-thumps` | Two slow, heavy thumps, the second softer |
-| `cluster` | `dread-cluster` | A low, dissonant cluster swell (C2, C♯2, D2, F♯2, slightly detuned, low-passed) |
+| `click` | Every button and toggle (`ui-click`, `ui-toggle`) | ui |
+| `modal` | Every modal opening and closing (the play choice, the fork, the ? guide), and the popovers (share, volume) | ui |
+| `pen` | All pen writing: headings, pages, the crew list (and its un-writing), the signature, file titles | writing |
+| `pen-legend` | The legend intro's pen, and "You almost believed this." (`pen` with `hand: 'legend'`) | writing |
+| `typewriter-key` | All typed text: kickers, years, notes, hints, the guide (`type-key`) | writing |
+| `typewriter-ding` | The rank appearing; the end of a typed line over 40 characters (`type-return`) | writing |
+| `stamp` | **Every** stamp: Record, Disputed, Legend (the files' and the legend intro's), UNSOLVED, Close the case, Chosen, the report's standing. `stampHit` (motion.ts) sends `stamp-hit` as it presses in. | stamp |
+| `chapter` | A chapter appearing (forward, and back: its entrance plays again) | question |
+| `dread-1` to `dread-4` | The hook lines, picked without repeating the last (`pickDread`); a chapter can name its own (`StorySection.hookSound`, one of the four, validated) | dread |
+| `question` | Held under the central question (a loop) | question |
+| `question-pulse` | Each line of the question | question |
+| `room-tone` | The desk's atmosphere (a loop) | loop |
+| `file-pickup` | Picking up a file (`folder-lift`) | file |
+| `file-open` | A file opening (`flip` open; closing, the same, quieter) | file |
+| `pin` | Pinning to a theory or "None of them" | file |
+| `file-drop` | A file dropped on the floor (`folder-land`) | file |
+| `heartbeat` | Hovering a final choice at the verdict (a loop; dread pass) | loop |
+| `murmur` | Ghost text on the desk (a loop; dread pass) | loop |
+| `eye` | The eye appearing (dread pass) | dread |
+| `creak` | Too quiet for too long on the desk (dread pass) | dread |
+| `jump-sting` | "You trusted a legend." (dread pass) | dread |
 
-Each hook picks one, never the same as the last (`pickDread`, `SoundMemory.lastDread`). A case can name one for a chapter, `StorySection.hookSound` (optional, validated: one of the six, on a chapter that has a hook); it wins over the pool. All six are on `/dev/sound`. None peaks above 70% of the heavy stamp.
+**Repeated sounds never machine-gun:** the pen at most 12 a second (`SOUND.penTicksPerSecond`), the typewriter at most 14 (`SOUND.typeKeysPerSecond`); they, the click and the file actions vary their pitch (±4%) and level (±12%) a little each time (`SAMPLES_VARY`). **Typed text gets the typewriter; written text gets the pen** (`src/lib/typewriter.ts`, `src/lib/quill-writing.ts`).
 
-## Desk sounds
+## Cut (sound-files brief, 3)
 
-| Event | Sound |
-| --- | --- |
-| `folder-lift` (a folder picked up by hand) | A paper lift: a quick swish of band-passed noise |
-| `flip` (open) | The cover flipping: a swish and a soft thud (closing: the same, quieter) |
-| `folder-land` (a folder let go) | A soft thud |
-| `pin` | A small metallic tick (three high partials), with a faint string creak as the thread draws |
-| `stamp:record` | A heavy, solid thud; the ambience ducks |
-| `stamp:disputed` | A lighter thud, then a short pen scratch in the margin |
-| `stamp:legend` | A thud, then an eerie detuned music-box phrase falling in pitch as the ink drains |
-| `legend-pen` | A faint whisper of noise under "You almost believed this." |
-| `close-stamp` (the "Close the case" stamp appears) | A thud, as it lands |
-| `seal` (verdict: the "Chosen" stamp) | A heavy thud, as it lands |
-| `rank` (the rank revealed) | A single typewriter bell ("ding") |
+Hover sounds (a file on the floor), the cursor-movement rush, the hook-fading whoosh, the thread drawing, the sea and wind ambience, the ship's bell, the hook's drone, the legend's whisper, and every generated recipe (`voices.ts`, `ambience.ts`, `score.ts` are gone). Their events stay silent. `CaseTheme.ambience` (the old layers and the bell's cue) is still in the case data and types, unused.
 
-A thud is one recipe at three weights (`thud-soft`, `thud`, `thud-heavy`): a short low sine that drops in pitch, with a knock of low-passed noise.
+## The mix: one thing in focus (`mix.ts`, sound-files brief, 4)
+
+- **The priority order** (`TIERS`): voice > stamp > dread (and the jump sting) > question > file actions > pen and typewriter > UI clicks > loops. Every file plays through its tier's gain. While a sound plays, every tier below it dips to `MIX.focusDuck` (0.4) and comes back as it ends; the voice holds the dip for as long as it speaks.
+- **`room-tone`** plays very low on the desk (and only there). While **`murmur`** rises (ghost text on screen: the `ghosts` event, a little louder with each line), the room tone drops further, so only one of them is ever in focus. The murmur swells only while ghost text is on screen.
+- **`question`** fades in under the question (from its first line) and out as the fork modal opens; back if the fork closes on the question; out when the reader goes back into the story.
+- **`heartbeat`** fades in and out over about 0.5s (the `heartbeat` event).
+- The loops live in `loops.ts`; they follow the moments even before the sound starts, and begin once the files are in.
+- **`/dev/sound`** (development builds only) lists every file with its level, its tier and what it is for, with a button that plays it.
+
+## Music: off, kept (`music.ts`)
+
+`MUSIC_ENABLED = false`: no playlist plays, there is no Music control, and no music is credited. The playlist player (`music.ts`: shuffled, crossfaded, streamed, resumed where it stopped), `CaseTheme.playlists`, the Mary Celeste's `music.ts` data, `npm run music:import` and their tests are kept, unused, in case music comes back.
 
 ## Narration (`narration.ts`), ready for recordings
 
-- Optional `narration?: { src, credit }` on `StorySection`, and `Case.centralQuestionNarration` for the question; validated (both non-empty strings). The one place the app plays a file: a voice cannot be generated. The Mary Celeste has no recordings yet, and everything works without them.
+- Optional `narration?: { src, credit }` on `StorySection`, and `Case.centralQuestionNarration` for the question; validated (both non-empty strings). The Mary Celeste has no recordings yet, and everything works without them.
 - **"Play the story":** a chapter's clip plays as its page is written, and Play waits for the clip to end, plus a short beat (`NARRATION.beat`), before moving on. The question's clip starts with its first line; its last line waits for the clip.
-- **"Read at my pace":** a clip plays only when the reader presses the small **"Listen"** button on the panel (or under the question), with the recording's credit beside it. Pressing it again stops it.
-- One clip at a time; a step to another passage stops it (a chapter's clip carries on into its own hook). The ambience and the score duck under the voice until it ends. With the sound off, there is no voice.
+- **"Read at my pace":** a clip plays only when the reader presses the small **"Listen"** button, with the recording's credit beside it. Pressing it again stops it.
+- One clip at a time. The voice is first in the mix: every sound file dips while it speaks. With the sound off, there is no voice.
 
-## Interface sounds (music brief, 4)
+## The one listener
 
-Subtle, short and never annoying; through the effects bus and the event table like every effect.
-
-| Event | Sound |
-| --- | --- |
-| `ui-click` (any button or link) | A soft paper tick |
-| `ui-toggle` (a switch, a checkbox, a pressed button) | A small click |
-| `guide` (the ? guide opens) | A page flip |
-| `guide` (it starts to close) | A softer page flip |
-| `modal` (the play choice or the fork opens) | A paper slide in |
-| `modal` (it closes) | A paper slide out |
-| `file-hover` (the pointer onto a file on the floor) | A very faint brush, at most 4 a second |
-
-- **One listener** (`startSound`) hears every click on a button, a link, a switch or a menu item and sends `ui-click` or `ui-toggle`: no component asks for it. An element marked `data-ui-sound="off"` (or inside one) has its own sound already and gets no tick: the floor's folders (the cover's flip), the Pin menu's items (the pin), the ? guide's open and close buttons (the page flip), the play choice's two choices (the slide out), the verdict's "Close the case" (the stamp). Disabled controls are silent.
-- **`/dev/sound`** (development builds only) lists every sound with a button that plays it and the moment it belongs to, for tuning by ear. A new sound goes there too.
+`startSound` hears every click on a button, a link, a switch or a menu item and sends `ui-click` or `ui-toggle`: no component asks for it. An element marked `data-ui-sound="off"` (or inside one) has its own sound already and gets no click. Disabled controls are silent.
 
 ## Quality bar
 
-- Nothing loud or sudden except the stamps. The master level is modest.
-- No clicks: every sound has an attack and a release envelope (`envelope` in `voices.ts`); gains always glide, never jump.
-- CPU: no more one-shot voices at once than `SOUND.maxVoices` (another is skipped). The pen's scratch is throttled. The ambience and the score use a few long-running nodes, never new ones every frame. The context rests (suspends) once the tab is hidden and faded.
-- Under reduced motion, sound still works (it is separate from motion), but nothing starts by itself: a gesture alone does not start it, only the player's own choice (the header's toggle, or the play modal with "Sound on" ticked), and narration never plays without "Listen".
-- A test holds the bar: the heavy stamp is the loudest recipe and every non-stamp sound peaks at 70% of it or less; every recipe starts and ends in silence; every source stops.
+- Nothing loud or sudden except the stamps and the one jump sting: the stamp is the loudest file but the sting, and every other sits at 75% of the stamp's level or less (a test holds it). The master is modest.
+- No clicks: every file starts and ends with a tiny fade; gains always glide, never jump.
+- CPU: no more one-shot voices at once than `SOUND.maxVoices` (another is skipped); the pen and the typewriter are throttled; a loop is one buffer source; the context rests once the tab is hidden and faded.
+- Under reduced motion, sound still works (it is separate from motion), but nothing starts by itself: only the player's own choice (the header's toggle, or the play modal's switch), and narration never plays without "Listen".
 
 ## Testing
 
-Tests run on a fake `AudioContext` (`src/test/fake-audio.ts`): the mapping, the choice remembered, ducking, and no sound before a gesture.
+Tests run on a fake `AudioContext` (`src/test/fake-audio.ts`, with `loadFakeSamples` for stand-in buffers): the files the import writes match the table, every moment's file, the throttles and variation, the dread pool, the tiers and the focus dip, the loops, the voices cap, and no sound before a gesture.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // src/features/verdict/__tests__/CaseCredits.test.tsx
-// The case's credits (music brief, 2): a "Music" section listing each track's title and credit; none without music.
+// The case's credits: Mixkit for the sound effects (sound-files brief, 5); no Music section while the music is off.
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, test } from 'vitest';
 import CaseCredits from '@/features/verdict/CaseCredits';
@@ -14,8 +14,11 @@ describe('the case credits', () => {
     expect(screen.queryByRole('heading', { name: 'Music' })).toBeNull();
   });
 
-  test('no playlists, no section', () => {
-    const { container } = render(<CaseCredits playlists={undefined} />);
-    expect(container.innerHTML).toBe('');
+  test('a "Sound" section credits Mixkit for the sound effects (sound-files 5), with or without music', () => {
+    render(<CaseCredits playlists={undefined} />);
+    expect(screen.getByRole('heading', { name: 'Sound' })).toBeDefined();
+    const line = document.querySelector('[data-credits="sound"]')!;
+    expect(line.textContent).toContain('Mixkit');
+    expect(line.querySelector('a')!.getAttribute('href')).toBe('https://mixkit.co');
   });
 });

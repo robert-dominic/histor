@@ -17,6 +17,7 @@ import { typeElement } from '@/lib/typewriter';
 import { FOOTER } from '@/lib/footer-links';
 import { storyImageCredit } from '@/lib/image-credit';
 import { MUSIC_ENABLED } from '@/lib/sound/levels';
+import { SOUND_CREDIT } from '@/lib/sound-credit';
 import type { Case } from '@/types/case';
 
 gsap.registerPlugin(useGSAP);
@@ -187,6 +188,10 @@ function FooterList({ list, caseData, credits }: { list: 'sources' | 'credits'; 
           </ul>
         </>
       )}
+      <h3 className="mt-4 text-[0.6875rem] tracking-[0.16em] uppercase">Sound</h3>
+      <p className={`mt-1.5 ${items}`}>
+        <span className="text-night-ink">{SOUND_CREDIT.source}</span> · {SOUND_CREDIT.note}
+      </p>
       {credits.music.length > 0 && (
         <>
           <h3 className="mt-4 text-[0.6875rem] tracking-[0.16em] uppercase">Music</h3>
