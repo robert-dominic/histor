@@ -286,6 +286,12 @@ describe('every stamp is a moment (investigation 1)', () => {
     const firstLetter = gsap.getTweensOf(letters[0])[0];
     expect(at(firstLetter)).toBeGreaterThan(landedAt() + 2);
     expect(gsap.getTweensOf('[data-file-pen="quill-body"]').length).toBeGreaterThan(0);
+    // Written twice as fast as before (the fix list): the whole line in 8.75s, where it took 17.5s.
+    // (The quill's own drawing sits in the line too: only the letters count.)
+    const written = letters.filter(letter => letter.closest('svg') === null && (letter.textContent ?? '') !== '');
+    const [one, two] = written.map(letter => gsap.getTweensOf(letter).find(tween => tween.vars.opacity === 1)!);
+    const perLetter = two.startTime() - one.startTime();
+    expect(perLetter * written.length).toBeCloseTo(8.75, 2);
   });
 
   test('one sound event per kind of stamp, as it lands', () => {

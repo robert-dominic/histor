@@ -82,8 +82,11 @@ const STAMP_MOMENT = {
   typeRate: 30,
   /** A legend's pen line: written this long after the stamp lands (the ink has drained), at this many letters a second. */
   legendPenAfter: 2.6,
-  /** About 25% faster than the first 14 (polish brief, A2): still slow enough to creep, no longer a wait. */
-  penRate: 17.5,
+  /**
+   * How long the pen takes to write the line, in seconds: twice as fast as before (the fix list). (It was given as
+   * "17.5 letters a second" but used as the line's length in seconds, so the line always took 17.5s; now it is 8.75s.)
+   */
+  penSeconds: 8.75,
 } as const;
 
 /** How far the cover swings open: almost flat, still lifted a little off the desk. */
@@ -412,7 +415,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
             const letters = written.chars as HTMLElement[];
             gsap.set(letters, { opacity: 0 });
             timeline.call(() => emitStoryEvent({ type: 'legend-pen', evidence: evidence.id }), undefined, landed + STAMP_MOMENT.legendPenAfter);
-            createQuillWriter(penPoint, penBody, { hand: 'legend' }).write(timeline, letters, landed + STAMP_MOMENT.legendPenAfter, letters.length / STAMP_MOMENT.penRate);
+            createQuillWriter(penPoint, penBody, { hand: 'legend' }).write(timeline, letters, landed + STAMP_MOMENT.legendPenAfter, letters.length / STAMP_MOMENT.penSeconds);
           }
         }
         return () => {
