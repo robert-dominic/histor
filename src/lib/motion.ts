@@ -138,10 +138,10 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.musicIn': { ease: 'sine.inOut', duration: 3 },
   /** ...and fading out when stopped (about 1.5s). */
   'landing.musicOut': { ease: 'sine.inOut', duration: 1.5 },
-  /** A frame following the cursor in 3D: smooth, a little behind (used with gsap.quickTo). */
+  /** A frame following the cursor in 3D: about 0.6s, power3.out (used with gsap.quickTo). */
   'landing.tilt': { ease: 'power3.out', duration: 0.6 },
-  /** ...and settling back flat when the cursor leaves: a soft spring. */
-  'landing.tiltRelease': { ease: 'elastic.out(1, 0.7)', duration: 1.3 },
+  /** ...and easing back flat when the cursor leaves: no spring, no jitter. */
+  'landing.tiltRelease': { ease: 'power3.out', duration: 0.8 },
   /** One case giving way to the next: the frames travelling, the screen's one step. */
   'landing.stage': { ease: 'power3.inOut', duration: 1.1 },
 };
@@ -202,3 +202,9 @@ export const MOTION_QUERIES = {
 
 /** The landing page's soft snap (landing fixes brief): after a short delay, in seconds, over 0.4 to 0.8s. Never blocks. */
 export const LANDING_SNAP = { delay: 0.15, min: 0.4, max: 0.8 } as const;
+
+/**
+ * The scrubbed landing timeline's own units (landing fixes brief): one move of the frames is one unit of the
+ * timeline, which the scroll position maps to; the rest are shares of it.
+ */
+export const SCRUB = { move: 1, fadeOut: 0.4, peekOut: 0.08, peekIn: 0.2 } as const;

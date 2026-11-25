@@ -1,9 +1,10 @@
 // src/features/landing/use-frame-tilt.ts
-// A frame on hover (landing v3 brief): it rotates in 3D toward the cursor (rotateX and rotateY up to about 8°, with
-// perspective), shifts slightly toward it, and its shadow moves the opposite way; the glint follows the cursor across
-// the gilt. Everything follows the mouse through gsap.quickTo (smooth, a little behind) and springs back flat when
-// the cursor leaves. A sealed case's veil stirs. Only with a mouse on a laptop, at full motion; transforms and
-// opacity only.
+// A frame on hover (landing v3 brief; landing fixes): it tilts around its centre toward the cursor (rotateX and rotateY
+// up to about 8°) under a deep perspective (about 1200px), lifts a little toward the viewer and shifts slightly toward
+// the cursor, and its shadow moves the opposite way; the glint follows the cursor across the gilt. Everything follows
+// the mouse through gsap.quickTo (about 0.6s, power3.out) and eases back to flat when the cursor leaves, with no spring
+// and no jitter: the cursor is measured against the frame's own untransformed box, never against the tilted frame. A
+// sealed case's veil stirs. Only with a mouse on a laptop, at full motion; transforms and opacity only.
 import { useEffect, type RefObject } from 'react';
 import gsap from 'gsap';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
@@ -14,8 +15,10 @@ export const FRAME_TILT = 8;
 /** The most the frame shifts toward the cursor, in px; its shadow goes the other way, further. */
 export const FRAME_SHIFT = 10;
 export const SHADOW_SHIFT = 22;
-/** The frame's own perspective, in px. */
-export const FRAME_PERSPECTIVE = 900;
+/** The frame's own perspective, in px: deep, so the tilt is gentle. */
+export const FRAME_PERSPECTIVE = 1200;
+/** How far the frame lifts toward the viewer while hovered, in px. */
+export const FRAME_LIFT = 28;
 
 export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
   useEffect(() => {
@@ -40,6 +43,7 @@ export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
     const turnX = gsap.quickTo(frame, 'rotationX', follow);
     const shiftX = gsap.quickTo(frame, 'x', follow);
     const shiftY = gsap.quickTo(frame, 'y', follow);
+    const lift = gsap.quickTo(frame, 'z', follow);
     const shadowX = shadow === null ? null : gsap.quickTo(shadow, 'x', follow);
     const shadowY = shadow === null ? null : gsap.quickTo(shadow, 'y', follow);
     const glintX = glint === null ? null : gsap.quickTo(glint, 'x', follow);
@@ -48,7 +52,8 @@ export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
       if (event.pointerType !== 'mouse') {
         return;
       }
-      const box = frame.getBoundingClientRect();
+      // The box that does not move: the frame's own place, not the tilted frame (which would feed back into the tilt).
+      const box = element.getBoundingClientRect();
       const x = (event.clientX - box.left) / box.width - 0.5;
       const y = (event.clientY - box.top) / box.height - 0.5;
       const cx = Math.max(-0.5, Math.min(0.5, x)) * 2;
@@ -71,6 +76,7 @@ export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
       if (shadow !== null) {
         shadow.style.willChange = 'transform';
       }
+      lift(FRAME_LIFT);
       if (glint !== null) {
         gsap.to(glint, { opacity: 1, ...tween('hover') });
       }
@@ -79,9 +85,9 @@ export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
       }
     };
     const leave = () => {
-      // Back to flat, with a soft spring.
+      // Back to flat, easing out.
       const release = tween('landing.tiltRelease');
-      gsap.to(frame, { rotationX: 0, rotationY: 0, x: 0, y: 0, ...release, overwrite: 'auto', onComplete: () => void (frame.style.willChange = '') });
+      gsap.to(frame, { rotationX: 0, rotationY: 0, x: 0, y: 0, z: 0, ...release, overwrite: 'auto', onComplete: () => void (frame.style.willChange = '') });
       if (shadow !== null) {
         gsap.to(shadow, { x: 0, y: 0, ...release, overwrite: 'auto', onComplete: () => void (shadow.style.willChange = '') });
       }

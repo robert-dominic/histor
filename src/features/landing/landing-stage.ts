@@ -19,7 +19,7 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
-import { LANDING_BLUR, LANDING_SNAP, LINEAR, STEP, tween } from '@/lib/motion';
+import { LANDING_BLUR, LANDING_SNAP, LINEAR, SCRUB, STEP, tween } from '@/lib/motion';
 import { jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
 
 // ScrollTrigger is registered when a stage is made: it needs window.matchMedia as soon as it is registered.
@@ -287,23 +287,23 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       // (A hair after the case itself, so that at rest only the case in hand is drawn.)
       tl.set(B.section, { visibility: 'visible' }, i + 0.001)
         // The next frame rises from its peek and grows into the centre; the current one scales up and leaves.
-        .fromTo(B.anchor, { x: pose.x, y: pose.y, scale: pose.scale }, { x: 0, y: 0, scale: 1, ease: move.ease, duration: 1, immediateRender: false }, i)
-        .to(A.anchor, { ...away, ease: move.ease, duration: 1, immediateRender: false }, i)
-        .fromTo(A.anchor, { opacity: 1 }, { opacity: 0, ease: tween('ink.out').ease, duration: 0.4, immediateRender: false }, i + 0.6)
+        .fromTo(B.anchor, { x: pose.x, y: pose.y, scale: pose.scale }, { x: 0, y: 0, scale: 1, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
+        .to(A.anchor, { ...away, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
+        .fromTo(A.anchor, { opacity: 1 }, { opacity: 0, ease: tween('ink.out').ease, duration: SCRUB.fadeOut, immediateRender: false }, i + 0.6)
         .set(A.section, { visibility: 'hidden' }, i + 1);
       // Hanging from a wire: a lean on the way, and one soft sway back as the new frame settles.
       if (A.rise !== null) {
-        tl.fromTo(A.rise, { rotation: 0 }, { rotation: -FRAME_SWING, ease: move.ease, duration: 1, immediateRender: false }, i);
+        tl.fromTo(A.rise, { rotation: 0 }, { rotation: -FRAME_SWING, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i);
       }
       if (B.rise !== null) {
-        tl.fromTo(B.rise, { rotation: FRAME_SWING }, { rotation: 0, ease: tween('landing.swing').ease, duration: 1, immediateRender: false }, i);
+        tl.fromTo(B.rise, { rotation: FRAME_SWING }, { rotation: 0, ease: tween('landing.swing').ease, duration: SCRUB.move, immediateRender: false }, i);
       }
       // The peeking frame is the next one: it goes as that frame takes its place, and the one after peeks in last.
       if (A.peek !== null) {
-        tl.fromTo(A.peek, { opacity: 1 }, { opacity: 0, ease: LINEAR, duration: 0.08, immediateRender: false }, i);
+        tl.fromTo(A.peek, { opacity: 1 }, { opacity: 0, ease: LINEAR, duration: SCRUB.peekOut, immediateRender: false }, i);
       }
       if (B.peek !== null) {
-        tl.fromTo(B.peek, { opacity: 0 }, { opacity: 1, ease: LINEAR, duration: 0.2, immediateRender: false }, i + 0.8);
+        tl.fromTo(B.peek, { opacity: 0 }, { opacity: 1, ease: LINEAR, duration: SCRUB.peekIn, immediateRender: false }, i + 0.8);
       }
     }
     // The timeline is exactly one unit for each move, and a label at every case, for the snap.
