@@ -41,6 +41,8 @@ export type StoryEvent =
   | { type: 'heartbeat'; on: boolean }
   // The eye opening (dread pass, 4).
   | { type: 'eye' }
+  // Too quiet for too long on the desk (dread pass, 7): no input for a while.
+  | { type: 'quiet' }
   // The typewriter types a letter of the app's voice (src/lib/typewriter.ts); a longer line's carriage returns.
   | { type: 'type-key' }
   | { type: 'type-return' }

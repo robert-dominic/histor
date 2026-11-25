@@ -115,6 +115,8 @@ export const SOUND_TABLE: Rows = {
   // ---- The dread pass
   // The eye opening: a barely audible wet blink and a low breath.
   eye: () => ({ cues: [{ sound: 'eye' }] }),
+  // Too quiet for too long on the desk: a distant creak, or a door somewhere far off.
+  quiet: () => ({ cues: [{ sound: 'creak' }] }),
   // The rank revealed: the typewriter's bell.
   rank: () => ({ cues: [{ sound: 'typewriter-ding' }] }),
 

@@ -4,7 +4,8 @@
 //   so only one of them is in focus;
 // - question: held under the central question, from its first line; it fades out as the fork opens (and back if the
 //   fork closes on the question), and when the reader goes back into the story;
-// - heartbeat: while a final choice is hovered at the verdict, in and out over about half a second;
+// - heartbeat: while a final choice is hovered at the verdict, in and out over about half a second, quickening slowly
+//   the longer the hover (dread pass, 7);
 // - murmur: while ghost text is on the desk, a little louder with each line, gone with the last.
 import type { SoundEngine } from '@/lib/sound/engine';
 import { MIX } from '@/lib/sound/levels';
@@ -74,6 +75,9 @@ export class Loops {
       case 'heartbeat':
         if (event.on) {
           this.heartbeat.start(this.engine, 1, MIX.heartbeat.fade);
+          // The longer the hover, the faster it beats (dread pass, 7): slowly, a little.
+          this.heartbeat.setRate(this.engine, 1, 0);
+          this.heartbeat.setRate(this.engine, MIX.heartbeat.quickenTo, MIX.heartbeat.quickenOver);
         } else {
           this.heartbeat.stop(this.engine, MIX.heartbeat.fade);
         }

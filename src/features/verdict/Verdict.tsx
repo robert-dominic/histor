@@ -29,6 +29,8 @@ export default function Verdict() {
   const pressRef = useRef<gsap.core.Timeline | null>(null);
   // Leaving the page mid-press stops it: the case is not closed behind the user's back.
   useEffect(() => () => void pressRef.current?.kill(), []);
+  // Leaving the verdict (choosing, or going away): the heartbeat stops.
+  useEffect(() => () => emitStoryEvent({ type: 'heartbeat', on: false }), []);
 
   if (state.opened.length < caseData.closeThreshold) {
     return <Navigate to={`${base}/files`} replace />;
@@ -79,6 +81,9 @@ export default function Verdict() {
                 data-verdict="note"
                 data-theory-id={theory.id}
                 onClick={() => setChoice(theory.id)}
+                // A final choice hovered: a slow heartbeat, quickening the longer it lasts (dread pass, 7).
+                onPointerEnter={event => event.pointerType === 'mouse' && emitStoryEvent({ type: 'heartbeat', on: true })}
+                onPointerLeave={event => event.pointerType === 'mouse' && emitStoryEvent({ type: 'heartbeat', on: false })}
                 style={{ rotate: `${rotate}deg` }}
                 className={`desk-note relative flex flex-col gap-2 rounded-[2px] px-4 pt-6 pb-4 text-left text-ink shadow-lg shadow-black/60 outline-offset-4 transition-[scale,opacity] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-brass active:scale-[0.97] ${
                   chosen || choice === null ? '' : 'opacity-70 hover:opacity-100'

@@ -7,7 +7,7 @@
 // through its own gain and fades in and out. Every sound goes through its tier of the mix (mix.ts).
 import type { SoundEngine } from '@/lib/sound/engine';
 import { glide } from '@/lib/sound/engine';
-import { SAMPLES } from '@/lib/sound/levels';
+import { MIX, SAMPLES } from '@/lib/sound/levels';
 import { mix } from '@/lib/sound/mix';
 import { sfxSrc } from '@/lib/sfx-import';
 
@@ -100,14 +100,51 @@ export interface SampleCue {
   delay?: number;
 }
 
-/** Plays one file once on the effects bus, if it is loaded and a voice is free. */
+/** What the mixer remembers per context (dread pass, 7): when each sound last played, and the last dread sound. */
+interface MixerMemory {
+  last: Map<SampleName, number>;
+  dreadStart: number;
+  dreadEnd: number;
+}
+const mixerMemory = new WeakMap<BaseAudioContext, MixerMemory>();
+
+/**
+ * The mixer's rules, so sounds never pile up (dread pass, 7): only one dread sound at a time, at least
+ * `MIX.dreadGapMs` apart (the jump sting excepted: it is the moment); a ui or paper sound not again within its own
+ * cooldown. True when the sound may play now (and it is then counted as playing). Times in ms of the context's clock.
+ */
+export function mixerAllows(ctx: BaseAudioContext, name: SampleName, durationMs: number): boolean {
+  const memory = mixerMemory.get(ctx) ?? { last: new Map(), dreadStart: Number.NEGATIVE_INFINITY, dreadEnd: Number.NEGATIVE_INFINITY };
+  mixerMemory.set(ctx, memory);
+  const now = ctx.currentTime * 1000;
+  const tune = SAMPLES[name];
+  if (tune.category === 'dread' && name !== 'jump-sting') {
+    if (now < memory.dreadEnd || now - memory.dreadStart < MIX.dreadGapMs) {
+      return false;
+    }
+    memory.dreadStart = now;
+    memory.dreadEnd = now + durationMs;
+  }
+  if (tune.cooldownMs > 0) {
+    if (now - (memory.last.get(name) ?? Number.NEGATIVE_INFINITY) < tune.cooldownMs) {
+      return false;
+    }
+    memory.last.set(name, now);
+  }
+  return true;
+}
+
+/** Plays one file once on the effects bus, if it is loaded, the mixer allows it, and a voice is free. */
 export function playSample(engine: SoundEngine, cue: SampleCue, bank: SampleBank = samples): void {
   const ctx = engine.context;
   const out = mix.input(engine, SAMPLES[cue.sound].tier);
   const buffer = bank.get(cue.sound);
   const tune = SAMPLES[cue.sound];
   const rate = (cue.pitch ?? 1) * (tune.vary ? vary(SAMPLES_VARY.pitch) : 1);
-  if (ctx === null || out === null || buffer === null || !engine.voice(buffer.duration / rate + (cue.delay ?? 0))) {
+  if (ctx === null || out === null || buffer === null || !mixerAllows(ctx, cue.sound, (buffer.duration / rate) * 1000)) {
+    return;
+  }
+  if (!engine.voice(buffer.duration / rate + (cue.delay ?? 0))) {
     return;
   }
   const source = ctx.createBufferSource();
@@ -173,6 +210,18 @@ export class LoopPlayer {
     glide(amp.gain, target, fade, ctx.currentTime);
     this.source = source;
     this.amp = amp;
+  }
+
+  /** Moves its speed (and pitch) to `rate` over `seconds`: the heartbeat quickening. */
+  setRate(engine: SoundEngine, rate: number, seconds: number): void {
+    const ctx = engine.context;
+    if (ctx === null || this.source === null) {
+      return;
+    }
+    const param = this.source.playbackRate;
+    param.cancelScheduledValues(ctx.currentTime);
+    param.setValueAtTime(param.value, ctx.currentTime);
+    param.linearRampToValueAtTime(rate, ctx.currentTime + seconds);
   }
 
   /** Fades out over `fade` seconds, then stops. */

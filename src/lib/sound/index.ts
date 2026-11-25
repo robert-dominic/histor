@@ -9,10 +9,14 @@ import { useSyncExternalStore } from 'react';
 import { SoundEngine, type Channel } from '@/lib/sound/engine';
 import { Narrator } from '@/lib/sound/narration';
 import { MOTION_QUERIES } from '@/lib/motion';
+import { MIX } from '@/lib/sound/levels';
 import { Loops } from '@/lib/sound/loops';
 import { playSample, samples } from '@/lib/sound/samples';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { emitStoryEvent, lastPlaceEvent, onStoryEvent, type StoryEvent } from '@/lib/story-events';
+
+/** How often the desk checks whether it has been too quiet, in ms. */
+const QUIET_CHECK_MS = 5000;
 
 /** The one engine. */
 export const sound = new SoundEngine();
@@ -48,8 +52,25 @@ export function startSound(engine: SoundEngine = sound): () => void {
     // Once the files are in, the loops of where the player already is begin.
     void samples.load(ctx).then(() => loops.sync());
   });
+  // Too quiet for too long on the desk (dread pass, 7): after `MIX.quietMs` without input, a distant creak, at most once
+  // every `MIX.creakEveryMs`. A check every few seconds; nothing else runs.
+  let where: 'story' | 'desk' | 'away' = 'away';
+  let lastInput = Date.now();
+  let lastCreak = Number.NEGATIVE_INFINITY;
+  const noteInput = () => {
+    lastInput = Date.now();
+  };
+  const quietCheck = setInterval(() => {
+    const now = Date.now();
+    if (where === 'desk' && engine.running && now - lastInput >= MIX.quietMs && now - lastCreak >= MIX.creakEveryMs) {
+      lastCreak = now;
+      emitStoryEvent({ type: 'quiet' });
+    }
+  }, QUIET_CHECK_MS);
   const place = (event: Extract<StoryEvent, { type: 'place' }>) => {
     loops.hear(event);
+    where = event.place;
+    noteInput();
     if (event.place === 'story') {
       // Each visit to the story starts its memory afresh.
       memory.cues = event.ambience?.cues ?? [];
@@ -83,6 +104,8 @@ export function startSound(engine: SoundEngine = sound): () => void {
   // activation in every browser, so its click (and touchend) are heard too.
   const gestures = ['pointerdown', 'keydown', 'click', 'touchend'] as const;
   gestures.forEach(type => window.addEventListener(type, gesture, options));
+  const inputs = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
+  inputs.forEach(type => window.addEventListener(type, noteInput, options));
   document.addEventListener('visibilitychange', visibility);
   // The case page says where the player is before this listener exists (review-fixes brief, 6): picked up now.
   const already = lastPlaceEvent();
@@ -106,6 +129,8 @@ export function startSound(engine: SoundEngine = sound): () => void {
   });
   return () => {
     gestures.forEach(type => window.removeEventListener(type, gesture, options));
+    inputs.forEach(type => window.removeEventListener(type, noteInput, options));
+    clearInterval(quietCheck);
     document.removeEventListener('visibilitychange', visibility);
     document.removeEventListener('click', press, true);
     stop();
