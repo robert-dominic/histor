@@ -124,7 +124,7 @@ export const maryCeleste: Case = {
       image: {
         src: aboardImage,
         alt: "A wet, empty wooden ship's deck under a grey sky, with coiled ropes, an open hatch and a mast.",
-        credit: "An empty, wet ship's deck. Made with Google Gemini: not a picture from the time.",
+        credit: "An empty, wet ship's deck. An AI illustration made with Google Gemini in 2026, not a picture from the time.",
         isIllustration: true,
       },
       // The eye may open in the dark bulwark on the right, away from the page (dread pass, 4).

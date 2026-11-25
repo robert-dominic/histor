@@ -284,7 +284,9 @@ describe('Story: scenes', () => {
         const image = section.image!;
         expect(within(chapter).getByRole('img', { name: image.alt })).toBeDefined();
         const credit = within(chapter).getByRole('tooltip', { hidden: true }).textContent ?? '';
-        expect(credit.startsWith('AI illustration.')).toBe(image.isIllustration);
+        // An illustration's credit says so, once.
+        expect(/AI illustration/i.test(credit)).toBe(image.isIllustration);
+        expect((credit.match(/AI illustration/gi) ?? []).length).toBeLessThanOrEqual(1);
         expect(credit).toContain(image.credit);
         expect(chapter.querySelector('[data-story="illustration"]')).toBeNull();
         expect(chapter.textContent).not.toMatch(/^Illustration$/m);
@@ -301,10 +303,14 @@ describe('Story: scenes', () => {
     expect(within(chapterOf(container, found)).getByRole('tooltip', { hidden: true }).textContent).toContain(
       'The ship as the Amazon, her original name, painted in 1861.'
     );
+    const aboard = maryCeleste.story.find(section => section.id === 's-aboard')!;
+    expect(within(chapterOf(container, aboard)).getByRole('tooltip', { hidden: true }).textContent).toBe(
+      "An empty, wet ship's deck. An AI illustration made with Google Gemini in 2026, not a picture from the time."
+    );
     // Every chapter's credit names a year, so it says when the picture was made (the AI image says it is not of the time).
     for (const section of maryCeleste.story) {
       expect(section.image!.caption).toBeUndefined();
-      expect(section.image!.credit, section.id).toMatch(/\b1[89]\d\d\b|not a picture from the time/);
+      expect(section.image!.credit, section.id).toMatch(/\b(1[89]|20)\d\d\b/);
     }
   });
 
