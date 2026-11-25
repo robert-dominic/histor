@@ -24,8 +24,6 @@ interface StoryChapterProps {
   route: ChartRoute;
 }
 
-const LABEL_CLASSES =
-  'bg-night/75 px-2 pt-1.5 pb-1 font-voice text-[0.625rem] leading-none tracking-[0.14em] text-night-ink uppercase lg:text-[0.6875rem]';
 
 export default function StoryChapter({ section, index, step, grade, route }: StoryChapterProps) {
   const headingId = `story-${section.id}`;
@@ -56,13 +54,7 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
             <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />
           </figure>
         )}
-        {image !== undefined && image.caption !== undefined && (
-          <p className="absolute top-[calc(var(--case-header)+0.625rem)] right-14 z-10 flex max-w-[calc(100%-5rem)] flex-wrap justify-end gap-1.5 lg:right-16">
-            <span data-story="caption" className={LABEL_CLASSES}>
-              {image.caption}
-            </span>
-          </p>
-        )}
+        {/* No caption on the image (two fixes, 1): what the picture is and when it was made is in its ⓘ. */}
         {image !== undefined && (
           <CreditInfo
             credit={storyImageCredit(image)}

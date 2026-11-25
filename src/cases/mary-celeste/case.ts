@@ -53,7 +53,7 @@ export const maryCeleste: Case = {
       image: {
         src: voyageImage,
         alt: 'Painting of a tall sailing ship under full sail on choppy green water, with smaller boats around it and a red stone fort on the shore.',
-        credit: 'Painting by Edward Moran, c. 1870. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
+        credit: 'A tall ship under full sail, painted by Edward Moran around 1870. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
         isIllustration: false,
       },
       kicker: 'New York, November 1872',
@@ -85,7 +85,7 @@ export const maryCeleste: Case = {
       image: {
         src: lastEntryImage,
         alt: 'Painting of a small ship with a slanted sail riding a large wave beside a rocky shore, under a hazy orange sun.',
-        credit: 'Painting by Ivan Aivazovsky, 1896. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
+        credit: 'A small ship on a large wave by a rocky shore, painted by Ivan Aivazovsky in 1896. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
         isIllustration: false,
       },
       kicker: 'Near the Azores, 24–25 November',
@@ -105,8 +105,8 @@ export const maryCeleste: Case = {
       image: {
         src: foundImage,
         alt: 'Painting of a two-masted sailing ship with pale sails and a red flag on calm blue water, seen from the side.',
-        credit: 'The Mary Celeste as the Amazon, 1861. Artist unconfirmed. Public domain, via Wikimedia Commons.',
-        caption: 'The Mary Celeste, 1861',
+        // The caption is no longer shown on the image: what it said is in the credit (two fixes, 1).
+        credit: 'The ship as the Amazon, her original name, painted in 1861. Artist unconfirmed. Public domain, via Wikimedia Commons.',
         isIllustration: false,
       },
       kicker: '4 December 1872',
@@ -124,7 +124,7 @@ export const maryCeleste: Case = {
       image: {
         src: aboardImage,
         alt: "A wet, empty wooden ship's deck under a grey sky, with coiled ropes, an open hatch and a mast.",
-        credit: 'AI-generated (Google Gemini).',
+        credit: "An empty, wet ship's deck. Made with Google Gemini: not a picture from the time.",
         isIllustration: true,
       },
       // The eye may open in the dark bulwark on the right, away from the page (dread pass, 4).
@@ -148,7 +148,7 @@ export const maryCeleste: Case = {
       image: {
         src: inquiryImage,
         alt: 'Engraving of the Rock of Gibraltar seen across a bay, with a town at its foot, small sailing boats on the water and three people sitting on the shore.',
-        credit: 'Engraving by J.H. Mann, 1870. U.S. Naval History and Heritage Command. Public domain, via Wikimedia Commons.',
+        credit: 'The Rock of Gibraltar seen across the bay, engraved by J.H. Mann in 1870. U.S. Naval History and Heritage Command. Public domain, via Wikimedia Commons.',
         isIllustration: false,
       },
       kicker: 'Gibraltar, December 1872',
@@ -168,7 +168,7 @@ export const maryCeleste: Case = {
       image: {
         src: questionImage,
         alt: 'Painting of a dark, cloudy night at sea, with moonlight on the waves, a small boat pulled up on the beach and two ships far off on the horizon.',
-        credit: 'Painting by Ivan Aivazovsky, 1885. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
+        credit: 'A cloudy night at sea, painted by Ivan Aivazovsky in 1885. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
         isIllustration: false,
       },
       // The eye may open in the storm clouds, top right, away from the page (dread pass, 4).

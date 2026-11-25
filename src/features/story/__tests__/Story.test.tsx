@@ -272,7 +272,7 @@ describe('Story: scenes', () => {
     expect(container.querySelector('[data-story="quill"]')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('every image keeps its credit behind an ⓘ and its caption; no visible "Illustration" tag, the ⓘ says it', () => {
+  test('every image keeps its credit behind an ⓘ, and no caption; no visible "Illustration" tag, the ⓘ says it', () => {
     for (const reducedMotion of [false, true]) {
       cleanup();
       vi.unstubAllGlobals();
@@ -295,9 +295,17 @@ describe('Story: scenes', () => {
     stubMatchMedia();
     vi.stubGlobal('scrollTo', vi.fn());
     const { container } = renderStory();
-    expect(chapterOf(container, maryCeleste.story[2]).querySelector('[data-story="caption"]')?.textContent).toBe(
-      'The Mary Celeste, 1861'
+    // No caption on any image (two fixes, 1): the ⓘ says what the picture is and when it was made.
+    expect(container.querySelector('[data-story="caption"]')).toBeNull();
+    const found = maryCeleste.story.find(section => section.id === 's-found')!;
+    expect(within(chapterOf(container, found)).getByRole('tooltip', { hidden: true }).textContent).toContain(
+      'The ship as the Amazon, her original name, painted in 1861.'
     );
+    // Every chapter's credit names a year, so it says when the picture was made (the AI image says it is not of the time).
+    for (const section of maryCeleste.story) {
+      expect(section.image!.caption).toBeUndefined();
+      expect(section.image!.credit, section.id).toMatch(/\b1[89]\d\d\b|not a picture from the time/);
+    }
   });
 
   test('the image grade gets darker with every chapter', () => {
