@@ -67,18 +67,24 @@ describe('the footer', () => {
     expect(screen.getByRole('link', { name: 'GitHub' })).toBeDefined();
   });
 
-  test('on the report, not on the desk', () => {
+  test('on no case page (the fix list): not the story, the desk, the verdict or the report; on /credits and /sources', () => {
     continuePastGate();
     localStorage.setItem(
       `histor:case:${maryCeleste.id}`,
-      JSON.stringify({ opened: [maryCeleste.evidence[0].id], pins: {}, verdict: maryCeleste.theories[0].id })
+      JSON.stringify({ opened: maryCeleste.evidence.slice(0, maryCeleste.closeThreshold).map(e => e.id), pins: {}, verdict: maryCeleste.theories[0].id })
     );
-    window.history.pushState({}, '', `/case/${maryCeleste.id}/report`);
-    const { unmount } = render(<App />);
-    expect(document.querySelector('[data-site-footer]')).not.toBeNull();
-    unmount();
-    window.history.pushState({}, '', `/case/${maryCeleste.id}/files`);
-    render(<App />);
-    expect(document.querySelector('[data-site-footer]')).toBeNull();
+    localStorage.setItem(`histor:intro-seen:${maryCeleste.id}`, '1');
+    for (const path of [`/case/${maryCeleste.id}`, `/case/${maryCeleste.id}/files`, `/case/${maryCeleste.id}/verdict`, `/case/${maryCeleste.id}/report`]) {
+      window.history.pushState({}, '', path);
+      const { unmount } = render(<App />);
+      expect(document.querySelector('[data-site-footer]'), path).toBeNull();
+      unmount();
+    }
+    for (const path of ['/credits', '/sources']) {
+      window.history.pushState({}, '', path);
+      const { unmount } = render(<App />);
+      expect(document.querySelector('[data-site-footer]'), path).not.toBeNull();
+      unmount();
+    }
   });
 });

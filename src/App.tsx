@@ -10,6 +10,8 @@ import Report from '@/features/verdict/Report';
 import Verdict from '@/features/verdict/Verdict';
 import Case from '@/pages/Case';
 import Home from '@/pages/Home';
+import Credits from '@/pages/Credits';
+import Sources from '@/pages/Sources';
 import DevSound from '@/pages/DevSound';
 import NotFound from '@/pages/NotFound';
 import { startSound } from '@/lib/sound';
@@ -29,6 +31,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/case/:id" element={<Case />} />
+          {/* Every credit, and every source, case by case (the fix list). */}
+          <Route path="/credits" element={<Credits />} />
+          <Route path="/sources" element={<Sources />} />
           {/* One layout for the whole investigation, so its state carries from screen to screen. */}
           <Route element={<CaseInvestigation />}>
             {/* The desk stays on screen while a file is open: the file is shown over it. Same URLs as before. */}

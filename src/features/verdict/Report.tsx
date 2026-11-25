@@ -12,7 +12,6 @@ import Stamp from '@/components/Stamp';
 import DeskSurface from '@/features/board/DeskSurface';
 import Lamp from '@/features/board/Lamp';
 import CaseCredits from '@/features/verdict/CaseCredits';
-import SiteFooter from '@/components/SiteFooter';
 import ReportSection from '@/features/verdict/ReportSection';
 import VerdictReveal from '@/features/verdict/VerdictReveal';
 import JumpScare from '@/features/dread/JumpScare';
@@ -315,7 +314,6 @@ export default function Report() {
         {pdfNote}
       </p>
       <CaseCredits playlists={caseData.theme.playlists} />
-      <SiteFooter caseData={caseData} />
       <Lamp still narrow={narrow} />
     </main>
   );

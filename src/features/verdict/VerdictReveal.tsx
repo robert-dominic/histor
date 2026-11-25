@@ -15,7 +15,8 @@ import CardSignature from '@/features/verdict/CardSignature';
 import { shareLink } from '@/lib/share-link';
 import ShareMenu from '@/features/verdict/ShareMenu';
 import IconButton from '@/components/IconButton';
-import { DownloadIcon, ImageIcon, LinkIcon } from '@/components/icons';
+import { DownloadIcon, ImageIcon, InfoIcon, LinkIcon } from '@/components/icons';
+import IconLink from '@/components/IconLink';
 import { caseRank, leadingTheories, legendsTrustedCount, verdictComparison } from '@/lib/case-rank';
 import type { CaseReport } from '@/lib/case-report';
 import { MOTION, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
@@ -229,6 +230,8 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
         <ShareMenu text={text} url={url} onCopy={() => void copyLink()} onSave={() => void save()} onMore={canShareFiles ? () => void share() : undefined} />
         <IconButton label="Save the card" icon={<ImageIcon />} data-result="save" onClick={() => void save()} />
         <IconButton label={copied ? 'Link copied' : 'Copy the link'} icon={<LinkIcon />} data-result="copy" onClick={() => void copyLink()} />
+        {/* Every credit and source of the case, on their own pages (the fix list). */}
+        <IconLink to={`/credits#${caseId}`} label="Credits & sources" icon={<InfoIcon />} data-result="credits" />
       </div>
       <div data-reveal="column" data-side="reveal" className="flex flex-col items-center gap-6 lg:items-start">
         <div className="flex flex-col items-center gap-3 lg:items-start">

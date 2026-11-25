@@ -6,7 +6,7 @@
 // or scrolling back up, closes it and returns to the question. Reduced motion: it appears without animation.
 // Everything shown comes from props.
 
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
@@ -38,11 +38,9 @@ export interface ForkProps {
   open: boolean;
   /** Escape: close it and go back to the question. */
   onClose: () => void;
-  /** The site's footer, closing the story for the reader who stops here (review-fixes brief, 9). */
-  footer?: ReactNode;
 }
 
-export default function Fork({ fork, historiansSummary, filesHref, open, onClose, footer }: ForkProps) {
+export default function Fork({ fork, historiansSummary, filesHref, open, onClose }: ForkProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLDivElement>(null);
@@ -186,7 +184,6 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
                 Back to all cases
               </Link>
             </nav>
-            {footer}
           </div>
         ) : (
           <div data-fork="choices" className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">

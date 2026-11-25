@@ -118,11 +118,6 @@ interface StoryProps {
   voyage?: Voyage;
   /** The fork after the central question, shown as a modal over it. */
   fork?: Pick<ForkProps, 'fork' | 'historiansSummary' | 'filesHref'>;
-  /**
-   * The site's footer at the end of the story, after the fork (review-fixes brief, 9): `compact` inside the fork's
-   * close (the cinematic stage never scrolls), in full at the foot of the stacked page.
-   */
-  footer?: (compact: boolean) => React.ReactNode;
   /** The reader's choice in the play modal, each time it is made (a new token): the story starts with it. */
   start?: { mode: 'play' | 'read'; token: number } | null;
 }
@@ -138,7 +133,6 @@ export default function Story({
   voyage,
   start = null,
   fork,
-  footer,
 }: StoryProps) {
   const rootRef = useRef<HTMLElement>(null);
   const count = story.length;
@@ -1192,13 +1186,11 @@ export default function Story({
             <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
             {/* After the question, more black to scroll into: scrolling on brings the fork. */}
             <div aria-hidden="true" data-story="after-question" className="h-[45svh] bg-black" />
-            {footer !== undefined && <div className="bg-black">{footer(false)}</div>}
           </>
         )}
         {fork !== undefined && (
           <Fork
             {...fork}
-            footer={footer?.(true)}
             open={forkOpen}
             onClose={() => {
               if (cinematic) {

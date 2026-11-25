@@ -1,7 +1,6 @@
 // src/components/SiteFooter.tsx
-// A quiet footer for the pages that scroll (review-fixes brief, 9): the end of the story (after the fork) and the
-// report; the home page will take it when it is designed (it works without a case). The fixed one-screen desk has
-// none. "Histor" in Grenze Gotisch with its line, then the case's sources and credits (music, images), the GitHub
+// A quiet footer, for the credits and sources pages and the future landing page only (the fix list: no case page has
+// one any more: not the story, the desk, the verdict or the report). It works without a case. "Histor" in Grenze Gotisch with its line, then the case's sources and credits (music, images), the GitHub
 // repository and "Built with Kiro", and © 2026, in Special Elite at a small size, the muted tone, a thin rule above.
 // The sources and the credits open in place, under the links, so they work on any page.
 // With life (ui-pass brief, 7): a slow, faint fog drifts across it; its brass rule draws in when it comes into view,

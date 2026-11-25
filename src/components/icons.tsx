@@ -61,3 +61,14 @@ export function ArrowUpIcon() {
     </Icon>
   );
 }
+
+/** An ⓘ: credits and sources. */
+export function InfoIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11v5.5" />
+      <circle cx="12" cy="7.8" r="0.4" fill="currentColor" />
+    </Icon>
+  );
+}
