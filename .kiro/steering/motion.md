@@ -90,15 +90,15 @@ The dread is rare, slow and quiet, and has a purpose (`design.md`, "Dread"). Its
 | `dread.lid` | `power2.inOut` | 1.4s | The eye's lids opening slowly, and closing |
 | `dread.blink` | `power2.inOut` | 0.18s | The eye's one blink; the jump scare's eye snapping open |
 | `dread.gaze` | `power3.out` | 0.7s | The pupil following the cursor, heavy and a little behind |
-| `dread.flicker` | `sine.inOut` | 0.09s per stutter | The lamp dipping (a Legend stamp: about a second; the lantern over a known legend: short) |
+| `dread.flicker` | `sine.inOut` | 0.09s per stutter | The lamp dipping as a Legend stamp lands: about a second |
 | `dread.twitch` | `power1.inOut` | 0.07s per shiver | An opened legend's twitch (on the file's drawing, never its place) |
 | `dread.drift` | `none` | 7s | The shadow drifting across the deck: constant |
 | `dread.cut` | `power4.in` | 0.08s | The one jump scare's cut to black |
 | `dread.progress` | `power2.out` | 0.4s | The preloader's progress line catching up |
 
 - **Rarity is a rule, not a mood:** the eye at most once every 60–120s of activity, never in the first 30s; ghost lines every 4–8s, at most two; a twitch every 10–20s; the shadow once per visit; the jump scare once per case completion, and only for a player who relied on a legend.
-- **Cheap:** transforms and opacity only (the grain steps by transform; the lantern's halo flickers by opacity and scale in keyframes, as constant motion); timers, never a frame loop, when nothing is happening.
-- **Reduced motion:** the grain is still, the lantern is off (the system cursor), no ghost lines, no eye, no twitch, no lamp dip, no shadow; the jump scare has no cut and no sting, its line simply appears; the preloader simply fades.
+- **Cheap:** transforms and opacity only (the grain steps by transform); timers, never a frame loop, when nothing is happening.
+- **Reduced motion:** the grain is still, no ghost lines, no eye, no twitch, no lamp dip, no shadow; the jump scare has no cut and no sting, its line simply appears; the preloader simply fades.
 
 ## 7. Check before shipping
 

@@ -671,69 +671,23 @@ body::after {
   filter: drop-shadow(0 8px 12px rgb(0 0 0 / 0.55));
 }
 
-/* ---- The lantern cursor (dread pass, 2) ----
-   On a desktop with a fine pointer and full motion only (html[data-lantern="on"]): the system cursor is hidden but in
-   text fields, where it comes back and the lantern hides. Keyboard focus outlines are untouched. The halo's flicker is
-   constant motion, so keyframes (opacity and transform only). */
-html[data-lantern="on"],
-html[data-lantern="on"] * {
-  cursor: none !important;
-}
-html[data-lantern="on"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select, [contenteditable="true"]) {
-  cursor: text !important;
-}
-.lantern {
-  width: 0;
-  height: 0;
-  transition: opacity var(--motion-hover-duration) var(--motion-hover-ease);
-}
-.lantern[data-away="true"],
-.lantern[data-hidden="true"] {
-  opacity: 0;
-}
-.lantern-flame {
-  position: absolute;
-  left: -4px;
-  top: -4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: radial-gradient(circle at 45% 40%, #fff6dc, var(--color-brass) 70%);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--color-brass) 80%, transparent);
-}
-.lantern-halo {
-  position: absolute;
-  left: -22px;
-  top: -22px;
-  width: 44px;
-  height: 44px;
-  border-radius: 9999px;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-brass) 32%, transparent), transparent);
-  animation: lantern-flicker 2.6s steps(1, end) infinite;
-}
-@keyframes lantern-flicker {
-  0% { opacity: 0.9; transform: scale(1); }
-  18% { opacity: 0.75; transform: scale(0.94); }
-  31% { opacity: 1; transform: scale(1.04); }
-  52% { opacity: 0.82; transform: scale(0.97); }
-  71% { opacity: 0.95; transform: scale(1.02); }
-  86% { opacity: 0.7; transform: scale(0.95); }
-}
-.lantern-word {
-  position: absolute;
-  left: 14px;
-  top: 6px;
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-night-ink);
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.9);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity var(--motion-hover-duration) var(--motion-hover-ease), transform var(--motion-hover-duration) var(--motion-hover-ease);
-}
-.lantern[data-word="true"] .lantern-word {
-  opacity: 1;
-  transform: translateY(0);
+/* ---- The cursor (the fix list): the system's own. The hand over anything that can be carried (floor files, the
+   open file's manila edge, pinned strips: marked data-draggable by the drag code), grabbing while it is carried; the
+   pointer on clickables stays (index.css); the paper inside an open file reads as paper, its links and buttons as
+   clickables. Only where a mouse can carry (the drag code marks nothing elsewhere). */
+@media (hover: hover) and (pointer: fine) {
+  [data-draggable="true"],
+  [data-draggable="true"] :is(a[href], button) {
+    cursor: grab;
+  }
+  [data-draggable="true"] :is([data-file="sheet"], [data-file="sheet-two"], [data-file="slip"], [data-file="reveal"], [data-file="index-card"], [data-file="label"], [data-file="pinned-to"]) {
+    cursor: auto;
+  }
+  [data-draggable="true"] :is([data-file="sheet"], [data-file="reveal"], [data-file="index-card"]) :is(a[href], button) {
+    cursor: pointer;
+  }
+  [data-dragging="true"],
+  [data-dragging="true"] * {
+    cursor: grabbing !important;
+  }
 }

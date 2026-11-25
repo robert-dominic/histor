@@ -15,7 +15,6 @@ import Sources from '@/pages/Sources';
 import DevSound from '@/pages/DevSound';
 import NotFound from '@/pages/NotFound';
 import { startSound } from '@/lib/sound';
-import LanternCursor from '@/features/dread/LanternCursor';
 import EyeWatcher from '@/features/dread/EyeWatcher';
 
 export default function App() {
@@ -23,8 +22,6 @@ export default function App() {
   useEffect(() => startSound(), []);
   return (
     <SmoothScroll>
-      {/* The cursor is a small lantern flame, on a desktop with a fine pointer and full motion (dread pass, 2). */}
-      <LanternCursor />
       {/* Rarely, an eye opens in a dark place, watches, blinks and closes (dread pass, 4). */}
       <EyeWatcher />
       <BrowserRouter>

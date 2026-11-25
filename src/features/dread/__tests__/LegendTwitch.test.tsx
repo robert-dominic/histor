@@ -34,8 +34,8 @@ describe('legends and the lamp', () => {
     const dip = document.querySelector('[data-desk="lamp-dip"]')!;
     emitStoryEvent({ type: 'stamp:legend', evidence: 'e' });
     const tweens = gsap.getTweensOf(dip);
-    expect(tweens.length).toBe(LAMP_FLICKER.long.length);
-    const length = LAMP_FLICKER.long.length * MOTION['dread.flicker'].duration;
+    expect(tweens.length).toBe(LAMP_FLICKER.length);
+    const length = LAMP_FLICKER.length * MOTION['dread.flicker'].duration;
     expect(length).toBeGreaterThan(0.5);
     expect(length).toBeLessThan(1.2);
     expect(Math.max(...tweens.map(tween => tween.vars.opacity as number))).toBeGreaterThan(0.2);

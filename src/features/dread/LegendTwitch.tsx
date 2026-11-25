@@ -18,7 +18,7 @@ export default function LegendTwitch() {
     }
     const stopListening = onStoryEvent(event => {
       if (event.type === 'stamp:legend') {
-        lampFlicker('long');
+        lampFlicker();
       }
     });
     let timer: ReturnType<typeof setTimeout>;

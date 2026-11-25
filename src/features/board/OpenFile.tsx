@@ -517,8 +517,12 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       let targets: Element[] = [];
       let hot: Element | null = null;
 
+      // The manila edge is a handle: the hand over it, grabbing while carried (the fix list).
+      triggers.forEach(trigger => ((trigger as HTMLElement).dataset.draggable = 'true'));
       const [draggable] = Draggable.create(folder, {
         type: 'x,y',
+        cursor: 'grab',
+        activeCursor: 'grabbing',
         trigger: triggers,
         minimumMovement: 6,
         zIndexBoost: false,
@@ -567,6 +571,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
       return () => {
         clearHotTargets(targets);
         draggable.kill();
+        triggers.forEach(trigger => delete (trigger as HTMLElement).dataset.draggable);
       };
     },
     { scope: rootRef }

@@ -59,8 +59,12 @@ export function createDeskDrag(config: DeskDragConfig): () => void {
   let targets: Element[] = [];
   let hot: Element | null = null;
   let overNote = false;
+  // Over anything that can be carried, the hand: grab, and grabbing while it is carried (the fix list).
+  config.elements.forEach(element => (element.dataset.draggable = 'true'));
   const draggables = Draggable.create(config.elements, {
     type: 'x,y',
+    cursor: 'grab',
+    activeCursor: 'grabbing',
     // The folders are links: dragging them is the point. A press that does not move is still a click.
     dragClickables: true,
     minimumMovement: 6,
@@ -106,5 +110,6 @@ export function createDeskDrag(config: DeskDragConfig): () => void {
     clearHotTargets(targets);
     delete document.documentElement.dataset.dragging;
     draggables.forEach(draggable => draggable.kill());
+    config.elements.forEach(element => delete element.dataset.draggable);
   };
 }
