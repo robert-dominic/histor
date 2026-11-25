@@ -67,6 +67,19 @@ Hover sounds (a file on the floor), the cursor-movement rush, the hook-fading wh
 - The loops live in `loops.ts`; they follow the moments even before the sound starts, and begin once the files are in.
 - **`/dev/sound`** (development builds only) lists every file with its level, its tier and what it is for, with a button that plays it.
 
+## The dread layer, kept under control (dread pass, 7 and 8)
+
+All files, nothing generated. Quiet beats loud, rare beats constant.
+
+- **The verdict:** a slow `heartbeat` while a final choice (a theory note) is hovered, fading in and out over 0.5s and quickening slowly the longer the hover (to 1.3× over 12s: `MIX.heartbeat`).
+- **Ghost text:** the `murmur` grows a little with each ghost line on the desk and fades when they are gone (`ghosts`); the room tone drops under it.
+- **The eye:** `eye`, a barely audible wet blink and a low breath, as it opens.
+- **Too quiet for too long:** after 25s without input on the desk, a distant `creak` (`quiet`), at most once every 90s (`MIX.quietMs`, `MIX.creakEveryMs`).
+- **The one jump scare:** `jump-sting`, the loudest file in the app and still capped (`SAMPLES['jump-sting'].level`), with everything else ducked.
+- **Cut:** the cursor-movement rush and the whisper on touching a file (sound-files brief).
+- **The mixer stops sounds piling up:** every file has a category (`ui`, `paper`, `dread`, `ambience`, `music`: `SAMPLES[name].category`). **Only one `dread` sound plays at a time, at least 6s apart** (`MIX.dreadGapMs`; the jump sting excepted: it is the moment). `ui` and `paper` sounds have per-sound cooldowns (`cooldownMs`; the pen and the typewriter are throttled by the table). The voices stay capped (`SOUND.maxVoices`), and the tiers keep the priority order (voice > stamp > dread > paper > ui).
+- **Music on the desk** (when it comes back) at about half its story level (`MUSIC.level.desk`).
+
 ## Music: off, kept (`music.ts`)
 
 `MUSIC_ENABLED = false`: no playlist plays, there is no Music control, and no music is credited. The playlist player (`music.ts`: shuffled, crossfaded, streamed, resumed where it stopped), `CaseTheme.playlists`, the Mary Celeste's `music.ts` data, `npm run music:import` and their tests are kept, unused, in case music comes back.

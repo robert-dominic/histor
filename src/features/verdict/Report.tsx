@@ -15,6 +15,8 @@ import CaseCredits from '@/features/verdict/CaseCredits';
 import SiteFooter from '@/components/SiteFooter';
 import ReportSection from '@/features/verdict/ReportSection';
 import VerdictReveal from '@/features/verdict/VerdictReveal';
+import JumpScare from '@/features/dread/JumpScare';
+import { takeJumpScare } from '@/lib/jump-scare';
 import { formatCaseYears } from '@/lib/case-years';
 import { READING_LABEL, STANDING_LABEL, STATUS_LABEL, fileNumber, pinTargetTitle } from '@/lib/case-files';
 import { buildCaseReport } from '@/lib/case-report';
@@ -41,6 +43,11 @@ export default function Report() {
   const location = useLocation();
   const [fresh] = useState(() => (location.state as { fresh?: boolean } | null)?.fresh === true);
   const [narrow, setNarrow] = useState(false);
+  // The one jump scare (dread pass, 8): just closed, having relied on a legend, once per completion. The reveal waits
+  // for it.
+  const [scaring, setScaring] = useState(
+    () => fresh && buildCaseReport(caseData, state).legendsTrusted.length > 0 && takeJumpScare(location.key)
+  );
   const report = useMemo(() => buildCaseReport(caseData, state), [caseData, state]);
   const base = `/case/${caseData.id}`;
 
@@ -88,6 +95,8 @@ export default function Report() {
     >
       <DeskSurface />
       {/* The reveal, the rank and the shareable card; the full report follows below, as before. */}
+      {scaring && <JumpScare onDone={() => setScaring(false)} />}
+      {!scaring && (
       <VerdictReveal
         report={report}
         caseId={caseData.id}
@@ -103,6 +112,7 @@ export default function Report() {
           )
         }
       />
+      )}
       <article className="desk-typed-paper relative z-[21] mx-auto flex max-w-3xl flex-col lg:max-w-6xl gap-8 rounded-[2px] px-5 pt-8 pb-8 text-ink sm:px-10 sm:pt-10">
         <h2 id="report-title" className="font-legend text-[clamp(2rem,1.5rem+2vw,3rem)] leading-none">
           Case report

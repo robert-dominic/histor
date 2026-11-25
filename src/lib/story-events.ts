@@ -43,6 +43,8 @@ export type StoryEvent =
   | { type: 'eye' }
   // Too quiet for too long on the desk (dread pass, 7): no input for a while.
   | { type: 'quiet' }
+  // The one jump scare's sting (dread pass, 8).
+  | { type: 'jump-sting' }
   // The typewriter types a letter of the app's voice (src/lib/typewriter.ts); a longer line's carriage returns.
   | { type: 'type-key' }
   | { type: 'type-return' }

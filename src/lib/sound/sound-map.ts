@@ -117,6 +117,8 @@ export const SOUND_TABLE: Rows = {
   eye: () => ({ cues: [{ sound: 'eye' }] }),
   // Too quiet for too long on the desk: a distant creak, or a door somewhere far off.
   quiet: () => ({ cues: [{ sound: 'creak' }] }),
+  // The one jump scare: a sharp, short sting, the loudest moment in the app (still capped); everything else dips.
+  'jump-sting': () => ({ duck: 'stamp', cues: [{ sound: 'jump-sting' }] }),
   // The rank revealed: the typewriter's bell.
   rank: () => ({ cues: [{ sound: 'typewriter-ding' }] }),
 
