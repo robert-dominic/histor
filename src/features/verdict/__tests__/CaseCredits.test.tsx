@@ -8,13 +8,10 @@ import CaseCredits from '@/features/verdict/CaseCredits';
 afterEach(cleanup);
 
 describe('the case credits', () => {
-  test('a "Music" section with each track\'s title and credit, each track once', () => {
+  test('while the music is off (sound-files 3), no "Music" section: nothing unplayed is credited', () => {
     const one = { src: '/a.mp3', title: 'Low Tide', credit: 'An Artist (Pixabay)' };
-    const two = { src: '/b.mp3', title: 'Lamplight', credit: 'Another (Pixabay)' };
-    render(<CaseCredits playlists={{ story: [one, two], desk: [two] }} />);
-    expect(screen.getByRole('heading', { name: 'Music' })).toBeDefined();
-    const items = screen.getAllByRole('listitem').map(item => item.textContent);
-    expect(items).toEqual(['Low Tide · An Artist (Pixabay)', 'Lamplight · Another (Pixabay)']);
+    render(<CaseCredits playlists={{ story: [one], desk: [] }} />);
+    expect(screen.queryByRole('heading', { name: 'Music' })).toBeNull();
   });
 
   test('no playlists, no section', () => {

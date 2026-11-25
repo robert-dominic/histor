@@ -1,6 +1,7 @@
 // src/lib/sound/levels.ts
-// Every level and timing of the generated sound, in one place, to tune (polish brief, part B). Gains are linear
-// (1 = full scale); times are in seconds. Quieter is better: the aim is atmosphere and weight, never a cartoon.
+// Every level and timing of the sound, in one place, to tune. Gains are linear (1 = full scale); times are in
+// seconds. Quieter is better: the aim is atmosphere and weight, never a cartoon. The sounds are files now
+// (sound-files brief, 2): each one's level is in `SAMPLES`; the music is off (`MUSIC_ENABLED`).
 
 export const SOUND = {
   /** The whole mix. Modest: nothing loud or sudden except the stamps. */
@@ -34,21 +35,15 @@ export const SOUND = {
   maxVoices: 14,
   /** The pen's scratch: never more ticks a second than this, however fast it writes. */
   penTicksPerSecond: 12,
-  /** The brush of a file on the floor: never more than this a second. */
-  brushesPerSecond: 4,
   /** The typewriter's keys (review-fixes brief, 8): never more than this many a second. */
   typeKeysPerSecond: 14,
-  /** The hook's drone: its level under a hook, its level held low under the question, and its release. */
-  drone: { level: 0.22, low: 0.1, release: 2.6 },
-  /** The ship's bell rings this long after its chapter enters: far away, after the swell. */
-  bellAfter: 1.4,
 } as const;
 
 /**
- * The generated ambience and score (ambience.ts, score.ts) are kept, but do not play: real music tracks replace
- * them (music brief, 2). True brings them back.
+ * The music is off (sound-files brief, 3): no playlist plays, and there is no Music control. The playlist player
+ * (music.ts) and the case's playlists are kept, unused, in case it comes back.
  */
-export const AMBIENCE_ENABLED = false;
+export const MUSIC_ENABLED = false;
 
 /** The music (music.ts): playlists of real tracks, streamed, shuffled and crossfaded. */
 export const MUSIC = {
@@ -58,42 +53,6 @@ export const MUSIC = {
   level: { story: 1, desk: 0.78 },
   /** The next track starts loading once the current one has played this long. */
   preloadAfter: 5,
-} as const;
-
-/** The ambience's layers (ambience.ts): each one's level, and how the story's darkness moves them. */
-export const AMBIENCE = {
-  /** A layer fades in, and out, over these. */
-  fadeIn: 3,
-  fadeOut: 2.2,
-  sea: { level: 0.9, cutoff: 420, swell: 0.28, darkCutoff: 280, darkLevel: 0.7 },
-  wind: { level: 0.16, centre: 750, darkLevel: 0.3, gust: { every: [25, 60], rise: 1.8, fall: 4.5, by: 0.14 } },
-  timber: { level: 0.5, every: [8, 20] },
-  'room-tone': { level: 0.22, cutoff: 520 },
-  'lamp-hum': { level: 0.018 },
-  'distant-sea': { level: 0.42, cutoff: 230 },
-  /** How quickly the ambience follows the story's darkness. */
-  darkGlide: 6,
-} as const;
-
-/** The score (score.ts): a quiet pad of long minor chords. Its bus level is `SOUND.bus.score`. */
-export const SCORE = {
-  /** The pad's low-pass, at day and deep in the night. */
-  cutoff: 560,
-  darkCutoff: 330,
-  /** How many semitones lower the chords sit at the darkest chapter. */
-  darkSemitones: 2,
-  /** A new chord every 10 to 20 seconds, crossfaded over `crossfade`. */
-  change: [10, 20],
-  crossfade: 5,
-  /** At the desk: one low tone that moves rarely. */
-  deskChange: [20, 40],
-  /** Each voice of a chord (root, root detuned, third, fifth), and the detune between the two roots, in cents. */
-  voices: [0.3, 0.3, 0.2, 0.17],
-  detune: 7,
-  /** The whole pad's level in each mood. */
-  mood: { story: 1, hook: 0.75, question: 0.12, desk: 0.6 },
-  /** How quickly the pad moves to a new mood. */
-  moodGlide: 2.5,
 } as const;
 
 /** Narration (narration.ts): the voice's level, and the beat "Play the story" waits after a clip ends. */

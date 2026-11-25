@@ -45,12 +45,12 @@ describe('Popover', () => {
         <CaseHeader caseId="test" title="Test" years="1900" />
       </MemoryRouter>
     );
-    const music = screen.getByRole('button', { name: 'Music' });
+    const music = screen.getByRole('button', { name: 'Sound' });
     fireEvent.pointerDown(music, { pointerType: 'touch' });
     act(() => {
       vi.advanceTimersByTime(600);
     });
-    const slider = screen.getByRole('slider', { name: 'Music volume' });
+    const slider = screen.getByRole('slider', { name: 'Sound volume' });
     expect(slider.className).toContain('paper-range');
     expect(slider.closest('[data-popover]')?.className).toContain('popover-paper');
     expect(slider.parentElement!.textContent).toMatch(/\d+%/);

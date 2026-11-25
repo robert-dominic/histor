@@ -3,8 +3,8 @@
 // it into the story. The pen writes the case's title, one short line, then two big choices: "Play the story" or
 // "Read at my pace". The reader must choose: the story does not start until they do, and Escape means "Read at my
 // pace". The focus stays inside while it is open and goes back where it was afterwards.
-// Two small switches under the choices, "Music" and "Effects", ticked unless turned off before (music brief, 1): the
-// choice's click is the gesture that starts the sound. The choice is remembered (`histor:story-mode`): the modal shows
+// One small switch under the choices, "Sound", ticked unless turned off before (the music is off: sound-files brief,
+// 3): the choice's click is the gesture that starts the sound. The choice is remembered (`histor:story-mode`): the modal shows
 // only to a reader who has never chosen (ui-pass brief, 2).
 // Reduced motion: it simply appears, with no writing and no movement.
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
@@ -37,11 +37,9 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const playRef = useRef<HTMLButtonElement>(null);
   const readRef = useRef<HTMLButtonElement>(null);
-  const musicRef = useRef<HTMLInputElement>(null);
-  const effectsRef = useRef<HTMLInputElement>(null);
+  const soundRef = useRef<HTMLInputElement>(null);
   const choosingRef = useRef(false);
-  const [musicOn, setMusicOn] = useState(() => sound.isOn('music'));
-  const [effectsOn, setEffectsOn] = useState(() => sound.isOn('effects'));
+  const [soundOn, setSoundOn] = useState(() => sound.isOn('effects'));
 
   // While it is open the page does not scroll: the story starts only once the reader has chosen. The focus goes
   // into it, and back where it was when it closes.
@@ -95,10 +93,9 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
     choosingRef.current = true;
     emitStoryEvent({ type: 'modal', name: 'play-choice', open: false });
     // This click (or key) is the gesture that may start the sound.
-    sound.setOn('music', musicOn);
-    sound.setOn('effects', effectsOn);
+    sound.setOn('effects', soundOn);
     // Remembered: the modal never shows again; the story starts in this mode (ui-pass brief, 2).
-    saveStoryMode({ mode, music: musicOn, effects: effectsOn });
+    saveStoryMode({ mode, sound: soundOn });
     sound.unlock();
     const root = rootRef.current;
     if (root === null || typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches) {
@@ -117,9 +114,9 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
     if (event.key !== 'Tab') {
       return;
     }
-    // The focus stays on the two choices and the two sound switches.
+    // The focus stays on the two choices and the sound switch.
     event.preventDefault();
-    const stops = [playRef, readRef, musicRef, effectsRef].map(ref => ref.current).filter((element): element is HTMLButtonElement | HTMLInputElement => element !== null);
+    const stops = [playRef, readRef, soundRef].map(ref => ref.current).filter((element): element is HTMLButtonElement | HTMLInputElement => element !== null);
     const here = stops.indexOf(document.activeElement as HTMLButtonElement);
     stops[(here + (event.shiftKey ? stops.length - 1 : 1)) % stops.length]?.focus();
   };
@@ -168,8 +165,7 @@ export default function PlayChoice({ title, onChoose }: PlayChoiceProps) {
           </button>
         </div>
         <div data-choice="sound" className="mt-7 flex items-center justify-center gap-7">
-          <SoundSwitch label="Music" inputRef={musicRef} checked={musicOn} onChange={setMusicOn} />
-          <SoundSwitch label="Effects" inputRef={effectsRef} checked={effectsOn} onChange={setEffectsOn} />
+          <SoundSwitch label="Sound" inputRef={soundRef} checked={soundOn} onChange={setSoundOn} />
         </div>
       </div>
     </div>

@@ -1,19 +1,18 @@
 // src/lib/sound/sound-map.ts
 // What each moment sounds like: the one table from events (story-events.ts) to sounds, so it is easy to tune
 // (polish brief, B1). Components never call sounds: they emit their moments, and this table answers. Each row is a
-// pure function of the event (and what the sound has heard so far), giving the cues to play and what the ambience
-// does. Levels are multipliers on each recipe's own (voices.ts); the buses' levels are in levels.ts.
+// pure function of the event (and what the sound has heard so far), giving the sound files to play and what ducks
+// under them. Each file's level is in levels.ts (`SAMPLES`); a cue's gain is a multiplier on it.
 
 import type { DuckName } from '@/lib/sound/engine';
 import { SOUND } from '@/lib/sound/levels';
 import type { SampleName } from '@/lib/sound/samples';
-import type { SoundName } from '@/lib/sound/voices';
 import type { StoryEvent } from '@/lib/story-events';
 import { HOOK_SOUNDS, type AmbienceCue, type HookSound } from '@/types/case';
 
 export interface SoundCue {
-  /** A sound file (sound-files brief, 2), or one of the generated recipes still to be cut. */
-  sound: SampleName | SoundName;
+  /** A sound file (sound-files brief, 2). */
+  sound: SampleName;
   /** A multiplier on the recipe's level. */
   gain?: number;
   /** A multiplier on the recipe's pitch. */
@@ -27,17 +26,14 @@ export interface SoundRow {
   cues?: SoundCue[];
   /** The ambience and the score dip under it. */
   duck?: DuckName;
-  /** The hook's drone: fades in, holds low (the question), or fades out. */
-  drone?: 'in' | 'low' | 'out';
 }
 
 /** What the sound has heard so far, for the rows that depend on it. */
 export interface SoundMemory {
-  /** When the pen last scratched, and when a file on the floor was last brushed, in ms. */
+  /** When the pen last scratched, in ms. */
   lastPen: number;
   /** When the typewriter's last key sounded, in ms. */
   lastKey: number;
-  lastBrush: number;
   /** The case's one-off cues (from its ambience), and the ones already played. */
   cues: AmbienceCue[];
   played: Set<AmbienceCue>;
@@ -50,7 +46,7 @@ export interface SoundMemory {
 }
 
 export function freshMemory(): SoundMemory {
-  return { lastPen: Number.NEGATIVE_INFINITY, lastKey: Number.NEGATIVE_INFINITY, lastBrush: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
+  return { lastPen: Number.NEGATIVE_INFINITY, lastKey: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
 }
 
 /**
@@ -70,25 +66,12 @@ export function pickDread(own: HookSound | undefined, memory: SoundMemory): Hook
 
 type Rows = { [K in StoryEvent['type']]?: (event: Extract<StoryEvent, { type: K }>, memory: SoundMemory) => SoundRow | null };
 
-/** A cue's sound, as a one-shot sound's name. */
-const CUE_SOUND = { 'ships-bell': 'bell' } as const;
 
 /** The table. A moment with no row is silent. */
 export const SOUND_TABLE: Rows = {
   // ---- The story
-  // A chapter appears (forward, or back: its entrance plays again); and its one-off cue, once.
-  'chapter-enter': (event, memory) => {
-    const cues: SoundCue[] = [{ sound: 'chapter' }];
-    if (event.direction === 'forward') {
-      memory.cues
-        .filter(cue => cue.chapter === event.chapter && !memory.played.has(cue))
-        .forEach(cue => {
-          memory.played.add(cue);
-          cues.push({ sound: CUE_SOUND[cue.sound], delay: SOUND.bellAfter });
-        });
-    }
-    return { cues, drone: 'out' };
-  },
+  // A chapter appears (forward, or back: its entrance plays again). (The ship's bell is cut: sound-files brief, 3.)
+  'chapter-enter': () => ({ cues: [{ sound: 'chapter' }] }),
   // The pen: its stroke, never more than about 12 a second, a little different each time; the legend's own pen
   // (the intro, "You almost believed this.") slower and creakier.
   pen: (event, memory) => {
@@ -109,13 +92,11 @@ export const SOUND_TABLE: Rows = {
   'type-return': () => ({ cues: [{ sound: 'typewriter-ding' }] }),
   // The hook: one dread sound as the text snaps in, forward or back (the chapter's own, or one from the pool, never
   // the same twice running).
-  hook: (event, memory) => ({ duck: 'hook', drone: 'in', cues: [{ sound: pickDread(event.sound, memory) }] }),
-  // The hook decays: a soft reversed whoosh, and the drone goes.
-  'hook-out': event => (event.direction === 'forward' ? { cues: [{ sound: 'whoosh' }], drone: 'out' } : { drone: 'out' }),
+  hook: (event, memory) => ({ duck: 'hook', cues: [{ sound: pickDread(event.sound, memory) }] }),
   // Each name un-written: the pen, backwards, a little quieter each time.
   'roll-call-out': event => ({ cues: [{ sound: 'pen', gain: 0.85 ** event.order }] }),
   // Each line of the question: its pulse.
-  'question-line': () => ({ drone: 'low', cues: [{ sound: 'question-pulse' }] }),
+  'question-line': () => ({ cues: [{ sound: 'question-pulse' }] }),
   // A modal (the play choice, the fork) opening or closing; the ? guide too; and the popovers.
   modal: () => ({ cues: [{ sound: 'modal' }] }),
   guide: event => ({ cues: [{ sound: 'modal', gain: event.open ? 1 : 0.7 }] }),
@@ -130,8 +111,6 @@ export const SOUND_TABLE: Rows = {
   'stamp:record': () => ({ duck: 'stamp' }),
   'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'pen', delay: 0.3 }] }),
   'stamp:legend': () => ({ duck: 'stamp' }),
-  // A faint whisper under "You almost believed this."
-  'legend-pen': () => ({ cues: [{ sound: 'whisper' }] }),
   seal: event => (event.where === 'verdict' ? { duck: 'stamp' } : null),
   // The rank revealed: the typewriter's bell.
   rank: () => ({ cues: [{ sound: 'typewriter-ding' }] }),
@@ -140,14 +119,6 @@ export const SOUND_TABLE: Rows = {
   // Every button and toggle: the click.
   'ui-click': () => ({ cues: [{ sound: 'click' }] }),
   'ui-toggle': () => ({ cues: [{ sound: 'click', pitch: 1.08 }] }),
-  // The pointer onto a file on the floor: a very faint brush, at most 4 a second.
-  'file-hover': (_event, memory) => {
-    if (memory.now - memory.lastBrush < 1000 / SOUND.brushesPerSecond) {
-      return null;
-    }
-    memory.lastBrush = memory.now;
-    return { cues: [{ sound: 'brush' }] };
-  },
 };
 
 /** The row for one event, or null when it is silent. `now` is in ms. */

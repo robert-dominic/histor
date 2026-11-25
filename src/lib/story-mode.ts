@@ -1,6 +1,7 @@
 // src/lib/story-mode.ts
 // The reader's choice in the play modal, remembered (ui-pass brief, 2): "Play the story" or "Read at my pace", and the
-// Music and Effects switches as they were set, under `histor:story-mode`. Once chosen, the modal never shows again:
+// Sound switch as it was set, under `histor:story-mode` (a choice saved with the old Music and Effects switches is
+// read with Effects as Sound). Once chosen, the modal never shows again:
 // the story starts in the saved mode. The reader can still switch at any time (the play bar plays; any gesture reads
 // at their own pace). Every read and write is wrapped: without storage the modal simply shows each visit.
 import type { PlayMode } from '@/features/story/PlayChoice';
@@ -9,8 +10,7 @@ export const STORY_MODE_KEY = 'histor:story-mode';
 
 export interface StoryModeChoice {
   mode: PlayMode;
-  music: boolean;
-  effects: boolean;
+  sound: boolean;
 }
 
 /** The saved choice, or null for a reader who has never chosen (or a broken entry). */
@@ -24,11 +24,12 @@ export function loadStoryMode(): StoryModeChoice | null {
     if (typeof value !== 'object' || value === null) {
       return null;
     }
-    const { mode, music, effects } = value as Record<string, unknown>;
-    if ((mode !== 'play' && mode !== 'read') || typeof music !== 'boolean' || typeof effects !== 'boolean') {
+    const { mode, sound, effects } = value as Record<string, unknown>;
+    const on = typeof sound === 'boolean' ? sound : effects;
+    if ((mode !== 'play' && mode !== 'read') || typeof on !== 'boolean') {
       return null;
     }
-    return { mode, music, effects };
+    return { mode, sound: on };
   } catch {
     return null;
   }

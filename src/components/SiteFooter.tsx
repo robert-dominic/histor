@@ -16,6 +16,7 @@ import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { typeElement } from '@/lib/typewriter';
 import { FOOTER } from '@/lib/footer-links';
 import { storyImageCredit } from '@/lib/image-credit';
+import { MUSIC_ENABLED } from '@/lib/sound/levels';
 import type { Case } from '@/types/case';
 
 gsap.registerPlugin(useGSAP);
@@ -29,7 +30,8 @@ function creditsOf(caseData: Case) {
     ...(caseData.theme.legendVideo === undefined ? [] : [{ what: 'The legend intro (video)', credit: caseData.theme.legendVideo.credit }]),
     ...caseData.story.flatMap(section => (section.image === undefined ? [] : [{ what: section.heading, credit: storyImageCredit(section.image) }])),
   ];
-  const music = [...(caseData.theme.playlists?.story ?? []), ...(caseData.theme.playlists?.desk ?? [])].filter(
+  // The music is off (sound-files brief, 3): none is credited until it plays again.
+  const music = (MUSIC_ENABLED ? [...(caseData.theme.playlists?.story ?? []), ...(caseData.theme.playlists?.desk ?? [])] : []).filter(
     (track, index, all) => all.findIndex(other => other.src === track.src) === index
   );
   return { images, music };

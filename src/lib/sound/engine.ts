@@ -2,12 +2,12 @@
 // The sound engine (polish brief, B1; music brief, 1): one AudioContext, created lazily on the first user gesture,
 // never before. Two channels the player controls separately, each on or off with its own volume, remembered in
 // localStorage (`SOUND_KEYS`):
-// - music: the music bus (and, behind AMBIENCE_ENABLED, the generated ambience and score);
-// - effects: the effects bus, and the narrator's voice (narration.ts reads its volume).
+// - music: the music bus (off: `MUSIC_ENABLED`, sound-files brief, 3; kept for when music comes back);
+// - effects: the effects bus, and the narrator's voice (narration.ts reads its volume): the one "Sound" control.
 // The music side passes through a duck, so it dips under hooks, stamps and the voice. A cap on the one-shot voices
 // playing at once. Everything fades out when the tab is hidden.
 
-import { SOUND, SOUND_KEYS } from '@/lib/sound/levels';
+import { MUSIC_ENABLED, SOUND, SOUND_KEYS } from '@/lib/sound/levels';
 
 export type Channel = 'music' | 'effects';
 export type BusName = 'music' | 'ambience' | 'score' | 'effects';
@@ -107,9 +107,9 @@ export class SoundEngine {
     return this.channels[channel].volume;
   }
 
-  /** True while either channel is on. */
+  /** True while a channel that can be heard is on: Sound (the effects), and the music only while it is enabled. */
   get enabled(): boolean {
-    return this.channels.music.on || this.channels.effects.on;
+    return this.channels.effects.on || (MUSIC_ENABLED && this.channels.music.on);
   }
 
   /** True once a gesture has started the sound, while either channel is on. */

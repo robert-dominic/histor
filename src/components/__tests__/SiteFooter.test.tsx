@@ -56,9 +56,8 @@ describe('the footer', () => {
     expect(screen.queryByRole('region', { name: 'Sources' })).toBeNull();
     const credits = screen.getByRole('region', { name: 'Credits' });
     expect(credits.textContent).toContain('Images');
-    for (const track of maryCeleste.theme.playlists?.story ?? []) {
-      expect(credits.textContent).toContain(track.title);
-    }
+    // The music is off (sound-files 3): no music is credited.
+    expect(credits.textContent).not.toContain('Music');
   });
 
   test('without a case: no sources or credits, the rest as ever', () => {

@@ -1,11 +1,13 @@
 // src/features/verdict/CaseCredits.tsx
 // The case's credits, at the foot of the report (music brief, 2): a "Music" section listing each track of the case's
 // playlists, its title and its credit. Nothing is shown for a case without music.
+import { MUSIC_ENABLED } from '@/lib/sound/levels';
 import type { CaseTheme } from '@/types/case';
 
 export default function CaseCredits({ playlists }: { playlists: CaseTheme['playlists'] }) {
   // Each track once, even if both playlists list it.
-  const tracks = [...(playlists?.story ?? []), ...(playlists?.desk ?? [])].filter(
+  // No music plays while it is off (sound-files brief, 3), so none is credited.
+  const tracks = (MUSIC_ENABLED ? [...(playlists?.story ?? []), ...(playlists?.desk ?? [])] : []).filter(
     (track, index, all) => all.findIndex(other => other.src === track.src) === index
   );
   if (tracks.length === 0) {

@@ -315,13 +315,13 @@ describe('Case page: open case', () => {
     }
   });
 
-  test('the choice is remembered (ui-pass 2): histor:story-mode keeps the mode and the two switches', async () => {
+  test('the choice is remembered (ui-pass 2): histor:story-mode keeps the mode and the Sound switch', async () => {
     renderCasePage(`/case/${openEntry.id}`);
     finishLegendIntro();
     const choice = screen.getByRole('dialog', { name: openEntry.data.title });
-    fireEvent.click(within(choice).getByRole('switch', { name: 'Effects' }));
+    fireEvent.click(within(choice).getByRole('switch', { name: 'Sound' }));
     fireEvent.click(within(choice).getByRole('button', { name: 'Play the story' }));
-    expect(JSON.parse(localStorage.getItem(STORY_MODE_KEY)!)).toEqual({ mode: 'play', music: true, effects: false });
+    expect(JSON.parse(localStorage.getItem(STORY_MODE_KEY)!)).toEqual({ mode: 'play', sound: false });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
   });
 

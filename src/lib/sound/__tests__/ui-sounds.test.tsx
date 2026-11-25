@@ -8,9 +8,9 @@ import DeskGuide from '@/features/board/DeskGuide';
 import PlayChoice from '@/features/story/PlayChoice';
 import { startSound, sound } from '@/lib/sound';
 import { SoundEngine } from '@/lib/sound/engine';
-import { SOUND } from '@/lib/sound/levels';
+import { SAMPLES } from '@/lib/sound/levels';
 import { freshMemory, soundFor, type SoundRow } from '@/lib/sound/sound-map';
-import { VOICES } from '@/lib/sound/voices';
+import { SAMPLE_NAMES } from '@/lib/sound/samples';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import DevSound from '@/pages/DevSound';
 import { stubMatchMedia } from '@/test/match-media';
@@ -45,17 +45,9 @@ describe('the interface\'s rows', () => {
     expect(sounds(soundFor({ type: 'modal', name: 'play-choice', open: false }, freshMemory()))).toEqual(['modal']);
   });
 
-  test('hovering files on the floor: a very faint brush, at most 4 a second', () => {
-    const memory = freshMemory();
-    const brushes = Array.from({ length: 50 }, (_, index) => soundFor({ type: 'file-hover' }, memory, 1000 + index * 20)).filter(row => row !== null);
-    expect(brushes.length).toBeLessThanOrEqual(SOUND.brushesPerSecond);
-    expect(brushes.length).toBeGreaterThan(0);
-  });
-
-  test('subtle: every interface sound is short and far under the stamps', () => {
-    for (const name of ['paper-tick', 'switch-click', 'page-flip', 'slide-out', 'brush'] as const) {
-      expect(VOICES[name].seconds).toBeLessThan(0.5);
-    }
+  test('hovering is silent now: hover sounds are cut (sound-files 3)', () => {
+    expect(soundFor({ type: 'file-hover' }, freshMemory(), 1000)).toBeNull();
+    expect(soundFor({ type: 'pile-hover' }, freshMemory(), 1000)).toBeNull();
   });
 });
 
@@ -120,13 +112,12 @@ describe('the moments the interface sends', () => {
 });
 
 describe('/dev/sound', () => {
-  test('every sound has a button that plays it, the new interface sounds among them', () => {
+  test('every sound file has a button that plays it, with its level from the tune table (sound-files 4)', () => {
     render(<DevSound />);
-    for (const name of Object.keys(VOICES)) {
-      expect(document.querySelector(`[data-dev-sound="${name}"]`), name).not.toBeNull();
-    }
-    for (const name of ['paper-tick', 'page-flip', 'slide-out', 'brush', 'switch-click', 'paper-slide']) {
-      expect(document.querySelector(`[data-dev-sound="${name}"]`)?.textContent).not.toBe(name);
+    for (const name of SAMPLE_NAMES) {
+      const button = document.querySelector(`[data-dev-sound="${name}"]`);
+      expect(button, name).not.toBeNull();
+      expect(button!.querySelector('[data-dev-level]')!.textContent).toContain(String(SAMPLES[name].level));
     }
   });
 });

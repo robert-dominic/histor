@@ -1,7 +1,7 @@
 // src/components/SoundControls.tsx
-// The two sound controls in the case header (music brief, 1): Music (a note) and Effects (a speaker; the effects and
-// the narrator's voice). A click only turns one on or off, remembered (`histor:music`, `histor:effects`); it never
-// opens the popover. Hovering with a mouse, reaching it with the keyboard, or a long press on touch shows a small
+// The sound control in the case header: one now, Sound (a speaker: the effects and the narrator's voice; the music is
+// off, sound-files brief, 3). A click only turns it on or off, remembered (`histor:effects`); it never opens the
+// popover. Hovering with a mouse, reaching it with the keyboard, or a long press on touch shows a small
 // popover with its volume slider, remembered too; only one popover is open at a time (`usePopover`, the popover
 // rules of the review-fixes brief, 2). Turning one on is a gesture, so it starts the sound at once.
 import type { CSSProperties, ReactNode } from 'react';
@@ -10,9 +10,6 @@ import { useSoundChannel } from '@/lib/sound';
 import type { Channel } from '@/lib/sound/engine';
 import { usePopover } from '@/lib/use-popover';
 
-const NOTE = (
-  <path d="M9 17.5V6.2l9-1.9v11.2M9 17.5a2.5 2.2 0 1 1-5 0 2.5 2.2 0 0 1 5 0Zm9-2a2.5 2.2 0 1 1-5 0 2.5 2.2 0 0 1 5 0Z" />
-);
 const SPEAKER = <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor" fillOpacity="0.2" />;
 
 function SoundControl({ channel, label, icon, waves }: { channel: Channel; label: string; icon: ReactNode; waves: boolean }) {
@@ -78,8 +75,7 @@ function SoundControl({ channel, label, icon, waves }: { channel: Channel; label
 export default function SoundControls() {
   return (
     <div data-sound="controls" className="flex items-center gap-2.5">
-      <SoundControl channel="music" label="Music" icon={NOTE} waves={false} />
-      <SoundControl channel="effects" label="Effects" icon={SPEAKER} waves />
+      <SoundControl channel="effects" label="Sound" icon={SPEAKER} waves />
     </div>
   );
 }
