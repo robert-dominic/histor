@@ -32,5 +32,5 @@ export function useLandingMusic(tracks = LANDING_PLAYLIST) {
     }
     setPlaying(!playing);
   }, [playing, tracks]);
-  return { available: tracks.length > 0, playing, toggle };
+  return { available: tracks.length > 0, playing, toggle, tip: playing ? undefined : 'Play music' };
 }

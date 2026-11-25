@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/pages/__tests__/Home.test.tsx
 // "/" is the landing page (landing brief): one section per case, in the registry's order; the opening wordmark docks
-// into the header, which then offers "Start investigating" (and Music, when the landing has tracks).
+// into the header, which then offers "Walk the archive" (and Music, when the landing has tracks).
 import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react';
 import gsap from 'gsap';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -161,18 +161,77 @@ describe('the opening (landing v2 brief, 1)', () => {
   });
 });
 
-describe('the header (landing brief, 2)', () => {
-  test('the wordmark links to "/"; "Start investigating" goes to the first open case; no Music without tracks', () => {
+describe('the header (landing v3 brief)', () => {
+  test('the wordmark links to "/"; "Walk the archive" on the right; no "Start investigating"', () => {
     renderHome();
     const header = document.querySelector<HTMLElement>('[data-landing="header"]')!;
     expect(within(header).getByRole('link', { name: 'Histor, back to the top' }).getAttribute('href')).toBe('/');
-    expect(within(header).getByRole('link', { name: 'Start investigating' }).getAttribute('href')).toBe('/case/mary-celeste');
-    expect(within(header).queryByRole('button', { name: 'Music' })).toBeNull();
+    expect(within(header).getByRole('button', { name: 'Walk the archive', hidden: true })).toBeDefined();
+    expect(within(header).queryByText('Start investigating')).toBeNull();
   });
 
-  test('the Music pill is there once the landing has tracks', () => {
+  test('the music button is there once the landing has tracks', () => {
     expect(renderHook(() => useLandingMusic([])).result.current.available).toBe(false);
     expect(renderHook(() => useLandingMusic([{ src: '/a.mp3', title: 'A', credit: 'B' }])).result.current.available).toBe(true);
+  });
+});
+
+describe('the archive room (landing v3 brief)', () => {
+  const walk = () => {
+    renderHome();
+    const button = document.querySelector<HTMLButtonElement>('[data-landing="walk"]')!;
+    act(() => {
+      fireEvent.click(button);
+    });
+    return button;
+  };
+
+  test('a full-screen dark wall with every case frame hung together at varied sizes; the page behind is inert', () => {
+    walk();
+    const room = screen.getByRole('dialog', { name: 'The archive' });
+    expect(room.getAttribute('aria-modal')).toBe('true');
+    const items = room.querySelectorAll<HTMLElement>('[data-salon="item"]');
+    expect([...items].map(item => item.dataset.salonCase)).toEqual(exhibits.map(exhibit => exhibit.id));
+    const heights = new Set([...items].map(item => item.querySelector<HTMLElement>('.haunted-frame')!.style.getPropertyValue('--frame-h')));
+    expect(heights.size).toBeGreaterThan(3);
+    expect(document.querySelector('[data-landing="stage"]')!.hasAttribute('inert')).toBe(true);
+    expect(room.className).toContain('salon-wall');
+  });
+
+  test('an open case opens its case; a sealed one raises its plaque', () => {
+    walk();
+    const room = screen.getByRole('dialog', { name: 'The archive' });
+    expect(within(room).getByRole('link', { name: 'Open the case: The Mary Celeste' }).getAttribute('href')).toBe('/case/mary-celeste');
+    fireEvent.click(within(room).getByRole('button', { name: 'Jack the Ripper: sealed' }));
+    expect(within(room).getByRole('dialog', { name: 'Jack the Ripper, sealed' }).textContent).toContain('Sealed — case file in preparation.');
+  });
+
+  test('hovering lights a frame (a layer whose opacity changes, behind a hover media query)', () => {
+    const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    const room = css.slice(css.indexOf('/* The archive room'));
+    expect(room).toMatch(/@media \(hover: hover\) and \(pointer: fine\)[\s\S]*\.salon-item:hover \.salon-light/);
+    expect(room).not.toMatch(/filter:/);
+  });
+
+  test('the close icon or Escape returns to the landing, and focus goes back to the button', () => {
+    for (const close of ['icon', 'escape']) {
+      const button = walk();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close the archive' }));
+      act(() => {
+        if (close === 'icon') {
+          fireEvent.click(screen.getByRole('button', { name: 'Close the archive' }));
+        } else {
+          fireEvent.keyDown(document, { key: 'Escape' });
+        }
+      });
+      act(() => {
+        settle();
+      });
+      expect(screen.queryByRole('dialog', { name: 'The archive' })).toBeNull();
+      expect(document.querySelector('[data-landing="stage"]')!.hasAttribute('inert')).toBe(false);
+      expect(document.activeElement).toBe(button);
+      cleanup();
+    }
   });
 });
 
@@ -384,9 +443,9 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     expect(gsap.getProperty(rise, 'y')).toBe(0);
     expect(gsap.getTweensOf(section.querySelector('[data-frame-part="veil"]'))).toHaveLength(0);
     expect(section.querySelector('[data-exhibit-part="rise"] .haunted-frame')!.className).toContain('max-lg:w-[72%]');
-    // The header keeps the wordmark and "Start investigating".
+    // The header keeps the wordmark and "Walk the archive".
     const header = document.querySelector<HTMLElement>('[data-landing="header"]')!;
-    expect(within(header).getByRole('link', { name: 'Start investigating' })).toBeDefined();
+    expect(within(header).getByRole('button', { name: 'Walk the archive', hidden: true })).toBeDefined();
   });
 
   test('a laptop at full motion: frames rise in, the veil sways; reduced motion: none of it, fades only', () => {

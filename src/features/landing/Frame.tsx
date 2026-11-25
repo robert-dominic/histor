@@ -11,11 +11,13 @@ interface FrameProps {
   /** A small copy: the next frame peeking in. */
   peek?: boolean;
   className?: string;
+  /** Another height than the shape's own, as a CSS length (the archive room hangs the frames at different sizes). */
+  height?: string;
 }
 
-export default function Frame({ exhibit, peek = false, className = '' }: FrameProps) {
+export default function Frame({ exhibit, peek = false, className = '', height }: FrameProps) {
   const shape = FRAME_SHAPES[exhibit.frame];
-  const style = { aspectRatio: shape.ratio, '--frame-h': shape.height } as CSSProperties;
+  const style = { aspectRatio: shape.ratio, '--frame-h': height ?? shape.height } as CSSProperties;
   const image = exhibit.frameImage;
   return (
     <div data-frame={exhibit.frame} data-status={exhibit.status} aria-hidden="true" style={style} className={`haunted-frame block ${className}`}>

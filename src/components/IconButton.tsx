@@ -8,6 +8,8 @@ import { useTooltip } from '@/lib/use-tooltip';
 interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   /** What it does: its aria-label and its tooltip. */
   label: string;
+  /** What the tooltip says, when it is not the label (the music button names the track playing). */
+  tip?: string;
   icon: ReactNode;
   /** Keeps the tooltip away (its menu is open). */
   quiet?: boolean;
@@ -16,7 +18,7 @@ interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   ref?: Ref<HTMLButtonElement>;
 }
 
-export default function IconButton({ label, icon, quiet = false, tipSide = 'below', className = '', ref, onPointerEnter, onPointerLeave, onFocus, onBlur, onPointerDown, ...rest }: IconButtonProps) {
+export default function IconButton({ label, tip: tipText, icon, quiet = false, tipSide = 'below', className = '', ref, onPointerEnter, onPointerLeave, onFocus, onBlur, onPointerDown, ...rest }: IconButtonProps) {
   const { tip, handlers } = useTooltip();
   const id = useId();
   const shown = tip && !quiet;
@@ -60,7 +62,7 @@ export default function IconButton({ label, icon, quiet = false, tipSide = 'belo
           tipSide === 'below' ? 'top-[calc(100%+0.4rem)] -translate-y-1' : 'bottom-[calc(100%+0.4rem)] translate-y-1'
         }`}
       >
-        {label}
+        {tipText ?? label}
       </span>
     </span>
   );
