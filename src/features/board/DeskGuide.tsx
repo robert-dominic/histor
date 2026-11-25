@@ -189,6 +189,8 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
             }
           }}
         >
+          {/* Aged paper with torn edges (dread pass, 1); its shadow on the layer around it. */}
+          <div className="deckle-shadow w-full max-w-xl">
           <div
             ref={panelRef}
             role="dialog"
@@ -196,7 +198,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
             aria-labelledby="desk-guide-title"
             data-hint="guide"
             data-lenis-prevent
-            className="thin-scroll max-h-[88svh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-[2px] bg-paper px-6 pt-6 pb-5 text-ink shadow-2xl shadow-black/70"
+            className="thin-scroll deckle-3 max-h-[88svh] w-full overflow-y-auto overscroll-contain rounded-[2px] bg-paper px-6 pt-6 pb-5 text-ink"
           >
             <h2 ref={headingRef} id="desk-guide-title" tabIndex={-1} className="font-legend text-3xl leading-none outline-none">
               How to investigate
@@ -266,6 +268,7 @@ export default function DeskGuide({ caseId, intro, threshold, startOpen, onShown
             >
               Close
             </button>
+          </div>
           </div>
         </div>
       )}

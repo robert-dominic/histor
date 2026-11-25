@@ -80,7 +80,7 @@ export default function TheoryNote({ theory, className = '', fitted = false, wei
       tabIndex={0}
       aria-labelledby={titleId}
       // While a folder is dragged over it, the note lights up above the lamp's shadow.
-      className={`group/note rounded-[2px] outline-offset-4 focus-visible:outline-2 focus-visible:outline-brass ${className} data-[drop-hot=true]:z-[22]`}
+      className={`group/note ${fitted ? 'slate-shadow' : ''} rounded-[2px] outline-offset-4 focus-visible:outline-2 focus-visible:outline-brass ${className} data-[drop-hot=true]:z-[22]`}
     >
       <div
         data-board="paper"

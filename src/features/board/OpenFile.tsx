@@ -679,7 +679,7 @@ export default function OpenFile({ evidence, index }: OpenFileProps) {
 
                 {/* A file pinned before: the historians' slip stays clipped to it. */}
                 {pinReading !== undefined && (
-                  <div data-file="reveal" className="desk-slip mt-5 max-w-xl -rotate-[0.6deg] rounded-[2px] px-4 py-3.5 shadow-md shadow-black/30">
+                  <div data-file="reveal" className="desk-slip deckle-2 mt-5 max-w-xl -rotate-[0.6deg] rounded-[2px] px-4 py-3.5 shadow-md shadow-black/30">
                     <p className="font-voice text-[0.9375rem] text-ink">
                       <span data-file="reading" data-reading={pinReading.reading}>
                         {READING_LABEL[pinReading.reading]}

@@ -16,6 +16,7 @@ import { formatCaseYears } from '@/lib/case-years';
 import { emitStoryEvent } from '@/lib/story-events';
 import { continuePastGate, hasContinuedPastGate } from '@/lib/phone-gate';
 import { DESKTOP_QUERY, useMediaQuery } from '@/lib/use-media-query';
+import MaterialsScope from '@/app/MaterialsScope';
 
 export default function CaseInvestigation() {
   const { id } = useParams();
@@ -52,6 +53,8 @@ export default function CaseInvestigation() {
 
   const caseData = entry.data;
   return (
+    // The case's materials (dread pass, 1), for the desk and everything over it: read by effects.css.
+    <MaterialsScope materials={caseData.theme.materials}>
     <InvestigationProvider key={caseData.id} caseData={caseData}>
       <CaseHeader
         caseId={caseData.id}
@@ -72,5 +75,6 @@ export default function CaseInvestigation() {
         )}
       </PortalProvider>
     </InvestigationProvider>
+    </MaterialsScope>
   );
 }

@@ -8,6 +8,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader, { type StoryStartState } from '@/components/CaseHeader';
 import SiteFooter from '@/components/SiteFooter';
+import Preloader from '@/features/dread/Preloader';
 import { getCaseById } from '@/cases';
 import LegendIntro from '@/features/legend/LegendIntro';
 import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
@@ -183,6 +184,8 @@ export default function Case() {
           }}
         />
       )}
+      {/* On the first load: the files being recovered, while the fonts and the first images load (dread pass, 1). */}
+      <Preloader images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
         <LegendIntro

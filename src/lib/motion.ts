@@ -26,7 +26,16 @@ export type TokenName =
   | 'story.weighted'
   | 'story.breath'
   | 'story.hook'
-  | 'story.decay';
+  | 'story.decay'
+  | 'dread.rise'
+  | 'dread.lid'
+  | 'dread.blink'
+  | 'dread.gaze'
+  | 'dread.flicker'
+  | 'dread.twitch'
+  | 'dread.drift'
+  | 'dread.cut'
+  | 'dread.progress';
 
 export interface MotionToken {
   ease: string;
@@ -76,6 +85,25 @@ export const MOTION: Record<TokenName, MotionToken> = {
   /** A hook leaving: its letters go one at a time, in a random order, like ink drying away. `duration` is one
    * letter's fade. */
   'story.decay': { ease: 'power1.in', duration: 0.35 },
+  // ---- The dread pass: rare, quiet, slow. Reduced motion: none of these play.
+  /** A ghost line breathing out of a file: rising and drifting like smoke, dissolving (3 to 5s; this is the middle). */
+  'dread.rise': { ease: 'sine.out', duration: 4 },
+  /** The eye's lid opening, slowly; and closing. */
+  'dread.lid': { ease: 'power2.inOut', duration: 1.4 },
+  /** The eye's one blink. */
+  'dread.blink': { ease: 'power2.inOut', duration: 0.18 },
+  /** The pupil following the cursor: heavy, a little behind. */
+  'dread.gaze': { ease: 'power3.out', duration: 0.7 },
+  /** One stutter of the lamp's light (a legend landing; the lantern over a known legend). */
+  'dread.flicker': { ease: 'sine.inOut', duration: 0.09 },
+  /** A legend file's tiny shiver on the floor or the board. */
+  'dread.twitch': { ease: 'power1.inOut', duration: 0.07 },
+  /** The shadow drifting across the deck: constant, slow. */
+  'dread.drift': { ease: 'none', duration: 7 },
+  /** The one jump scare: the cut to black. */
+  'dread.cut': { ease: 'power4.in', duration: 0.08 },
+  /** The preloader's progress line, catching up with what has loaded. */
+  'dread.progress': { ease: 'power2.out', duration: 0.4 },
 };
 
 /** How far text rises, in px, while it fades in (`ink.in`). */

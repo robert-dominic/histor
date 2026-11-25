@@ -61,9 +61,12 @@ export default function Popover({ open, from = 'below', className = '', ref, chi
       }}
       data-popover=""
       data-open={open}
-      className={`popover-paper absolute z-40 p-3.5 ${className}`}
+      className={`deckle-shadow absolute z-40 ${className}`}
     >
-      {children}
+      {/* Aged paper with torn edges (dread pass, 1): the mask is on the paper, the shadow on the panel around it. */}
+      <div data-popover="paper" className="popover-paper deckle-1 p-3.5">
+        {children}
+      </div>
     </div>
   );
 }

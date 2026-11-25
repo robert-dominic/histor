@@ -23,9 +23,13 @@ describe('Popover', () => {
   test('paper, 14px inside; opens with paper.lift, closes quicker, and stays drawn until it has gone', () => {
     stubMatchMedia();
     const { rerender } = render(<Popover open>Inside</Popover>);
-    const panel = screen.getByText('Inside');
-    expect(panel.className).toContain('popover-paper');
-    expect(panel.className).toContain('p-3.5');
+    const paper = screen.getByText('Inside');
+    expect(paper.className).toContain('popover-paper');
+    expect(paper.className).toContain('p-3.5');
+    // Torn edges on the paper, its shadow on the panel around it (dread pass, 1).
+    expect(paper.className).toMatch(/deckle-\d/);
+    const panel = paper.parentElement!;
+    expect(panel.className).toContain('deckle-shadow');
     const opening = gsap.getTweensOf(panel)[0];
     expect(opening.vars.ease).toBe(MOTION['paper.lift'].ease);
     rerender(<Popover open={false}>Inside</Popover>);
@@ -52,7 +56,7 @@ describe('Popover', () => {
     });
     const slider = screen.getByRole('slider', { name: 'Sound volume' });
     expect(slider.className).toContain('paper-range');
-    expect(slider.closest('[data-popover]')?.className).toContain('popover-paper');
+    expect(slider.closest('[data-popover="paper"]')?.className).toContain('popover-paper');
     expect(slider.parentElement!.textContent).toMatch(/\d+%/);
     vi.useRealTimers();
   });

@@ -22,6 +22,15 @@ const NAMES: TokenName[] = [
   'story.breath',
   'story.hook',
   'story.decay',
+  'dread.rise',
+  'dread.lid',
+  'dread.blink',
+  'dread.gaze',
+  'dread.flicker',
+  'dread.twitch',
+  'dread.drift',
+  'dread.cut',
+  'dread.progress',
 ];
 
 describe('motion tokens', () => {

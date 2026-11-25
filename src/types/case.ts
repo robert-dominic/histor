@@ -226,6 +226,21 @@ export interface CaseTheme {
    * verdict and the report), shuffled and crossfaded. Optional: without one, there is no music.
    */
   playlists?: { story?: Track[]; desk?: Track[] };
+  /**
+   * The case's materials (dread pass, 1): the textures its desk is made of. Optional: without them, the plain felt.
+   * The Mary Celeste brings salt and sailcloth; a later case its own (soot, fog, gaslight).
+   */
+  materials?: CaseMaterials;
+}
+
+/** The board's material: worn sailcloth. A later case adds its own (and its CSS in effects.css). */
+export const BOARD_MATERIALS = ['sailcloth'] as const;
+/** The stains on the case's paper and cloth. */
+export const STAIN_MATERIALS = ['salt'] as const;
+
+export interface CaseMaterials {
+  board?: (typeof BOARD_MATERIALS)[number];
+  stains?: (typeof STAIN_MATERIALS)[number];
 }
 
 /** One music track: where it streams from, its title, and its credit (the artist and the source). */

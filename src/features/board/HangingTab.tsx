@@ -87,7 +87,7 @@ export default function HangingTab({ evidence, number, href, reading, slipOpen, 
           <div
             ref={slipRef}
             data-board="slip"
-            className="desk-slip relative mx-1.5 -mt-px rounded-b-[2px] px-3 pt-2.5 pb-3 text-ink shadow-lg shadow-black/50"
+            className="desk-slip deckle-2 relative mx-1.5 -mt-px rounded-b-[2px] px-3 pt-2.5 pb-3 text-ink shadow-lg shadow-black/50"
           >
             {/* A small brass clip holds the slip to the tab. */}
             <span aria-hidden="true" className="absolute -top-1 right-4 h-3 w-1.5 rounded-[1px] bg-brass/80" />

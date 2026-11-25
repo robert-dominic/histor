@@ -1,5 +1,5 @@
 // src/lib/validate-case.ts
-import { HOOK_SOUNDS, type AmbienceCue, type AmbienceLayer, type Case } from '@/types/case';
+import { BOARD_MATERIALS, HOOK_SOUNDS, STAIN_MATERIALS, type AmbienceCue, type AmbienceLayer, type Case } from '@/types/case';
 import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
@@ -315,6 +315,22 @@ export function validateCase(caseData: Case): string[] {
             errors.push(`Field theme.ambience.cues[${j}].sound: Must be one of ${AMBIENCE_CUES.join(', ')}`);
           }
         });
+      }
+    }
+  }
+
+  // Validate the optional materials (dread pass, 1): an object whose board and stains, when present, are known
+  const materials: unknown = caseData.theme?.materials;
+  if (materials !== undefined) {
+    if (materials === null || typeof materials !== 'object' || Array.isArray(materials)) {
+      errors.push('Field theme.materials: Must be an object');
+    } else {
+      const { board, stains } = materials as Record<string, unknown>;
+      if (board !== undefined && !(BOARD_MATERIALS as readonly unknown[]).includes(board)) {
+        errors.push(`Field theme.materials.board: Must be one of ${BOARD_MATERIALS.join(', ')}`);
+      }
+      if (stains !== undefined && !(STAIN_MATERIALS as readonly unknown[]).includes(stains)) {
+        errors.push(`Field theme.materials.stains: Must be one of ${STAIN_MATERIALS.join(', ')}`);
       }
     }
   }

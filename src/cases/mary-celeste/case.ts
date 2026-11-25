@@ -451,6 +451,8 @@ export const maryCeleste: Case = {
       // A ship's bell, far away, once, as the Dei Gratia sights her.
       cues: [{ chapter: 's-found', sound: 'ships-bell' }]
     },
+    // Everything recovered from the sea (dread pass, 1): a sailcloth board, salt and tide stains.
+    materials: { board: 'sailcloth', stains: 'salt' },
     ...(music === undefined ? {} : { playlists: music.playlists })
   }
 };

@@ -18,6 +18,7 @@ import PortalText from '@/features/portals/PortalText';
 import { STATUS_LABEL } from '@/lib/case-files';
 import { firstSentence } from '@/lib/desk';
 import type { Evidence } from '@/types/case';
+import { deckleOf, paperMarks } from '@/lib/materials';
 
 interface FileDocumentProps {
   evidence: Evidence;
@@ -85,6 +86,8 @@ function QueryMark() {
 }
 
 export default function FileDocument({ evidence, number, headingRef, revealed, children }: FileDocumentProps) {
+  const deckle = deckleOf(evidence.id);
+  const marks = paperMarks(evidence.id);
   return (
     <div data-file="document" className="relative">
       <article
@@ -93,15 +96,19 @@ export default function FileDocument({ evidence, number, headingRef, revealed, c
         data-revealed={revealed ? 'true' : undefined}
         aria-labelledby="file-title"
         // A disputed sheet keeps room at its foot, where the second sheet overlaps it.
-        className={`relative z-[1] px-5 pt-8 text-ink shadow-xl shadow-black/40 sm:px-10 sm:pt-10 ${
+        className={`relative z-[1] px-5 pt-8 text-ink sm:px-10 sm:pt-10 ${
           evidence.status === 'record' ? 'rounded-none' : 'rounded-[2px]'
         } ${evidence.status === 'disputed' ? 'pb-12 sm:pb-14' : 'pb-8'}`}
       >
-        {/* The paper itself, under the text: plain at first; a legend's yellows into the aged sheet. */}
-        <div aria-hidden="true" data-paper="plain" className="absolute inset-0 -z-10 rounded-[inherit] bg-paper" />
-        {evidence.status === 'legend' && (
-          <div aria-hidden="true" data-paper="aged" className="absolute inset-0 -z-10 rounded-[inherit]" />
-        )}
+        {/* The paper itself, under the text: plain at first; a legend's yellows into the aged sheet. Its edges are torn
+            (a mask picked from the id), so its shadow is a filter on the layer around it (dread pass, 1); some sheets
+            carry a water ring, or a curled corner. */}
+        <div aria-hidden="true" className="deckle-shadow absolute inset-0 -z-10">
+          <div data-paper="plain" className={`absolute inset-0 rounded-[inherit] bg-paper ${deckle}`} />
+          {evidence.status === 'legend' && <div data-paper="aged" className={`absolute inset-0 rounded-[inherit] ${deckle}`} />}
+          {marks.ring !== null && <span data-paper="ring" className="paper-ring" style={{ left: `${marks.ring.x}%`, top: `${marks.ring.y}%` }} />}
+          {marks.curl && <span data-paper="curl" className="paper-curl" />}
+        </div>
         <PaperClip />
 
         <div className="flex items-start justify-between gap-4">

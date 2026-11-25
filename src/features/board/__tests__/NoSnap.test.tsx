@@ -130,7 +130,8 @@ describe('the ? guide', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(document.activeElement).toBe(button);
     expect(screen.queryByRole('dialog')).not.toBeNull();
-    const overlay = dialog.parentElement!;
+    // The overlay holds the panel's torn-edge shadow layer, which holds the panel (dread pass, 1).
+    const overlay = dialog.parentElement!.parentElement!;
     const leaving = gsap.getTweensOf(overlay)[0];
     expect(leaving.vars).toMatchObject({ opacity: 0, ease: 'power2.in' });
     expect(leaving.vars.duration as number).toBeLessThan(0.2);
