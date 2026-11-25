@@ -170,6 +170,16 @@ describe('the header (landing v3 brief)', () => {
     expect(within(header).queryByText('Start investigating')).toBeNull();
   });
 
+  test('the music button is there, off until clicked, its tooltip "Play music" in the shared tooltip style', () => {
+    renderHome();
+    const button = document.querySelector<HTMLButtonElement>('[data-landing="music"]')!;
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(button.getAttribute('aria-label')).toBe('Play music');
+    const tooltip = button.parentElement!.querySelector<HTMLElement>('[data-tooltip]')!;
+    expect(tooltip.textContent).toBe('Play music');
+    expect(tooltip.className).toContain('desk-slip');
+  });
+
   test('the music button is there once the landing has tracks', () => {
     expect(renderHook(() => useLandingMusic([])).result.current.available).toBe(false);
     expect(renderHook(() => useLandingMusic([{ src: '/a.mp3', title: 'A', credit: 'B' }])).result.current.available).toBe(true);

@@ -1,18 +1,26 @@
 // src/features/landing/use-landing-music.ts
-// The landing page's Music pill (landing brief, 2): it plays and pauses the landing playlist through the one sound
-// engine and the playlist player (src/lib/sound/music.ts). Nothing exists until there are tracks.
+// The landing page's music button (landing v3 brief): it starts and stops the landing music (src/lib/landing-music.ts),
+// quiet and off until clicked, and says what is playing in its tooltip. Nothing exists until there are tracks.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LANDING_PLAYLIST } from '@/landing/music';
-import { sound } from '@/lib/sound';
-import { MusicPlayer } from '@/lib/sound/music';
+import { LandingMusic, musicTip } from '@/lib/landing-music';
 
 export function useLandingMusic(tracks = LANDING_PLAYLIST) {
-  const playerRef = useRef<MusicPlayer | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const player = useRef<LandingMusic | null>(null);
+  const [state, setState] = useState<{ playing: boolean; tip: string }>({ playing: false, tip: 'Play music' });
+  const ensure = useCallback(() => {
+    if (player.current === null) {
+      const created = new LandingMusic(tracks);
+      created.onChange(() => setState({ playing: created.playing, tip: musicTip(created.track, created.playing) }));
+      player.current = created;
+    }
+    return player.current;
+  }, [tracks]);
+  // Leaving the page: the music fades out and goes.
   useEffect(
     () => () => {
-      playerRef.current?.stop();
-      playerRef.current = null;
+      player.current?.destroy();
+      player.current = null;
     },
     []
   );
@@ -20,17 +28,12 @@ export function useLandingMusic(tracks = LANDING_PLAYLIST) {
     if (tracks.length === 0) {
       return;
     }
-    if (playerRef.current === null) {
-      playerRef.current = new MusicPlayer(sound);
-      playerRef.current.setPlace('story', { story: tracks });
-    }
-    sound.unlock();
-    if (playing) {
-      playerRef.current.pause();
+    const music = ensure();
+    if (music.playing) {
+      music.stop();
     } else {
-      playerRef.current.resume();
+      music.start();
     }
-    setPlaying(!playing);
-  }, [playing, tracks]);
-  return { available: tracks.length > 0, playing, toggle, tip: playing ? undefined : 'Play music' };
+  }, [ensure, tracks]);
+  return { available: tracks.length > 0, playing: state.playing, tip: state.tip, toggle };
 }

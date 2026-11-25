@@ -2,6 +2,7 @@
 // What the /credits page lists (the fix list): each case's credits, built from its own data (the legend's video, the
 // chapters' images, the portraits and maps, its sound and, while it plays, its music), and the app's own credits (the
 // fonts, the sound and music sources, the libraries). Pure.
+import { LANDING_PLAYLIST } from '@/landing/music';
 import { storyImageCredit } from '@/lib/image-credit';
 import { MUSIC_ENABLED } from '@/lib/sound/levels';
 import { SOUND_CREDIT } from '@/lib/sound-credit';
@@ -55,7 +56,8 @@ export const APP_CREDITS: { heading: string; lines: CreditLine[] }[] = [
     heading: 'Sound and music',
     lines: [
       { what: 'Sound effects', credit: 'Mixkit (mixkit.co): no attribution required, credited as good practice' },
-      { what: 'Music', credit: 'Pixabay (pixabay.com): the case music, off for now' },
+      { what: 'Music', credit: 'Pixabay (pixabay.com): the landing page plays the story playlist, quietly, once the music button is pressed' },
+      ...LANDING_PLAYLIST.map(track => ({ what: `Landing music · ${track.title}`, credit: track.credit })),
     ],
   },
   {
