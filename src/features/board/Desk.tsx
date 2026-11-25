@@ -38,6 +38,7 @@ import { droppedSpot, type DroppedSpot } from '@/lib/floor';
 import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
 import { isDeskGuideOff } from '@/lib/desk-guide-seen';
+import GhostLines from '@/features/dread/GhostLines';
 
 gsap.registerPlugin(useGSAP);
 
@@ -472,7 +473,7 @@ function DeskScreen() {
                   <p data-desk="floor-label" className="relative z-[21] h-5 shrink-0 pl-1 font-voice text-[0.6875rem] tracking-[0.2em] text-night-ink/65 uppercase">
                     Case files · {caseData.evidence.length}
                   </p>
-                  <div className="min-h-0 flex-1">
+                  <div className="relative min-h-0 flex-1">
                     <Floor
                       layout={layout}
                       filesHref={`${base}/files`}
@@ -482,6 +483,8 @@ function DeskScreen() {
                       onRearrange={rememberDrop}
                       onDrop={handleFloorDrop}
                     />
+                    {/* The files breathe out lines of their own text, now and then (dread pass, 3). */}
+                    <GhostLines evidence={caseData.evidence} paused={fileOpen} />
                   </div>
                 </div>
                 <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
