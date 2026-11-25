@@ -994,7 +994,7 @@ describe('Story: the progress rail', () => {
     expect(ticks[0].dataset.current).toBe('true');
   });
 
-  test('clicking the question tick goes to its first line; the rail hides while the fork is open', () => {
+  test('clicking the question tick goes to the question; the rail hides while the fork is open', () => {
     const { container } = render(
       <MemoryRouter>
         <Story
@@ -1010,12 +1010,12 @@ describe('Story: the progress rail', () => {
     const ticks = [...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
     fireEvent.click(ticks.at(-1)!);
     settleSteps();
-    expect(stepOf(container)).toBe('line-0');
+    expect(stepOf(container)).toMatch(/^line-/);
     expect(ticks.at(-1)?.dataset.current).toBe('true');
   });
 });
 
-describe('Story: the central question, one line per step', () => {
+describe('Story: the central question, one scroll for all of it (the fix list)', () => {
   const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/case/mary-celeste/files' };
   function renderQuestion(start: Start = READ) {
     return render(
@@ -1052,21 +1052,28 @@ describe('Story: the central question, one line per step', () => {
     expect(container.querySelector('[data-story="after-question"]')).toBeNull();
   });
 
-  test('each line is a step: it plays in on a timer when reached, and leaves when the reader goes back', () => {
+  test('one scroll reveals the whole question, line by line on a timer about 0.5s apart; back, it goes', () => {
     const { container } = renderQuestion();
     const phrases = [...container.querySelectorAll<HTMLElement>('[data-story="phrase"]')];
-    toQuestion(container);
-    expect(phrases.map(phrase => phrase.style.opacity)).toEqual(phrases.map((_, index) => (index === 0 ? '1' : '0')));
-    wheelBurst(stageOf(container));
-    const playIn = gsap.getTweensOf(phrases[1]).find(tween => tween.vars.ease === 'power3.out')!;
-    expect(playIn.vars.duration).toBe(STORY_PACE.questionPhrase);
+    // Through the story, one scroll at a time, until a scroll brings the question; that scroll's own animation.
+    let transition: gsap.core.Timeline | undefined;
+    for (let step = 0; step < 30 && !/^line-/.test(stepOf(container) ?? ''); step += 1) {
+      finishWriting(container);
+      wheelBurst(stageOf(container));
+      transition = gsap.globalTimeline.getChildren(false, false, true).filter(child => child.data === 'story-step').at(-1) as gsap.core.Timeline;
+      if (!/^line-/.test(stepOf(container) ?? '')) {
+        settleSteps();
+      }
+    }
+    expect(transition!.duration()).toBeGreaterThanOrEqual(STORY_PACE.dissolve + (phrases.length - 1) * STORY_PACE.questionLineGap);
+    expect(STORY_PACE.questionLineGap).toBe(0.5);
     settleSteps();
-    expect(stepOf(container)).toBe('line-1');
-    expect(phrases[1].style.opacity).toBe('1');
+    expect(stepOf(container)).toBe(`line-${phrases.length - 1}`);
+    expect(phrases.every(phrase => phrase.style.opacity === '1')).toBe(true);
+    // Back: to the story's last step before it.
     wheelBurst(stageOf(container), { deltaY: -60 });
     settleSteps();
-    expect(stepOf(container)).toBe('line-0');
-    expect(phrases[1].style.opacity).toBe('0');
+    expect(stepOf(container)).toMatch(/^(page|hook)-/);
   });
 
   test('the lines come from the case data when it has them, and the weighted parts still land', () => {
@@ -1085,13 +1092,9 @@ describe('Story: the central question, one line per step', () => {
     expect(phrases).toEqual(maryCeleste.centralQuestionLines);
     const weighted = [...container.querySelectorAll('[data-story="question"] [data-story="weighted"]')].map(span => span.textContent);
     expect(weighted).toEqual(maryCeleste.centralQuestionEmphasis);
-    // One step per line.
+    // One step for the whole question.
     fireEvent.click([...container.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')].at(-1)!);
     settleSteps();
-    for (let line = 1; line < phrases.length; line += 1) {
-      wheelBurst(stageOf(container));
-      settleSteps();
-    }
     expect(stepOf(container)).toBe(`line-${phrases.length - 1}`);
   });
 
@@ -1108,14 +1111,9 @@ describe('Story: the central question, one line per step', () => {
     expect(container.querySelector('[class*="bg-rust"]')).toBeNull();
   });
 
-  test('after the last line, the next step opens the fork: rising, then settling', () => {
+  test('the next scroll after the question opens the fork: rising, then settling', () => {
     const { container } = renderQuestion();
     toQuestion(container);
-    const lines = container.querySelectorAll('[data-story="phrase"]').length;
-    for (let line = 1; line < lines; line += 1) {
-      wheelBurst(stageOf(container));
-      settleSteps();
-    }
     expect(screen.queryByRole('dialog', { name: 'What next' })).toBeNull();
     wheelBurst(stageOf(container));
     settleSteps();
@@ -1132,11 +1130,9 @@ describe('Story: the central question, one line per step', () => {
   test('Escape on the fork closes it, back to the whole question; so does a gesture back', async () => {
     const { container } = renderQuestion();
     toQuestion(container);
+    wheelBurst(stageOf(container));
+    settleSteps();
     const lines = container.querySelectorAll('[data-story="phrase"]').length;
-    for (let line = 0; line < lines; line += 1) {
-      wheelBurst(stageOf(container));
-      settleSteps();
-    }
     const dialog = screen.getByRole('dialog', { name: 'What next' });
     fireEvent.keyDown(dialog, { key: 'Escape' });
     settleSteps();
@@ -1153,11 +1149,8 @@ describe('Story: the central question, one line per step', () => {
   test('"I\'ve heard enough" shows where historians stand, with two quiet links', () => {
     const { container } = renderQuestion();
     toQuestion(container);
-    const lines = container.querySelectorAll('[data-story="phrase"]').length;
-    for (let line = 0; line < lines; line += 1) {
-      wheelBurst(stageOf(container));
-      settleSteps();
-    }
+    wheelBurst(stageOf(container));
+    settleSteps();
     const dialog = screen.getByRole('dialog', { name: 'What next' });
     settleFork();
     fireEvent.click(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel }));

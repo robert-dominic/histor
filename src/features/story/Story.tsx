@@ -784,22 +784,26 @@ export default function Story({
                 timeline.to(sky, { mix: dayNight[toScene]?.mix ?? 1, duration: STORY_PACE.dissolve, onUpdate: () => writeSky(sky.mix) }, at);
                 return;
               }
-              // On to the question: the black screen comes over the last scene, then its first line plays in.
-              if (to.kind === 'line' && to.line === 0 && questionLayer !== null) {
+              // On to the question: the black screen comes over the last scene, then the whole question plays in, one
+              // line after another on a timer (the fix list: one scroll, the whole question).
+              if (to.kind === 'line' && from.kind !== 'line' && questionLayer !== null) {
                 timeline.fromTo(questionLayer, { opacity: 0 }, { opacity: 1, duration: STORY_PACE.dissolve }, at);
                 at += STORY_PACE.dissolve;
               }
               if (to.kind === 'line') {
-                const line = to.line;
-                timeline.call(
-                  () => {
-                    phraseIns[line]?.timeScale(1).restart();
-                    emitStoryEvent({ type: 'question-line', index: line, direction: 'forward' });
-                  },
-                  undefined,
-                  at
-                );
-                timeline.to({}, { duration: phraseIns[line]?.duration() ?? 0 }, at);
+                const first = from.kind === 'line' ? from.line + 1 : 0;
+                for (let line = first; line <= to.line; line += 1) {
+                  const lineAt = at + (line - first) * STORY_PACE.questionLineGap;
+                  timeline.call(
+                    () => {
+                      phraseIns[line]?.timeScale(1).restart();
+                      emitStoryEvent({ type: 'question-line', index: line, direction: 'forward' });
+                    },
+                    undefined,
+                    lineAt
+                  );
+                  timeline.to({}, { duration: phraseIns[line]?.duration() ?? 0 }, lineAt);
+                }
               }
               // The fork has its own entrance (Fork.tsx).
             });
@@ -1101,10 +1105,11 @@ export default function Story({
             if (now.kind === 'hook') {
               return STORY_PACE.hookHold;
             }
-            const read = readingSeconds(phrases[now.line]?.textContent ?? '');
-            // The question read aloud: its clip starts with its first line; the last line waits for it to end.
+            // The whole question is on screen at its one step: its reading time is all of it.
+            const read = readingSeconds(phrases.slice(0, now.line + 1).map(phrase => phrase.textContent ?? '').join(' '));
+            // The question read aloud: its clip starts with the question; the last line waits for it to end.
             if (centralQuestionNarration !== undefined) {
-              if (now.line === 0) {
+              if (narrator.current(centralQuestionNarration.src) === null) {
                 void narrator.play(centralQuestionNarration.src);
               }
               const clip = narrator.current(centralQuestionNarration.src);

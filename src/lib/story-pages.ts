@@ -47,6 +47,8 @@ export const STORY_PACE = {
   hookDecay: 1,
   /** Each line of the central question plays in over this long. */
   questionPhrase: 0.6,
+  /** One scroll reveals the whole question (the fix list): each line starts this long after the one before. */
+  questionLineGap: 0.5,
   /** A step with nothing to animate (the fork's own modal) still settles after this long, so a burst cannot slip by. */
   settleAtLeast: 0.05,
 

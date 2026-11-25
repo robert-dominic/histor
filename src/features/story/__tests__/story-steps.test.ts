@@ -5,9 +5,9 @@ import maryCeleste from '@/cases/mary-celeste/case';
 import { buildSteps, createWheelGate, stepName, stepOfTick, tickOf } from '@/features/story/story-steps';
 
 describe('buildSteps', () => {
-  test('each chapter its page, then its hook; then the question, one line per step; then the fork', () => {
+  test('each chapter its page, then its hook; then the whole question, one step (the fix list); then the fork', () => {
     const steps = buildSteps([{ hook: 'A hook.' }, {}, { hook: 'Another.' }], 3, true);
-    expect(steps.map(stepName)).toEqual(['page-0', 'hook-0', 'page-1', 'page-2', 'hook-2', 'line-0', 'line-1', 'line-2', 'fork']);
+    expect(steps.map(stepName)).toEqual(['page-0', 'hook-0', 'page-1', 'page-2', 'hook-2', 'line-2', 'fork']);
   });
 
   test('no fork, no fork step', () => {
@@ -21,9 +21,9 @@ describe('buildSteps', () => {
     expect(steps.at(-1)?.kind).toBe('fork');
   });
 
-  test('the rail: one tick per chapter and one for the question; a tick jumps to its page or the first line', () => {
+  test('the rail: one tick per chapter and one for the question; a tick jumps to its page or the question', () => {
     const steps = buildSteps([{ hook: 'A.' }, { hook: 'B.' }], 2, true);
-    expect(steps.map(step => tickOf(step, 2))).toEqual([0, 0, 1, 1, 2, 2, 2]);
+    expect(steps.map(step => tickOf(step, 2))).toEqual([0, 0, 1, 1, 2, 2]);
     expect(stepOfTick(steps, 1, 2)).toBe(2);
     expect(stepOfTick(steps, 2, 2)).toBe(4);
   });

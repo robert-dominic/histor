@@ -15,8 +15,9 @@ export type StoryStep =
   | { kind: 'fork' };
 
 /**
- * The steps, in order: each chapter's page, then its hook (when it has one); then the central question, one line
- * per step; then the fork, when there is one.
+ * The steps, in order: each chapter's page, then its hook (when it has one); then the central question, one step for
+ * the whole of it (its lines play in one after another on a timer: the fix list); then the fork, when there is one.
+ * The question's step is named by its last line (`line` = lines − 1): every line is shown at it.
  */
 export function buildSteps(chapters: readonly { hook?: string }[], lines: number, hasFork: boolean): StoryStep[] {
   const steps: StoryStep[] = [];
@@ -26,8 +27,8 @@ export function buildSteps(chapters: readonly { hook?: string }[], lines: number
       steps.push({ kind: 'hook', chapter: index });
     }
   });
-  for (let line = 0; line < lines; line += 1) {
-    steps.push({ kind: 'line', line });
+  if (lines > 0) {
+    steps.push({ kind: 'line', line: lines - 1 });
   }
   if (hasFork) {
     steps.push({ kind: 'fork' });
