@@ -6,6 +6,7 @@
 // carry the image, so it is saved for attaching.
 import { RANK_COPY } from '@/lib/ui-copy';
 import type { CaseRank } from '@/lib/case-rank';
+import { CARD_MARK as SHARE_MARK, MARK_PATH, MARK_VIEWBOX, markWidth } from '@/lib/brand';
 
 /** The card's size, in px: the size social sites show a link preview at. */
 export const SHARE_CARD = { width: 1200, height: 630 } as const;
@@ -147,6 +148,19 @@ export function drawShareCard(canvas: HTMLCanvasElement, input: ShareCardInput):
   context.strokeRect(36, 36, width - 72, height - 72);
   context.lineWidth = 1;
   context.strokeRect(48, 48, width - 96, height - 96);
+
+  // The Histor mark, small, in the top right corner (quick fixes, 4). Where Path2D is missing (tests), it is left out.
+  if (typeof Path2D !== 'undefined') {
+    const { x, y, height: markHeight } = SHARE_MARK;
+    const scale = markHeight / MARK_VIEWBOX[3];
+    context.save();
+    context.translate(x - markWidth(markHeight), y);
+    context.scale(scale, scale);
+    context.translate(-MARK_VIEWBOX[0], -MARK_VIEWBOX[1]);
+    context.fillStyle = ink;
+    context.fill(new Path2D(MARK_PATH), 'evenodd');
+    context.restore();
+  }
 
   context.textBaseline = 'alphabetic';
   context.textAlign = 'left';

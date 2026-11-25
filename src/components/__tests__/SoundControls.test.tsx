@@ -166,3 +166,14 @@ describe('the sound controls', () => {
     expect(screen.queryByRole('slider')).toBeNull();
   });
 });
+
+describe('the Histor mark in the header (quick fixes, 4)', () => {
+  test('beside the case title, inside its link, hidden from screen readers', () => {
+    render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
+    const link = document.querySelector('[data-case-header="title-link"]')!;
+    const mark = link.querySelector('[data-histor-mark]')!;
+    expect(mark.getAttribute('aria-hidden')).toBe('true');
+    expect(mark.nextElementSibling?.getAttribute('data-case-header')).toBe('title');
+    expect(link.textContent).toBe('Test Case');
+  });
+});

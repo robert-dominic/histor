@@ -4,7 +4,81 @@
 // Pure: it returns the file's bytes. Text is written in WinAnsi (Windows-1252), which covers the case's curly quotes,
 // dashes and accented letters; anything outside it becomes "?".
 
+import { MARK_BODY, MARK_DOT, MARK_VIEWBOX } from '@/lib/brand';
+
 export const A4 = { width: 595.28, height: 841.89 } as const;
+
+/** The control points of a circle drawn as four cubic curves. */
+const KAPPA = 0.5522847498;
+
+/**
+ * An SVG path in absolute M, L, H, V, Q, C and Z commands, as PDF path operators, each point through `at` (from the
+ * SVG's space, y down, to the page's). Quadratic curves become cubic ones (PDF has no quadratic curve).
+ */
+export function pdfPathOps(d: string, at: (x: number, y: number) => [number, number]): string {
+  const tokens = d.match(/[A-Za-z]|-?\d*\.?\d+(?:e-?\d+)?/g) ?? [];
+  const ops: string[] = [];
+  let index = 0;
+  let command = '';
+  let [x, y] = [0, 0];
+  const next = () => Number(tokens[index++]);
+  const point = (px: number, py: number) => at(px, py).map(num).join(' ');
+  while (index < tokens.length) {
+    if (/^[A-Za-z]$/.test(tokens[index])) {
+      command = tokens[index++];
+    }
+    switch (command) {
+      case 'M':
+        [x, y] = [next(), next()];
+        ops.push(`${point(x, y)} m`);
+        command = 'L';
+        break;
+      case 'L':
+        [x, y] = [next(), next()];
+        ops.push(`${point(x, y)} l`);
+        break;
+      case 'H':
+        x = next();
+        ops.push(`${point(x, y)} l`);
+        break;
+      case 'V':
+        y = next();
+        ops.push(`${point(x, y)} l`);
+        break;
+      case 'Q': {
+        const [qx, qy, ex, ey] = [next(), next(), next(), next()];
+        const c1 = [x + (2 / 3) * (qx - x), y + (2 / 3) * (qy - y)] as const;
+        const c2 = [ex + (2 / 3) * (qx - ex), ey + (2 / 3) * (qy - ey)] as const;
+        ops.push(`${point(...c1)} ${point(...c2)} ${point(ex, ey)} c`);
+        [x, y] = [ex, ey];
+        break;
+      }
+      case 'C': {
+        const [x1, y1, x2, y2, ex, ey] = [next(), next(), next(), next(), next(), next()];
+        ops.push(`${point(x1, y1)} ${point(x2, y2)} ${point(ex, ey)} c`);
+        [x, y] = [ex, ey];
+        break;
+      }
+      case 'Z':
+      case 'z':
+        ops.push('h');
+        break;
+      default:
+        throw new Error(`Unsupported path command: ${command}`);
+    }
+  }
+  return ops.join(' ');
+}
+
+/** A circle as PDF path operators, through `at`. */
+function circleOps(cx: number, cy: number, r: number, at: (x: number, y: number) => [number, number]): string {
+  const k = r * KAPPA;
+  return pdfPathOps(
+    `M${cx + r} ${cy}C${cx + r} ${cy + k} ${cx + k} ${cy + r} ${cx} ${cy + r}C${cx - k} ${cy + r} ${cx - r} ${cy + k} ${cx - r} ${cy}` +
+      `C${cx - r} ${cy - k} ${cx - k} ${cy - r} ${cx} ${cy - r}C${cx + k} ${cy - r} ${cx + r} ${cy - k} ${cx + r} ${cy}Z`,
+    at
+  );
+}
 
 export type PdfFont = 'courier' | 'courier-bold' | 'times' | 'times-bold' | 'times-italic';
 const FONT_NAMES: Record<PdfFont, string> = {
@@ -99,6 +173,13 @@ export class PdfDocument {
         `${colour(ink)} RG 1.6 w ${num(-pad.x)} ${num(-pad.y)} ${num(width + 2 * pad.x)} ${num(size * 0.72 + 2 * pad.y)} re S ` +
         `BT /${key} ${num(size)} Tf ${colour(ink)} rg 0 0 Td ${pdfString(text)} Tj ET Q`
     );
+  }
+
+  /** The Histor mark (src/lib/brand.ts), `height` points tall, its top left corner at (x, top). Filled even-odd. */
+  mark(x: number, top: number, height: number, fill: Rgb): void {
+    const scale = height / MARK_VIEWBOX[3];
+    const at = (px: number, py: number): [number, number] => [x + (px - MARK_VIEWBOX[0]) * scale, top - (py - MARK_VIEWBOX[1]) * scale];
+    this.ops.push(`${colour(fill)} rg ${pdfPathOps(MARK_BODY, at)} ${circleOps(MARK_DOT.cx, MARK_DOT.cy, MARK_DOT.r, at)} f*`);
   }
 
   line(x1: number, y1: number, x2: number, y2: number, stroke: Rgb, lineWidth = 0.5): void {

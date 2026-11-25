@@ -57,6 +57,9 @@ describe('the preloader', () => {
     expect(screen.textContent).toContain('Recovering the files…');
     expect(screen.getAttribute('aria-hidden')).toBe('true');
     expect(screen.className).toContain('pointer-events-none');
+    // The Histor mark, where the ship's bell was (quick fixes, 4).
+    expect(screen.querySelectorAll('svg')).toHaveLength(1);
+    expect(screen.querySelector('svg')!.hasAttribute('data-histor-mark')).toBe(true);
     act(() => {
       vi.advanceTimersByTime(PRELOAD_MAX_MS + 10);
     });

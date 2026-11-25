@@ -1,5 +1,5 @@
 // src/features/dread/Preloader.tsx
-// The preloader (dread pass, 1): on the first load of a page, a dark screen with a small ship's-bell mark, the typed
+// The preloader (dread pass, 1): on the first load of a page, a dark screen with the Histor mark, the typed
 // line "Recovering the files…" and a thin progress line, shown while the fonts and the first images load, at most about
 // three seconds. Then it fades into the legend intro. It never takes a click (nothing is ever blocked) and is hidden
 // from screen readers. Reduced motion: no typing, and it simply fades. Shown once per page load.
@@ -9,6 +9,7 @@ import { useGSAP } from '@gsap/react';
 import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { PRELOAD_MAX_MS, takePreloader } from '@/lib/preloader';
 import { typeElement } from '@/lib/typewriter';
+import HistorMark from '@/components/HistorMark';
 
 gsap.registerPlugin(useGSAP);
 
@@ -95,13 +96,8 @@ export default function Preloader({ images }: PreloaderProps) {
   return (
     <div ref={rootRef} aria-hidden="true" data-preloader="" className="pointer-events-none fixed inset-0 z-[80] grid place-items-center bg-night">
       <div className="flex flex-col items-center gap-5 text-night-ink/80">
-        {/* A small ship's bell. */}
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-10 text-brass">
-          <path d="M24 6v4M20 6h8" />
-          <path d="M14 34c0-12 3-22 10-22s10 10 10 22" />
-          <path d="M10 34h28M12 38h24" />
-          <circle cx="24" cy="41" r="2" />
-        </svg>
+        {/* The Histor mark (quick fixes, 4: it replaces the ship's bell). */}
+        <HistorMark className="h-11 w-auto text-night-ink" />
         <p data-preloader="line" className="font-voice text-[0.9375rem] tracking-[0.06em]">
           Recovering the files…
         </p>

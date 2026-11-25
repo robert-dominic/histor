@@ -42,6 +42,10 @@ Body text must reach 4.5:1 contrast against its background; large display text a
 
 **Text over an image** must sit on paper (ink on a paper slip or card) or on a dark fade that guarantees at least 4.5:1 whatever the image behind it. Never set text straight on an image.
 
+## The logo (quick fixes, 4)
+
+The files are in `public/brand/` (the H mark and the HISTOR wordmark, cream for the night, ink for paper); `src/lib/brand.ts` holds the mark as data for what draws it itself (`HistorMark.tsx` inline in the current colour, the canvas card, `/api/og`, the PDF). The mark sits beside the case title in the header (cream), on the preloader, on the shareable card and its `/api/og` image, and at the top of the PDF report. The favicons (`favicon.svg`, `favicon.ico`), the touch icon, `manifest.webmanifest` (`icon-192.png`, `icon-512.png`, name Histor, background and theme `#0D1317`) and the default preview image (`og-default.png`, made by `scripts/og-default.mjs`) all carry it.
+
 ## Day into night
 
 - The **legend intro** happens at night: the myth lives in the dark.

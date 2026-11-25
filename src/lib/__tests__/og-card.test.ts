@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import handler, { ogCardElement, ogCardLines, readOgRequest } from '../../../api/og';
 import { sharePage } from '../../../api/r';
+import { CARD_MARK, MARK_PATH } from '@/lib/brand';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -37,6 +38,24 @@ describe('the card image (api/og.ts)', () => {
     expect(texts(ogCardElement(against))).toContain('I sided against the historians.');
     const plain = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1')!;
     expect(texts(ogCardElement(plain))).not.toContain('I sided against the historians.');
+  });
+
+  test('the Histor mark, small, in the top right corner, where the canvas card draws it (quick fixes, 4)', () => {
+    const result = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1')!;
+    const find = (node: unknown): { props: Record<string, unknown> } | null => {
+      if (node === null || typeof node !== 'object') {
+        return null;
+      }
+      const props = (node as { props?: Record<string, unknown> }).props ?? {};
+      if (props['data-og'] === 'mark') {
+        return node as { props: Record<string, unknown> };
+      }
+      const children = props.children;
+      return (Array.isArray(children) ? children : [children]).map(find).find(found => found !== null) ?? null;
+    };
+    const mark = find(ogCardElement(result))!;
+    expect(String(mark.props.src)).toContain(encodeURIComponent(MARK_PATH));
+    expect(mark.props.style).toMatchObject({ position: 'absolute', top: CARD_MARK.y });
   });
 
   test('the same words as the canvas card, the signature when signed, a name cleaned of markup', () => {

@@ -12,6 +12,7 @@ import { ImageResponse } from '@vercel/og';
 import { createElement, type ReactElement, type ReactNode } from 'react';
 import { RANK_COPY } from '../src/lib/ui-copy';
 import { readShareLink, titleFromCaseId, type SharedResult } from '../src/lib/share-link';
+import { CARD_MARK as SHARE_MARK, MARK_INK, markSvg, markWidth } from '../src/lib/brand';
 
 export const config = { runtime: 'edge' };
 
@@ -47,7 +48,15 @@ export function ogCardElement(result: SharedResult): ReactElement {
   const lines = ogCardLines(result);
   return el(
     'div',
-    { width: '100%', height: '100%', backgroundColor: COLOUR.paper, backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 45%, rgba(0,0,0,0.08))', padding: 36 },
+    { position: 'relative', width: '100%', height: '100%', backgroundColor: COLOUR.paper, backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 45%, rgba(0,0,0,0.08))', padding: 36 },
+    // The Histor mark, small, in the top right corner: where the canvas card has it (quick fixes, 4).
+    createElement('img', {
+      src: `data:image/svg+xml,${encodeURIComponent(markSvg(MARK_INK.ink))}`,
+      width: Math.round(markWidth(SHARE_MARK.height)),
+      height: SHARE_MARK.height,
+      'data-og': 'mark',
+      style: { position: 'absolute', top: SHARE_MARK.y, left: SHARE_MARK.x - Math.round(markWidth(SHARE_MARK.height)) },
+    }),
     // The double rule, inked.
     el(
       'div',

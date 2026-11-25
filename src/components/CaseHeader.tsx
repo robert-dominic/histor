@@ -10,6 +10,7 @@ import { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import HistorMark from '@/components/HistorMark';
 import SoundControls from '@/components/SoundControls';
 import { MOTION_QUERIES, stampHit } from '@/lib/motion';
 import { typeElement } from '@/lib/typewriter';
@@ -105,7 +106,7 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
       style={startHidden ? { opacity: 0 } : undefined}
       className="fixed inset-x-0 top-0 z-30 flex h-[var(--case-header)] items-center justify-between gap-4 border-b border-night-ink/10 bg-night px-4 lg:px-6"
     >
-      <h1 className="min-w-0 truncate font-legend text-[1.1875rem] leading-none text-night-ink lg:text-[1.625rem]">
+      <h1 className="flex min-w-0 font-legend text-[1.1875rem] leading-none text-night-ink lg:text-[1.625rem]">
         <Link
           to={storyHref}
           onClick={event => {
@@ -118,9 +119,11 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
           }}
           data-case-header="title-link"
           title="Back to the start of the story"
-          className="rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass"
+          className="flex min-w-0 items-center gap-2 rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass lg:gap-2.5"
         >
-          <span data-case-header="title" className="inline-block">
+          {/* The Histor mark, cream, beside the case's title (quick fixes, 4). */}
+          <HistorMark className="h-[0.95em] w-auto shrink-0" />
+          <span data-case-header="title" className="inline-block min-w-0 truncate">
             {title}
           </span>
         </Link>

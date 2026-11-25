@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { caseRank } from '@/lib/case-rank';
 import { buildCaseReport } from '@/lib/case-report';
-import { A4, PdfDocument, pdfString } from '@/lib/pdf';
+import { A4, PdfDocument, pdfPathOps, pdfString } from '@/lib/pdf';
 import { buildReportPdf, reportPdfName, wrapText } from '@/lib/report-pdf';
 import type { InvestigationState } from '@/types/case';
 
@@ -90,5 +90,25 @@ describe('the case report as a PDF', () => {
     expect(text).toMatch(/pinned to /);
     expect(text).toContain('set aside (None of them)');
     expect(text).toContain(CASE.sources[0].title.slice(0, 20));
+  });
+});
+
+describe('the Histor mark in the report (quick fixes, 4)', () => {
+  test('the mark is drawn once, at the top of page one, filled even-odd', () => {
+    const { pdf } = reportFor({ opened: CASE.evidence.slice(0, CASE.closeThreshold).map(e => e.id), pins: {}, verdict: CASE.theories[0].id });
+    const fills = pdf.match(/ f\*/g) ?? [];
+    expect(fills).toHaveLength(1);
+    const start = pdf.indexOf(' m ');
+    expect(start).toBeGreaterThan(-1);
+    // Its first point is near the top right corner of an A4 page.
+    const [x, y] = pdf.slice(0, start).split(/\s+/).slice(-2).map(Number);
+    expect(x).toBeGreaterThan(A4.width - 100);
+    expect(y).toBeGreaterThan(A4.height - 100);
+  });
+
+  test('a quadratic curve becomes the matching cubic one', () => {
+    const at = (x: number, y: number): [number, number] => [x, y];
+    expect(pdfPathOps('M0 0Q3 3 6 0Z', at)).toBe('0 0 m 2 2 4 2 6 0 c h');
+    expect(() => pdfPathOps('M0 0A1 1 0 0 1 2 2', at)).toThrow('Unsupported path command');
   });
 });

@@ -12,6 +12,7 @@ import { formatCaseYears } from '@/lib/case-years';
 import { A4, COURIER_ADVANCE, PdfDocument, type PdfFont, type Rgb } from '@/lib/pdf';
 import { RANK_COPY } from '@/lib/ui-copy';
 import type { Case, EvidenceStatus, PinTarget } from '@/types/case';
+import { markWidth } from '@/lib/brand';
 
 /** The Ash palette (design.md), as RGB. */
 const PAPER: Rgb = [0xe2, 0xdd, 0xcf];
@@ -19,6 +20,10 @@ const INK: Rgb = [0x23, 0x21, 0x1d];
 const MUTED: Rgb = [0x6c, 0x6a, 0x62];
 const RUST: Rgb = [0x9e, 0x33, 0x26];
 const RECORD: Rgb = [0x2b, 0x47, 0x67];
+
+/** The Histor mark at the top of the report (quick fixes, 4): its height, and the room the title leaves it. */
+const MARK_HEIGHT = 40;
+const MARK_ROOM = 60;
 
 /** The page's margins and the text's sizes and leading, in points. */
 const PAGE = { margin: 48, foot: 40 } as const;
@@ -144,10 +149,15 @@ class Writer {
     this.y -= 2;
   }
 
-  /** The case's title, in Times, shrunk to fit one line. */
+  /** The Histor mark at the top right of the page, `height` points tall (quick fixes, 4). */
+  mark(height: number) {
+    this.pdf.mark(A4.width - PAGE.margin - markWidth(height), A4.height - PAGE.margin, height, INK);
+  }
+
+  /** The case's title, in Times, shrunk to fit one line (clear of the mark at the top right). */
   title(text: string) {
     // Times' capitals and lower case average about half the size: a safe estimate to keep it on the page.
-    const size = Math.min(TYPE.title, this.width / Math.max(1, text.length * 0.52));
+    const size = Math.min(TYPE.title, (this.width - MARK_ROOM) / Math.max(1, text.length * 0.52));
     this.y -= size;
     this.pdf.text(text, PAGE.margin, this.y, 'times-bold', size, INK);
   }
@@ -178,7 +188,8 @@ export function buildReportPdf({ caseData, report, rank, name, date }: ReportPdf
     }
   };
 
-  // The case, its years, the date and the signature.
+  // The mark; the case, its years, the date and the signature.
+  writer.mark(MARK_HEIGHT);
   writer.typed('HISTOR · CASE REPORT', { size: TYPE.small, colour: MUTED });
   writer.space(4);
   writer.title(caseData.title);
