@@ -71,7 +71,8 @@ type Rows = { [K in StoryEvent['type']]?: (event: Extract<StoryEvent, { type: K 
 export const SOUND_TABLE: Rows = {
   // ---- The story
   // A chapter appears (forward, or back: its entrance plays again). (The ship's bell is cut: sound-files brief, 3.)
-  'chapter-enter': () => ({ cues: [{ sound: 'chapter' }] }),
+  // The whoosh is rare (quick fixes, 1): only chapters marked enterSound are heard entering.
+  'chapter-enter': event => (event.whoosh === true ? { cues: [{ sound: 'chapter' }] } : null),
   // The pen: its generated scratch (the fix list), never more than about 12 a second, a little different each time.
   pen: (event, memory) => {
     if (memory.now - memory.lastPen < 1000 / SOUND.penTicksPerSecond) {

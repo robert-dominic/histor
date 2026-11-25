@@ -490,6 +490,16 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
+  // Validate the optional chapter whoosh (quick fixes, 1): a boolean when present
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const enterSound: unknown = section?.enterSound;
+      if (enterSound !== undefined && typeof enterSound !== 'boolean') {
+        errors.push(`Field story[${i}].enterSound: Must be true or false`);
+      }
+    });
+  }
+
   // Validate the optional weighted parts of the central question (3.17): an array of non-empty phrases, each found
   // word for word in centralQuestion
   const questionEmphasis: unknown = caseData.centralQuestionEmphasis;

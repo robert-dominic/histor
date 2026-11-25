@@ -36,7 +36,7 @@ inclusion: always
 | `typewriter-key` | All typed text: kickers, years, notes, hints, the guide (`type-key`) | writing |
 | `typewriter-ding` | The rank appearing, and nothing else (the fix list: the end of a long typed line, `type-return`, is quiet) | writing |
 | `stamp` | **Every** stamp: Record, Disputed, Legend (the files' and the legend intro's), UNSOLVED, Close the case, Chosen, the report's standing. `stampHit` (motion.ts) sends `stamp-hit` as it presses in. | stamp |
-| `chapter` | A chapter appearing (forward, and back: its entrance plays again); a modal's buttons appearing (the fork's choices: `choices`) | question |
+| `chapter` | Rare (quick fixes, 1): only a chapter marked `StorySection.enterSound: true` appearing (forward, and back), where the suspense deepens (the Mary Celeste: `s-found`, `s-question`); a modal's buttons appearing (the fork's choices: `choices`) | question |
 | `dread-1` to `dread-4` | The hook lines, picked without repeating the last (`pickDread`); a chapter can name its own (`StorySection.hookSound`, one of the four, validated) | dread |
 | `question` | Held under the central question (a loop) | question |
 | `question-pulse` | Each line of the question | question |

@@ -153,6 +153,11 @@ export interface StorySection {
    */
   hookSound?: HookSound;
   /**
+   * Whether entering this chapter plays the chapter whoosh (quick fixes, 1). The whoosh is rare: only where the
+   * suspense deepens. Optional: without it (or false), the chapter enters quietly.
+   */
+  enterSound?: boolean;
+  /**
    * Where the eye may open on this chapter's image (dread pass, 4): dark areas that hold no text, each as a share of
    * the image in percent (left, top, width, height). Optional: without them, the eye never opens on this image.
    */

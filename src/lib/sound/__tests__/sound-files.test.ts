@@ -46,7 +46,10 @@ describe('the files', () => {
 
 describe('every moment plays its file', () => {
   test('the story: a chapter, the pen (the legend\'s own slower), the typewriter, a hook, the question, the modals', () => {
-    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'forward' })).toContain('chapter');
+    // The whoosh is rare (quick fixes, 1): only a chapter marked enterSound is heard entering.
+    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'forward', whoosh: true })).toContain('chapter');
+    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'forward' })).toEqual([]);
+    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'backward', whoosh: false })).toEqual([]);
     expect(one({ type: 'pen' })).toEqual(['scratch']);
     expect(one({ type: 'pen', hand: 'legend' })).toEqual(['scratch']);
     expect(one({ type: 'type-key' })).toEqual(['typewriter-key']);

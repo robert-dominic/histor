@@ -856,6 +856,8 @@ describe('Story: hooks', () => {
     expect(depths[0]).toBe(0);
     expect(depths[1]).toBeGreaterThan(0);
     expect(events.some(event => event.type === 'pen')).toBe(true);
+    // Unmarked chapters enter quietly: no whoosh (quick fixes, 1).
+    expect(events.filter(event => event.type === 'chapter-enter').map(event => event.whoosh)).toEqual([false, false]);
   });
 
   test('story events: stepping back from a hook to its page, and the question line by line', () => {

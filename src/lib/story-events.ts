@@ -18,7 +18,8 @@ export type StoryEvent =
   // `verdict`: the verdict and the report (the fix list: the desk's room tone stays at the desk).
   | { type: 'place'; place: 'story' | 'desk' | 'verdict' | 'away'; ambience?: CaseAmbience; playlists?: CaseTheme['playlists'] }
   // `depth`: how far into the night the story is, 0 (day) to 1 (night).
-  | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number }
+  // `whoosh`: the chapter is marked to be heard entering (StorySection.enterSound, quick fixes 1).
+  | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number; whoosh?: boolean }
   // A sentence of the text column starts to rise into view. `index` is its place in the chapter.
   | { type: 'beat'; chapter: string; index: number; direction: StoryDirection }
   // As the hook snaps in, forward or back. `sound`: the chapter's own dread sound, when it names one.
