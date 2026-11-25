@@ -8,10 +8,10 @@ import { SHARE_ORIGIN, isShareCaseId, readShareLink, shareCopy } from '../src/li
 export const config = { runtime: 'edge' };
 
 /**
- * The image of the player's own card: `/api/og` (rendered with @vercel/og). Until that function is in, the previews
- * use the site's title card. TODO: set to true once api/og.tsx is deployed.
+ * The image of the player's own card: `/api/og` (api/og.ts, rendered with @vercel/og). An invalid link uses the site's
+ * title card instead.
  */
-export const OG_CARD_READY = false;
+export const OG_CARD_READY = true;
 
 const escape = (text: string) =>
   text.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
