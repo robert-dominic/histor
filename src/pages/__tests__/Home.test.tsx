@@ -260,3 +260,53 @@ describe('the progress rail and the end (landing brief, 5)', () => {
     expect(screen.getByRole('list', { name: 'The cases' }).compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+/** A matchMedia that answers compound queries part by part: a screen `desktop` wide or not, motion reduced or not. */
+function stubMedia({ desktop, reduced = false }: { desktop: boolean; reduced?: boolean }) {
+  const part = (query: string): boolean => {
+    const q = query.trim();
+    if (q.startsWith('not all and ')) {
+      return !part(q.slice('not all and '.length));
+    }
+    if (q.includes(' and ')) {
+      return q.split(' and ').every(part);
+    }
+    if (q.includes('min-width: 1024px')) return desktop;
+    if (q.includes('prefers-reduced-motion: reduce')) return reduced;
+    if (q.includes('prefers-reduced-motion: no-preference')) return !reduced;
+    return q.includes('hover: hover') || q.includes('pointer: fine');
+  };
+  vi.stubGlobal('matchMedia', (query: string) => ({ matches: part(query), media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false }));
+}
+
+describe('phones and reduced motion (landing brief, 6)', () => {
+  test('a phone: the same pieces stacked, simple fades; no rising, no veil sway; tall frames narrower', () => {
+    vi.unstubAllGlobals();
+    stubMedia({ desktop: false });
+    renderHome();
+    const section = document.getElementById('exhibit-jack-the-ripper')!;
+    const rise = section.querySelector('[data-exhibit-part="rise"]')!;
+    // Fades only: nothing set to rise from below.
+    expect(gsap.getProperty(rise, 'y')).toBe(0);
+    expect(gsap.getTweensOf(section.querySelector('[data-frame-part="veil"]'))).toHaveLength(0);
+    expect(section.querySelector('[data-exhibit-part="rise"] .haunted-frame')!.className).toContain('max-lg:w-[72%]');
+    // The header keeps the wordmark and "Start investigating".
+    const header = document.querySelector<HTMLElement>('[data-landing="header"]')!;
+    expect(within(header).getByRole('link', { name: 'Start investigating' })).toBeDefined();
+  });
+
+  test('a laptop at full motion: frames rise in, the veil sways; reduced motion: none of it, fades only', () => {
+    vi.unstubAllGlobals();
+    stubMedia({ desktop: true });
+    const { unmount } = renderHome();
+    const ripper = () => document.getElementById('exhibit-jack-the-ripper')!;
+    expect(gsap.getProperty(ripper().querySelector('[data-exhibit-part="rise"]'), 'y')).toBe(140);
+    expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')).some(tween => tween.vars.repeat === -1)).toBe(true);
+    unmount();
+    vi.unstubAllGlobals();
+    stubMedia({ desktop: true, reduced: true });
+    renderHome();
+    expect(gsap.getProperty(ripper().querySelector('[data-exhibit-part="rise"]'), 'y')).toBe(0);
+    expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]'))).toHaveLength(0);
+  });
+});

@@ -149,7 +149,9 @@ export default function ExhibitSection({ exhibit, index, next, revealed, childre
     { scope: rootRef, dependencies: [revealed] }
   );
 
-  const frame = <Frame exhibit={exhibit} className="w-full lg:h-(--frame-h) lg:w-auto" />;
+  // On a phone a tall frame would fill the screen: portrait and square frames are narrower there, centred.
+  const narrow = exhibit.frame === 'portrait' ? 'max-lg:mx-auto max-lg:w-[72%]' : exhibit.frame === 'square' ? 'max-lg:mx-auto max-lg:w-[86%]' : 'w-full';
+  const frame = <Frame exhibit={exhibit} className={`${narrow} lg:h-(--frame-h) lg:w-auto`} />;
   return (
     <li
       ref={rootRef}
@@ -157,7 +159,7 @@ export default function ExhibitSection({ exhibit, index, next, revealed, childre
       data-exhibit={exhibit.id}
       data-exhibit-index={index}
       aria-labelledby={titleId}
-      className="relative flex flex-col gap-8 px-4 pt-24 pb-16 sm:px-8 lg:block lg:h-svh lg:min-h-[40rem] lg:overflow-hidden lg:p-0"
+      className="relative flex flex-col gap-7 px-4 pt-10 pb-10 first:pt-24 sm:px-8 lg:block lg:h-svh lg:min-h-[40rem] lg:overflow-hidden lg:p-0 lg:first:pt-0"
     >
       {/* The frame, and its title to its right, low. */}
       <div data-exhibit-part="anchor" className="lg:absolute lg:top-[40%] lg:left-[45%] lg:-translate-x-1/2 lg:-translate-y-1/2">
