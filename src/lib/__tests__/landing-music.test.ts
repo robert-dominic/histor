@@ -15,7 +15,10 @@ class FakeAudio {
   paused = true;
   preload = '';
   readonly listeners = new Map<string, Set<() => void>>();
-  constructor(readonly src: string) {}
+  readonly src: string;
+  constructor(src: string) {
+    this.src = src;
+  }
   play() {
     this.paused = false;
     return Promise.resolve();
