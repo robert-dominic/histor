@@ -87,9 +87,9 @@ The dread is rare, slow and quiet, and has a purpose (`design.md`, "Dread"). Its
 | Token | Ease | Duration | Use |
 | --- | --- | --- | --- |
 | `dread.rise` | `sine.out` | 4s (3 to 5s per line) | A ghost line rising and drifting like smoke, dissolving |
-| `dread.lid` | `power2.inOut` | 1.4s | The eye's lids opening slowly, and closing |
+| `dread.lid` | `power2.inOut` | 1.4s | The face coming out of the dark, its eyes closing slowly, and its fading |
 | `dread.blink` | `power2.inOut` | 0.18s | The eye's one blink; the jump scare's eye snapping open |
-| `dread.gaze` | `power3.out` | 0.7s | The pupil following the cursor, heavy and a little behind |
+| `dread.gaze` | `power3.out` | 0.7s | The face's points of light looking left, then right: heavy |
 | `dread.flicker` | `sine.inOut` | 0.09s per stutter | The lamp dipping as a Legend stamp lands: about a second |
 | `dread.twitch` | `power1.inOut` | 0.07s per shiver | An opened legend's twitch (on the file's drawing, never its place) |
 | `dread.drift` | `none` | 7s | The shadow drifting across the deck: constant |

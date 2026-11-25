@@ -84,16 +84,19 @@ export default function EyeWatcher() {
     };
   }, []);
 
-  // One showing: it comes out of the dark, looks to one side, and fades.
+  // One showing (quick fixes, 3): it comes out of the dark; the points of light look left, then right; the eyes close
+  // slowly; then it fades.
   useEffect(() => {
     const root = faceRef.current;
     if (showing === null || root === null) {
       return;
     }
     const gaze = root.querySelector('[data-face="gaze"]');
+    const eyes = root.querySelector('[data-face="eyes"]');
     emitStoryEvent({ type: 'eye' });
     const [low, high] = EYE.lookFor;
-    const side = Math.random() < 0.5 ? -1 : 1;
+    // Each look holds half the time it watches.
+    const hold = (low + Math.random() * (high - low)) / 2;
     const timeline = gsap.timeline({
       onComplete: () => {
         setShowing(null);
@@ -102,8 +105,11 @@ export default function EyeWatcher() {
     });
     timeline
       .fromTo(root, { opacity: 0 }, { opacity: 1, ...tween('dread.lid') })
-      .to(gaze, { x: side * FACE_GLANCE, ...tween('dread.gaze') })
-      .to(root, { opacity: 0, ...tween('dread.lid') }, `+=${low + Math.random() * (high - low)}`);
+      .to(gaze, { x: -FACE_GLANCE, ...tween('dread.gaze') })
+      .to(gaze, { x: FACE_GLANCE, ...tween('dread.gaze') }, `+=${hold}`)
+      // About the eyes' own line (the viewBox's y 45), so they narrow to a slit where they are.
+      .to(eyes, { scaleY: 0.06, svgOrigin: '50 45', ...tween('dread.lid') }, `+=${hold}`)
+      .to(root, { opacity: 0, ...tween('dread.lid') });
     return () => {
       timeline.kill();
     };

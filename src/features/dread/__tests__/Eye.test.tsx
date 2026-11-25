@@ -7,7 +7,8 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
 import EyeWatcher from '@/features/dread/EyeWatcher';
-import { EYE, boxIsClear, eyeDue, nextEyeAt } from '@/lib/eye-watch';
+import gsap from 'gsap';
+import { EYE, FACE_GLANCE, boxIsClear, eyeDue, nextEyeAt } from '@/lib/eye-watch';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { validateCase } from '@/lib/validate-case';
 import { stubMatchMedia } from '@/test/match-media';
@@ -88,6 +89,15 @@ describe('the eye', () => {
     const face = eye!.querySelector('[data-face="svg"]')!;
     expect(face.querySelectorAll('ellipse').length).toBeGreaterThanOrEqual(2);
     expect(face.querySelector('[data-face="gaze"]')).not.toBeNull();
+    // Its eyes move (quick fixes, 3): the lights look left, then right; then the eyes close slowly; then it fades.
+    const gaze = face.querySelector('[data-face="gaze"]')!;
+    const looks = gsap.getTweensOf(gaze).sort((a, b) => a.startTime() - b.startTime());
+    expect(looks.map(look => look.vars.x)).toEqual([-FACE_GLANCE, FACE_GLANCE]);
+    const close = gsap.getTweensOf(face.querySelector('[data-face="eyes"]'))[0];
+    expect(close.vars).toMatchObject({ scaleY: 0.06, ease: 'power2.inOut', duration: 1.4 });
+    expect(close.startTime()).toBeGreaterThan(looks[1].startTime() + looks[1].duration());
+    const fades = gsap.getTweensOf(eye).filter(tween => tween.vars.opacity === 0);
+    expect(fades.at(-1)!.startTime()).toBeGreaterThanOrEqual(close.startTime() + close.duration() - 1e-6);
     stop();
   });
 
