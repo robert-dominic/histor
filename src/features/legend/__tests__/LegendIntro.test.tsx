@@ -419,3 +419,23 @@ describe('LegendIntro: no title card', () => {
     expect(one(container, 'stamp').style.opacity).toBe('0');
   });
 });
+
+describe('LegendIntro: the editorial layout on a laptop (ui-pass 8)', () => {
+  test('left-aligned in the left 55%, below the top third; the image bleeding off the right; the cue bottom left; stacked and centred on a phone', () => {
+    const { container } = renderIntro({ video });
+    const section = container.querySelector<HTMLElement>('section[aria-label="The legend"]')!;
+    // A phone: centred, as before.
+    expect(section.className).toContain('items-center');
+    expect(section.className).toContain('text-center');
+    // A laptop: left-aligned, starting a little below the top third.
+    expect(section.className).toContain('lg:text-left');
+    expect(section.className).toContain('lg:items-start');
+    expect(section.className).toContain('lg:pt-[36svh]');
+    expect(container.querySelector('[data-legend="stage"]')!.className).toContain('lg:max-w-[49vw]');
+    // The image starts at 35% and runs off the right edge, under a shade dark on the text's side.
+    expect(container.querySelector('[data-legend="media"]')!.className).toContain('lg:left-[35%]');
+    // The stamp toward the right, over the last line; the cue bottom left.
+    expect(container.querySelector('[data-legend="stamp"]')!.parentElement!.className).toContain('lg:place-items-end');
+    expect(container.querySelector('[data-legend="continue"]')!.className).toContain('lg:left-[6vw]');
+  });
+});
