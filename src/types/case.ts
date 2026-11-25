@@ -148,14 +148,14 @@ export interface StorySection {
    */
   narration?: Narration;
   /**
-   * The dread sound under this chapter's hook, one of the pool (review-fixes brief, 7). Optional: without it each hook
-   * picks one from the pool, never the same as the last.
+   * The dread sound under this chapter's hook, one of the pool (review-fixes brief, 7; sound-files brief, 2). Optional:
+   * without it each hook picks one from the pool, never the same as the last.
    */
   hookSound?: HookSound;
 }
 
-/** The generated dread sounds a hook can use (src/lib/sound/voices.ts). */
-export const HOOK_SOUNDS = ['boom', 'swell', 'scrape', 'thunder', 'thumps', 'cluster'] as const;
+/** The dread sounds a hook can use: sound files (public/audio/sfx/dread-1.mp3 to dread-4.mp3). */
+export const HOOK_SOUNDS = ['dread-1', 'dread-2', 'dread-3', 'dread-4'] as const;
 export type HookSound = (typeof HOOK_SOUNDS)[number];
 
 /** A recording of a passage read aloud, with its credit (who reads it, and where the recording comes from). */

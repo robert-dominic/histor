@@ -11,14 +11,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import SoundControls from '@/components/SoundControls';
-import { MOTION_QUERIES } from '@/lib/motion';
+import { MOTION_QUERIES, stampHit } from '@/lib/motion';
 import { typeElement } from '@/lib/typewriter';
 
 gsap.registerPlugin(useGSAP);
 
 /**
  * The years are typed, with the typewriter's keys (review-fixes brief, 8), the first time the header is seen: at once
- * on the desk, or when the story fades the header in.
+ * on the desk, or when the story fades the header in. The UNSOLVED tag then stamps on (sound-files brief, 2).
  */
 function useTypedYears(bar: React.RefObject<HTMLElement | null>, startHidden: boolean) {
   useGSAP(
@@ -30,12 +30,18 @@ function useTypedYears(bar: React.RefObject<HTMLElement | null>, startHidden: bo
       }
       let timeline: gsap.core.Timeline | null = null;
       let revert: (() => void) | null = null;
+      const unsolved = header.querySelector<HTMLElement>('[data-case-header="unsolved"]');
       const type = () => {
         timeline = gsap.timeline();
         const typed = typeElement(timeline, years, 0);
         if (typed !== null) {
           revert = () => typed.split.revert();
           timeline.call(() => revert?.(), undefined, typed.end);
+        }
+        // Then the UNSOLVED tag is stamped on beside them, and heard (sound-files brief, 2).
+        if (unsolved !== null) {
+          gsap.set(unsolved, { opacity: 0 });
+          timeline.add(stampHit(unsolved), typed?.end ?? 0);
         }
       };
       const visible = () => Number.parseFloat(header.style.opacity || '1') > 0;

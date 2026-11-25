@@ -45,14 +45,16 @@ export interface QuillWriter {
  *   of the positioned element that the text sits in.
  * @param body - the drawing of the quill inside `point`. Its nib sits exactly on the point.
  */
-export function createQuillWriter(point: HTMLElement, body: HTMLElement): QuillWriter {
+export function createQuillWriter(point: HTMLElement, body: HTMLElement, { hand }: { hand?: 'legend' } = {}): QuillWriter {
+  // The legend's own pen is slower and creakier (sound-files brief, 2).
+  const scratch = hand === undefined ? ({ type: 'pen' } as const) : ({ type: 'pen', hand } as const);
   // The quill follows the last written letter. quickTo smooths the hop from one letter to the next.
   const quillX = gsap.quickTo(point, 'x', { duration: STEP.fast / 2, ease: MOTION.hover.ease });
   const quillY = gsap.quickTo(point, 'y', { duration: STEP.fast / 2, ease: MOTION.hover.ease });
 
   const moveQuill = (letter: HTMLElement, jump: boolean) => {
     // The pen's scratch (src/lib/sound throttles it).
-    emitStoryEvent({ type: 'pen' });
+    emitStoryEvent(scratch);
     const stage = point.parentElement;
     if (stage === null) {
       return;

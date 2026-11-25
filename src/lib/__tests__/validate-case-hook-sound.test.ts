@@ -52,7 +52,7 @@ describe('validateCase: StorySection.hookSound', () => {
     expect(validateCase(maryCeleste)).toEqual([]);
   });
 
-  test('each of the six pool sounds is accepted on a chapter with a hook', () => {
+  test('each of the four dread files is accepted on a chapter with a hook', () => {
     for (const hookSound of HOOK_SOUNDS) {
       expect(hookSoundErrors(createCase({ hook: 'Test hook', hookSound }))).toEqual([]);
     }
@@ -67,6 +67,6 @@ describe('validateCase: StorySection.hookSound', () => {
   });
 
   test('a hook sound on a chapter with no hook is an error', () => {
-    expect(hookSoundErrors(createCase({ hookSound: 'thunder' }))).toEqual(['Field story[0].hookSound: The section must have a hook']);
+    expect(hookSoundErrors(createCase({ hookSound: 'dread-2' }))).toEqual(['Field story[0].hookSound: The section must have a hook']);
   });
 });

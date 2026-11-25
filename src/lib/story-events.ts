@@ -29,7 +29,12 @@ export type StoryEvent =
   // One name of the roll call un-written; `order` 0 is the first to go.
   | { type: 'roll-call-out'; chapter: string; name: string; order: number; direction: StoryDirection }
   // The pen writes a letter (anywhere: the legend, the story, a file, the verdict). Many a second.
-  | { type: 'pen' }
+  // `hand: 'legend'`: the legend intro's pen and "You almost believed this.", slower and creakier.
+  | { type: 'pen'; hand?: 'legend' }
+  // Any stamp pressing in (motion.ts `stampHit`): a file's status, the legend intro's, UNSOLVED, Close the case, Chosen.
+  | { type: 'stamp-hit' }
+  // A popover (the share menu, the volume) opening or closing (use-popover.ts).
+  | { type: 'popover'; open: boolean }
   // The typewriter types a letter of the app's voice (src/lib/typewriter.ts); a longer line's carriage returns.
   | { type: 'type-key' }
   | { type: 'type-return' }

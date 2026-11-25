@@ -159,7 +159,7 @@ export default function LegendIntro({
           );
         } else {
           const caret = select('caret')[0];
-          const quill = createQuillWriter(select('quill')[0], select('quill-body')[0]);
+          const quill = createQuillWriter(select('quill')[0], select('quill-body')[0], { hand: 'legend' });
 
           let cursor: number = FULL.start;
 

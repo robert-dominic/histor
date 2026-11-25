@@ -11,7 +11,8 @@ import { AMBIENCE_ENABLED, MUSIC, SOUND } from '@/lib/sound/levels';
 import { pickNext } from '@/lib/sound/music';
 import { emitStoryEvent } from '@/lib/story-events';
 import type { Track } from '@/types/case';
-import { type FakeGain, fakeContextMaker } from '@/test/fake-audio';
+import { type FakeGain, fakeContextMaker, loadFakeSamples } from '@/test/fake-audio';
+import { SAMPLE_NAMES, samples } from '@/lib/sound/samples';
 
 class FakeTrack extends EventTarget {
   preload = '';
@@ -228,14 +229,14 @@ describe('the generated score and the sea and wind no longer play', () => {
     stop();
   });
 
-  test('the effects stay, the ship\'s bell among them', () => {
+  test('the effects stay: a chapter appearing is heard', () => {
+    loadFakeSamples(samples, SAMPLE_NAMES);
     const { engine, stop, made } = setUp();
     emitStoryEvent({ type: 'place', place: 'story', ambience: maryCeleste.theme.ambience });
     engine.unlock();
     const before = made[0].started.length;
-    emitStoryEvent({ type: 'chapter-enter', chapter: 's-found', direction: 'forward' });
-    // The swell and the bell's partials.
-    expect(made[0].started.length - before).toBeGreaterThan(8);
+    emitStoryEvent({ type: 'chapter-enter', chapter: 's-voyage', direction: 'forward' });
+    expect(made[0].started.length - before).toBeGreaterThan(0);
     stop();
   });
 });

@@ -10,6 +10,7 @@
 //   (the Share button), and a press outside or Escape closes it.
 // The hook gives props for the wrapper (which holds the trigger and the popover) and for the trigger.
 import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type PointerEvent } from 'react';
+import { emitStoryEvent } from '@/lib/story-events';
 
 export const POPOVER = {
   /** How long the pointer may be away from the trigger and the popover before it closes, in ms. */
@@ -25,7 +26,12 @@ let openId: string | null = null;
 const listeners = new Set<(id: string | null) => void>();
 
 function claim(id: string | null) {
+  const was = openId;
   openId = id;
+  // The paper's sound as one opens, or as the last one closes (sound-files brief, 2).
+  if (id !== was && (id !== null || was !== null)) {
+    emitStoryEvent({ type: 'popover', open: id !== null });
+  }
   for (const listener of listeners) {
     listener(id);
   }

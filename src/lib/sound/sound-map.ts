@@ -5,14 +5,15 @@
 // does. Levels are multipliers on each recipe's own (voices.ts); the buses' levels are in levels.ts.
 
 import type { DuckName } from '@/lib/sound/engine';
-import { MOTION } from '@/lib/motion';
 import { SOUND } from '@/lib/sound/levels';
-import { DREAD_POOL, type SoundName } from '@/lib/sound/voices';
+import type { SampleName } from '@/lib/sound/samples';
+import type { SoundName } from '@/lib/sound/voices';
 import type { StoryEvent } from '@/lib/story-events';
 import { HOOK_SOUNDS, type AmbienceCue, type HookSound } from '@/types/case';
 
 export interface SoundCue {
-  sound: SoundName;
+  /** A sound file (sound-files brief, 2), or one of the generated recipes still to be cut. */
+  sound: SampleName | SoundName;
   /** A multiplier on the recipe's level. */
   gain?: number;
   /** A multiplier on the recipe's pitch. */
@@ -74,79 +75,71 @@ const CUE_SOUND = { 'ships-bell': 'bell' } as const;
 
 /** The table. A moment with no row is silent. */
 export const SOUND_TABLE: Rows = {
-  // ---- The story (B3)
-  // A chapter enters: a soft low swell; and its one-off cue, once (the Mary Celeste's ship's bell, far away).
+  // ---- The story
+  // A chapter appears (forward, or back: its entrance plays again); and its one-off cue, once.
   'chapter-enter': (event, memory) => {
-    if (event.direction !== 'forward') {
-      return { drone: 'out' };
+    const cues: SoundCue[] = [{ sound: 'chapter' }];
+    if (event.direction === 'forward') {
+      memory.cues
+        .filter(cue => cue.chapter === event.chapter && !memory.played.has(cue))
+        .forEach(cue => {
+          memory.played.add(cue);
+          cues.push({ sound: CUE_SOUND[cue.sound], delay: SOUND.bellAfter });
+        });
     }
-    const cues: SoundCue[] = [{ sound: 'swell' }];
-    memory.cues
-      .filter(cue => cue.chapter === event.chapter && !memory.played.has(cue))
-      .forEach(cue => {
-        memory.played.add(cue);
-        cues.push({ sound: CUE_SOUND[cue.sound], delay: SOUND.bellAfter });
-      });
     return { cues, drone: 'out' };
   },
-  // The pen: a faint scratch, never more than about 12 a second.
-  pen: (_event, memory) => {
+  // The pen: its stroke, never more than about 12 a second, a little different each time; the legend's own pen
+  // (the intro, "You almost believed this.") slower and creakier.
+  pen: (event, memory) => {
     if (memory.now - memory.lastPen < 1000 / SOUND.penTicksPerSecond) {
       return null;
     }
     memory.lastPen = memory.now;
-    return { cues: [{ sound: 'scratch' }] };
+    return { cues: [{ sound: event.hand === 'legend' ? 'pen-legend' : 'pen' }] };
   },
-  // The typewriter (review-fixes brief, 8): a key's click for each typed letter, never more than about 14 a second;
-  // the carriage-return ding at the end of a longer line. (Pen-written text keeps the pen's scratch.)
+  // The typewriter: a key for each typed letter, never more than about 14 a second; the ding at the end of a long line.
   'type-key': (_event, memory) => {
     if (memory.now - memory.lastKey < 1000 / SOUND.typeKeysPerSecond) {
       return null;
     }
     memory.lastKey = memory.now;
-    return { cues: [{ sound: 'type-key' }] };
+    return { cues: [{ sound: 'typewriter-key' }] };
   },
-  'type-return': () => ({ cues: [{ sound: 'carriage-ding' }] }),
-  // The hook: a deep drone fades in under it, and one dread sound as the text snaps in, forward or back (the
-  // chapter's own, or one from the pool, never the same twice running).
-  hook: (event, memory) => ({ duck: 'hook', drone: 'in', cues: [{ sound: DREAD_POOL[pickDread(event.sound, memory)] }] }),
+  'type-return': () => ({ cues: [{ sound: 'typewriter-ding' }] }),
+  // The hook: one dread sound as the text snaps in, forward or back (the chapter's own, or one from the pool, never
+  // the same twice running).
+  hook: (event, memory) => ({ duck: 'hook', drone: 'in', cues: [{ sound: pickDread(event.sound, memory) }] }),
   // The hook decays: a soft reversed whoosh, and the drone goes.
   'hook-out': event => (event.direction === 'forward' ? { cues: [{ sound: 'whoosh' }], drone: 'out' } : { drone: 'out' }),
-  // Each name un-written: a breathy hiss, a little lower each time.
-  'roll-call-out': event => ({ cues: [{ sound: 'hiss', pitch: 0.9 ** event.order }] }),
-  // The question: the drone stays low and still; each line adds a faint, low pulse.
-  'question-line': event => (event.direction === 'forward' ? { drone: 'low', cues: [{ sound: 'pulse' }] } : { drone: 'low' }),
-  // A modal (the play choice, the fork) opening: a paper slide in; closing: a paper slide out.
-  modal: event => ({ cues: [{ sound: event.open ? 'paper-slide' : 'slide-out' }] }),
-  // ---- The desk (B4)
-  // A folder picked up: a paper lift. Let go: it lands with a soft thud.
-  'folder-lift': () => ({ cues: [{ sound: 'paper-lift' }] }),
-  'folder-land': () => ({ cues: [{ sound: 'thud-soft' }] }),
-  // A folder opened: its cover flips (a swish and a soft thud); closing it, the same, quieter.
-  flip: event => ({ cues: [{ sound: 'cover-flip', gain: event.direction === 'open' ? 1 : 0.6 }] }),
-  // Pinning: a small metallic tick, with a faint string creak as the thread draws.
-  pin: () => ({ cues: [{ sound: 'pin-tick' }] }),
-  // The stamps. Record: heavy and solid. Disputed: lighter, then a pen scratch. Legend: a thud, then a detuned
-  // music box falling as the ink drains.
-  'stamp:record': () => ({ duck: 'stamp', cues: [{ sound: 'thud-heavy' }] }),
-  'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'thud', gain: 0.8 }, { sound: 'pen-stroke', delay: 0.3 }] }),
-  'stamp:legend': () => ({ duck: 'stamp', cues: [{ sound: 'thud' }, { sound: 'music-box', delay: 0.35 }] }),
+  // Each name un-written: the pen, backwards, a little quieter each time.
+  'roll-call-out': event => ({ cues: [{ sound: 'pen', gain: 0.85 ** event.order }] }),
+  // Each line of the question: its pulse.
+  'question-line': () => ({ drone: 'low', cues: [{ sound: 'question-pulse' }] }),
+  // A modal (the play choice, the fork) opening or closing; the ? guide too; and the popovers.
+  modal: () => ({ cues: [{ sound: 'modal' }] }),
+  guide: event => ({ cues: [{ sound: 'modal', gain: event.open ? 1 : 0.7 }] }),
+  popover: event => ({ cues: [{ sound: 'modal', gain: event.open ? 0.7 : 0.5 }] }),
+  // ---- The desk
+  'folder-lift': () => ({ cues: [{ sound: 'file-pickup' }] }),
+  'folder-land': () => ({ cues: [{ sound: 'file-drop' }] }),
+  flip: event => (event.direction === 'open' ? { cues: [{ sound: 'file-open' }] } : { cues: [{ sound: 'file-open', gain: 0.6, pitch: 0.94 }] }),
+  pin: () => ({ cues: [{ sound: 'pin' }] }),
+  // Every stamp is one sound, as it presses in (stampHit says so); the moments around it duck the rest.
+  'stamp-hit': () => ({ cues: [{ sound: 'stamp' }] }),
+  'stamp:record': () => ({ duck: 'stamp' }),
+  'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'pen', delay: 0.3 }] }),
+  'stamp:legend': () => ({ duck: 'stamp' }),
   // A faint whisper under "You almost believed this."
   'legend-pen': () => ({ cues: [{ sound: 'whisper' }] }),
-  // The "Close the case" stamp appears: a thud, as it lands.
-  'close-stamp': () => ({ cues: [{ sound: 'thud', delay: MOTION['stamp.hit'].duration }] }),
-  // The verdict's "Chosen" stamp: a heavy thud, as it lands.
-  seal: event => (event.where === 'verdict' ? { duck: 'stamp', cues: [{ sound: 'thud-heavy', delay: MOTION['stamp.hit'].duration }] } : null),
-  // The rank revealed: a single typewriter bell.
-  rank: () => ({ cues: [{ sound: 'ding' }] }),
+  seal: event => (event.where === 'verdict' ? { duck: 'stamp' } : null),
+  // The rank revealed: the typewriter's bell.
+  rank: () => ({ cues: [{ sound: 'typewriter-ding' }] }),
 
-  // ---- The interface (music brief, 4)
-  // Any button or link pressed (but those with a sound of their own): a soft paper tick.
-  'ui-click': () => ({ cues: [{ sound: 'paper-tick' }] }),
-  // A toggle switched: a small click.
-  'ui-toggle': () => ({ cues: [{ sound: 'switch-click' }] }),
-  // The ? guide: a page flip as it opens, a softer one as it closes.
-  guide: event => ({ cues: [{ sound: 'page-flip', gain: event.open ? 1 : 0.55 }] }),
+  // ---- The interface
+  // Every button and toggle: the click.
+  'ui-click': () => ({ cues: [{ sound: 'click' }] }),
+  'ui-toggle': () => ({ cues: [{ sound: 'click', pitch: 1.08 }] }),
   // The pointer onto a file on the floor: a very faint brush, at most 4 a second.
   'file-hover': (_event, memory) => {
     if (memory.now - memory.lastBrush < 1000 / SOUND.brushesPerSecond) {

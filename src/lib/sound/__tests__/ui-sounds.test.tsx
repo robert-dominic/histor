@@ -32,21 +32,17 @@ afterEach(() => {
 });
 
 describe('the interface\'s rows', () => {
-  test('a button or link: a soft paper tick; a toggle: a small click', () => {
-    expect(sounds(soundFor({ type: 'ui-click' }, freshMemory()))).toEqual(['paper-tick']);
-    expect(sounds(soundFor({ type: 'ui-toggle' }, freshMemory()))).toEqual(['switch-click']);
+  test('a button or link, and a toggle: the click (sound-files 2)', () => {
+    expect(sounds(soundFor({ type: 'ui-click' }, freshMemory()))).toEqual(['click']);
+    expect(sounds(soundFor({ type: 'ui-toggle' }, freshMemory()))).toEqual(['click']);
   });
 
-  test('the ? guide: a page flip opening, a softer one closing', () => {
+  test('the ? guide and the modals: the modal sound, opening and closing', () => {
     const open = soundFor({ type: 'guide', open: true }, freshMemory())!.cues![0];
     const close = soundFor({ type: 'guide', open: false }, freshMemory())!.cues![0];
-    expect([open.sound, close.sound]).toEqual(['page-flip', 'page-flip']);
-    expect(close.gain!).toBeLessThan(open.gain!);
-  });
-
-  test('a modal: a paper slide in, and out', () => {
-    expect(sounds(soundFor({ type: 'modal', name: 'play-choice', open: true }, freshMemory()))).toEqual(['paper-slide']);
-    expect(sounds(soundFor({ type: 'modal', name: 'play-choice', open: false }, freshMemory()))).toEqual(['slide-out']);
+    expect([open.sound, close.sound]).toEqual(['modal', 'modal']);
+    expect(sounds(soundFor({ type: 'modal', name: 'play-choice', open: true }, freshMemory()))).toEqual(['modal']);
+    expect(sounds(soundFor({ type: 'modal', name: 'play-choice', open: false }, freshMemory()))).toEqual(['modal']);
   });
 
   test('hovering files on the floor: a very faint brush, at most 4 a second', () => {

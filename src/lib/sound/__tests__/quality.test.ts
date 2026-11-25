@@ -9,7 +9,8 @@ import { SoundEngine } from '@/lib/sound/engine';
 import { SOUND } from '@/lib/sound/levels';
 import { VOICES } from '@/lib/sound/voices';
 import { emitStoryEvent } from '@/lib/story-events';
-import { FakeAudioContext, type FakeGain, fakeContextMaker } from '@/test/fake-audio';
+import { loadFakeSamples, FakeAudioContext, type FakeGain, fakeContextMaker } from '@/test/fake-audio';
+import { SAMPLE_NAMES, samples } from '@/lib/sound/samples';
 import { stubMatchMedia } from '@/test/match-media';
 import { renderHook } from '@testing-library/react';
 
@@ -72,9 +73,10 @@ describe('CPU', () => {
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
     const stop = startSound(engine, { generated: true });
+    loadFakeSamples(samples, SAMPLE_NAMES);
     engine.unlock();
     for (let i = 0; i < 40; i += 1) {
-      emitStoryEvent({ type: 'stamp:record', evidence: `e${i}` });
+      emitStoryEvent({ type: 'stamp-hit' });
     }
     expect(engine.voices).toBe(SOUND.maxVoices);
     stop();

@@ -111,3 +111,34 @@ export const SOUND_KEYS = {
   effectsVolume: 'histor:effects-volume',
   legacy: 'histor:sound',
 } as const;
+
+/**
+ * Every sound file's level (a gain on the effects bus; the files are loudness-matched at about −18 LUFS, so these
+ * set the mix), and whether it varies a little each time it plays (sound-files brief, 2). Quieter is better.
+ */
+export const SAMPLES = {
+  click: { level: 0.32, vary: true },
+  modal: { level: 0.4, vary: false },
+  pen: { level: 0.3, vary: true },
+  'pen-legend': { level: 0.34, vary: true },
+  'typewriter-key': { level: 0.3, vary: true },
+  'typewriter-ding': { level: 0.42, vary: false },
+  stamp: { level: 0.85, vary: false },
+  chapter: { level: 0.5, vary: false },
+  'dread-1': { level: 0.62, vary: false },
+  'dread-2': { level: 0.62, vary: false },
+  'dread-3': { level: 0.62, vary: false },
+  'dread-4': { level: 0.62, vary: false },
+  question: { level: 0.4, vary: false },
+  'question-pulse': { level: 0.45, vary: false },
+  'room-tone': { level: 0.18, vary: false },
+  'file-pickup': { level: 0.42, vary: true },
+  'file-open': { level: 0.45, vary: true },
+  pin: { level: 0.45, vary: true },
+  'file-drop': { level: 0.42, vary: true },
+  heartbeat: { level: 0.45, vary: false },
+  murmur: { level: 0.3, vary: false },
+  eye: { level: 0.4, vary: false },
+  creak: { level: 0.4, vary: false },
+  'jump-sting': { level: 0.95, vary: false },
+} as const satisfies Record<string, { level: number; vary: boolean }>;

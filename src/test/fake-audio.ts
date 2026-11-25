@@ -135,6 +135,10 @@ export class FakeAudioContext {
     const data = Array.from({ length: channels }, () => new Float32Array(length));
     return { length, getChannelData: (channel: number) => data[channel] };
   }
+  /** A file "decoded": a stand-in buffer half a second long. */
+  decodeAudioData() {
+    return Promise.resolve({ duration: 0.5, length: 4000, numberOfChannels: 1, sampleRate: this.sampleRate });
+  }
   createMediaElementSource() {
     return new FakeNode('media', this);
   }
@@ -149,4 +153,11 @@ export function fakeContextMaker() {
     return ctx as unknown as AudioContext;
   };
   return { create, made };
+}
+
+/** Fills a sample bank with stand-in buffers (half a second each), as if every sound file had loaded. */
+export function loadFakeSamples(bank: { set: (name: never, buffer: AudioBuffer) => void }, names: readonly string[]): void {
+  for (const name of names) {
+    bank.set(name as never, { duration: 0.5, length: 4000, numberOfChannels: 1, sampleRate: 8000 } as AudioBuffer);
+  }
 }

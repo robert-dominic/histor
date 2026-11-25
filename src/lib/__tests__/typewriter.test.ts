@@ -70,14 +70,14 @@ describe('the typewriter in the event table', () => {
     const keys = Array.from({ length: 100 }, (_, index) => soundFor({ type: 'type-key' }, memory, 1000 + index * 10)).filter(row => row !== null);
     expect(keys.length).toBeLessThanOrEqual(SOUND.typeKeysPerSecond);
     expect(keys.length).toBeGreaterThanOrEqual(SOUND.typeKeysPerSecond - 1);
-    expect(keys[0]).toEqual({ cues: [{ sound: 'type-key' }] });
+    expect(keys[0]).toEqual({ cues: [{ sound: 'typewriter-key' }] });
   });
 
   test('the carriage return: its ding', () => {
-    expect(soundFor({ type: 'type-return' }, freshMemory())).toEqual({ cues: [{ sound: 'carriage-ding' }] });
+    expect(soundFor({ type: 'type-return' }, freshMemory())).toEqual({ cues: [{ sound: 'typewriter-ding' }] });
   });
 
-  test('written text keeps the pen: the pen is still the scratch', () => {
-    expect(soundFor({ type: 'pen' }, freshMemory(), 1000)).toEqual({ cues: [{ sound: 'scratch' }] });
+  test('written text keeps the pen', () => {
+    expect(soundFor({ type: 'pen' }, freshMemory(), 1000)).toEqual({ cues: [{ sound: 'pen' }] });
   });
 });

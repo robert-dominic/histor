@@ -3,8 +3,6 @@
 // nothing to download or license. Every sound has an attack and a release, so none of them clicks. Each recipe says
 // how long it lasts, so the engine can count it against the cap on voices.
 
-import type { HookSound } from '@/types/case';
-
 /** A recipe's options: when it starts (context time), and small variations the table asks for. */
 export interface VoiceOptions {
   at: number;
@@ -567,13 +565,3 @@ export const VOICES = {
 } satisfies Record<string, Voice>;
 
 export type SoundName = keyof typeof VOICES;
-
-/** The dread pool: each hook sound (`HookSound`) and the recipe it plays. */
-export const DREAD_POOL = {
-  boom: 'dread-boom',
-  swell: 'dread-swell',
-  scrape: 'dread-scrape',
-  thunder: 'dread-thunder',
-  thumps: 'dread-thumps',
-  cluster: 'dread-cluster',
-} as const satisfies Record<HookSound, SoundName>;

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // src/lib/__tests__/motion.test.ts
 import gsap from 'gsap';
+import { onStoryEvent } from '@/lib/story-events';
 import { describe, expect, test } from 'vitest';
 import { MOTION, STEP, ghostDuration, stampHit, tween, type TokenName } from '@/lib/motion';
 
@@ -74,7 +75,8 @@ describe('stampHit', () => {
     const el = document.createElement('span');
     const tl = stampHit(el);
     tl.pause(0);
-    const tweens = tl.getChildren(false);
+    // The tweens on the stamp (the timeline also calls out the stamp's sound as it presses in).
+    const tweens = tl.getChildren(false).filter(child => (child as gsap.core.Tween).targets().includes(el));
     expect(tweens).toHaveLength(2);
     expect(tweens[0].duration()).toBeCloseTo(MOTION['stamp.hit'].duration);
     expect(tweens[1].startTime()).toBeCloseTo(MOTION['stamp.hit'].duration);
@@ -83,11 +85,22 @@ describe('stampHit', () => {
     expect(gsap.getProperty(el, 'opacity')).toBe(1);
   });
 
+  test('every stamp is heard as it presses in: stamp-hit, once (sound-files 2)', () => {
+    const heard: string[] = [];
+    const stop = onStoryEvent(event => heard.push(event.type));
+    const tl = stampHit(document.createElement('span'));
+    tl.progress(MOTION['stamp.hit'].duration / tl.duration() - 0.01);
+    expect(heard).not.toContain('stamp-hit');
+    tl.progress(1);
+    expect(heard.filter(type => type === 'stamp-hit')).toHaveLength(1);
+    stop();
+  });
+
   test('reduced motion is one fade with no scale', () => {
     const el = document.createElement('span');
     const tl = stampHit(el, { reduced: true });
     tl.pause(0);
-    expect(tl.getChildren(false)).toHaveLength(1);
+    expect(tl.getChildren(false).filter(child => (child as gsap.core.Tween).targets().includes(el))).toHaveLength(1);
     tl.progress(1);
     expect(gsap.getProperty(el, 'opacity')).toBe(1);
     expect(gsap.getProperty(el, 'scale')).toBe(1);

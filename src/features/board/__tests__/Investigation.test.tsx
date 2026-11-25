@@ -360,7 +360,7 @@ describe('Closing the case', () => {
     stop();
     expect(saved().verdict).toBe('t-explosion');
     // (The typewriter's keys of the lines typed meanwhile aside.)
-    expect(heard.mock.calls.map(([event]) => event).filter(event => event.type !== 'type-key' && event.type !== 'type-return')).toStrictEqual([
+    expect(heard.mock.calls.map(([event]) => event).filter(event => !['type-key', 'type-return', 'stamp-hit'].includes(event.type))).toStrictEqual([
       { type: 'seal', where: 'verdict' },
     ]);
   });

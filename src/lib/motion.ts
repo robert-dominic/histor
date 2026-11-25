@@ -3,6 +3,9 @@
 // Tokens are named by what the thing does, not by how it looks.
 import gsap from 'gsap';
 import { hashUnit } from '@/lib/desk';
+import { emitStoryEvent } from '@/lib/story-events';
+
+const STAMP_HIT = { type: 'stamp-hit' } as const;
 
 /** The four duration steps, in seconds. The scale for delays, holds and staggers. */
 export const STEP = { fast: 0.2, base: 0.45, slow: 0.9, scene: 1.2 } as const;
@@ -101,17 +104,20 @@ export function stampHit(
   target: gsap.TweenTarget,
   options: { reduced?: boolean } = {},
 ): gsap.core.Timeline {
+  // Every stamp is heard as it presses in (sound-files brief, 2), whatever it stamps.
   const tl = gsap.timeline();
   if (options.reduced) {
-    return tl.fromTo(target, { opacity: 0 }, { opacity: 1, ...tween('hover') });
+    return tl.call(emitStoryEvent, [STAMP_HIT], 0).fromTo(target, { opacity: 0 }, { opacity: 1, ...tween('hover') }, 0);
   }
+  tl.call(emitStoryEvent, [STAMP_HIT], MOTION['stamp.hit'].duration);
   return tl
     .fromTo(
       target,
       { opacity: 0, scale: 1.15, clipPath: 'inset(0% 50% 0% 50%)' },
       { opacity: 1, scale: 0.97, clipPath: 'inset(0% 0% 0% 0%)', ...tween('stamp.hit') },
+      0,
     )
-    .to(target, { scale: 1, ease: 'power2.out', duration: STEP.fast });
+    .to(target, { scale: 1, ease: 'power2.out', duration: STEP.fast }, MOTION['stamp.hit'].duration);
 }
 
 /** Linear: only for constant motion and scroll-scrubbed timelines (motion.md). */

@@ -10,6 +10,7 @@ import { Narrator } from '@/lib/sound/narration';
 import { MOTION_QUERIES } from '@/lib/motion';
 import { AMBIENCE_ENABLED, SOUND } from '@/lib/sound/levels';
 import { MusicPlayer } from '@/lib/sound/music';
+import { isSample, playSample, samples } from '@/lib/sound/samples';
 import { Score } from '@/lib/sound/score';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { VOICES, drone, vary, type Voice } from '@/lib/sound/voices';
@@ -22,8 +23,12 @@ export const sound = new SoundEngine();
 /** The one narrator: a chapter or the question read aloud (narration.ts). */
 export const narrator = new Narrator(sound);
 
-/** Plays one cue on the effects bus, if a voice is free. */
+/** Plays one cue on the effects bus, if a voice is free: a sound file, or a generated recipe. */
 export function playCue(engine: SoundEngine, cue: SoundCue): void {
+  if (isSample(cue.sound)) {
+    playSample(engine, { ...cue, sound: cue.sound });
+    return;
+  }
   const ctx = engine.context;
   const out = engine.bus('effects');
   const voice = (VOICES as Record<string, Voice | undefined>)[cue.sound];
@@ -93,6 +98,8 @@ export function startSound(engine: SoundEngine = sound, setup: { createAudio?: (
   // layers both share should play on unbroken.
   let awayTimer: ReturnType<typeof setTimeout> | null = null;
   const stopStart = engine.onStart((ctx, channel) => {
+    // The sound files load once the sound has started (sound-files brief, 2).
+    void samples.load(ctx);
     if (channel === 'effects') {
       return;
     }
