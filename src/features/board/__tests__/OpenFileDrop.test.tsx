@@ -2,8 +2,7 @@
 // src/features/board/__tests__/OpenFileDrop.test.tsx
 // Returning an open file to the floor (review-fixes brief, 4). Let go anywhere that is not a theory or the tray, the
 // open file goes back to the floor, where it was let go and kept inside the floor: on the floor, on the board's empty
-// space, past the edges. Opening a file never forces a pin. A clear "Back to the floor" button does the same as
-// Escape and a click outside.
+// space, past the edges. Opening a file never forces a pin. Escape and a click outside close it (no button: ui-pass 1).
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
@@ -143,17 +142,18 @@ describe("the header's title (review-fixes 5)", () => {
   });
 });
 
-describe('"Back to the floor"', () => {
-  test('a visible button closes the file, the same as Escape; nothing is pinned', () => {
+describe('closing an open file (ui-pass 1)', () => {
+  test('no "Back to the floor" button on the file; Escape closes it, nothing pinned', () => {
     renderAt(`${BASE}/files/e-lifeboat`);
-    fireEvent.click(screen.getByRole('button', { name: /Back to the floor/ }));
+    expect(screen.queryByRole('button', { name: /Back to the floor/ })).toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(window.location.pathname).toBe(`${BASE}/files`);
-    expect(saved().pins).toEqual({});
+    expect(saved()?.pins ?? {}).toEqual({});
   });
 
-  test('a pinned file says where it goes back to: the board', () => {
-    seed({ 'e-lifeboat': THEORY }, ['e-lifeboat']);
+  test('a click outside the file closes it', () => {
     renderAt(`${BASE}/files/e-lifeboat`);
-    expect(screen.getByRole('button', { name: /Back to the board/ })).toBeDefined();
+    fireEvent.click(document.querySelector('[data-file="backdrop"]')!);
+    expect(window.location.pathname).toBe(`${BASE}/files`);
   });
 });
