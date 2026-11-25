@@ -112,6 +112,9 @@ export const SOUND_TABLE: Rows = {
   'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'pen', delay: 0.3 }] }),
   'stamp:legend': () => ({ duck: 'stamp' }),
   seal: event => (event.where === 'verdict' ? { duck: 'stamp' } : null),
+  // ---- The dread pass
+  // The eye opening: a barely audible wet blink and a low breath.
+  eye: () => ({ cues: [{ sound: 'eye' }] }),
   // The rank revealed: the typewriter's bell.
   rank: () => ({ cues: [{ sound: 'typewriter-ding' }] }),
 

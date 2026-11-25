@@ -65,6 +65,16 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
             style={{ filter: grade.filter }}
           />
           <div aria-hidden="true" className="absolute inset-0 bg-ghost-night mix-blend-color" style={{ opacity: grade.tint }} />
+          {/* Where the eye may open on this image (dread pass, 4): its dark places, from the case data. */}
+          {(section.eyeZones ?? []).map((zone, index) => (
+            <span
+              key={index}
+              aria-hidden="true"
+              data-eye-zone="story"
+              className="pointer-events-none absolute"
+              style={{ left: `${zone.x}%`, top: `${zone.y}%`, width: `${zone.w}%`, height: `${zone.h}%` }}
+            />
+          ))}
         </figure>
       )}
 

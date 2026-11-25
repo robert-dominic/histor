@@ -152,6 +152,19 @@ export interface StorySection {
    * without it each hook picks one from the pool, never the same as the last.
    */
   hookSound?: HookSound;
+  /**
+   * Where the eye may open on this chapter's image (dread pass, 4): dark areas that hold no text, each as a share of
+   * the image in percent (left, top, width, height). Optional: without them, the eye never opens on this image.
+   */
+  eyeZones?: EyeZone[];
+}
+
+/** A safe place for the eye on an image, in percent of the image: left, top, width, height. */
+export interface EyeZone {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 /** The dread sounds a hook can use: sound files (public/audio/sfx/dread-1.mp3 to dread-4.mp3). */

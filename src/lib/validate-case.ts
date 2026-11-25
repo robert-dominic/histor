@@ -434,6 +434,27 @@ export function validateCase(caseData: Case): string[] {
   }
   checkNarration(caseData.centralQuestionNarration, 'centralQuestionNarration');
 
+  // Validate the optional eye zones of each chapter (dread pass, 4): boxes in percent that lie inside the image
+  if (Array.isArray(caseData.story)) {
+    caseData.story.forEach((section, i) => {
+      const zones: unknown = section?.eyeZones;
+      if (zones === undefined) {
+        return;
+      }
+      if (!Array.isArray(zones)) {
+        errors.push(`Field story[${i}].eyeZones: Must be an array`);
+        return;
+      }
+      zones.forEach((zone: unknown, j) => {
+        const { x, y, w, h } = (zone ?? {}) as Record<string, unknown>;
+        const numbers = [x, y, w, h].every(value => typeof value === 'number' && Number.isFinite(value));
+        if (!numbers || (x as number) < 0 || (y as number) < 0 || (w as number) <= 0 || (h as number) <= 0 || (x as number) + (w as number) > 100 || (y as number) + (h as number) > 100) {
+          errors.push(`Field story[${i}].eyeZones[${j}]: Must be { x, y, w, h } in percent, inside the image`);
+        }
+      });
+    });
+  }
+
   // Validate the optional dread sound of each hook (review-fixes brief, 7): one of the pool, on a section with a hook
   if (Array.isArray(caseData.story)) {
     caseData.story.forEach((section, i) => {

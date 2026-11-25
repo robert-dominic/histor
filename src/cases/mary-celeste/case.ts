@@ -125,6 +125,8 @@ export const maryCeleste: Case = {
         credit: 'AI-generated (Google Gemini).',
         isIllustration: true,
       },
+      // The eye may open in the dark bulwark on the right, away from the page (dread pass, 4).
+      eyeZones: [{ x: 80, y: 45, w: 16, h: 22 }],
       kicker: 'What the boarders found',
       heading: 'Everything, except the people',
       body: [
@@ -164,6 +166,8 @@ export const maryCeleste: Case = {
         credit: 'Painting by Ivan Aivazovsky, 1885. Not the Mary Celeste. Public domain, via Wikimedia Commons.',
         isIllustration: false,
       },
+      // The eye may open in the storm clouds, top right, away from the page (dread pass, 4).
+      eyeZones: [{ x: 62, y: 8, w: 26, h: 20 }],
       kicker: 'The question',
       heading: 'Why?',
       body: [

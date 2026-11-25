@@ -519,6 +519,14 @@ function DeskScreen() {
           </div>
         )}
         <Lamp />
+        {/* The desk's own dark places for the eye (dread pass, 4): its corners, and the board's edge. */}
+        {desktop && (
+          <>
+            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute bottom-2 left-2 h-16 w-32" />
+            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute right-2 bottom-2 h-16 w-32" />
+            <span aria-hidden="true" data-eye-zone="desk" className="pointer-events-none absolute top-[calc(var(--case-header)+3rem)] left-1 h-14 w-12" />
+          </>
+        )}
       </main>
       {!fileOpen && (
         <DeskGuide

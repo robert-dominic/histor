@@ -39,6 +39,8 @@ export type StoryEvent =
   | { type: 'ghosts'; count: number }
   // A final choice hovered at the verdict (dread pass), or no longer: the heartbeat.
   | { type: 'heartbeat'; on: boolean }
+  // The eye opening (dread pass, 4).
+  | { type: 'eye' }
   // The typewriter types a letter of the app's voice (src/lib/typewriter.ts); a longer line's carriage returns.
   | { type: 'type-key' }
   | { type: 'type-return' }
