@@ -32,6 +32,9 @@ export default function Folder({ evidence, number, href, opened, pin }: FolderPr
       data-ui-sound="off"
       data-evidence-id={evidence.id}
       data-opened={opened}
+      // An opened legend (its stamp is known): the lantern flickers over it, and it twitches now and then (dread pass).
+      // A sealed file never says.
+      data-legend-known={opened && evidence.status === 'legend' ? 'true' : undefined}
       data-flip-id={`file-${evidence.id}`}
       // In the phone strip the folder in the middle lifts (data-centred, set by Pile.tsx). On a desktop GSAP places it.
       // On the desktop floor every folder has one fixed size (7.75rem by 6rem), stamped or not, so the floor layout can

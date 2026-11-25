@@ -64,3 +64,26 @@ describe('the lamp never hides a file', () => {
     expect(contrast(dim(ink), dim(manila))).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe('the light over the board (dread pass, 2)', () => {
+  const night = token('night');
+  /** The shade of the layer over the board, the top bar and the floor's label. */
+  const overShare = () => {
+    const rule = effects.slice(effects.indexOf('.desk-lamp-shadow-over'));
+    return Number(rule.match(/color-mix\(in srgb, var\(--color-night\) (\d+)%, transparent\)/)![1]) / 100;
+  };
+  const dim = (rgb: Rgb) => mix(rgb, night, overShare());
+
+  test('gentler than the floor\'s shade', () => {
+    expect(overShare()).toBeLessThan(shadowShare());
+  });
+
+  test('a theory\'s chalk still reads at 4.5:1 on its slate, far from the lamp', () => {
+    expect(contrast(dim(token('chalk')), dim(token('slate')))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test('the top bar\'s quiet labels (night ink at 65% on night) still read at 4.5:1', () => {
+    const label = mix(night, token('night-ink'), 0.65);
+    expect(contrast(dim(label), dim(night))).toBeGreaterThanOrEqual(4.5);
+  });
+});

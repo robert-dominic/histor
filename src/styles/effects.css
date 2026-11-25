@@ -197,6 +197,14 @@
   mask-image: radial-gradient(circle var(--lamp-r) at var(--lamp-x) var(--lamp-y), transparent 0, transparent 32%, black 100%);
 }
 
+/* Over the board (dread pass, 2): the same pool, a gentler shade, so the board is lit by the cursor too and its chalk
+   and labels still read at 4.5:1 or more (lamp-contrast.test.ts). */
+.desk-lamp-shadow-over {
+  background-color: color-mix(in srgb, var(--color-night) 16%, transparent);
+  -webkit-mask-image: radial-gradient(circle var(--lamp-r) at var(--lamp-x) var(--lamp-y), transparent 0, transparent 32%, black 100%);
+  mask-image: radial-gradient(circle var(--lamp-r) at var(--lamp-x) var(--lamp-y), transparent 0, transparent 32%, black 100%);
+}
+
 /* The warmth of the bulb, inside the pool only. */
 .desk-lamp-warmth {
   background: radial-gradient(
@@ -661,4 +669,71 @@ body::after {
 }
 .slate-shadow {
   filter: drop-shadow(0 8px 12px rgb(0 0 0 / 0.55));
+}
+
+/* ---- The lantern cursor (dread pass, 2) ----
+   On a desktop with a fine pointer and full motion only (html[data-lantern="on"]): the system cursor is hidden but in
+   text fields, where it comes back and the lantern hides. Keyboard focus outlines are untouched. The halo's flicker is
+   constant motion, so keyframes (opacity and transform only). */
+html[data-lantern="on"],
+html[data-lantern="on"] * {
+  cursor: none !important;
+}
+html[data-lantern="on"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select, [contenteditable="true"]) {
+  cursor: text !important;
+}
+.lantern {
+  width: 0;
+  height: 0;
+  transition: opacity var(--motion-hover-duration) var(--motion-hover-ease);
+}
+.lantern[data-away="true"],
+.lantern[data-hidden="true"] {
+  opacity: 0;
+}
+.lantern-flame {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 45% 40%, #fff6dc, var(--color-brass) 70%);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--color-brass) 80%, transparent);
+}
+.lantern-halo {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-brass) 32%, transparent), transparent);
+  animation: lantern-flicker 2.6s steps(1, end) infinite;
+}
+@keyframes lantern-flicker {
+  0% { opacity: 0.9; transform: scale(1); }
+  18% { opacity: 0.75; transform: scale(0.94); }
+  31% { opacity: 1; transform: scale(1.04); }
+  52% { opacity: 0.82; transform: scale(0.97); }
+  71% { opacity: 0.95; transform: scale(1.02); }
+  86% { opacity: 0.7; transform: scale(0.95); }
+}
+.lantern-word {
+  position: absolute;
+  left: 14px;
+  top: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-night-ink);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.9);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity var(--motion-hover-duration) var(--motion-hover-ease), transform var(--motion-hover-duration) var(--motion-hover-ease);
+}
+.lantern[data-word="true"] .lantern-word {
+  opacity: 1;
+  transform: translateY(0);
 }

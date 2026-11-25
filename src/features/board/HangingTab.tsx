@@ -4,12 +4,13 @@
 // Tapping the tab shows the historians' slip clipped beneath it: how historians read this pin, and a link that
 // opens the file again (D2). The desk opens the slip of the file just pinned by itself, until the next action.
 
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useContext, useId, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { Link } from 'react-router-dom';
 import { scatter } from '@/lib/desk';
 import { QUICK_OUT, MOTION_QUERIES, tween } from '@/lib/motion';
 import type { Evidence } from '@/types/case';
+import { InvestigationContext } from '@/app/InvestigationProvider';
 
 /** How historians read the user's pin of this file, in words ready to show. */
 export interface SlipReading {
@@ -31,6 +32,9 @@ interface HangingTabProps {
 
 export default function HangingTab({ evidence, number, href, reading, slipOpen, onToggleSlip }: HangingTabProps) {
   const { rotate } = scatter(evidence.id, 3, 0);
+  // Read without insisting on a provider: a tab drawn on its own (a test) simply knows nothing.
+  const investigation = useContext(InvestigationContext);
+  const legendKnown = evidence.status === 'legend' && investigation?.state.opened.includes(evidence.id) === true;
   const slipId = useId();
   // The slip is drawn while it is open and until it has finished leaving: it slides out from under its tab and slides
   // back, never snapping. Without a way to honour reduced motion it is simply shown and hidden.
@@ -63,6 +67,8 @@ export default function HangingTab({ evidence, number, href, reading, slipOpen, 
       data-board="tab"
       data-evidence-id={evidence.id}
       data-flip-id={`file-${evidence.id}`}
+      // An opened legend (its stamp is known): the lantern flickers over it, and it twitches now and then (dread pass).
+      data-legend-known={legendKnown ? 'true' : undefined}
       data-slip-open={slipOpen}
       className={`relative ${slipOpen ? 'z-[3]' : ''}`}
     >

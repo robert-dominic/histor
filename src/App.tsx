@@ -13,12 +13,15 @@ import Home from '@/pages/Home';
 import DevSound from '@/pages/DevSound';
 import NotFound from '@/pages/NotFound';
 import { startSound } from '@/lib/sound';
+import LanternCursor from '@/features/dread/LanternCursor';
 
 export default function App() {
   // The sound listens from the start, and sounds only after the first gesture (src/lib/sound).
   useEffect(() => startSound(), []);
   return (
     <SmoothScroll>
+      {/* The cursor is a small lantern flame, on a desktop with a fine pointer and full motion (dread pass, 2). */}
+      <LanternCursor />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
