@@ -4,10 +4,11 @@
 // first gesture), about 1.4 MB, decoded once. A one-shot plays through the effects bus with its level from the tune
 // table (`SAMPLES` in levels.ts), and, for a sound heard again and again (the pen, the typewriter, a click), a small
 // random change of pitch and level each time. A loop (the question, the room tone, the heartbeat, the murmur) plays
-// through its own gain and fades in and out.
+// through its own gain and fades in and out. Every sound goes through its tier of the mix (mix.ts).
 import type { SoundEngine } from '@/lib/sound/engine';
 import { glide } from '@/lib/sound/engine';
 import { SAMPLES } from '@/lib/sound/levels';
+import { mix } from '@/lib/sound/mix';
 import { sfxSrc } from '@/lib/sfx-import';
 
 /** Every sound file, by name (the files `npm run sfx:import` writes; a test keeps the two lists the same). */
@@ -102,7 +103,7 @@ export interface SampleCue {
 /** Plays one file once on the effects bus, if it is loaded and a voice is free. */
 export function playSample(engine: SoundEngine, cue: SampleCue, bank: SampleBank = samples): void {
   const ctx = engine.context;
-  const out = engine.bus('effects');
+  const out = mix.input(engine, SAMPLES[cue.sound].tier);
   const buffer = bank.get(cue.sound);
   const tune = SAMPLES[cue.sound];
   const rate = (cue.pitch ?? 1) * (tune.vary ? vary(SAMPLES_VARY.pitch) : 1);
@@ -116,6 +117,8 @@ export function playSample(engine: SoundEngine, cue: SampleCue, bank: SampleBank
   amp.gain.value = tune.level * (cue.gain ?? 1) * (tune.vary ? vary(SAMPLES_VARY.level) : 1);
   source.connect(amp).connect(out);
   source.start(ctx.currentTime + 0.005 + (cue.delay ?? 0));
+  // One thing in focus: everything of a lower tier dips while it plays (sound-files brief, 4).
+  mix.focus(engine, tune.tier, buffer.duration / rate + (cue.delay ?? 0));
   source.onended = () => {
     source.disconnect();
     amp.disconnect();
@@ -143,7 +146,7 @@ export class LoopPlayer {
   /** Fades in to `level` (a multiplier on the file's own) over `fade` seconds; already playing, it just moves there. */
   start(engine: SoundEngine, level: number, fade: number, bank: SampleBank = samples): void {
     const ctx = engine.context;
-    const out = engine.bus('effects');
+    const out = mix.input(engine, SAMPLES[this.name].tier);
     if (ctx === null || out === null) {
       return;
     }

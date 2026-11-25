@@ -72,32 +72,58 @@ export const SOUND_KEYS = {
 } as const;
 
 /**
- * Every sound file's level (a gain on the effects bus; the files are loudness-matched at about −18 LUFS, so these
- * set the mix), and whether it varies a little each time it plays (sound-files brief, 2). Quieter is better.
+ * The mix (sound-files brief, 4): one thing in focus. Every file has a tier, in the brief's priority order: voice >
+ * stamp > dread (and the jump sting) > question > file actions > pen and typewriter > UI clicks > loops. While a sound
+ * plays, every tier below it dips to `focusDuck`, and comes back as it ends. The voice (narration) holds the dip for as
+ * long as it speaks.
+ */
+export const TIERS = ['voice', 'stamp', 'dread', 'question', 'file', 'writing', 'ui', 'loop'] as const;
+export type Tier = (typeof TIERS)[number];
+
+export const MIX = {
+  /** What a lower tier dips to while a higher one plays. */
+  focusDuck: 0.4,
+  /** How fast it dips, and comes back. */
+  focusIn: 0.08,
+  focusOut: 0.6,
+  /** The desk's room tone: very low; under the murmur (ghost text on screen) it drops further, so one is in focus. */
+  roomTone: { level: 1, underMurmur: 0.25, fade: 2.5 },
+  /** The murmur: it grows a little with each ghost line on screen (at most `max`), and fades when they are gone. */
+  murmur: { perLine: 0.55, max: 1, rise: 1.5, fall: 2.5 },
+  /** The question's loop: fades in under the question, and out as the fork opens (or the reader goes back). */
+  question: { fadeIn: 2, fadeOut: 1.2 },
+  /** The heartbeat at the verdict: in and out over about half a second. */
+  heartbeat: { fade: 0.5 },
+} as const;
+
+/**
+ * Every sound file, in the one tune table (sound-files brief, 4): its level (a gain on the effects bus; the files are
+ * loudness-matched at about −18 LUFS, so these set the mix), its tier, and whether it varies a little each time it
+ * plays. Quieter is better.
  */
 export const SAMPLES = {
-  click: { level: 0.32, vary: true },
-  modal: { level: 0.4, vary: false },
-  pen: { level: 0.3, vary: true },
-  'pen-legend': { level: 0.34, vary: true },
-  'typewriter-key': { level: 0.3, vary: true },
-  'typewriter-ding': { level: 0.42, vary: false },
-  stamp: { level: 0.85, vary: false },
-  chapter: { level: 0.5, vary: false },
-  'dread-1': { level: 0.62, vary: false },
-  'dread-2': { level: 0.62, vary: false },
-  'dread-3': { level: 0.62, vary: false },
-  'dread-4': { level: 0.62, vary: false },
-  question: { level: 0.4, vary: false },
-  'question-pulse': { level: 0.45, vary: false },
-  'room-tone': { level: 0.18, vary: false },
-  'file-pickup': { level: 0.42, vary: true },
-  'file-open': { level: 0.45, vary: true },
-  pin: { level: 0.45, vary: true },
-  'file-drop': { level: 0.42, vary: true },
-  heartbeat: { level: 0.45, vary: false },
-  murmur: { level: 0.3, vary: false },
-  eye: { level: 0.4, vary: false },
-  creak: { level: 0.4, vary: false },
-  'jump-sting': { level: 0.95, vary: false },
-} as const satisfies Record<string, { level: number; vary: boolean }>;
+  click: { level: 0.32, tier: 'ui', vary: true },
+  modal: { level: 0.4, tier: 'ui', vary: false },
+  pen: { level: 0.3, tier: 'writing', vary: true },
+  'pen-legend': { level: 0.34, tier: 'writing', vary: true },
+  'typewriter-key': { level: 0.3, tier: 'writing', vary: true },
+  'typewriter-ding': { level: 0.42, tier: 'writing', vary: false },
+  stamp: { level: 0.85, tier: 'stamp', vary: false },
+  chapter: { level: 0.5, tier: 'question', vary: false },
+  'dread-1': { level: 0.62, tier: 'dread', vary: false },
+  'dread-2': { level: 0.62, tier: 'dread', vary: false },
+  'dread-3': { level: 0.62, tier: 'dread', vary: false },
+  'dread-4': { level: 0.62, tier: 'dread', vary: false },
+  question: { level: 0.4, tier: 'question', vary: false },
+  'question-pulse': { level: 0.45, tier: 'question', vary: false },
+  'room-tone': { level: 0.16, tier: 'loop', vary: false },
+  'file-pickup': { level: 0.42, tier: 'file', vary: true },
+  'file-open': { level: 0.45, tier: 'file', vary: true },
+  pin: { level: 0.45, tier: 'file', vary: true },
+  'file-drop': { level: 0.42, tier: 'file', vary: true },
+  heartbeat: { level: 0.45, tier: 'loop', vary: false },
+  murmur: { level: 0.3, tier: 'loop', vary: false },
+  eye: { level: 0.4, tier: 'dread', vary: false },
+  creak: { level: 0.4, tier: 'dread', vary: false },
+  'jump-sting': { level: 0.95, tier: 'dread', vary: false },
+} as const satisfies Record<string, { level: number; tier: Tier; vary: boolean }>;

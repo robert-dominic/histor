@@ -35,6 +35,10 @@ export type StoryEvent =
   | { type: 'stamp-hit' }
   // A popover (the share menu, the volume) opening or closing (use-popover.ts).
   | { type: 'popover'; open: boolean }
+  // How many ghost lines are on the desk now (dread pass): the murmur follows them.
+  | { type: 'ghosts'; count: number }
+  // A final choice hovered at the verdict (dread pass), or no longer: the heartbeat.
+  | { type: 'heartbeat'; on: boolean }
   // The typewriter types a letter of the app's voice (src/lib/typewriter.ts); a longer line's carriage returns.
   | { type: 'type-key' }
   | { type: 'type-return' }

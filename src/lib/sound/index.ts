@@ -9,6 +9,7 @@ import { useSyncExternalStore } from 'react';
 import { SoundEngine, type Channel } from '@/lib/sound/engine';
 import { Narrator } from '@/lib/sound/narration';
 import { MOTION_QUERIES } from '@/lib/motion';
+import { Loops } from '@/lib/sound/loops';
 import { playSample, samples } from '@/lib/sound/samples';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { emitStoryEvent, lastPlaceEvent, onStoryEvent, type StoryEvent } from '@/lib/story-events';
@@ -41,10 +42,14 @@ export function startSound(engine: SoundEngine = sound): () => void {
     return () => undefined;
   }
   const memory = freshMemory();
+  // The held sounds: the room tone, the question, the heartbeat, the murmur (loops.ts).
+  const loops = new Loops(engine);
   const stopStart = engine.onStart(ctx => {
-    void samples.load(ctx);
+    // Once the files are in, the loops of where the player already is begin.
+    void samples.load(ctx).then(() => loops.sync());
   });
   const place = (event: Extract<StoryEvent, { type: 'place' }>) => {
+    loops.hear(event);
     if (event.place === 'story') {
       // Each visit to the story starts its memory afresh.
       memory.cues = event.ambience?.cues ?? [];
@@ -89,6 +94,8 @@ export function startSound(engine: SoundEngine = sound): () => void {
       place(event);
       return;
     }
+    // The loops keep up with the moments even before the sound starts, so they are right once it does.
+    loops.hear(event);
     if (!engine.running) {
       return;
     }
@@ -103,6 +110,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
     document.removeEventListener('click', press, true);
     stop();
     stopStart();
+    loops.kill();
   };
 }
 

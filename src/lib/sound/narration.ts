@@ -9,6 +9,7 @@
 import { useSyncExternalStore } from 'react';
 import type { SoundEngine } from '@/lib/sound/engine';
 import { NARRATION } from '@/lib/sound/levels';
+import { mix } from '@/lib/sound/mix';
 
 export class Narrator {
   private readonly engine: SoundEngine;
@@ -64,6 +65,8 @@ export class Narrator {
     }
     this.engine.unlock();
     this.engine.duck('voice', 0);
+    // The voice is first in the mix: every sound file dips while it speaks (sound-files brief, 4).
+    mix.focus(this.engine, 'voice', Number.POSITIVE_INFINITY);
     audio.volume = NARRATION.volume * this.engine.volume('effects');
     this.audio = audio;
     this.source = src;
@@ -80,6 +83,7 @@ export class Narrator {
         this.done = null;
         this.finish = null;
         this.engine.release();
+        mix.end(this.engine, 'voice');
         this.changed();
         resolve();
       };

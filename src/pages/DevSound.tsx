@@ -1,6 +1,7 @@
 // src/pages/DevSound.tsx
-// /dev/sound, in development builds only: every sound file on one page (sound-files brief, 4), each with its level
-// from the tune table (`SAMPLES` in levels.ts), the moments it belongs to, and a button that plays it. For tuning by
+// /dev/sound, in development builds only: every sound file on one page (sound-files brief, 4), each with its level and
+// its tier in the mix from the tune table (`SAMPLES` in levels.ts), the moments it belongs to, and a button that plays
+// it. For tuning by
 // ear. The first press is the gesture that starts the sound (and loads the files); Sound must be on.
 import { useSoundChannel, playCue, sound } from '@/lib/sound';
 import { SAMPLES } from '@/lib/sound/levels';
@@ -68,7 +69,7 @@ export default function DevSound() {
               <span className="flex w-full items-baseline justify-between gap-3 font-voice text-sm">
                 <span>{name}</span>
                 <span data-dev-level className="tabular-nums text-night-ink/70">
-                  level {SAMPLES[name].level}
+                  level {SAMPLES[name].level} · {SAMPLES[name].tier}
                   {SAMPLES[name].vary ? ' · varies' : ''}
                 </span>
               </span>

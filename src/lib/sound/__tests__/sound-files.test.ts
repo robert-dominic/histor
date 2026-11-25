@@ -101,7 +101,7 @@ describe('every moment plays its file', () => {
 });
 
 describe('playing a file', () => {
-  test('through the effects bus at its tune-table level; a repeated sound varies its pitch and level a little', () => {
+  test('through its tier of the mix into the effects bus, at its tune-table level; a repeated sound varies its pitch and level a little', () => {
     loadFakeSamples(samples, SAMPLE_NAMES);
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
@@ -115,7 +115,8 @@ describe('playing a file', () => {
       const source = ctx.started.at(-1) as FakeSource;
       rates.push(source.playbackRate.value);
       const amp = source.connections[0] as FakeGain;
-      expect(amp.connections).toContain(engine.nodes!.bus.effects);
+      // Through its tier of the mix, into the effects bus.
+      expect((amp.connections[0] as FakeGain).connections).toContain(engine.nodes!.bus.effects);
       expect(amp.gain.value).toBeGreaterThan(SAMPLES['typewriter-key'].level * (1 - SAMPLES_VARY.level) - 1e-9);
       expect(amp.gain.value).toBeLessThan(SAMPLES['typewriter-key'].level * (1 + SAMPLES_VARY.level) + 1e-9);
     }
