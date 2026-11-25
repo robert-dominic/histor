@@ -4,8 +4,9 @@
 // moves exactly one case: a gesture that meets a transition still playing is swallowed, tail and all.
 //
 // The move to the next case: the current frame scales up and leaves up and to the left; the next frame, which was
-// peeking at the bottom right, rises and grows into the centre; the headline and subline blur out and the new ones
-// blur in; the title beside the frame fades and swaps. Going back plays it the other way. After the last case the
+// peeking at the bottom right, rises and grows into the centre. Text only when the frame is still: the headline,
+// subline and title blur out at once as the move starts, and the new ones blur in only after the new frame has landed.
+// Going back plays it the other way. After the last case the
 // next gesture lets go of the stage and the page scrolls on into the footer; scrolling back up to the top takes the
 // stage again, at the last case.
 //
@@ -212,9 +213,10 @@ export function createLandingStage({ root, sections, start, shown, onChange }: S
         .set(A.anchor, { opacity: 0 }, stage.duration)
         .to(B.anchor, { x: 0, y: 0, scale: 1, ...stage }, 0);
     }
-    // The words: the old ones blur out, the new ones blur in; the title fades and swaps with them.
+    // The words move only while the frames are still: the old ones blur out at once, as the scroll starts; the new
+    // ones blur in only after the new frame has landed.
     gsap.set(textOf(B), blurred);
-    tl.to(textOf(A), { opacity: 0, filter: `blur(${LANDING_BLUR}px)`, ...tween('ink.out') }, 0).to(textOf(B), { ...sharp, ...tween('landing.blur') }, STEP.base);
+    tl.to(textOf(A), { opacity: 0, filter: `blur(${LANDING_BLUR}px)`, ...tween('ink.out'), duration: STEP.fast }, 0).to(textOf(B), { ...sharp, ...tween('landing.blur') }, stage.duration);
   };
 
   const forward = () => {
