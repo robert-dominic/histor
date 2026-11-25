@@ -12,6 +12,7 @@ import Opening from '@/features/landing/Opening';
 import ProgressRail from '@/features/landing/ProgressRail';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { jumpToY, scrollToY } from '@/lib/smooth-scroll';
+import { LANDING_TITLE } from '@/lib/landing-meta';
 import { exhibits } from '@/cases';
 
 export default function Landing() {
@@ -35,6 +36,10 @@ export default function Landing() {
     } else {
       scrollToY(y, tween('scene'));
     }
+  }, []);
+  // The page's title (landing brief, 7), also when coming back to it from a case.
+  useEffect(() => {
+    document.title = LANDING_TITLE;
   }, []);
   // Which case is on screen: the one across the middle of the screen.
   useEffect(() => {

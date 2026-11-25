@@ -11,6 +11,7 @@ import { resolve } from 'node:path';
 import { exhibits } from '@/cases';
 import { FRAME_SHAPES } from '@/lib/frame-shapes';
 import * as smoothScroll from '@/lib/smooth-scroll';
+import { LANDING_DESCRIPTION, LANDING_TITLE } from '@/lib/landing-meta';
 import { OPENING_WAIT_MS } from '@/features/landing/Opening';
 import { useLandingMusic } from '@/features/landing/use-landing-music';
 import { FRAME_TILT } from '@/features/landing/use-frame-tilt';
@@ -308,5 +309,28 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     renderHome();
     expect(gsap.getProperty(ripper().querySelector('[data-exhibit-part="rise"]'), 'y')).toBe(0);
     expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]'))).toHaveLength(0);
+  });
+});
+
+describe('performance and meta (landing brief, 7)', () => {
+  test('the title "Histor: Legend or history? You decide.", with a matching description, in index.html and on the page', () => {
+    const html = readFileSync(resolve(__dirname, '../../../index.html'), 'utf8');
+    expect(html).toContain(`<title>${LANDING_TITLE}</title>`);
+    expect(html).toContain(`<meta name="description" content="${LANDING_DESCRIPTION}" />`);
+    document.title = 'Something else';
+    renderHome();
+    expect(document.title).toBe(LANDING_TITLE);
+  });
+
+  test('frame images load lazily and decode off the main thread, as WebP; nothing keeps a permanent will-change', () => {
+    renderHome();
+    const images = [...document.querySelectorAll<HTMLImageElement>('.haunted-frame img')];
+    expect(images.length).toBeGreaterThan(0);
+    for (const image of images) {
+      expect(image.getAttribute('loading')).toBe('lazy');
+      expect(image.getAttribute('decoding')).toBe('async');
+      expect(image.getAttribute('src')).toMatch(/\.webp$/);
+    }
+    expect(document.querySelector('[data-page="landing"] [class*="will-change"]')).toBeNull();
   });
 });
