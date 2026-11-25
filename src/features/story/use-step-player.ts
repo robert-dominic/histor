@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import gsap from 'gsap';
+import { unlockedSoundWith } from '@/lib/sound';
 
 /** What the player drives: the story's steps (Story.tsx). */
 export interface StepDriver {
@@ -86,13 +87,16 @@ export function useStepPlayer(enabled: boolean, driver: RefObject<StepDriver | n
     // A press on the controls themselves is theirs to handle.
     const onControl = (target: EventTarget | null) =>
       target instanceof Element && target.closest('[data-story-control]') !== null;
+    // The click or key that unlocks the sound is for the sound, not a take-over: the story plays on, now heard
+    // (two fixes, 2). The same gesture's other events (a touch's touchstart after its pointerdown) count too.
+    const forSound = (event: Event) => unlockedSoundWith(event);
     const stop = (event: Event) => {
-      if (!onControl(event.target)) {
+      if (!onControl(event.target) && !forSound(event)) {
         pause();
       }
     };
     const stopOnKey = (event: KeyboardEvent) => {
-      if (isTakeOverKey(event) && !onControl(event.target)) {
+      if (isTakeOverKey(event) && !onControl(event.target) && !forSound(event)) {
         pause();
       }
     };

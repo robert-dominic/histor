@@ -27,6 +27,24 @@ export const narrator = new Narrator(sound);
 
 /** While set, nothing is played (the legend intro is silent: the fix list). The loops still keep up. */
 let silenced = false;
+/** The gesture that unlocked the sound, while it is still being handled (two fixes, 2). */
+let unlockingEvent: Event | null = null;
+
+/** How long after the unlocking event the same gesture's other events (a touch's touchstart) still count, in ms. */
+const SAME_GESTURE_MS = 100;
+
+/**
+ * True for the click, touch or key that has just unlocked the sound: it was for the sound ("Click anywhere for
+ * sound"), so "Play the story" does not take it as the reader taking over (use-step-player.ts).
+ */
+export function unlockedSoundWith(event: Event): boolean {
+  if (unlockingEvent === null) {
+    return false;
+  }
+  const after = event.timeStamp - unlockingEvent.timeStamp;
+  return event === unlockingEvent || (after >= 0 && after < SAME_GESTURE_MS);
+}
+
 export function silenceSound(on: boolean): void {
   silenced = on;
 }
@@ -90,11 +108,15 @@ export function startSound(engine: SoundEngine = sound): () => void {
   };
   // Any first gesture starts the sound; under reduced motion nothing starts by itself (polish brief, B6): only the
   // player's own choice does (the header's toggle, or the play modal's switch).
-  const gesture = () => {
+  const gesture = (event: Event) => {
     if (typeof window.matchMedia === 'function' && window.matchMedia(MOTION_QUERIES.reduced).matches) {
       return;
     }
+    const locked = engine.enabled && !engine.running;
     engine.unlock();
+    if (locked && engine.running) {
+      unlockingEvent = event;
+    }
   };
   // The interface's sounds (music brief, 4): one listener for every button and link, so no component has to ask.
   // An element marked data-ui-sound="off" (or inside one) has a sound of its own already.

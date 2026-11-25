@@ -1490,3 +1490,102 @@ describe('Story: the fork\'s buttons appearing (the fix list)', () => {
     stop();
   });
 });
+
+describe('Story: "Play the story" runs on its own to the fork (two fixes, 2)', () => {
+  const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/files' };
+  const flush = () =>
+    act(async () => {
+      for (let tick = 0; tick < 6; tick += 1) {
+        await Promise.resolve();
+      }
+    });
+  /**
+   * Plays the page on screen to its end the way a browser does: through the moment its last letter is written (the
+   * pen's own exit still running), then on to the end. Jumping straight to the end hid the bug: the "written" moment
+   * came before the end, so the page never counted as written and the story sat on its first page.
+   */
+  const writeLikeABrowser = (container: HTMLElement) => {
+    let wrote = false;
+    act(() => {
+      // The page's units are letters or, on a long page, words: the first one the pen writes leads to its timeline.
+      const units = [...container.querySelectorAll('[data-active="true"] [data-story="page"] [data-pen="char"], [data-active="true"] [data-story="page"] [data-pen="word"]')];
+      const writing = units
+        .map(unit => gsap.getTweensOf(unit).find(tween => tween.parent !== gsap.globalTimeline)?.parent)
+        .find(parent => parent instanceof gsap.core.Timeline);
+      if (writing instanceof gsap.core.Timeline && writing.progress() < 1) {
+        writing.progress(0.999);
+        writing.progress(1);
+        wrote = true;
+      }
+    });
+    return wrote;
+  };
+
+  test('every chapter, hook and the question, each held for its time, until the fork opens; never paused', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Story story={maryCeleste.story} centralQuestion={maryCeleste.centralQuestion} references={maryCeleste.references} sources={maryCeleste.sources} voyage={maryCeleste.voyage} fork={FORK} start={PLAY} />
+      </MemoryRouter>
+    );
+    // Spied after render, so only the player's holds (and timers made later) are seen.
+    const delayed = vi.spyOn(gsap, 'delayedCall');
+    /** Ends every hold under way. */
+    const endHolds = () =>
+      act(() => {
+        delayed.mock.results.forEach(result => {
+          const hold = result.value as gsap.core.Tween | undefined;
+          if (hold !== undefined && hold.progress() < 1) {
+            hold.progress(1);
+          }
+        });
+      });
+    const control = container.querySelector<HTMLButtonElement>('[data-story="play-control"]')!;
+    const seen: string[] = [];
+    let wrote = 0;
+    for (let round = 0; round < 60 && stepOf(container) !== 'fork'; round += 1) {
+      const step = stepOf(container)!;
+      if (seen.at(-1) !== step) {
+        seen.push(step);
+      }
+      expect(control.getAttribute('aria-pressed'), `paused at ${step}`).toBe('true');
+      await flush();
+      wrote += writeLikeABrowser(container) ? 1 : 0;
+      await flush();
+      endHolds();
+      await flush();
+      settleSteps();
+      await flush();
+    }
+    seen.push(stepOf(container)!);
+    const expected = maryCeleste.story.flatMap((section, index) => [`page-${index}`, ...(section.hook === undefined ? [] : [`hook-${index}`])]);
+    expect(seen).toEqual([...expected, `line-${container.querySelectorAll('[data-story="phrase"]').length - 1}`, 'fork']);
+    // Each page was written by playing through, not by jumping to its end.
+    expect(wrote).toBe(maryCeleste.story.length);
+    expect(screen.getByRole('dialog', { name: 'What next' })).toBeDefined();
+  });
+
+  test('the click that unlocks the sound is for the sound: the story plays on; the next click pauses it', async () => {
+    const { SoundEngine } = await import('@/lib/sound/engine');
+    const { startSound } = await import('@/lib/sound');
+    const { fakeContextMaker } = await import('@/test/fake-audio');
+    const engine = new SoundEngine({ createContext: fakeContextMaker().create });
+    const stop = startSound(engine);
+    try {
+      const { container } = renderStory(testCase, PLAY);
+      const control = container.querySelector<HTMLButtonElement>('[data-story="play-control"]')!;
+      act(() => {
+        fireEvent.pointerDown(document.body);
+      });
+      expect(engine.running).toBe(true);
+      expect(control.getAttribute('aria-pressed')).toBe('true');
+      // A later gesture (events carry their own time).
+      await act(() => new Promise(resolve => setTimeout(resolve, 150)));
+      act(() => {
+        fireEvent.pointerDown(document.body);
+      });
+      expect(control.getAttribute('aria-pressed')).toBe('false');
+    } finally {
+      stop();
+    }
+  });
+});

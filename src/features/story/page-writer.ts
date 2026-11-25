@@ -167,6 +167,9 @@ export function createPageWriter(scene: HTMLElement): PageWriter {
     callbacks.forEach(callback => callback());
   };
   writing.call(done, undefined, at);
+  // The pen's own exit can run past the last letter, so the call above may come before the end: the page counts as
+  // written when the writing completes (autoplay waited on this forever, two fixes 2).
+  writing.eventCallback('onComplete', done);
 
   function reset() {
     started = false;

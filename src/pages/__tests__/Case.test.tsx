@@ -13,6 +13,7 @@ import Case from '@/pages/Case';
 import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
+import { sound } from '@/lib/sound';
 
 // Keep the real validator, but let single tests replace its result.
 vi.mock('@/lib/validate-case', async importOriginal => {
@@ -154,6 +155,41 @@ describe('Case page: open case', () => {
     expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
     finishLegendIntro();
     expect(screen.getByRole('dialog', { name: openEntry.data.title })).toBeDefined();
+  });
+
+  test('a return visit with "Play the story" saved: no modal; the story starts playing at once, the sound still locked (two fixes, 2)', async () => {
+    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+    localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'play', sound: true }));
+    // The story is the first screen: the browser reports it on screen at once.
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        callback: IntersectionObserverCallback;
+        constructor(callback: IntersectionObserverCallback) {
+          this.callback = callback;
+        }
+        observe() {
+          queueMicrotask(() => act(() => this.callback([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver)));
+        }
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      }
+    );
+    renderCasePage(`/case/${openEntry.id}`);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const story = screen.getByRole('region', { name: 'The story' });
+    expect(story.dataset.step).toBe('page-0');
+    const control = story.querySelector<HTMLButtonElement>('[data-story="play-control"]')!;
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    expect(control.dataset.visible).toBe('true');
+    // No gesture yet: the sound is locked, and the story plays anyway.
+    expect(sound.running).toBe(false);
   });
 
   test('a return visit (intro seen, a mode chosen): no intro, and no modal at all', () => {
