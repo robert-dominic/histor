@@ -12,7 +12,6 @@ import SiteFooter from '@/components/SiteFooter';
 import LandingHeader from '@/features/landing/LandingHeader';
 import ExhibitSection from '@/features/landing/ExhibitSection';
 import { OpenFrame, SealedFrame } from '@/features/landing/FrameActions';
-import ArchiveRoom from '@/features/landing/ArchiveRoom';
 import Opening from '@/features/landing/Opening';
 import ProgressRail from '@/features/landing/ProgressRail';
 import { createLandingStage, type StageHandle } from '@/features/landing/landing-stage';
@@ -49,9 +48,6 @@ export default function Landing() {
   const dock = useCallback(() => setDocked(true), []);
   const settle = useCallback(() => setSettled(true), []);
   const finish = useCallback(() => setReady(true), []);
-  /** The archive room is open. */
-  const [walking, setWalking] = useState(false);
-  const walkRef = useRef<HTMLButtonElement>(null);
   const first = exhibits[startIndex];
   const detail = useMemo(
     () =>
@@ -156,9 +152,9 @@ export default function Landing() {
 
   return (
     <main data-page="landing" data-staged={staged} data-docked={docked} data-settled={settled} data-ready={ready} className="relative min-h-svh bg-night text-night-ink">
-      <LandingHeader onWalk={() => setWalking(true)} walkRef={walkRef} markRef={markRef} docked={docked} />
+      <LandingHeader markRef={markRef} docked={docked} />
       <Opening targetRef={markRef} detail={detail} onDock={dock} onSettle={settle} onDone={finish} />
-      <div ref={stageRef} data-landing="stage" inert={walking} className={staged ? 'relative h-svh min-h-[40rem] overflow-hidden' : undefined}>
+      <div ref={stageRef} data-landing="stage" className={staged ? 'relative h-svh min-h-[40rem] overflow-hidden' : undefined}>
         <ol aria-label="The cases" className={staged ? 'absolute inset-0' : undefined}>
           {exhibits.map((exhibit, index) => (
             <ExhibitSection
@@ -178,15 +174,6 @@ export default function Landing() {
       </div>
       <SiteFooter />
       <ProgressRail exhibits={exhibits} current={current} onGo={go} shown={ready && !pastCases} />
-      {/* The archive room: every frame on one wall. */}
-      {walking && (
-        <ArchiveRoom
-          onClose={() => {
-            setWalking(false);
-            walkRef.current?.focus();
-          }}
-        />
-      )}
       {/* The black an open case's frame fades the screen to, before its page. */}
       <div aria-hidden="true" data-landing="blackout" className="pointer-events-none invisible fixed inset-0 z-[60] bg-black opacity-0" />
     </main>

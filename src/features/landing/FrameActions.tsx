@@ -54,16 +54,7 @@ export function OpenFrame({ exhibit, children }: { exhibit: Exhibit; children: R
   );
 }
 
-/** Where a sealed case's plaque card rises: beside its frame (the landing), or below or above it (the archive room). */
-export type PlaquePlace = 'beside' | 'below' | 'above';
-
-const PLAQUE_PLACE: Record<PlaquePlace, string> = {
-  beside: 'top-[calc(100%+0.75rem)] left-0 w-full max-w-sm lg:top-0 lg:left-[calc(100%+2rem)] lg:w-72',
-  below: 'top-[calc(100%+0.75rem)] left-0 w-72 max-w-[80vw]',
-  above: 'bottom-[calc(100%+0.75rem)] left-0 w-72 max-w-[80vw]',
-};
-
-export function SealedFrame({ exhibit, children, plaque = 'beside' }: { exhibit: Exhibit; children: ReactNode; plaque?: PlaquePlace }) {
+export function SealedFrame({ exhibit, children }: { exhibit: Exhibit; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -124,8 +115,7 @@ export function SealedFrame({ exhibit, children, plaque = 'beside' }: { exhibit:
         role="dialog"
         aria-label={`${exhibit.title}, sealed`}
         data-exhibit-part="plaque"
-        from={plaque === 'above' ? 'above' : 'below'}
-        className={PLAQUE_PLACE[plaque]}
+        className="top-[calc(100%+0.75rem)] left-0 w-full max-w-sm lg:top-0 lg:left-[calc(100%+2rem)] lg:w-72"
       >
         <p className="font-record text-[1.25rem] leading-tight text-ink italic">{exhibit.title}</p>
         <p className="mt-1 font-voice text-[0.6875rem] tracking-[0.18em] text-ink/70 uppercase">{exhibit.years}</p>

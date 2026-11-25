@@ -73,15 +73,6 @@ export function InfoIcon() {
   );
 }
 
-/** A cross: close. */
-export function CloseIcon() {
-  return (
-    <Icon>
-      <path d="M6 6l12 12M18 6L6 18" />
-    </Icon>
-  );
-}
-
 /** A note with a beam: music. */
 export function MusicIcon() {
   return (
