@@ -110,14 +110,29 @@ describe('the rank card', () => {
 });
 
 describe('the shareable card', () => {
+  test('a theory historians ruled out: the card says "I sided against the historians."; a leading one does not', () => {
+    renderReport(rejected.id);
+    const card = () => part('preview')!.querySelector('canvas')!.getAttribute('aria-label') ?? '';
+    expect(card()).toContain('I sided against the historians.');
+    cleanup();
+    renderReport(CASE.theories.find(theory => theory.standing === 'leading')!.id);
+    expect(card()).not.toContain('I sided against the historians.');
+  });
+
   test('its words: the case closed, the rank, the legends, the site', () => {
     const input = { title: 'The Mary Celeste', years: '1872 – 1873', rank: 'deckhand' as const, legends: 3 };
     expect(shareCardLines(input)).toEqual({
       closed: 'I closed the Mary Celeste case.',
       rank: 'Deckhand',
+      against: '',
       legends: 'I trusted 3 legends.',
       site: 'histor.space',
     });
+    // A theory historians ruled out (the fix list): the card says so, and so do the shared words.
+    expect(shareCardLines({ ...input, against: true }).against).toBe('I sided against the historians.');
+    expect(shareCardText({ ...input, against: true })).toBe(
+      'I closed the Mary Celeste case on Histor. Deckhand. I sided against the historians. I trusted 3 legends. Can you tell legend from history?'
+    );
     expect(shareCardLines({ ...input, legends: 0 }).legends).toBe('I trusted no legends.');
     expect(shareCardLines({ ...input, legends: 1 }).legends).toBe('I trusted 1 legend.');
     expect(shareCardText(input)).toBe('I closed the Mary Celeste case on Histor. Deckhand. I trusted 3 legends. Can you tell legend from history?');

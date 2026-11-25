@@ -26,6 +26,7 @@ export function ogCardLines(result: SharedResult) {
     closed: `I closed the ${titleFromCaseId(result.caseId)} case.`,
     rank: RANK_COPY[result.rank].name.toUpperCase(),
     legends,
+    against: result.against === true ? 'I sided against the historians.' : '',
     site: 'histor.space',
     signature: result.name,
   };
@@ -66,7 +67,10 @@ export function ogCardElement(result: SharedResult): ReactElement {
             lines.rank
           )
         ),
-        el('div', { fontFamily: 'Special Elite', fontSize: 34, marginTop: 36 }, lines.legends),
+        // Against the historians, when the player was (the fix list); then the legends.
+        // Tight, so the signature row keeps its room on a 630px card.
+        lines.against === '' ? el('div', {}) : el('div', { fontFamily: 'Special Elite', fontSize: 30, lineHeight: 1.15, marginTop: 18 }, lines.against),
+        el('div', { fontFamily: 'Special Elite', fontSize: 34, marginTop: lines.against === '' ? 36 : 6 }, lines.legends),
         el(
           'div',
           { flex: 1, alignItems: 'flex-end', justifyContent: 'space-between' },

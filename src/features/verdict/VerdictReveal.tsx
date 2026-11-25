@@ -85,7 +85,8 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
   const comparison = useMemo(() => verdictComparison(report), [report]);
   const rank = useMemo(() => caseRank(report), [report]);
   const card: ShareCardInput = useMemo(
-    () => ({ title, years, rank, legends: legendsTrustedCount(report) }),
+    // Against the historians: the theory chosen was ruled out (the fix list).
+    () => ({ title, years, rank, legends: legendsTrustedCount(report), against: report.verdict?.standing === 'rejected' }),
     [title, years, rank, report]
   );
   // What is saved and shared: the card with its signature. The preview draws it without, and the pen writes the
@@ -93,7 +94,7 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
   const signedCard: ShareCardInput = useMemo(() => (signature === '' ? card : { ...card, name: signature }), [card, signature]);
   const fileName = `histor-${caseId}.png`;
   // The share link carries the result (review-fixes brief, 11), so its preview shows the player's card.
-  const url = shareLink({ caseId, name: signature, rank, legends: card.legends });
+  const url = shareLink({ caseId, name: signature, rank, legends: card.legends, against: card.against });
   const text = shareCardText(card);
 
   // The card is drawn once the site's fonts are ready (a canvas does not wait for them by itself).
@@ -299,7 +300,7 @@ export default function VerdictReveal({ report, caseId, title, years, fresh, onN
             width={SHARE_CARD.width}
             height={SHARE_CARD.height}
             role="img"
-            aria-label={`${lines.closed} ${lines.rank}. ${lines.legends}${signature === '' ? '' : ` Signed ${signature}.`} ${lines.site}`}
+            aria-label={`${lines.closed} ${lines.rank}.${lines.against === '' ? '' : ` ${lines.against}`} ${lines.legends}${signature === '' ? '' : ` Signed ${signature}.`} ${lines.site}`}
             className="block aspect-[1200/630] w-full rounded-[2px] shadow-lg shadow-black/50"
           />
           <CardSignature name={typed} onSigned={sign} />

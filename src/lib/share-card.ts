@@ -17,7 +17,10 @@ export interface ShareCardInput {
   title: string;
   years: string;
   rank: CaseRank;
+  /** Legends trusted: opened legend files pinned to a theory (buildCaseReport's `legendsTrusted`). */
   legends: number;
+  /** The player chose a theory historians ruled out (the fix list): the card says so. */
+  against?: boolean;
   /** The player's signature, when they signed (player-name.ts). No name, no signature line. */
   name?: string;
 }
@@ -28,12 +31,16 @@ export interface ShareCardInput {
  */
 export const SHARE_SIGNATURE = { left: 96, baseline: 560, labelPx: 20, namePx: 50, gap: 14 } as const;
 
-/** The card's words, in order: the line about the case, the rank, the legends, the site. */
-export function shareCardLines({ title, rank, legends }: ShareCardInput): { closed: string; rank: string; legends: string; site: string } {
+/** The line on the card of a player who chose a theory historians ruled out. */
+export const AGAINST_LINE = 'I sided against the historians.';
+
+/** The card's words, in order: the line about the case, the rank, the line against the historians (or empty), the legends, the site. */
+export function shareCardLines({ title, rank, legends, against = false }: ShareCardInput): { closed: string; rank: string; against: string; legends: string; site: string } {
   return {
     // "The Mary Celeste" reads "I closed the Mary Celeste case.", not "the The Mary Celeste".
     closed: `I closed the ${title.replace(/^the\s+/i, '')} case.`,
     rank: RANK_COPY[rank].name,
+    against: against ? AGAINST_LINE : '',
     legends: legends === 0 ? 'I trusted no legends.' : legends === 1 ? 'I trusted 1 legend.' : `I trusted ${legends} legends.`,
     site: SHARE_SITE,
   };
@@ -50,7 +57,8 @@ export function shareUrl(caseId: string): string {
  */
 export function shareCardText(input: ShareCardInput): string {
   const lines = shareCardLines(input);
-  return `${lines.closed.replace(/ case\.$/, ' case on Histor.')} ${lines.rank}. ${lines.legends} Can you tell legend from history?`;
+  const against = lines.against === '' ? '' : ` ${lines.against}`;
+  return `${lines.closed.replace(/ case\.$/, ' case on Histor.')} ${lines.rank}.${against} ${lines.legends} Can you tell legend from history?`;
 }
 
 export interface ShareLink {
@@ -174,6 +182,13 @@ export function drawShareCard(canvas: HTMLCanvasElement, input: ShareCardInput):
   // The legends, and the site.
   context.fillStyle = ink;
   context.font = `34px ${FONTS.voice}`;
+  // Against the historians, when the player was: just under the rank, then the legends.
+  if (lines.against !== '') {
+    context.font = `30px ${FONTS.voice}`;
+    context.fillText(lines.against, left, 456, width - 2 * left);
+    context.font = `34px ${FONTS.voice}`;
+  }
+  // The legends keep their place, clear of the signature (baseline 560).
   context.fillText(lines.legends, left, 500, width - 2 * left);
   context.fillStyle = muted;
   context.font = `26px ${FONTS.voice}`;

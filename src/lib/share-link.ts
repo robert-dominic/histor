@@ -20,6 +20,8 @@ export interface SharedResult {
   name: string;
   rank: SharedRank;
   legends: number;
+  /** The player chose a theory historians ruled out: the card says "I sided against the historians." */
+  against?: boolean;
 }
 
 /** A case id as the registry writes them: short kebab-case. */
@@ -43,7 +45,7 @@ export function cleanShareName(raw: string): string {
 }
 
 /** The link a result is shared with. */
-export function shareLink({ caseId, name, rank, legends }: SharedResult): string {
+export function shareLink({ caseId, name, rank, legends, against = false }: SharedResult): string {
   const params = new URLSearchParams();
   const signed = cleanShareName(name);
   if (signed !== '') {
@@ -51,6 +53,9 @@ export function shareLink({ caseId, name, rank, legends }: SharedResult): string
   }
   params.set('r', rank);
   params.set('l', String(Math.min(SHARE_LEGENDS_MAX, Math.max(0, Math.round(legends)))));
+  if (against) {
+    params.set('a', '1');
+  }
   return `${SHARE_ORIGIN}/r/${encodeURIComponent(caseId)}?${params.toString()}`;
 }
 
@@ -61,7 +66,7 @@ export function readShareLink(caseId: string, params: URLSearchParams): SharedRe
   if (!isShareCaseId(caseId) || !(SHARE_RANKS as string[]).includes(rank) || !/^\d{1,2}$/.test(legendsText)) {
     return null;
   }
-  return { caseId, name: cleanShareName(params.get('n') ?? ''), rank: rank as SharedRank, legends: Number(legendsText) };
+  return { caseId, name: cleanShareName(params.get('n') ?? ''), rank: rank as SharedRank, legends: Number(legendsText), against: params.get('a') === '1' };
 }
 
 /** A case's title from its id, for a page that cannot load the case: "mary-celeste" reads "Mary Celeste". */

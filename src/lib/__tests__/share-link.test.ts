@@ -10,7 +10,11 @@ describe('the share link', () => {
     const link = shareLink({ caseId: 'mary-celeste', name: 'Ann Lee', rank: 'historian', legends: 0 });
     expect(link).toBe('https://histor.space/r/mary-celeste?n=Ann+Lee&r=historian&l=0');
     const url = new URL(link);
-    expect(readShareLink('mary-celeste', url.searchParams)).toEqual({ caseId: 'mary-celeste', name: 'Ann Lee', rank: 'historian', legends: 0 });
+    expect(readShareLink('mary-celeste', url.searchParams)).toEqual({ caseId: 'mary-celeste', name: 'Ann Lee', rank: 'historian', legends: 0, against: false });
+    // Against the historians travels as a=1.
+    const against = new URL(shareLink({ caseId: 'mary-celeste', name: '', rank: 'deckhand', legends: 1, against: true }));
+    expect(against.searchParams.get('a')).toBe('1');
+    expect(readShareLink('mary-celeste', against.searchParams)?.against).toBe(true);
   });
 
   test('no signature, no name; the name capped at 32 characters', () => {

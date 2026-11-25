@@ -23,12 +23,20 @@ function texts(node: unknown): string[] {
 
 describe('the card image (api/og.ts)', () => {
   test('its values are checked as before: anything invalid gives no card', async () => {
-    expect(readOgRequest('https://histor.space/api/og?c=mary-celeste&n=Ann&r=historian&l=0')).toEqual({ caseId: 'mary-celeste', name: 'Ann', rank: 'historian', legends: 0 });
+    expect(readOgRequest('https://histor.space/api/og?c=mary-celeste&n=Ann&r=historian&l=0')).toEqual({ caseId: 'mary-celeste', name: 'Ann', rank: 'historian', legends: 0, against: false });
     for (const query of ['c=mary-celeste&r=admiral&l=0', 'c=mary-celeste&r=historian&l=100', 'c=%3Cscript%3E&r=historian&l=1', 'r=historian&l=1']) {
       expect(readOgRequest(`https://histor.space/api/og?${query}`)).toBeNull();
     }
     const response = await handler(new Request('https://histor.space/api/og?c=mary-celeste&r=admiral&l=0'));
     expect(response.status).toBe(404);
+  });
+
+  test('against the historians (a=1): the preview says so too; without it, no such line', () => {
+    const against = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1&a=1')!;
+    expect(ogCardLines(against).against).toBe('I sided against the historians.');
+    expect(texts(ogCardElement(against))).toContain('I sided against the historians.');
+    const plain = readOgRequest('https://histor.space/api/og?c=mary-celeste&r=deckhand&l=1')!;
+    expect(texts(ogCardElement(plain))).not.toContain('I sided against the historians.');
   });
 
   test('the same words as the canvas card, the signature when signed, a name cleaned of markup', () => {
