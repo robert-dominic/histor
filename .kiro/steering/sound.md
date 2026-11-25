@@ -8,7 +8,7 @@ inclusion: always
 
 ## The rule
 
-**Every sound is a real file. Nothing is generated** (sound-files brief). The effects are recordings from Mixkit, chosen by the owner, imported by `npm run sfx:import` into `public/audio/sfx/`, and credited in the case credits ("Sound": Mixkit needs no attribution; it is credited as good practice). A narration clip, when a case has one, is a file too. **The music is off** (`MUSIC_ENABLED = false`). Quieter is better: the aim is atmosphere and weight, never a cartoon. **One thing is in focus at a time** (see "The mix").
+**Every sound is a real file, but the pen** (sound-files brief; the fix list brought the generated pen scratch back). The effects are recordings from Mixkit, chosen by the owner, imported by `npm run sfx:import` into `public/audio/sfx/`, and credited in the case credits ("Sound": Mixkit needs no attribution; it is credited as good practice). A narration clip, when a case has one, is a file too. **The music is off** (`MUSIC_ENABLED = false`). Quieter is better: the aim is atmosphere and weight, never a cartoon. **One thing is in focus at a time** (see "The mix").
 
 ## The engine (`src/lib/sound/engine.ts`)
 
@@ -25,15 +25,14 @@ inclusion: always
 ## The files (`npm run sfx:import`)
 
 1. The owner keeps the WAVs (from Mixkit) in `~/histor-media/sfx/`, outside the repo (`HISTOR_MEDIA` overrides the folder).
-2. `npm run sfx:import` converts each with `ffmpeg` (`src/lib/sfx-import.ts`, tested): MP3 at 96 kbps, mono for a short effect and stereo for a loop; the leading silence trimmed; loudness matched (`loudnorm`, about −18 LUFS); tiny fades so nothing clicks. A sound heard per letter keeps only its first key or stroke (`typewriter-key`, `pen`); a loop is capped at 24s. It prints each file's size before and after.
-3. It makes the one missing file, **`pen-legend`**: the pen slowed to about 75% and pitched down a little (`asetrate`, `atempo`), slower and creakier.
+2. `npm run sfx:import` converts each with `ffmpeg` (`src/lib/sfx-import.ts`, tested): MP3 at 96 kbps, mono for a short effect and stereo for a loop; the leading silence trimmed; loudness matched (`loudnorm`, about −18 LUFS); tiny fades so nothing clicks. A sound heard per letter keeps only its first key (`typewriter-key`); a loop is capped at 24s. It prints each file's size before and after.
+
+**The one generated sound: the pen** (the fix list). The pen and pen-legend files are gone; every stroke of writing (headings, pages, the crew list and its un-writing, the signature, file titles, the legend's own pen a little lower, "You almost believed this.") is the old generated scratch, a faint tick of high-passed noise with a little random pitch and level (`src/lib/sound/scratch.ts`, `SCRATCH`), through the writing tier.
 
 | File | Used for | Tier |
 | --- | --- | --- |
 | `click` | Every button and toggle (`ui-click`, `ui-toggle`) | ui |
 | `modal` | Every modal opening and closing (the play choice, the fork, the ? guide), and the popovers (share, volume) | ui |
-| `pen` | All pen writing: headings, pages, the crew list (and its un-writing), the signature, file titles | writing |
-| `pen-legend` | The legend intro's pen, and "You almost believed this." (`pen` with `hand: 'legend'`) | writing |
 | `typewriter-key` | All typed text: kickers, years, notes, hints, the guide (`type-key`) | writing |
 | `typewriter-ding` | The rank appearing; the end of a typed line over 40 characters (`type-return`) | writing |
 | `stamp` | **Every** stamp: Record, Disputed, Legend (the files' and the legend intro's), UNSOLVED, Close the case, Chosen, the report's standing. `stampHit` (motion.ts) sends `stamp-hit` as it presses in. | stamp |

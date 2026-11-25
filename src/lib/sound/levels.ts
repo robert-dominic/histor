@@ -116,8 +116,6 @@ export const MIX = {
 export const SAMPLES = {
   click: { level: 0.32, tier: 'ui', vary: true, category: 'ui', cooldownMs: 60 },
   modal: { level: 0.4, tier: 'ui', vary: false, category: 'ui', cooldownMs: 150 },
-  pen: { level: 0.3, tier: 'writing', vary: true, category: 'paper', cooldownMs: 0 },
-  'pen-legend': { level: 0.34, tier: 'writing', vary: true, category: 'paper', cooldownMs: 0 },
   'typewriter-key': { level: 0.3, tier: 'writing', vary: true, category: 'paper', cooldownMs: 0 },
   'typewriter-ding': { level: 0.42, tier: 'writing', vary: false, category: 'paper', cooldownMs: 0 },
   stamp: { level: 0.85, tier: 'stamp', vary: false, category: 'paper', cooldownMs: 0 },

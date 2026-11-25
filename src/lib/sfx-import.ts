@@ -3,8 +3,8 @@
 // ~/histor-media/sfx/, outside the repo), and how. Pure, shared by scripts/sfx-import.mjs and its tests.
 // Each becomes an MP3 at 96 kbps, mono for a short effect and stereo for a loop, its leading silence trimmed, its
 // loudness matched (loudnorm), with tiny fades so it never clicks. A sound played again and again (a typed letter, a
-// pen stroke) keeps only its first key or stroke; a loop is capped so its file stays small. One file is made, not
-// supplied: `pen-legend`, the pen slowed to about 75% and pitched down a little.
+// pen stroke) keeps only its first key or stroke; a loop is capped so its file stays small. (The pen itself is
+// generated now: src/lib/sound/scratch.ts.)
 
 export const SFX_IMPORT = {
   bitrate: '96k',
@@ -17,8 +17,6 @@ export const SFX_IMPORT = {
   loopMaxSeconds: 24,
   /** Fades at each end, in seconds, so nothing clicks (a loop's are longer, for its seam). */
   fade: { in: 0.004, out: 0.02, loop: 0.25 },
-  /** pen-legend: the pen at this speed, pitched down by this much. */
-  penLegend: { speed: 0.75, pitch: 0.9 },
 } as const;
 
 export interface SfxSpec {
@@ -26,18 +24,14 @@ export interface SfxSpec {
   name: string;
   /** A short effect (mono) or a loop held under something (stereo). */
   kind: 'effect' | 'loop';
-  /** Keep only this many seconds from the start (one key, one stroke). */
+  /** Keep only this many seconds from the start (one key). */
   maxSeconds?: number;
-  /** Made from another file rather than supplied. */
-  from?: string;
 }
 
 /** Every sound file, in the brief's order. */
 export const SFX_FILES: readonly SfxSpec[] = [
   { name: 'click', kind: 'effect' },
   { name: 'modal', kind: 'effect' },
-  { name: 'pen', kind: 'effect', maxSeconds: 0.3 },
-  { name: 'pen-legend', kind: 'effect', maxSeconds: 0.3, from: 'pen' },
   { name: 'typewriter-key', kind: 'effect', maxSeconds: 0.13 },
   { name: 'typewriter-ding', kind: 'effect' },
   { name: 'stamp', kind: 'effect' },
@@ -70,17 +64,11 @@ export function sfxSrc(name: string): string {
 
 /** The ffmpeg audio filters for a file. */
 export function sfxFilters(spec: SfxSpec): string[] {
-  const { silenceThreshold, loudness, fade, loopMaxSeconds, penLegend } = SFX_IMPORT;
+  const { silenceThreshold, loudness, fade, loopMaxSeconds } = SFX_IMPORT;
   const filters = [`silenceremove=start_periods=1:start_duration=0.01:start_threshold=${silenceThreshold}`];
   const length = spec.maxSeconds ?? (spec.kind === 'loop' ? loopMaxSeconds : undefined);
-  if (spec.from === 'pen') {
-    // Slower and creakier: the pitch down (a lower sample rate played back at the same speed) and the rest of the
-    // slowing by time-stretch, so the whole is about 75% speed.
-    filters.push(`asetrate=${SFX_IMPORT.sampleRate * penLegend.pitch}`, `aresample=${SFX_IMPORT.sampleRate}`, `atempo=${(penLegend.speed / penLegend.pitch).toFixed(4)}`);
-  }
   if (length !== undefined) {
-    const kept = spec.from === 'pen' ? length / penLegend.speed : length;
-    filters.push(`atrim=0:${kept.toFixed(3)}`, 'asetpts=PTS-STARTPTS');
+    filters.push(`atrim=0:${length.toFixed(3)}`, 'asetpts=PTS-STARTPTS');
   }
   filters.push(`loudnorm=I=${loudness.integrated}:TP=${loudness.truePeak}:LRA=${loudness.range}`);
   filters.push(`afade=t=in:d=${spec.kind === 'loop' ? fade.loop : fade.in}`);

@@ -42,7 +42,6 @@ describe('the priority order', () => {
     expect(SAMPLES['dread-1'].tier).toBe('dread');
     expect(SAMPLES['question-pulse'].tier).toBe('question');
     expect(SAMPLES.pin.tier).toBe('file');
-    expect(SAMPLES.pen.tier).toBe('writing');
     expect(SAMPLES['typewriter-key'].tier).toBe('writing');
     expect(SAMPLES.click.tier).toBe('ui');
     expect(SAMPLES['room-tone'].tier).toBe('loop');

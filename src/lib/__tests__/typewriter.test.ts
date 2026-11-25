@@ -78,6 +78,6 @@ describe('the typewriter in the event table', () => {
   });
 
   test('written text keeps the pen', () => {
-    expect(soundFor({ type: 'pen' }, freshMemory(), 1000)).toEqual({ cues: [{ sound: 'pen' }] });
+    expect(soundFor({ type: 'pen' }, freshMemory(), 1000)).toEqual({ cues: [{ sound: 'scratch', pitch: 1 }] });
   });
 });

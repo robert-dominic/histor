@@ -12,6 +12,7 @@ import { MOTION_QUERIES } from '@/lib/motion';
 import { MIX } from '@/lib/sound/levels';
 import { Loops } from '@/lib/sound/loops';
 import { playSample, samples } from '@/lib/sound/samples';
+import { playScratch } from '@/lib/sound/scratch';
 import { freshMemory, soundFor, type SoundCue, type SoundRow } from '@/lib/sound/sound-map';
 import { emitStoryEvent, lastPlaceEvent, onStoryEvent, type StoryEvent } from '@/lib/story-events';
 
@@ -32,7 +33,11 @@ export function silenceSound(on: boolean): void {
 
 /** Plays one cue: its sound file on the effects bus, if a voice is free. */
 export function playCue(engine: SoundEngine, cue: SoundCue): void {
-  playSample(engine, cue);
+  if (cue.sound === 'scratch') {
+    playScratch(engine, cue);
+    return;
+  }
+  playSample(engine, { ...cue, sound: cue.sound });
 }
 
 /** Does what a row says: ducks what sits under it, and plays its cues. */

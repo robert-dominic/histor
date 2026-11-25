@@ -11,8 +11,8 @@ import type { StoryEvent } from '@/lib/story-events';
 import { HOOK_SOUNDS, type AmbienceCue, type HookSound } from '@/types/case';
 
 export interface SoundCue {
-  /** A sound file (sound-files brief, 2). */
-  sound: SampleName;
+  /** A sound file (sound-files brief, 2), or the pen's generated scratch (the fix list). */
+  sound: SampleName | 'scratch';
   /** A multiplier on the recipe's level. */
   gain?: number;
   /** A multiplier on the recipe's pitch. */
@@ -72,14 +72,14 @@ export const SOUND_TABLE: Rows = {
   // ---- The story
   // A chapter appears (forward, or back: its entrance plays again). (The ship's bell is cut: sound-files brief, 3.)
   'chapter-enter': () => ({ cues: [{ sound: 'chapter' }] }),
-  // The pen: its stroke, never more than about 12 a second, a little different each time; the legend's own pen
-  // (the intro, "You almost believed this.") slower and creakier.
+  // The pen: its generated scratch (the fix list), never more than about 12 a second, a little different each time.
   pen: (event, memory) => {
     if (memory.now - memory.lastPen < 1000 / SOUND.penTicksPerSecond) {
       return null;
     }
     memory.lastPen = memory.now;
-    return { cues: [{ sound: event.hand === 'legend' ? 'pen-legend' : 'pen' }] };
+    // The legend's own pen a little lower.
+    return { cues: [{ sound: 'scratch', pitch: event.hand === 'legend' ? 0.82 : 1 }] };
   },
   // The typewriter: a key for each typed letter, never more than about 14 a second; the ding at the end of a long line.
   'type-key': (_event, memory) => {
@@ -94,7 +94,7 @@ export const SOUND_TABLE: Rows = {
   // the same twice running).
   hook: (event, memory) => ({ duck: 'hook', cues: [{ sound: pickDread(event.sound, memory) }] }),
   // Each name un-written: the pen, backwards, a little quieter each time.
-  'roll-call-out': event => ({ cues: [{ sound: 'pen', gain: 0.85 ** event.order }] }),
+  'roll-call-out': event => ({ cues: [{ sound: 'scratch', gain: 0.85 ** event.order }] }),
   // Each line of the question: its pulse.
   'question-line': () => ({ cues: [{ sound: 'question-pulse' }] }),
   // A modal (the play choice, the fork) opening or closing; the ? guide too; and the popovers.
@@ -109,7 +109,7 @@ export const SOUND_TABLE: Rows = {
   // Every stamp is one sound, as it presses in (stampHit says so); the moments around it duck the rest.
   'stamp-hit': () => ({ cues: [{ sound: 'stamp' }] }),
   'stamp:record': () => ({ duck: 'stamp' }),
-  'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'pen', delay: 0.3 }] }),
+  'stamp:disputed': () => ({ duck: 'stamp', cues: [{ sound: 'scratch' }] }),
   'stamp:legend': () => ({ duck: 'stamp' }),
   seal: event => (event.where === 'verdict' ? { duck: 'stamp' } : null),
   // ---- The dread pass

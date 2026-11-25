@@ -1,7 +1,7 @@
 // scripts/sfx-import.mjs
 // `npm run sfx:import` (sound-files brief, 2). Converts the owner's sound files, from ~/histor-media/sfx/ (outside the
 // repo; HISTOR_MEDIA overrides the folder), into public/audio/sfx/<name>.mp3, as src/lib/sfx-import.ts says: 96 kbps,
-// mono effects and stereo loops, leading silence trimmed, loudness matched. It makes `pen-legend` from `pen`. It prints
+// mono effects and stereo loops, leading silence trimmed, loudness matched. It prints
 // each file's size before and after. Needs ffmpeg (and Node 22.18+ for the TypeScript helpers); installs nothing.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, statSync } from 'node:fs';
@@ -38,7 +38,7 @@ let failed = 0;
 let before = 0;
 let after = 0;
 for (const spec of SFX_FILES) {
-  const input = sourceOf(spec.from ?? spec.name);
+  const input = sourceOf(spec.name);
   if (input === undefined) {
     missing += 1;
     console.log(`${spec.name}: no source file in ${from}.`);

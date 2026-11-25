@@ -11,8 +11,6 @@ import { SAMPLE_NAMES, samples, type SampleName } from '@/lib/sound/samples';
 const USED_FOR: Record<SampleName, string> = {
   click: 'Every button and toggle',
   modal: 'Every modal and popover opening and closing, the ? guide',
-  pen: 'All pen writing: headings, pages, the crew list, the signature, file titles',
-  'pen-legend': 'The legend intro’s pen, and “You almost believed this.”',
   'typewriter-key': 'All typed text: kickers, years, notes, hints, the guide',
   'typewriter-ding': 'The rank appearing; the end of long typed lines',
   stamp: 'Every stamp: Record, Disputed, Legend, UNSOLVED, Close the case, Chosen',

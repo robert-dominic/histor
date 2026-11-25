@@ -38,22 +38,17 @@ describe('the files', () => {
     expect(filters.some(filter => filter.startsWith('loudnorm='))).toBe(true);
   });
 
-  test('pen-legend is the pen slowed to about 75% and pitched down a little', () => {
-    const legend = SFX_FILES.find(file => file.name === 'pen-legend')!;
-    expect(legend.from).toBe('pen');
-    const filters = sfxFilters(legend);
-    const rate = Number(/asetrate=(\d+)/.exec(filters.join(','))![1]) / 44100;
-    const tempo = Number(/atempo=([\d.]+)/.exec(filters.join(','))![1]);
-    expect(rate).toBeLessThan(1);
-    expect(rate * tempo).toBeCloseTo(0.75, 2);
+  test('no pen files: the pen is generated (the fix list)', () => {
+    expect(SAMPLE_NAMES).not.toContain('pen');
+    expect(SFX_FILES.map(file => file.name)).not.toContain('pen-legend');
   });
 });
 
 describe('every moment plays its file', () => {
   test('the story: a chapter, the pen (the legend\'s own slower), the typewriter, a hook, the question, the modals', () => {
     expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'forward' })).toContain('chapter');
-    expect(one({ type: 'pen' })).toEqual(['pen']);
-    expect(one({ type: 'pen', hand: 'legend' })).toEqual(['pen-legend']);
+    expect(one({ type: 'pen' })).toEqual(['scratch']);
+    expect(one({ type: 'pen', hand: 'legend' })).toEqual(['scratch']);
     expect(one({ type: 'type-key' })).toEqual(['typewriter-key']);
     expect(one({ type: 'type-return' })).toEqual(['typewriter-ding']);
     expect(HOOK_SOUNDS).toContain(one({ type: 'hook', chapter: 'c', direction: 'forward' })[0]);
@@ -126,6 +121,27 @@ describe('playing a file', () => {
     const stamp = ctx.started.at(-1) as FakeSource;
     expect(stamp.playbackRate.value).toBe(1);
     expect((stamp.connections[0] as FakeGain).gain.value).toBe(SAMPLES.stamp.level);
+    stop();
+  });
+});
+
+describe('the pen, generated (the fix list)', () => {
+  test('each stroke is a short tick of high-passed noise through the writing tier, starting and ending in silence', () => {
+    const maker = fakeContextMaker();
+    const engine = new SoundEngine({ createContext: maker.create });
+    const stop = startSound(engine);
+    engine.unlock();
+    const ctx = maker.made[0];
+    emitStoryEvent({ type: 'pen' });
+    const stroke = ctx.started.at(-1) as FakeSource;
+    expect(stroke.kind).toBe('buffer');
+    const filter = stroke.connections[0] as unknown as { type: string };
+    expect(filter.type).toBe('highpass');
+    const amp = (stroke.connections[0] as unknown as { connections: FakeGain[] }).connections[0];
+    const values = amp.gain.events.map(event => event.value);
+    expect(values[0]).toBeLessThan(0.001);
+    expect(values.at(-1)).toBeLessThan(0.001);
+    expect(stroke.stoppedAt).not.toBeNull();
     stop();
   });
 });

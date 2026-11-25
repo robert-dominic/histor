@@ -15,8 +15,6 @@ import { sfxSrc } from '@/lib/sfx-import';
 export const SAMPLE_NAMES = [
   'click',
   'modal',
-  'pen',
-  'pen-legend',
   'typewriter-key',
   'typewriter-ding',
   'stamp',
