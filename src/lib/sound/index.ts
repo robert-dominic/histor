@@ -65,7 +65,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
   });
   // Too quiet for too long on the desk (dread pass, 7): after `MIX.quietMs` without input, a distant creak, at most once
   // every `MIX.creakEveryMs`. A check every few seconds; nothing else runs.
-  let where: 'story' | 'desk' | 'away' = 'away';
+  let where: 'story' | 'desk' | 'verdict' | 'away' = 'away';
   let lastInput = Date.now();
   let lastCreak = Number.NEGATIVE_INFINITY;
   const noteInput = () => {

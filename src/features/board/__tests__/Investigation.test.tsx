@@ -323,7 +323,9 @@ describe('Closing the case', () => {
     fireEvent.click(seal);
     stop();
     // (Its press also ticks, like any link: the interface's sound, music brief 4.)
-    expect(heard.mock.calls.map(([event]) => event).filter(event => event.type !== 'ui-click')).toStrictEqual([{ type: 'seal', where: 'desk' }]);
+    expect(heard.mock.calls.map(([event]) => event).filter(event => event.type !== 'ui-click' && event.type !== 'place')).toStrictEqual([
+      { type: 'seal', where: 'desk' },
+    ]);
   });
 
   test('there is no seal below the threshold', () => {
@@ -359,8 +361,8 @@ describe('Closing the case', () => {
     await waitFor(() => expect(window.location.pathname).toBe(`${BASE}/report`), { timeout: 6000 });
     stop();
     expect(saved().verdict).toBe('t-explosion');
-    // (The typewriter's keys of the lines typed meanwhile aside.)
-    expect(heard.mock.calls.map(([event]) => event).filter(event => !['type-key', 'type-return', 'stamp-hit'].includes(event.type))).toStrictEqual([
+    // Only the seal is asked about (the lines typed meanwhile, the place, the heartbeat stopping as the verdict goes).
+    expect(heard.mock.calls.map(([event]) => event).filter(event => event.type === 'seal')).toStrictEqual([
       { type: 'seal', where: 'verdict' },
     ]);
   });

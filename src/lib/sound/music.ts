@@ -11,7 +11,7 @@ import { glide } from '@/lib/sound/engine';
 import { MUSIC } from '@/lib/sound/levels';
 import type { Track } from '@/types/case';
 
-export type MusicPlace = 'story' | 'desk' | 'away';
+export type MusicPlace = 'story' | 'desk' | 'verdict' | 'away';
 
 interface Slot {
   track: Track;
@@ -69,11 +69,12 @@ export class MusicPlayer {
   }
 
   private get tracks(): Track[] {
-    return this.placeNow === 'away' ? [] : (this.playlists[this.placeNow] ?? []);
+    // The verdict and the report play the desk's playlist.
+    return this.placeNow === 'away' ? [] : (this.playlists[this.placeNow === 'verdict' ? 'desk' : this.placeNow] ?? []);
   }
 
   private level(): number {
-    return this.placeNow === 'away' ? 0 : MUSIC.level[this.placeNow];
+    return this.placeNow === 'away' ? 0 : MUSIC.level[this.placeNow === 'verdict' ? 'desk' : this.placeNow];
   }
 
   private later(seconds: number, run: () => void): void {

@@ -130,3 +130,38 @@ describe('the loops', () => {
     stop();
   });
 });
+
+describe('the room tone (the fix list)', () => {
+  test('on the desk only: not on the verdict or the report', () => {
+    const { ctx, stop } = setUp();
+    emitStoryEvent({ type: 'place', place: 'desk' });
+    const room = ctx.started.find(source => source.loop)!;
+    const gain = room.connections[0] as FakeGain;
+    expect(gain.gain.target).toBeGreaterThan(0);
+    emitStoryEvent({ type: 'place', place: 'verdict' });
+    expect(gain.gain.target).toBe(0);
+    stop();
+  });
+
+  test('its 16s loop is seamless: each pass starts as the last fades, and the two cross over', () => {
+    const { ctx, stop } = setUp();
+    samples.set('room-tone', { duration: 16, length: 128000, numberOfChannels: 2, sampleRate: 8000 } as AudioBuffer);
+    emitStoryEvent({ type: 'place', place: 'desk' });
+    const first = ctx.started.at(-1)!;
+    expect(first.loop).toBe(false);
+    expect(first.stoppedAt).toBeCloseTo(16.05, 2);
+    // A moment before the seam, the next pass is made, to start as the first begins to fade.
+    ctx.advance(16 - MIX.roomTone.crossfade - 1);
+    vi.advanceTimersByTime((16 - MIX.roomTone.crossfade - 1) * 1000 + 10);
+    const second = ctx.started.at(-1)!;
+    expect(second).not.toBe(first);
+    expect(second.startedAt).toBeCloseTo(16 - MIX.roomTone.crossfade, 5);
+    const firstFade = (first.connections[0] as FakeGain).gain.events.filter(event => event.kind === 'linear');
+    const secondFade = (second.connections[0] as FakeGain).gain.events.filter(event => event.kind === 'linear');
+    // The first fades out over the crossfade while the second fades in over it.
+    expect(firstFade.at(-1)).toMatchObject({ value: 0, time: 16 });
+    expect(secondFade[0]).toMatchObject({ value: 1, time: 16 });
+    samples.set('room-tone', { duration: 0.5, length: 4000, numberOfChannels: 1, sampleRate: 8000 } as AudioBuffer);
+    stop();
+  });
+});

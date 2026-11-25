@@ -160,22 +160,34 @@ export function playSample(engine: SoundEngine, cue: SampleCue, bank: SampleBank
   };
 }
 
+/** How long before a crossfaded loop's next pass is due that it is made, in seconds. */
+const LOOP_LEAD = 1;
+
 /** How far a repeated sound's pitch and level wander, each time. */
 export const SAMPLES_VARY = { pitch: 0.04, level: 0.12 } as const;
 
-/** One loop: started, faded in to a level, faded out and stopped. Never two of the same at once. */
+/**
+ * One loop: started, faded in to a level, faded out and stopped. Never two of the same at once. With `crossfade`
+ * (seconds), the loop is seamless (the fix list): instead of jumping back to its start, each pass starts a little
+ * before the last ends and the two cross over, so there is no seam; without, it simply loops.
+ */
 export class LoopPlayer {
   private source: AudioBufferSourceNode | null = null;
   private amp: GainNode | null = null;
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
+  private nextTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Every pass playing now (with a crossfade, two overlap at each seam). */
+  private passes: AudioBufferSourceNode[] = [];
   readonly name: LoopName;
+  readonly crossfade: number;
 
-  constructor(name: LoopName) {
+  constructor(name: LoopName, crossfade = 0) {
     this.name = name;
+    this.crossfade = crossfade;
   }
 
   get playing(): boolean {
-    return this.source !== null;
+    return this.amp !== null;
   }
 
   /** Fades in to `level` (a multiplier on the file's own) over `fade` seconds; already playing, it just moves there. */
@@ -190,7 +202,7 @@ export class LoopPlayer {
       this.stopTimer = null;
     }
     const target = SAMPLES[this.name].level * level;
-    if (this.source !== null && this.amp !== null) {
+    if (this.amp !== null) {
       glide(this.amp.gain, target, fade, ctx.currentTime);
       return;
     }
@@ -198,19 +210,61 @@ export class LoopPlayer {
     if (buffer === null) {
       return;
     }
+    const amp = ctx.createGain();
+    amp.gain.value = 0;
+    amp.connect(out);
+    this.amp = amp;
+    glide(amp.gain, target, fade, ctx.currentTime);
+    if (this.crossfade > 0 && buffer.duration > this.crossfade * 2) {
+      this.pass(ctx, buffer, ctx.currentTime, true);
+      return;
+    }
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
-    const amp = ctx.createGain();
-    amp.gain.value = 0;
-    source.connect(amp).connect(out);
+    source.connect(amp);
     source.start(ctx.currentTime);
-    glide(amp.gain, target, fade, ctx.currentTime);
     this.source = source;
-    this.amp = amp;
+    this.passes = [source];
   }
 
-  /** Moves its speed (and pitch) to `rate` over `seconds`: the heartbeat quickening. */
+  /** One pass of a crossfaded loop, from `at`: it fades in (but the first), plays, fades out as the next fades in. */
+  private pass(ctx: BaseAudioContext, buffer: AudioBuffer, at: number, first: boolean): void {
+    const amp = this.amp;
+    if (amp === null) {
+      return;
+    }
+    const xf = this.crossfade;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(first ? 1 : 0, at);
+    if (!first) {
+      gain.gain.linearRampToValueAtTime(1, at + xf);
+    }
+    gain.gain.setValueAtTime(1, at + buffer.duration - xf);
+    gain.gain.linearRampToValueAtTime(0, at + buffer.duration);
+    source.connect(gain).connect(amp);
+    source.start(at);
+    source.stop(at + buffer.duration + 0.05);
+    source.onended = () => {
+      this.passes = this.passes.filter(other => other !== source);
+      source.disconnect();
+      gain.disconnect();
+    };
+    this.source = source;
+    this.passes.push(source);
+    // The next pass is made a moment before it is due, and starts exactly as this one begins to fade.
+    const nextAt = at + buffer.duration - xf;
+    this.nextTimer = setTimeout(() => {
+      this.nextTimer = null;
+      if (this.amp === amp) {
+        this.pass(ctx, buffer, nextAt, false);
+      }
+    }, Math.max(0, (nextAt - ctx.currentTime - LOOP_LEAD) * 1000));
+  }
+
+/** Moves its speed (and pitch) to `rate` over `seconds`: the heartbeat quickening. */
   setRate(engine: SoundEngine, rate: number, seconds: number): void {
     const ctx = engine.context;
     if (ctx === null || this.source === null) {
@@ -224,10 +278,14 @@ export class LoopPlayer {
 
   /** Fades out over `fade` seconds, then stops. */
   stop(engine: SoundEngine, fade: number): void {
-    const source = this.source;
     const amp = this.amp;
-    if (source === null || amp === null) {
+    const passes = this.passes;
+    if (amp === null) {
       return;
+    }
+    if (this.nextTimer !== null) {
+      clearTimeout(this.nextTimer);
+      this.nextTimer = null;
     }
     const ctx = engine.context;
     if (ctx !== null) {
@@ -238,33 +296,38 @@ export class LoopPlayer {
     }
     this.stopTimer = setTimeout(() => {
       this.stopTimer = null;
-      if (this.source === source) {
+      if (this.amp === amp) {
         this.source = null;
         this.amp = null;
+        this.passes = [];
       }
-      try {
-        source.stop();
-      } catch {
-        // Already stopped.
+      for (const source of passes) {
+        try {
+          source.stop();
+        } catch {
+          // Already stopped.
+        }
+        source.disconnect();
       }
-      source.disconnect();
       amp.disconnect();
     }, (fade + 0.05) * 1000);
   }
 
   /** Stops at once (the page is left). */
   kill(): void {
-    if (this.stopTimer !== null) {
-      clearTimeout(this.stopTimer);
-      this.stopTimer = null;
+    [this.stopTimer, this.nextTimer].forEach(timer => timer !== null && clearTimeout(timer));
+    this.stopTimer = null;
+    this.nextTimer = null;
+    for (const source of this.passes) {
+      try {
+        source.stop();
+      } catch {
+        // Already stopped.
+      }
+      source.disconnect();
     }
-    try {
-      this.source?.stop();
-    } catch {
-      // Already stopped.
-    }
-    this.source?.disconnect();
     this.amp?.disconnect();
+    this.passes = [];
     this.source = null;
     this.amp = null;
   }

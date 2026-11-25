@@ -13,11 +13,12 @@ import { LoopPlayer } from '@/lib/sound/samples';
 import type { StoryEvent } from '@/lib/story-events';
 
 export class Loops {
-  readonly roomTone = new LoopPlayer('room-tone');
+  // The clock's room tone, its loop seam crossfaded (the fix list).
+  readonly roomTone = new LoopPlayer('room-tone', MIX.roomTone.crossfade);
   readonly question = new LoopPlayer('question');
   readonly heartbeat = new LoopPlayer('heartbeat');
   readonly murmur = new LoopPlayer('murmur');
-  private place: 'story' | 'desk' | 'away' = 'away';
+  private place: 'story' | 'desk' | 'verdict' | 'away' = 'away';
   private onQuestion = false;
   private ghosts = 0;
   private readonly engine: SoundEngine;
@@ -53,7 +54,8 @@ export class Loops {
         this.place = event.place;
         this.onQuestion = false;
         this.ghosts = 0;
-        if (event.place !== 'desk') {
+        // The heartbeat belongs to the verdict.
+        if (event.place !== 'verdict' && event.place !== 'desk') {
           this.heartbeat.stop(this.engine, MIX.heartbeat.fade);
         }
         break;

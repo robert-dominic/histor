@@ -99,7 +99,7 @@ export const MIX = {
   focusIn: 0.08,
   focusOut: 0.6,
   /** The desk's room tone: very low; under the murmur (ghost text on screen) it drops further, so one is in focus. */
-  roomTone: { level: 1, underMurmur: 0.25, fade: 2.5 },
+  roomTone: { level: 1, underMurmur: 0.25, fade: 2.5, crossfade: 2 },
   /** The murmur: it grows a little with each ghost line on screen (at most `max`), and fades when they are gone. */
   murmur: { perLine: 0.55, max: 1, rise: 1.5, fall: 2.5 },
   /** The question's loop: fades in under the question, and out as the fork opens (or the reader goes back). */

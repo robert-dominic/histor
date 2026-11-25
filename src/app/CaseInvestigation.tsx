@@ -6,7 +6,7 @@
 // chooses to continue anyway (once per session).
 
 import { useEffect, useState } from 'react';
-import { Link, Outlet, useParams } from 'react-router-dom';
+import { useLocation, Link, Outlet, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import PhoneGate from '@/app/PhoneGate';
 import CaseHeader from '@/components/CaseHeader';
@@ -25,14 +25,17 @@ export default function CaseInvestigation() {
   const [continued, setContinued] = useState(hasContinuedPastGate);
   // A browser that cannot measure its screen gets the investigation: better a cramped desk than a closed door.
   const canMeasure = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
-  // The sound's place: the desk's room, for the desk, the verdict and the report (src/lib/sound).
+  // The sound's place (src/lib/sound): the desk, or the verdict and the report (the fix list: the room tone is the
+  // desk's only).
   const theme = entry !== undefined && !entry.sealed ? entry.data?.theme : undefined;
   const ambience = theme?.ambience;
   const playlists = theme?.playlists;
+  const { pathname } = useLocation();
+  const place = /\/(verdict|report)\/?$/.test(pathname) ? 'verdict' : 'desk';
   useEffect(() => {
-    emitStoryEvent({ type: 'place', place: 'desk', ambience, playlists });
-    return () => emitStoryEvent({ type: 'place', place: 'away' });
-  }, [ambience, playlists]);
+    emitStoryEvent({ type: 'place', place, ambience, playlists });
+  }, [place, ambience, playlists]);
+  useEffect(() => () => emitStoryEvent({ type: 'place', place: 'away' }), []);
 
   if (entry === undefined) {
     return (

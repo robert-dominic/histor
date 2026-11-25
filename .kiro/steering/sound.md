@@ -60,7 +60,7 @@ Hover sounds (a file on the floor), the cursor-movement rush, the hook-fading wh
 ## The mix: one thing in focus (`mix.ts`, sound-files brief, 4)
 
 - **The priority order** (`TIERS`): voice > stamp > dread (and the jump sting) > question > file actions > pen and typewriter > UI clicks > loops. Every file plays through its tier's gain. While a sound plays, every tier below it dips to `MIX.focusDuck` (0.4) and comes back as it ends; the voice holds the dip for as long as it speaks.
-- **`room-tone`** plays very low on the desk (and only there). While **`murmur`** rises (ghost text on screen: the `ghosts` event, a little louder with each line), the room tone drops further, so only one of them is ever in focus. The murmur swells only while ghost text is on screen.
+- **`room-tone`** (the clock) plays very low on the desk, and only there: not on the verdict or the report (their own place, `verdict`). Its 16s loop is seamless: each pass starts as the last begins to fade, crossfading over `MIX.roomTone.crossfade` (2s), so there is no seam. While **`murmur`** rises (ghost text on screen: the `ghosts` event, a little louder with each line), the room tone drops further, so only one of them is ever in focus. The murmur swells only while ghost text is on screen.
 - **`question`** fades in under the question (from its first line) and out as the fork modal opens; back if the fork closes on the question; out when the reader goes back into the story.
 - **`heartbeat`** fades in and out over about 0.5s (the `heartbeat` event).
 - The loops live in `loops.ts`; they follow the moments even before the sound starts, and begin once the files are in.
