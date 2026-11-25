@@ -23,3 +23,10 @@ export function lampFlicker(length: 'short' | 'long' = 'short'): gsap.core.Timel
   }
   return timeline;
 }
+
+/** A known legend's shiver (dread pass, 5), to tune: every 10 to 20s, one file; how far it turns and shifts at most. */
+export const TWITCH = {
+  everyMs: [10000, 20000],
+  turn: 1.4,
+  shift: 1.2,
+} as const;

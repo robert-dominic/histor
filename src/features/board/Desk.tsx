@@ -39,6 +39,7 @@ import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
 import { isDeskGuideOff } from '@/lib/desk-guide-seen';
 import GhostLines from '@/features/dread/GhostLines';
+import LegendTwitch from '@/features/dread/LegendTwitch';
 
 gsap.registerPlugin(useGSAP);
 
@@ -519,6 +520,8 @@ function DeskScreen() {
           </div>
         )}
         <Lamp />
+        {/* The lamp dips when a Legend stamp lands; opened legends twitch now and then (dread pass, 5). */}
+        <LegendTwitch />
         {/* The desk's own dark places for the eye (dread pass, 4): its corners, and the board's edge. */}
         {desktop && (
           <>
