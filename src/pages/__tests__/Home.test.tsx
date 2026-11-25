@@ -269,7 +269,7 @@ describe('hover and click (landing brief, 4)', () => {
   test('hover: the frame tilts toward the cursor, at most ±5°, and a dull glint moves across the gilt; a veil stirs', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: !query.includes('prefers-reduced-motion: reduce'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }));
     renderHome();
-    const button = screen.getByRole('button', { name: 'The Lost Colony of Roanoke: sealed' });
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="The Lost Colony of Roanoke: sealed"]')!;
     const frame = button.querySelector<HTMLElement>('.haunted-frame')!;
     frame.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100, x: 0, y: 0, toJSON: () => ({}) });
     act(() => {
@@ -356,12 +356,15 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     stubMedia({ desktop: true });
     const { unmount } = renderHome();
     const ripper = () => document.getElementById('exhibit-jack-the-ripper')!;
-    expect(gsap.getProperty(ripper().querySelector('[data-exhibit-part="rise"]'), 'y')).toBe(140);
+    // The stage: only the case on screen is there; the others wait, hidden.
+    expect(document.querySelector('main')!.dataset.staged).toBe('true');
+    expect(ripper().style.visibility).toBe('hidden');
     expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')).some(tween => tween.vars.repeat === -1)).toBe(true);
     unmount();
     vi.unstubAllGlobals();
     stubMedia({ desktop: true, reduced: true });
     renderHome();
+    expect(document.querySelector('main')!.dataset.staged).toBe('false');
     expect(gsap.getProperty(ripper().querySelector('[data-exhibit-part="rise"]'), 'y')).toBe(0);
     expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]'))).toHaveLength(0);
   });

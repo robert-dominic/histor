@@ -31,6 +31,10 @@ const NAMES: TokenName[] = [
   'dread.drift',
   'dread.cut',
   'dread.progress',
+  'landing.wordmark',
+  'landing.pull',
+  'landing.blur',
+  'landing.stage',
 ];
 
 describe('motion tokens', () => {

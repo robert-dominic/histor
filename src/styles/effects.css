@@ -768,3 +768,8 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   .landing-cue-line::after { animation: none; }
 }
+
+/* The landing stage holds the screen (landing-stage.ts): the page behind it does not scroll until it lets go. */
+html[data-landing-stage='held'] {
+  overflow: hidden;
+}

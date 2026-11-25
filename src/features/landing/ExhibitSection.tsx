@@ -25,6 +25,10 @@ interface ExhibitSectionProps {
   index: number;
   /** The next case, peeking in at the bottom right. */
   next?: Exhibit;
+  /** On the stage (a laptop at full motion): the section is a layer of the stage and landing-stage.ts moves it. */
+  staged: boolean;
+  /** The case the opening is about: its section waits for the opening, the others arrive as they are scrolled to. */
+  isStart: boolean;
   /** The first section's frame comes in once the opening's picture has settled into it (landing v2 brief, 1). */
   frameIn: boolean;
   /** Its words come into focus once the opening is over. */
@@ -33,9 +37,10 @@ interface ExhibitSectionProps {
   children?: (frame: ReactNode) => ReactNode;
 }
 
-export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn, children }: ExhibitSectionProps) {
+export default function ExhibitSection({ exhibit, index, next, staged, isStart, frameIn, wordsIn, children }: ExhibitSectionProps) {
   const rootRef = useRef<HTMLLIElement>(null);
-  const first = index === 0;
+  const first = isStart;
+  const hasCue = index === 0;
   const titleId = `exhibit-${exhibit.id}-title`;
   /** What the opening has done so far, and what to play when the section is built (the fonts may not be in yet). */
   const flags = useRef({ frame: frameIn, words: wordsIn });
@@ -56,7 +61,7 @@ export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn,
   useGSAP(
     () => {
       const root = rootRef.current;
-      if (root === null || typeof window.matchMedia !== 'function') {
+      if (staged || root === null || typeof window.matchMedia !== 'function') {
         return;
       }
       gsap.registerPlugin(ScrollTrigger, SplitText);
@@ -145,8 +150,11 @@ export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn,
             ScrollTrigger.create({
               trigger: root,
               start: 'top 70%',
-              once: true,
               onEnter: () => {
+                playFrame();
+                playWords();
+              },
+              onEnterBack: () => {
                 playFrame();
                 playWords();
               },
@@ -191,7 +199,19 @@ export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn,
       });
       return () => mm.revert();
     },
-    { scope: rootRef }
+    { scope: rootRef, dependencies: [staged] }
+  );
+
+  // On the stage the veil of a sealed case still sways, very slightly, all the time.
+  useGSAP(
+    () => {
+      const veil = rootRef.current?.querySelector<HTMLElement>('[data-frame-part="veil"]');
+      if (!staged || veil == null) {
+        return;
+      }
+      gsap.to(veil, { skewX: 0.7, scaleY: 1.008, ...tween('ghost'), yoyo: true, repeat: -1 });
+    },
+    { scope: rootRef, dependencies: [staged] }
   );
 
   // On a phone a tall frame would fill the screen: portrait and square frames are narrower there, centred.
@@ -204,19 +224,23 @@ export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn,
       data-exhibit={exhibit.id}
       data-exhibit-index={index}
       aria-labelledby={titleId}
-      className="relative flex flex-col gap-7 px-4 pt-10 pb-10 first:pt-24 sm:px-8 lg:block lg:h-svh lg:min-h-[40rem] lg:overflow-hidden lg:p-0 lg:first:pt-0"
+      className={`relative flex flex-col gap-7 px-4 pt-10 pb-10 first:pt-24 sm:px-8 lg:block lg:p-0 lg:first:pt-0 ${
+        staged ? 'lg:absolute lg:inset-0 lg:overflow-hidden' : 'lg:h-svh lg:min-h-[40rem] lg:overflow-hidden'
+      }`}
     >
-      {/* The frame, and its title to its right, low. */}
-      <div data-exhibit-part="anchor" className="lg:absolute lg:top-[40%] lg:left-[45%] lg:-translate-x-1/2 lg:-translate-y-1/2">
-        <div data-exhibit-part="rise" className="relative flex flex-col gap-5 lg:block [perspective:1400px]">
-          <span aria-hidden="true" className="haunted-frame-shadow" />
-          {children === undefined ? frame : children(frame)}
-          <div data-exhibit-part="title" className="lg:absolute lg:bottom-1 lg:left-[calc(100%+2.75rem)] lg:w-[17rem]">
-            <h2 id={titleId} className="font-record text-[clamp(1.5rem,1.2rem+0.9vw,2.125rem)] leading-tight italic">
-              {exhibit.title}
-            </h2>
-            <p className="mt-2 font-voice text-[0.75rem] tracking-[0.2em] text-night-ink/60 uppercase">{exhibit.status === 'open' ? exhibit.years : 'Sealed'}</p>
+      {/* The frame, and its title to its right, low. The title stays put while the frame moves. */}
+      <div data-exhibit-part="place" className="flex flex-col gap-5 lg:absolute lg:top-[40%] lg:left-[45%] lg:block lg:-translate-x-1/2 lg:-translate-y-1/2">
+        <div data-exhibit-part="anchor">
+          <div data-exhibit-part="rise" className="relative [perspective:1400px]">
+            <span aria-hidden="true" className="haunted-frame-shadow" />
+            {children === undefined ? frame : children(frame)}
           </div>
+        </div>
+        <div data-exhibit-part="title" className="lg:absolute lg:bottom-1 lg:left-[calc(100%+2.75rem)] lg:w-[17rem]">
+          <h2 id={titleId} className="font-record text-[clamp(1.5rem,1.2rem+0.9vw,2.125rem)] leading-tight italic">
+            {exhibit.title}
+          </h2>
+          <p className="mt-2 font-voice text-[0.75rem] tracking-[0.2em] text-night-ink/60 uppercase">{exhibit.status === 'open' ? exhibit.years : 'Sealed'}</p>
         </div>
       </div>
 
@@ -230,7 +254,7 @@ export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn,
         </p>
       </div>
 
-      {first && (
+      {hasCue && (
         <div aria-hidden="true" data-exhibit-part="cue" className="pointer-events-none absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-3 lg:flex">
           <span className="font-voice text-[0.6875rem] tracking-[0.3em] text-night-ink/60 uppercase">Scroll</span>
           <span className="landing-cue-line relative block h-12 w-px overflow-hidden bg-night-ink/20" />
@@ -238,7 +262,7 @@ export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn,
       )}
 
       {next !== undefined && (
-        <div aria-hidden="true" data-exhibit-part="peek" className="pointer-events-none absolute right-[4vw] bottom-0 hidden translate-y-[62%] lg:block">
+        <div aria-hidden="true" data-exhibit-part="peek" className="pointer-events-none absolute right-[4vw] bottom-0 hidden translate-y-[42%] lg:block">
           <Frame exhibit={next} peek className="h-[26svh] w-auto" />
         </div>
       )}
