@@ -8,14 +8,14 @@
 // Motion: the frame rises in (`paper.move`) as the section arrives (the first one as the wordmark docks), and drifts
 // up and away as it leaves (scrubbed with the scroll); the headline comes in line by line (`ink.in`). Phones: the
 // same pieces stacked, simple fades. Reduced motion: everything in place, fades only.
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import type { Exhibit } from '@/cases';
 import Frame from '@/features/landing/Frame';
-import { INK_RISE, LINEAR, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
+import { INK_RISE, LANDING_BLUR, LINEAR, MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { DESKTOP_QUERY } from '@/lib/use-media-query';
 
 gsap.registerPlugin(useGSAP);
@@ -25,16 +25,33 @@ interface ExhibitSectionProps {
   index: number;
   /** The next case, peeking in at the bottom right. */
   next?: Exhibit;
-  /** The first section rises in as the wordmark docks: until then it waits. */
-  revealed: boolean;
+  /** The first section's frame comes in once the opening's picture has settled into it (landing v2 brief, 1). */
+  frameIn: boolean;
+  /** Its words come into focus once the opening is over. */
+  wordsIn: boolean;
   /** The frame, wrapped in whatever it does when pressed (a link, or the sealed plaque's button: Landing.tsx). */
   children?: (frame: ReactNode) => ReactNode;
 }
 
-export default function ExhibitSection({ exhibit, index, next, revealed, children }: ExhibitSectionProps) {
+export default function ExhibitSection({ exhibit, index, next, frameIn, wordsIn, children }: ExhibitSectionProps) {
   const rootRef = useRef<HTMLLIElement>(null);
   const first = index === 0;
   const titleId = `exhibit-${exhibit.id}-title`;
+  /** What the opening has done so far, and what to play when the section is built (the fonts may not be in yet). */
+  const flags = useRef({ frame: frameIn, words: wordsIn });
+  const controls = useRef<{ frame: () => void; words: () => void } | null>(null);
+  useEffect(() => {
+    flags.current.frame = frameIn;
+    if (frameIn) {
+      controls.current?.frame();
+    }
+  }, [frameIn]);
+  useEffect(() => {
+    flags.current.words = wordsIn;
+    if (wordsIn) {
+      controls.current?.words();
+    }
+  }, [wordsIn]);
 
   useGSAP(
     () => {
@@ -60,33 +77,44 @@ export default function ExhibitSection({ exhibit, index, next, revealed, childre
         const { desktop, reduced } = context.conditions ?? {};
         const triggers: ScrollTrigger[] = [];
         const splits: SplitText[] = [];
-        // What arrives, and how: on a laptop the frame rises and the headline comes in by line; otherwise fades.
-        // The lines are found once the fonts are in (split before, they break in the wrong places).
-        const arrive = gsap.timeline({ paused: true });
-        let wanted = false;
-        const play = () => {
-          wanted = true;
-          arrive.play();
+        // What arrives, and how: on a laptop the frame comes in and the words come into focus (from blur and
+        // transparent to sharp); otherwise fades. The lines are found once the fonts are in (split before, they
+        // break in the wrong places).
+        const frameArrive = gsap.timeline({ paused: true });
+        const wordsArrive = gsap.timeline({ paused: true });
+        const wanted = { frame: false, words: false };
+        const playFrame = () => {
+          wanted.frame = true;
+          frameArrive.play();
         };
+        const playWords = () => {
+          wanted.words = true;
+          wordsArrive.play();
+        };
+        const sharp = { opacity: 1, y: 0, filter: 'blur(0px)', clearProps: 'filter' };
         const build = context.add('build', () => {
           if (desktop === true) {
             const split = SplitText.create(headline, { type: 'lines', aria: 'auto' });
             splits.push(split);
-            gsap.set([...split.lines, subline, title], { opacity: 0, y: INK_RISE });
-            arrive
-              .to(rise, { y: 0, opacity: 1, ...tween('paper.move'), onStart: () => void (rise.style.willChange = 'transform'), onComplete: () => void (rise.style.willChange = '') }, 0)
-              .to(title, { y: 0, opacity: 1, ...tween('ink.in') }, STEP.fast)
-              .to(split.lines, { y: 0, opacity: 1, ...tween('ink.in'), stagger: STEP.fast / 2 }, STEP.fast)
-              .to(subline, { y: 0, opacity: 1, ...tween('ink.in') }, STEP.base);
+            gsap.set([...split.lines, subline, title], { opacity: 0, y: INK_RISE, filter: `blur(${LANDING_BLUR}px)` });
+            frameArrive.to(rise, { y: 0, opacity: 1, ...tween('paper.move'), onStart: () => void (rise.style.willChange = 'transform'), onComplete: () => void (rise.style.willChange = '') }, 0);
+            wordsArrive
+              .to(title, { ...sharp, ...tween('landing.blur') }, 0)
+              .to(split.lines, { ...sharp, ...tween('landing.blur'), stagger: STEP.fast / 2 }, 0)
+              .to(subline, { ...sharp, ...tween('landing.blur') }, STEP.fast);
           } else {
-            arrive.to([rise, title, words], { opacity: 1, ...tween('ink.in'), stagger: reduced === true ? 0 : STEP.fast / 2 });
+            frameArrive.to(rise, { opacity: 1, ...tween('ink.in') });
+            wordsArrive.to([title, words], { opacity: 1, ...tween('ink.in'), stagger: reduced === true ? 0 : STEP.fast / 2 });
           }
-          if (wanted) {
-            arrive.play();
+          if (wanted.frame) {
+            frameArrive.play();
+          }
+          if (wanted.words) {
+            wordsArrive.play();
           }
         });
         if (desktop === true) {
-          gsap.set(rise, { y: 140, opacity: 0 });
+          gsap.set(rise, { y: first ? 0 : 140, opacity: 0 });
           gsap.set(words, { opacity: 0 });
         } else {
           gsap.set([rise, words, title], { opacity: 0 });
@@ -104,11 +132,26 @@ export default function ExhibitSection({ exhibit, index, next, revealed, childre
           });
         }
         if (first) {
-          if (revealed) {
-            play();
+          // The first section waits for the opening (Landing.tsx); the rest arrive as they are scrolled to.
+          controls.current = { frame: playFrame, words: playWords };
+          if (flags.current.frame) {
+            playFrame();
+          }
+          if (flags.current.words) {
+            playWords();
           }
         } else {
-          triggers.push(ScrollTrigger.create({ trigger: root, start: 'top 70%', once: true, onEnter: play }));
+          triggers.push(
+            ScrollTrigger.create({
+              trigger: root,
+              start: 'top 70%',
+              once: true,
+              onEnter: () => {
+                playFrame();
+                playWords();
+              },
+            })
+          );
         }
         if (desktop === true) {
           // Leaving: the frame drifts up and away, scrubbed with the scroll; the next frame's peek slides up and goes.
@@ -139,14 +182,16 @@ export default function ExhibitSection({ exhibit, index, next, revealed, childre
         }
         return () => {
           live = false;
+          controls.current = null;
           triggers.forEach(trigger => trigger.kill());
           splits.forEach(split => split.revert());
-          arrive.kill();
+          frameArrive.kill();
+          wordsArrive.kill();
         };
       });
       return () => mm.revert();
     },
-    { scope: rootRef, dependencies: [revealed] }
+    { scope: rootRef }
   );
 
   // On a phone a tall frame would fill the screen: portrait and square frames are narrower there, centred.

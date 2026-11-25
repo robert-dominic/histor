@@ -12,7 +12,7 @@ import { exhibits } from '@/cases';
 import { FRAME_SHAPES } from '@/lib/frame-shapes';
 import * as smoothScroll from '@/lib/smooth-scroll';
 import { LANDING_DESCRIPTION, LANDING_TITLE } from '@/lib/landing-meta';
-import { OPENING_WAIT_MS } from '@/features/landing/Opening';
+import { OPENING_IMAGE_WAIT_MS } from '@/features/landing/Opening';
 import { useLandingMusic } from '@/features/landing/use-landing-music';
 import { FRAME_TILT } from '@/features/landing/use-frame-tilt';
 import { freshMemory, soundFor } from '@/lib/sound/sound-map';
@@ -47,48 +47,103 @@ describe('the landing page: one section per case', () => {
   });
 });
 
-describe('the opening (landing brief, 2)', () => {
-  test('black, the wordmark large in the centre; the page does not scroll until it docks', () => {
+describe('the opening (landing v2 brief, 1)', () => {
+  /** An Image that loads at once, as the browser's would. */
+  const loadingImages = () =>
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 1200;
+        naturalHeight = 900;
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        set src(_value: string) {
+          queueMicrotask(() => this.onload?.());
+        }
+      }
+    );
+
+  test('black, the wordmark in the centre, the first case\'s picture behind it; the page does not scroll until it is over', () => {
     renderHome();
     const opening = document.querySelector<HTMLElement>('[data-landing="opening"]')!;
     expect(opening.querySelector('[data-landing="opening-black"]')!.className).toContain('bg-black');
-    expect(opening.querySelector('img')!.getAttribute('src')).toBe('/brand/histor-logo-cream.svg');
+    expect(opening.querySelector('img[data-landing="opening-mark"]')!.getAttribute('src')).toBe('/brand/histor-logo-cream.svg');
+    // The detail is the first case's own frame image, with a soft copy that cross-fades to the sharp one.
+    const detail = opening.querySelector('[data-landing="opening-detail"]')!;
+    expect(detail.querySelector('img')!.getAttribute('src')).toBe(exhibits[0].frameImage!.src);
+    expect(detail.querySelector('[data-landing="opening-soft"]')).not.toBeNull();
     expect(document.documentElement.style.overflow).toBe('hidden');
     expect(document.querySelector('main')!.dataset.docked).toBe('false');
+    expect(document.querySelector('main')!.dataset.ready).toBe('false');
   });
 
-  test('after about 1.5s it rises and shrinks into the header; then the header shows its actions', () => {
+  test('the wordmark fades in; then it docks, the frame comes in and the words and the rail follow', async () => {
     vi.useFakeTimers();
+    loadingImages();
     renderHome();
-    act(() => {
-      vi.advanceTimersByTime(OPENING_WAIT_MS + 10);
-    });
-    expect(document.querySelector('main')!.dataset.docked).toBe('true');
     const mark = document.querySelector('[data-landing="opening-mark"]')!;
-    expect(gsap.getTweensOf(mark)[0].vars).toMatchObject({ transformOrigin: '0 0', ease: 'sine.inOut' });
-    settle();
+    expect(gsap.getTweensOf(mark)[0].vars).toMatchObject({ opacity: 1, ease: 'power2.out' });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    const main = document.querySelector('main')!;
+    const detail = document.querySelector<HTMLElement>('[data-landing="opening-detail"]')!;
+    // Only transform and opacity move on the picture: no blur on a large layer.
+    for (const child of gsap.getTweensOf([detail, detail.firstElementChild, document.querySelector('[data-landing="opening-soft"]')])) {
+      expect(Object.keys(child.vars).filter(key => key.toLowerCase().includes('filter'))).toEqual([]);
+    }
+    act(() => {
+      settle();
+    });
+    expect(main.dataset.docked).toBe('true');
+    expect(main.dataset.settled).toBe('true');
+    expect(main.dataset.ready).toBe('true');
     expect(document.querySelector('[data-landing="opening"]')).toBeNull();
     expect(document.documentElement.style.overflow).toBe('');
     expect(document.querySelector<HTMLElement>('[data-landing="header-mark"]')!.style.opacity).toBe('1');
   });
 
-  test('the first scroll docks it at once', () => {
+  test('a picture that never loads does not hold the opening: the wordmark still docks', async () => {
+    vi.useFakeTimers();
     renderHome();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(OPENING_IMAGE_WAIT_MS + 10);
+    });
     act(() => {
-      fireEvent.wheel(window, { deltaY: 40 });
+      settle();
     });
     expect(document.querySelector('main')!.dataset.docked).toBe('true');
+    expect(document.querySelector('[data-landing="opening"]')).toBeNull();
   });
 
-  test('reduced motion: nothing moves; the black fades and the header\'s wordmark fades in', () => {
+  test('a scroll, a key or a click skips to the end at once', () => {
+    for (const skip of [() => fireEvent.wheel(window, { deltaY: 40 }), () => fireEvent.keyDown(window, { key: 'ArrowDown' }), () => fireEvent.pointerDown(window)]) {
+      renderHome();
+      act(() => {
+        skip();
+      });
+      const main = document.querySelector('main')!;
+      expect(main.dataset.docked).toBe('true');
+      expect(main.dataset.ready).toBe('true');
+      expect(document.querySelector('[data-landing="opening"]')).toBeNull();
+      expect(document.documentElement.style.overflow).toBe('');
+      cleanup();
+    }
+  });
+
+  test('reduced motion: straight to the end state, with a fade only', () => {
     vi.unstubAllGlobals();
     stubMatchMedia({ reducedMotion: true });
     renderHome();
-    act(() => {
-      fireEvent.keyDown(window, { key: 'ArrowDown' });
-    });
+    const main = document.querySelector('main')!;
+    expect(main.dataset.docked).toBe('true');
+    expect(main.dataset.settled).toBe('true');
     expect(gsap.getTweensOf(document.querySelector('[data-landing="opening-mark"]'))).toHaveLength(0);
-    expect(gsap.getTweensOf(document.querySelector('[data-landing="opening"]'))[0].vars.opacity).toBe(0);
+    expect(gsap.getTweensOf(document.querySelector('[data-landing="opening"]'))[0].vars).toMatchObject({ opacity: 0 });
+    act(() => {
+      settle();
+    });
+    expect(main.dataset.ready).toBe('true');
   });
 });
 

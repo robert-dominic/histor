@@ -1,7 +1,7 @@
 // src/features/landing/Landing.tsx
 // The landing page (landing brief): an archive of cases in the style of a gallery's dark rooms. It opens black with
 // the Histor wordmark, which docks into the header; then one full-screen section per case, each a frame.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import SiteFooter from '@/components/SiteFooter';
@@ -17,10 +17,27 @@ import { exhibits } from '@/cases';
 
 export default function Landing() {
   const markRef = useRef<HTMLImageElement>(null);
-  /** The wordmark has docked (or is docking): the header shows, and the first frame rises in. */
+  /** The wordmark is docking: the header's pills show. */
   const [docked, setDocked] = useState(false);
+  /** The opening's picture has settled into the first frame: the frame comes in around it. */
+  const [settled, setSettled] = useState(false);
+  /** The opening is over: the first section's words come into focus and the rail appears. */
+  const [ready, setReady] = useState(false);
   const dock = useCallback(() => setDocked(true), []);
+  const settle = useCallback(() => setSettled(true), []);
+  const finish = useCallback(() => setReady(true), []);
   const start = exhibits.find(exhibit => exhibit.status === 'open');
+  const first = exhibits[0];
+  const detail = useMemo(
+    () =>
+      first?.status === 'open' && first.frameImage !== undefined
+        ? {
+            src: first.frameImage.src,
+            frameRect: () => document.querySelector<HTMLElement>(`#exhibit-${first.id} .haunted-frame__opening`)?.getBoundingClientRect() ?? null,
+          }
+        : undefined,
+    [first]
+  );
   /** The case on screen: the rail's long tick. */
   const [current, setCurrent] = useState(0);
   const sectionOf = (index: number) => document.getElementById(`exhibit-${exhibits[index]?.id}`);
@@ -56,12 +73,12 @@ export default function Landing() {
     return () => triggers.forEach(trigger => trigger.kill());
   }, []);
   return (
-    <main data-page="landing" data-docked={docked} className="relative min-h-svh bg-night text-night-ink">
+    <main data-page="landing" data-docked={docked} data-settled={settled} data-ready={ready} className="relative min-h-svh bg-night text-night-ink">
       <LandingHeader startHref={start === undefined ? '/' : `/case/${start.id}`} markRef={markRef} docked={docked} />
-      <Opening targetRef={markRef} onDock={dock} />
+      <Opening targetRef={markRef} detail={detail} onDock={dock} onSettle={settle} onDone={finish} />
       <ol aria-label="The cases">
         {exhibits.map((exhibit, index) => (
-          <ExhibitSection key={exhibit.id} exhibit={exhibit} index={index} next={exhibits[index + 1]} revealed={docked}>
+          <ExhibitSection key={exhibit.id} exhibit={exhibit} index={index} next={exhibits[index + 1]} frameIn={settled} wordsIn={ready}>
             {frame =>
               exhibit.status === 'open' ? <OpenFrame exhibit={exhibit}>{frame}</OpenFrame> : <SealedFrame exhibit={exhibit}>{frame}</SealedFrame>
             }
@@ -74,7 +91,7 @@ export default function Landing() {
         <p className="font-voice text-[0.8125rem] tracking-[0.12em] text-night-ink/60">Legend or history? You decide.</p>
       </section>
       <SiteFooter />
-      <ProgressRail exhibits={exhibits} current={current} onGo={go} shown={docked} />
+      <ProgressRail exhibits={exhibits} current={current} onGo={go} shown={ready} />
       {/* The black an open case's frame fades the screen to, before its page. */}
       <div aria-hidden="true" data-landing="blackout" className="pointer-events-none invisible fixed inset-0 z-[60] bg-black opacity-0" />
     </main>

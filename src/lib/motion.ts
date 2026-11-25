@@ -35,7 +35,11 @@ export type TokenName =
   | 'dread.twitch'
   | 'dread.drift'
   | 'dread.cut'
-  | 'dread.progress';
+  | 'dread.progress'
+  | 'landing.wordmark'
+  | 'landing.pull'
+  | 'landing.blur'
+  | 'landing.stage';
 
 export interface MotionToken {
   ease: string;
@@ -104,7 +108,19 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'dread.cut': { ease: 'power4.in', duration: 0.08 },
   /** The preloader's progress line, catching up with what has loaded. */
   'dread.progress': { ease: 'power2.out', duration: 0.4 },
+  // ---- The landing page (landing v2 brief).
+  /** The wordmark fading in on the black, and the picture's detail fading in behind it. */
+  'landing.wordmark': { ease: 'power2.out', duration: 0.9 },
+  /** The opening's camera pulling back: the detail sharpens and settles into its frame. */
+  'landing.pull': { ease: 'power3.inOut', duration: 1.9 },
+  /** Text coming into focus (from blur and transparent to sharp); going out is `ink.out`. */
+  'landing.blur': { ease: 'power2.out', duration: 0.9 },
+  /** One case giving way to the next: the frames travelling, the screen's one step. */
+  'landing.stage': { ease: 'power3.inOut', duration: 1.1 },
 };
+
+/** How blurred landing text is while it is out of focus, in px. Text lines only, never a large layer. */
+export const LANDING_BLUR = 10;
 
 /** How far text rises, in px, while it fades in (`ink.in`). */
 export const INK_RISE = MOTION['ink.in'].y ?? 0;

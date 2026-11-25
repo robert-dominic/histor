@@ -715,7 +715,8 @@ body::after {
     0 0 0 9px rgb(70 56 30 / 0.2),
     inset 0 0 34px rgb(0 0 0 / 0.9);
 }
-.haunted-frame__opening > img {
+.haunted-frame__opening > img,
+.opening-detail img {
   filter: saturate(0.7) sepia(0.18) brightness(0.82) contrast(1.06);
 }
 /* The light catching the gilt on hover: a dull band, moved by transform (Frame.tsx). */
