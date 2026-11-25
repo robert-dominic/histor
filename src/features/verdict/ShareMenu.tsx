@@ -1,20 +1,16 @@
 // src/features/verdict/ShareMenu.tsx
 // The Share icon of the result screen's action bar (ui-pass brief, 3; review-fixes brief, 10). It opens a small menu on
-// typed paper: X, Facebook, LinkedIn, WhatsApp, Reddit and Telegram (each site's own share page, in a
+// paper (the shared Popover, ui-pass brief, 4): X, Facebook, LinkedIn, WhatsApp, Reddit and Telegram (each site's own share page, in a
 // new tab), "Copy link", "Save the image" and, where the browser can share files, "More…" (the native share sheet,
 // with the card). Escape or a press outside closes it. It follows the header's popover rules (`usePopover`): only one
 // open at a time, a click opens and closes it, Tab away closes it (the icon's tooltip, not the menu, answers a
 // resting mouse). The arrow keys move between its items.
-import { useRef, useState, type KeyboardEvent } from 'react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { MOTION_QUERIES, QUICK_OUT, tween } from '@/lib/motion';
+import { useRef, type KeyboardEvent } from 'react';
+import Popover from '@/components/Popover';
 import { shareLinks } from '@/lib/share-card';
 import { usePopover } from '@/lib/use-popover';
 import IconButton from '@/components/IconButton';
 import { ShareIcon } from '@/components/icons';
-
-gsap.registerPlugin(useGSAP);
 
 const ITEM_CLASSES =
   'flex min-h-10 w-full items-center rounded-[1px] px-3 text-left font-voice text-[0.875rem] tracking-[0.04em] text-ink transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:bg-ink/8 focus-visible:bg-ink/8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-record';
@@ -35,28 +31,6 @@ export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMe
   const { open, hide, rootProps, triggerProps, consumeClick } = usePopover({ clickToggles: true });
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  // Drawn while open, and until it has finished leaving (exits are quick, never a snap).
-  const [shown, setShown] = useState(open);
-  if (open && !shown) {
-    setShown(true);
-  }
-
-  useGSAP(
-    () => {
-      const menu = menuRef.current;
-      if (menu === null) {
-        return;
-      }
-      const reduced = typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches;
-      if (open) {
-        gsap.fromTo(menu, reduced ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, ...tween('paper.lift'), overwrite: true });
-      } else {
-        gsap.to(menu, { opacity: 0, ...QUICK_OUT, overwrite: true, onComplete: () => setShown(false) });
-      }
-    },
-    { dependencies: [open, shown] }
-  );
-
   /** An item chosen: it does its thing, and the menu closes. */
   const choose = (run?: () => void) => {
     run?.();
@@ -102,16 +76,16 @@ export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMe
           }
         }}
       />
-      {shown && (
-        <div
-          ref={menuRef}
-          role="menu"
-          aria-label="Share"
-          data-share="menu"
-          onKeyDown={onMenuKey}
-          // Opens below the action bar's icon, along the right edge.
-          className="desk-typed-paper absolute top-[calc(100%+0.5rem)] right-0 z-40 w-60 origin-top-right rounded-[2px] p-1.5"
-        >
+      {/* The shared paper popover (ui-pass brief, 4), below the action bar's icon, along the right edge. */}
+      <Popover
+        open={open}
+        ref={menuRef}
+        role="menu"
+        aria-label="Share"
+        data-share="menu"
+        onKeyDown={onMenuKey}
+        className="top-[calc(100%+0.5rem)] right-0 w-60 origin-top-right"
+      >
           {shareLinks(text, url).map(link => (
             <a
               key={link.id}
@@ -138,8 +112,7 @@ export default function ShareMenu({ text, url, onCopy, onSave, onMore }: ShareMe
               More…
             </button>
           )}
-        </div>
-      )}
+      </Popover>
     </div>
   );
 }

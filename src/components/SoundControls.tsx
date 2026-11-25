@@ -4,7 +4,8 @@
 // opens the popover. Hovering with a mouse, reaching it with the keyboard, or a long press on touch shows a small
 // popover with its volume slider, remembered too; only one popover is open at a time (`usePopover`, the popover
 // rules of the review-fixes brief, 2). Turning one on is a gesture, so it starts the sound at once.
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import Popover from '@/components/Popover';
 import { useSoundChannel } from '@/lib/sound';
 import type { Channel } from '@/lib/sound/engine';
 import { usePopover } from '@/lib/use-popover';
@@ -50,15 +51,9 @@ function SoundControl({ channel, label, icon, waves }: { channel: Channel; label
           )}
         </svg>
       </button>
-      {open && (
-        <div
-          data-sound="popover"
-          className="absolute top-[calc(100%+0.625rem)] right-[-0.5rem] z-40 flex w-44 flex-col gap-2 rounded-[2px] border border-night-ink/15 bg-night px-3.5 pt-3 pb-3.5 shadow-xl shadow-black/60"
-        >
-          <span className="flex items-baseline justify-between font-voice text-[0.6875rem] tracking-[0.14em] text-night-ink/80 uppercase">
-            {label}
-            <span className="tabular-nums text-night-ink/60">{Math.round(volume * 100)}%</span>
-          </span>
+      <Popover open={open} data-sound="popover" className="top-[calc(100%+0.625rem)] right-[-0.5rem] w-52">
+        <span className="block font-voice text-[0.6875rem] tracking-[0.14em] text-ink/75 uppercase">{label}</span>
+        <span className="mt-2 flex items-center gap-3">
           <input
             type="range"
             min={0}
@@ -67,10 +62,15 @@ function SoundControl({ channel, label, icon, waves }: { channel: Channel; label
             value={Math.round(volume * 100)}
             aria-label={`${label} volume`}
             onChange={event => setVolume(Number(event.target.value) / 100)}
-            className="w-full accent-brass"
+            style={{ '--fill': `${Math.round(volume * 100)}%` } as CSSProperties}
+            className="paper-range min-w-0 flex-1"
           />
-        </div>
-      )}
+          {/* The value, typed small beside it. */}
+          <span aria-hidden="true" className="w-9 shrink-0 text-right font-voice text-[0.75rem] tabular-nums text-ink/80">
+            {Math.round(volume * 100)}%
+          </span>
+        </span>
+      </Popover>
     </div>
   );
 }
