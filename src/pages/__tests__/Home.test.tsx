@@ -493,6 +493,34 @@ describe('no click on blank space (landing, last pass)', () => {
   });
 });
 
+describe('cursors (landing, last pass)', () => {
+  test('the landing shows the normal arrow over empty space and text; everything that can be pressed keeps the pointer rule', () => {
+    const effects = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    expect(effects).toMatch(/\[data-page='landing'\] \{\s*cursor: default;/);
+    const base = readFileSync(resolve(__dirname, '../../index.css'), 'utf8');
+    expect(base).toMatch(/a\[href\],\s*button:not\(:disabled\)[\s\S]*?cursor: pointer/);
+    renderHome();
+    // What can be pressed is a link or a button, so the rule reaches it.
+    expect(screen.getByRole('link', { name: 'Open the case: The Mary Celeste' }).tagName).toBe('A');
+    expect(screen.getByRole('link', { name: 'Histor, back to the top' }).tagName).toBe('A');
+    expect(document.querySelector('[data-landing="music"]')!.tagName).toBe('BUTTON');
+    expect([...document.querySelectorAll('[data-landing="rail-tick"]')].every(tick => tick.tagName === 'BUTTON')).toBe(true);
+    expect([...screen.getByRole('contentinfo').querySelectorAll('a')].length).toBeGreaterThan(5);
+  });
+
+  test('the sealed plaque has a close button, which closes it and gives the focus back', () => {
+    renderHome();
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Jack the Ripper: sealed"]')!;
+    fireEvent.click(button);
+    const plaque = screen.getByRole('dialog', { name: 'Jack the Ripper, sealed' });
+    const close = within(plaque).getByRole('button', { name: 'Close' });
+    expect(close.tagName).toBe('BUTTON');
+    fireEvent.click(close);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(button);
+  });
+});
+
 describe('the progress rail and the end (landing brief, 5)', () => {
   test('one tick per case on the left, the first current; a tick goes to its case', () => {
     const to = vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);

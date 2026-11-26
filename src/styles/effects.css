@@ -851,6 +851,12 @@ html[data-landing-stage='held'] {
   .eq-bar:nth-child(4) { transform: scaleY(0.8); }
 }
 
+/* The landing page's cursors: empty space, text and the peeking frame show the normal arrow; everything that can be
+   pressed keeps its pointer (index.css): the centred frame, the rail, the music button, the wordmark, the footer's
+   links, the plaque's close button. */
+[data-page='landing'] {
+  cursor: default;
+}
 /* The landing page: only the case in hand can be pressed. The next frame, peeking in at the bottom right, is not a way
    to it (scroll, swipe, a key or the rail are): no press, no tilt. */
 [data-landing='stage'] [data-exhibit][data-current='false'] {

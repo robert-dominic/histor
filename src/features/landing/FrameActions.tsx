@@ -2,12 +2,14 @@
 // What a frame does when pressed (landing brief, 4).
 // - An open case: a short transition (the frame scales up, the screen fades to black), then its page.
 // - A sealed case: a small plaque card rises beside the frame (the shared Popover) with its title, years, subline and
-//   "Sealed — case file in preparation."; Escape or a click outside closes it; heard as the modal sound.
+//   "Sealed — case file in preparation."; its close button, Escape or a click outside closes it; heard as the modal sound.
 // Both tilt toward the cursor on hover (use-frame-tilt.ts).
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import Popover from '@/components/Popover';
+import IconButton from '@/components/IconButton';
+import { CloseIcon } from '@/components/icons';
 import type { Exhibit } from '@/cases';
 import { useFrameTilt } from '@/features/landing/use-frame-tilt';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
@@ -117,7 +119,19 @@ export function SealedFrame({ exhibit, children }: { exhibit: Exhibit; children:
         data-exhibit-part="plaque"
         className="top-[calc(100%+0.75rem)] left-0 w-full max-w-sm lg:top-0 lg:left-[calc(100%+2rem)] lg:w-72"
       >
-        <p className="font-record text-[1.25rem] leading-tight text-ink italic">{exhibit.title}</p>
+        <div className="absolute top-1.5 right-1.5">
+          <IconButton
+            label="Close"
+            icon={<CloseIcon />}
+            data-exhibit-part="plaque-close"
+            onClick={() => {
+              toggle(false);
+              buttonRef.current?.focus();
+            }}
+            className="size-8! text-ink/70! hover:bg-ink/10! hover:text-ink!"
+          />
+        </div>
+        <p className="pr-8 font-record text-[1.25rem] leading-tight text-ink italic">{exhibit.title}</p>
         <p className="mt-1 font-voice text-[0.6875rem] tracking-[0.18em] text-ink/70 uppercase">{exhibit.years}</p>
         <p className="mt-3 font-record text-[0.9375rem] leading-snug text-ink/85">{exhibit.subline}</p>
         <p className="mt-3 font-voice text-[0.75rem] text-rust">Sealed — case file in preparation.</p>
