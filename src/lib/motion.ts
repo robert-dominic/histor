@@ -47,6 +47,8 @@ export type TokenName =
   | 'landing.musicOut'
   | 'landing.tilt'
   | 'landing.tiltRelease'
+  | 'landing.follow'
+  | 'landing.release'
   | 'landing.stage';
 
 export interface MotionToken {
@@ -139,8 +141,12 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.tilt': { ease: 'power3.out', duration: 0.6 },
   /** ...and easing back flat when the cursor leaves: no spring, no jitter. */
   'landing.tiltRelease': { ease: 'power3.out', duration: 0.8 },
-  /** One case giving way to the next: the frames travelling; one gesture's move, a Lenis scroll with this ease. */
-  'landing.stage': { ease: 'power3.inOut', duration: 1.1 },
+  /** The frames following the hand during a gesture (gsap.quickTo): they glide just behind it, never jump. */
+  'landing.follow': { ease: 'power3.out', duration: 0.5 },
+  /** A gesture let go: the frames finish the move to the next case, or ease back to this one, and settle softly. */
+  'landing.release': { ease: 'power3.out', duration: 1 },
+  /** One case giving way to the next when it is not the hand moving it (a key, the rail, Home, End, the wordmark). */
+  'landing.stage': { ease: 'power3.inOut', duration: 1.2 },
 };
 
 /** How blurred landing text is while it is out of focus, in px. Text lines only, never a large layer. */

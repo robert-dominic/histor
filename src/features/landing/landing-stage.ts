@@ -49,14 +49,17 @@ export function createGestureGate({ gapMs, momentumMs, growth } = LANDING_GESTUR
   let lastSize = 0;
   let used = false;
   return {
-    note(now: number, delta: number): void {
+    /** Notes a wheel event; true when it starts a new gesture (not the tail of the last). */
+    note(now: number, delta: number): boolean {
       const gap = now - last;
       const size = Math.abs(delta);
-      if (gap > momentumMs || (gap > gapMs && size > lastSize * growth)) {
+      const fresh = gap > momentumMs || (gap > gapMs && size > lastSize * growth);
+      if (fresh) {
         used = false;
       }
       last = now;
       lastSize = size;
+      return fresh;
     },
     /** This gesture asks to move; `free` is false while a move runs. A gesture that meets a move is spent. */
     take(free: boolean): boolean {
@@ -67,6 +70,20 @@ export function createGestureGate({ gapMs, momentumMs, growth } = LANDING_GESTUR
       return free;
     },
   };
+}
+
+/**
+ * A gesture moving the frames by hand (landing, last pass): how far the hand goes for a whole case, as a share of the
+ * screen's height (a wheel notch of about 100px is about a third of a case); how far past the case it must have gone,
+ * when it is let go, to carry on to the next (else the frames ease back); and how long the wheel must be quiet for the
+ * gesture to count as let go, in ms.
+ */
+export const LANDING_DRAG = { perCase: 0.35, carry: 0.25, quietMs: 220 } as const;
+
+/** Where a gesture let go settles: the next case if it went past `carry` of the way, else back where it started. */
+export function settleTarget(base: number, at: number, carry: number = LANDING_DRAG.carry): number {
+  const moved = at - base;
+  return Math.abs(moved) > carry ? base + Math.sign(moved) : base;
 }
 
 /** How long a move may take before it is counted as landed whatever happens, past its own duration, in ms. */
@@ -158,8 +175,12 @@ export interface StageHandle {
   ready: () => void;
   /** Straight to a case, in one soft move (the rail's tick, the wordmark, Home and End). */
   go: (index: number) => void;
-  /** A move is running: input is ignored. */
+  /** The frames are moving (by hand or not): a new gesture is ignored. */
   moving: () => boolean;
+  /** Where the frames are, in cases (0 at the first): what the hand and the moves drive. */
+  place: () => number;
+  /** A gesture is moving the frames by hand. */
+  gesturing: () => boolean;
   /** The case the words are showing for, or null while they are away. */
   wordsFor: () => number | null;
   /** The scroll is at `at` (0 at the first case, count - 1 at the last): what the page tells it on every scroll. */
@@ -393,45 +414,114 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
   }
 
-  // ---- One move: a smooth Lenis scroll to a case. Input is ignored until it has landed.
-  let moveTimer: ReturnType<typeof setTimeout> | null = null;
+  // ---- The frames' place, in cases (0 at the first, count - 1 at the last): `proxy.at`. Whatever moves the frames moves
+  // this, and the page's scroll follows it at once, so the scrubbed timeline (and the rail, the hash, the words) follow.
+  const proxy = { at: position() };
+  const sync = () => jumpToY(positionOf(proxy.at));
   /** The page went on into the footer: the next way back up returns to the last case. */
   let inFooter = false;
   const lastY = () => positionOf(count - 1);
-  const moveTo = (index: number) => {
-    const to = Math.min(Math.max(index, 0), count - 1);
+  /** A move that is not the hand's (a key, the rail, a gesture let go), and the hand's own gesture. */
+  let move: gsap.core.Tween | null = null;
+  let moveTimer: ReturnType<typeof setTimeout> | null = null;
+  let gesture: { base: number; travelled: number; follow: (value: number) => void; quiet: ReturnType<typeof setTimeout> | null } | null = null;
+  const busy = () => moving;
+
+  /** Plays the frames to `to` with `token`'s ease and duration; input is ignored until they are there. */
+  const playTo = (to: number, token: 'landing.stage' | 'landing.release') => {
+    const target = Math.min(Math.max(to, 0), count - 1);
     moving = true;
     inFooter = false;
     hideWords();
-    const move = tween('landing.stage');
+    move?.kill();
+    gsap.killTweensOf(proxy);
+    const timing = tween(token);
     const landed = () => {
       if (!moving) {
         return;
       }
       moving = false;
+      move = null;
       if (moveTimer !== null) {
         clearTimeout(moveTimer);
         moveTimer = null;
       }
+      proxy.at = target;
+      sync();
       settleSoon();
     };
     if (moveTimer !== null) {
       clearTimeout(moveTimer);
     }
     // Counted as landed after its own time in any case, so a move that is cut short never locks the page.
-    moveTimer = setTimeout(landed, move.duration * 1000 + MOVE_GRACE_MS);
-    scrollToY(positionOf(to), { ...move, onComplete: landed });
+    moveTimer = setTimeout(landed, timing.duration * 1000 + MOVE_GRACE_MS);
+    if (window.scrollY > lastY() + 1) {
+      // From the footer: the page itself comes back up, with the move's ease.
+      scrollToY(positionOf(target), { ...timing, onComplete: landed });
+      return;
+    }
+    proxy.at = position();
+    move = gsap.to(proxy, { at: target, ...timing, onUpdate: sync, onComplete: landed });
   };
-  /** One gesture's move, the way it points; from the footer, back up to the last case. */
-  const step = (direction: 1 | -1) => moveTo(window.scrollY > lastY() + 1 ? count - 1 : Math.round(latest) + direction);
+  /** The move a key plays (and the rail, Home, End and the wordmark): slower and softer than the hand. */
+  const moveTo = (index: number) => playTo(index, 'landing.stage');
+
+  // ---- The hand: while a gesture lasts, the frames follow it (no more than one case ahead or back), gliding just
+  // behind it; when it is let go they finish the move, or ease back, and settle.
+  const startGesture = () => {
+    proxy.at = position();
+    const base = Math.round(proxy.at);
+    hideWords();
+    const follow = gsap.quickTo(proxy, 'at', { ...tween('landing.follow'), onUpdate: sync });
+    gesture = { base, travelled: 0, follow, quiet: null };
+    moving = true;
+    inFooter = false;
+  };
+  /** The hand has moved `delta` px more (down positive). */
+  const follow = (delta: number) => {
+    if (gesture === null) {
+      return;
+    }
+    gesture.travelled += delta;
+    const reach = window.innerHeight * LANDING_DRAG.perCase;
+    const lo = Math.max(gesture.base - 1, 0);
+    const hi = Math.min(gesture.base + 1, count - 1);
+    gesture.follow(Math.min(Math.max(gesture.base + gesture.travelled / reach, lo), hi));
+  };
+  /** The gesture is let go: on to the next case if it went far enough, else back. */
+  const release = () => {
+    const g = gesture;
+    if (g === null) {
+      return;
+    }
+    gesture = null;
+    if (g.quiet !== null) {
+      clearTimeout(g.quiet);
+    }
+    const reach = window.innerHeight * LANDING_DRAG.perCase;
+    const at = Math.min(Math.max(g.base + g.travelled / reach, g.base - 1, 0), g.base + 1, count - 1);
+    moving = false;
+    playTo(settleTarget(g.base, at), 'landing.release');
+  };
+  /** The wheel has been quiet a moment: the gesture is let go. */
+  const releaseSoon = () => {
+    if (gesture === null) {
+      return;
+    }
+    if (gesture.quiet !== null) {
+      clearTimeout(gesture.quiet);
+    }
+    gesture.quiet = setTimeout(release, LANDING_DRAG.quietMs);
+  };
+
   /**
-   * Whether this gesture is the stage's (it moves a case) or the page's (Lenis scrolls on, into or within the footer).
-   * Past the last case going down, and within the footer, it is the page's; coming back up out of the footer, the
-   * stage's again.
+   * Whether this input is the stage's (it moves the frames) or the page's (Lenis scrolls on, into or within the
+   * footer). Past the last case going down, and within the footer, it is the page's; coming back up out of the footer,
+   * the stage's again.
    */
   const claims = (direction: 1 | -1, delta = 0): boolean => {
-    // While a move runs, every gesture is swallowed (so Lenis never takes over half-way).
-    if (moving) {
+    // While the frames move (by hand or not), every input is swallowed, so Lenis never takes over half-way.
+    if (busy()) {
       return true;
     }
     const y = window.scrollY;
@@ -453,62 +543,110 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   const notOurs = (target: EventTarget | null) =>
     target instanceof Element && target.closest('[role="dialog"], [aria-modal="true"], input, textarea, select, [contenteditable="true"], [data-lenis-prevent]') !== null;
 
-  // The wheel (and a trackpad): one burst, one case. Taken before Lenis (capture, on the window), so Lenis never moves
-  // the page by itself while the cases are on screen.
+  // The wheel (and a trackpad), taken before Lenis (capture, on the window). A new gesture (`LANDING_GESTURE`: not a
+  // flick's dying momentum) starts the hand; its events move the frames; a quiet moment lets it go. The momentum
+  // trailing after it is let go is the same gesture, and is swallowed: one flick, one case.
   const gate = createGestureGate();
+  /** The gesture now arriving met the frames moving, so it is spent: its events are swallowed to its end. */
+  let spent = false;
   const onWheel = (event: WheelEvent) => {
-    gate.note(event.timeStamp || performance.now(), event.deltaY);
+    const raw = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * window.innerHeight : event.deltaY;
+    const fresh = gate.note(event.timeStamp || performance.now(), raw);
     if (!alive || event.ctrlKey || notOurs(event.target)) {
       return;
     }
-    const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : 0;
+    const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? raw : 0;
     if (delta === 0) {
       return;
     }
-    const direction = delta > 0 ? 1 : -1;
-    if (!claims(direction, delta)) {
+    if (!claims(delta > 0 ? 1 : -1, delta)) {
       return;
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (isReady && gate.take(!moving)) {
-      step(direction);
+    if (!isReady) {
+      return;
+    }
+    if (fresh) {
+      spent = busy() && gesture === null;
+      if (!spent && gesture === null) {
+        if (window.scrollY > lastY() + 1) {
+          // Up out of the footer: back to the last case, as a move.
+          spent = true;
+          moveTo(count - 1);
+          return;
+        }
+        startGesture();
+      }
+    }
+    if (gesture !== null && !spent) {
+      follow(delta);
+      releaseSoon();
     }
   };
   window.addEventListener('wheel', onWheel, { capture: true, passive: false });
 
-  // A swipe: one per touch, once it has gone far enough to mean it.
+  // A finger: the frames follow it while it is down, and settle when it lifts.
   let touchFrom: number | null = null;
-  let touchUsed = false;
+  let touchLast: number | null = null;
+  let touching = false;
   const onTouchStart = (event: TouchEvent) => {
     touchFrom = event.touches[0]?.clientY ?? null;
-    touchUsed = false;
+    touchLast = touchFrom;
+    touching = false;
   };
   const onTouchMove = (event: TouchEvent) => {
     const y = event.touches[0]?.clientY;
-    if (!alive || touchFrom === null || y === undefined || notOurs(event.target)) {
+    if (!alive || touchFrom === null || touchLast === null || y === undefined || notOurs(event.target)) {
       return;
     }
-    const delta = touchFrom - y;
-    if (Math.abs(delta) < STORY_PACE.gestureTolerance) {
+    const total = touchFrom - y;
+    if (!touching && Math.abs(total) < STORY_PACE.gestureTolerance) {
       if (window.scrollY < lastY() - 1) {
         event.preventDefault();
       }
       return;
     }
-    const direction = delta > 0 ? 1 : -1;
-    if (!claims(direction, delta)) {
+    if (!touching && !claims(total > 0 ? 1 : -1, total)) {
       return;
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (isReady && !touchUsed && !moving) {
-      step(direction);
+    if (!isReady) {
+      return;
     }
-    touchUsed = true;
+    if (!touching) {
+      touching = true;
+      if (busy()) {
+        touchFrom = null;
+        return;
+      }
+      if (window.scrollY > lastY() + 1) {
+        touchFrom = null;
+        moveTo(count - 1);
+        return;
+      }
+      startGesture();
+      // The first few pixels, before it counted, count too.
+      follow(total);
+      touchLast = y;
+      return;
+    }
+    follow(touchLast - y);
+    touchLast = y;
+  };
+  const onTouchEnd = () => {
+    touchFrom = null;
+    touchLast = null;
+    if (touching) {
+      touching = false;
+      release();
+    }
   };
   window.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
   window.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
+  window.addEventListener('touchend', onTouchEnd, { capture: true });
+  window.addEventListener('touchcancel', onTouchEnd, { capture: true });
 
   // Anything else that brings the page back up out of the footer (a key, the scrollbar): back to the last case.
   const onScroll = () => {
@@ -516,31 +654,22 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     const last = lastY();
     if (y > last + 1) {
       inFooter = true;
-    } else if (inFooter && !moving && isReady && y < last - 1) {
+    } else if (inFooter && !busy() && isReady && y < last - 1) {
       moveTo(count - 1);
     }
   };
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  // The next frame peeking in is the real frame: pressing it brings it in (one move), rather than opening it there.
-  const onClick = (event: MouseEvent) => {
-    const section = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-exhibit]') : null;
-    const index = section === null ? -1 : sections.indexOf(section);
-    if (index < 0 || index === Math.round(latest)) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    if (!moving) {
-      moveTo(index);
-    }
-  };
-  stage.addEventListener('click', onClick, { capture: true });
-
-  // ---- The keyboard: arrows, Page keys and Space go one case, like a gesture; Home and End to the ends.
+  // ---- The keyboard: arrows, Page keys and Space play one move, like a gesture; Home and End to the ends.
   const go = (index: number) => {
     if (index < 0 || index >= count) {
       return;
+    }
+    if (gesture !== null) {
+      if (gesture.quiet !== null) {
+        clearTimeout(gesture.quiet);
+      }
+      gesture = null;
     }
     moveTo(index);
   };
@@ -563,8 +692,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
         return;
       }
       event.preventDefault();
-      if (!moving) {
-        step(direction);
+      if (!busy()) {
+        moveTo(Math.round(latest) + direction);
       }
     } else if (event.key === 'Home') {
       event.preventDefault();
@@ -609,6 +738,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     },
     go,
     moving: () => moving,
+    place: () => proxy.at,
+    gesturing: () => gesture !== null,
     wordsFor: () => wordsFor,
     update,
     timeline: () => timeline,
@@ -627,8 +758,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       window.removeEventListener('wheel', onWheel, { capture: true });
       window.removeEventListener('touchstart', onTouchStart, { capture: true });
       window.removeEventListener('touchmove', onTouchMove, { capture: true });
+      window.removeEventListener('touchend', onTouchEnd, { capture: true });
+      window.removeEventListener('touchcancel', onTouchEnd, { capture: true });
+      move?.kill();
+      gsap.killTweensOf(proxy);
+      if (gesture?.quiet != null) {
+        clearTimeout(gesture.quiet);
+      }
       window.removeEventListener('scroll', onScroll);
-      stage.removeEventListener('click', onClick, { capture: true });
       window.removeEventListener('resize', onResize);
       if (moveTimer !== null) {
         clearTimeout(moveTimer);

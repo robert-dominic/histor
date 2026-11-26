@@ -42,6 +42,8 @@ const NAMES: TokenName[] = [
   'landing.musicOut',
   'landing.tilt',
   'landing.tiltRelease',
+  'landing.follow',
+  'landing.release',
   'landing.stage',
 ];
 
