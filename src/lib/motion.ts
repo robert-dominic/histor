@@ -204,4 +204,4 @@ export const LANDING_SETTLE = 0.15;
  * The scrubbed landing timeline's own units (landing fixes brief): one move of the frames is one unit of the
  * timeline, which the scroll position maps to; the rest are shares of it.
  */
-export const SCRUB = { move: 1, fadeOut: 0.4, peekOut: 0.08, peekIn: 0.2 } as const;
+export const SCRUB = { move: 1, fadeOut: 0.4, peekFrom: 0.4, peekRise: 0.6 } as const;

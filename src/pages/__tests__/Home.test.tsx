@@ -306,14 +306,16 @@ describe('one section per case (landing brief, 3)', () => {
     expect(veil.querySelector('.frame-plaque')!.textContent).toBe('Sealed');
   });
 
-  test('the "Scroll" cue on the first section only; the next frame peeks in on every section but the last', () => {
+  test('the "Scroll" cue on the first section only; each case has exactly one frame, and no copy of another case\'s', () => {
     renderHome();
     const sections = exhibits.map(exhibit => document.getElementById(`exhibit-${exhibit.id}`)!);
     expect(sections.map(section => section.querySelector('[data-exhibit-part="cue"]') !== null)).toEqual(sections.map((_, index) => index === 0));
     sections.forEach((section, index) => {
-      const peek = section.querySelector('[data-exhibit-part="peek"] .haunted-frame');
-      expect(peek?.getAttribute('data-frame') ?? null).toBe(exhibits[index + 1]?.frame ?? null);
+      const frames = section.querySelectorAll('.haunted-frame');
+      expect(frames).toHaveLength(1);
+      expect(frames[0].getAttribute('data-frame')).toBe(exhibits[index].frame);
     });
+    expect(document.querySelector('[data-exhibit-part="peek"]')).toBeNull();
   });
 
   test('the frames are haunted, not shiny: no bright, polished gold anywhere in their styles', () => {
@@ -499,10 +501,10 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     vi.unstubAllGlobals();
     stubMedia({ desktop: true });
     const { unmount } = renderHome();
-    const ripper = () => document.getElementById('exhibit-jack-the-ripper')!;
+    const ripper = () => document.getElementById(`exhibit-${exhibits[2].id}`)!;
     // The stage: only the case on screen is there; the others wait, hidden.
     expect(document.querySelector('main')!.dataset.staged).toBe('true');
-    // A tall track (a screen of scroll for each case) holding a sticky stage: free scrolling, not locked steps.
+    // A tall track (a screen of scroll for each case) holding a sticky stage. (The case after the next one waits, hidden.)
     expect(document.querySelector<HTMLElement>('[data-landing="track"]')!.style.height).toBe(`${exhibits.length * 100}svh`);
     expect(document.querySelector('[data-landing="stage"]')!.className).toContain('sticky');
     expect(ripper().style.visibility).toBe('hidden');

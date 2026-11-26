@@ -7,7 +7,7 @@ import { act } from '@testing-library/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createGestureGate, createLandingStage, FRAME_SWING, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
+import { createGestureGate, createLandingStage, FRAME_SWING, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, peekRect, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
 import * as smoothScroll from '@/lib/smooth-scroll';
 import { stubMatchMedia } from '@/test/match-media';
 
@@ -62,9 +62,11 @@ function make(count = 4, start = 0, shown = false) {
   sections = Array.from({ length: count }, (_, index) => {
     const section = document.createElement('li');
     section.id = `exhibit-${index}`;
-    section.innerHTML = `<div data-exhibit-part="place"><div data-exhibit-part="anchor"><div data-exhibit-part="rise"><div class="haunted-frame"></div></div></div><div data-exhibit-part="title"><h2>Case title ${index}</h2><p>1872</p></div></div><div data-exhibit-part="words">W${index}</div>${
-      index < count - 1 ? '<div data-exhibit-part="peek"><div class="haunted-frame"></div></div>' : ''
-    }`;
+    section.dataset.exhibit = String(index);
+    section.innerHTML = `<div data-exhibit-part="place"><div data-exhibit-part="anchor"><div data-exhibit-part="rise"><div class="haunted-frame"></div></div></div><div data-exhibit-part="title"><h2>Case title ${index}</h2><p>1872</p></div></div><div data-exhibit-part="words">W${index}</div>`;
+    // Every frame rests in the same place on the stage: 400 by 300, a little left of centre.
+    section.querySelector<HTMLElement>('[data-exhibit-part="anchor"]')!.getBoundingClientRect = () =>
+      ({ left: 200, top: 150, width: 400, height: 300, right: 600, bottom: 450, x: 200, y: 150, toJSON: () => ({}) }) as DOMRect;
     root.appendChild(section);
     return section;
   });
@@ -130,22 +132,73 @@ describe('the landing stage: smooth scrolling', () => {
     expect(arriving.startTime()).toBe(0);
     expect(arriving.duration()).toBe(1);
     // Only transform and opacity are ever written to the frames.
-    const keys = gsap.getTweensOf([part(0, 'anchor'), part(1, 'anchor'), part(0, 'rise'), part(1, 'rise')]).flatMap(tween => Object.keys(tween.vars));
+    const keys = gsap.getTweensOf([part(0, 'anchor'), part(1, 'anchor'), part(2, 'anchor'), part(0, 'rise'), part(1, 'rise')]).flatMap(tween => Object.keys(tween.vars));
     expect(keys.filter(key => ['width', 'height', 'top', 'left', 'margin', 'padding', 'filter'].includes(key))).toEqual([]);
-    // Scrubbed: the sections show as the timeline passes them.
+    // Scrubbed: at rest the case in hand and the next one (peeking) are drawn; the one after comes up during the move.
     timeline.time(0);
-    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'hidden', 'hidden']);
-    timeline.time(0.5);
     expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'visible', 'hidden']);
+    timeline.time(0.5);
+    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'visible', 'visible']);
     timeline.time(1);
-    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'visible', 'hidden']);
-    timeline.time(1.5);
     expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'visible', 'visible']);
     timeline.time(2);
     expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'hidden', 'visible']);
-    // Passing several cases at once is just a later time: back again, the same.
     timeline.time(0);
-    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'hidden', 'hidden']);
+    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'visible', 'hidden']);
+  });
+
+  test('no stand-in frames: the next case peeking at the bottom right is its own frame, travelling into the centre and back', () => {
+    make(4);
+    // Nothing in any section stands in for another case's frame.
+    expect(document.querySelector('[data-exhibit-part="peek"]')).toBeNull();
+    const timeline = stage.timeline()!;
+    const pose = (index: number) => ({
+      x: Number(gsap.getProperty(part(index, 'anchor'), 'x')),
+      y: Number(gsap.getProperty(part(index, 'anchor'), 'y')),
+      scale: Number(gsap.getProperty(part(index, 'anchor'), 'scale')),
+      opacity: Number(gsap.getProperty(part(index, 'anchor'), 'opacity')),
+    });
+    const near = (actual: ReturnType<typeof pose>, expected: { x: number; y: number; scale: number; opacity?: number }) => {
+      expect(actual.x).toBeCloseTo(expected.x, 0);
+      expect(actual.y).toBeCloseTo(expected.y, 0);
+      expect(actual.scale).toBeCloseTo(expected.scale, 3);
+      if (expected.opacity !== undefined) {
+        expect(actual.opacity).toBe(expected.opacity);
+      }
+    };
+    const atPeek = poseOver({ left: 200, top: 150, width: 400, height: 300 }, peekRect({ width: 400, height: 300 }));
+    // At rest on case 0: case 1's own frame sits small at the bottom right, partly below the edge.
+    timeline.time(0);
+    near(pose(1), { ...atPeek, opacity: 1 });
+    expect(atPeek.x).toBeGreaterThan(0);
+    expect(atPeek.y).toBeGreaterThan(0);
+    expect(atPeek.scale).toBeLessThan(1);
+    // Half-way, it is on its way (neither at its peek nor at rest): one element, moving continuously.
+    timeline.time(0.5);
+    const half = pose(1);
+    expect(half.scale).toBeGreaterThan(atPeek.scale);
+    expect(half.scale).toBeLessThan(1);
+    expect(half.x).toBeLessThan(atPeek.x);
+    expect(half.opacity).toBe(1);
+    // Landed: in the centre; case 2's own frame has come up into the peek.
+    timeline.time(1);
+    near(pose(1), { x: 0, y: 0, scale: 1 });
+    near(pose(2), { ...atPeek, opacity: 1 });
+    // Scrolled back: it travels back down to its peek, and case 2 goes back below.
+    timeline.time(0.5);
+    expect(pose(1).scale).toBeCloseTo(half.scale, 5);
+    timeline.time(0);
+    near(pose(1), atPeek);
+    expect(sections[2].style.visibility).toBe('hidden');
+  });
+
+  test('pressing the frame peeking in brings it in (one move), rather than opening it there', () => {
+    make(3);
+    stage.ready();
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    act(() => void part(1, 'anchor').dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(moves()).toEqual([100]);
   });
 
   test('the frames swing like a painting on a wire: a lean on the way, one soft sway back as the new one settles', () => {
@@ -459,6 +512,16 @@ describe('one case per gesture', () => {
   });
 });
 
+
+describe('peekRect', () => {
+  test('the bottom right, a quarter of the screen high, keeping the frame\'s own shape, part of it below the edge', () => {
+    const rect = peekRect({ width: 400, height: 300 }, { width: 1440, height: 900 });
+    expect(rect.height).toBeCloseTo(900 * 0.26, 5);
+    expect(rect.width / rect.height).toBeCloseTo(4 / 3, 5);
+    expect(rect.left + rect.width).toBeCloseTo(1440 * 0.96, 5);
+    expect(rect.top + rect.height).toBeGreaterThan(900);
+  });
+});
 
 describe('poseOver', () => {
   test('puts a frame over a target rectangle', () => {

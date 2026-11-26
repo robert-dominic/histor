@@ -230,7 +230,6 @@ export default function Landing() {
                 key={exhibit.id}
                 exhibit={exhibit}
                 index={index}
-                next={exhibits[index + 1]}
                 staged={staged}
                 isStart={index === startIndex}
                 frameIn={settled}

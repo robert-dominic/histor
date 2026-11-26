@@ -23,7 +23,7 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
-import { LANDING_BLUR, LANDING_SETTLE, LINEAR, SCRUB, STEP, tween } from '@/lib/motion';
+import { LANDING_BLUR, LANDING_SETTLE, SCRUB, STEP, tween } from '@/lib/motion';
 import { getLenis, jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
 import { STORY_PACE } from '@/lib/story-pages';
 
@@ -91,8 +91,6 @@ interface Parts {
   years: HTMLElement | null;
   /** The headline and the subline together. */
   words: HTMLElement | null;
-  /** The next case's frame, peeking in at the bottom right. */
-  peek: HTMLElement | null;
 }
 
 function partsOf(section: HTMLElement): Parts | null {
@@ -110,7 +108,6 @@ function partsOf(section: HTMLElement): Parts | null {
     name: title?.querySelector<HTMLElement>('h2') ?? null,
     years: title?.querySelector<HTMLElement>('p') ?? null,
     words: section.querySelector<HTMLElement>('[data-exhibit-part="words"]'),
-    peek: section.querySelector<HTMLElement>('[data-exhibit-part="peek"]'),
   };
 }
 
@@ -127,10 +124,15 @@ export function poseOver(rest: { left: number; top: number; width: number; heigh
   };
 }
 
-/** Where a frame peeks when its section has no peek to measure: the bottom right. */
-function fallbackPeek(): { left: number; top: number; width: number; height: number } {
-  const width = window.innerWidth * 0.2;
-  return { left: window.innerWidth * 0.76, top: window.innerHeight * 0.78, width, height: width * 0.75 };
+/** Where the next frame waits, peeking in at the bottom right: its height a share of the screen's, set in from the
+ * right edge, and part of it below the bottom edge. */
+export const PEEK = { height: 0.26, right: 0.04, below: 0.42 } as const;
+
+/** The rectangle the next frame peeks in at, for a frame whose resting box is `rest` (it keeps its own shape). */
+export function peekRect(rest: { width: number; height: number }, screen = { width: window.innerWidth, height: window.innerHeight }) {
+  const height = screen.height * PEEK.height;
+  const width = rest.height > 0 ? (height * rest.width) / rest.height : height;
+  return { left: screen.width * (1 - PEEK.right) - width, top: screen.height - height * (1 - PEEK.below), width, height };
 }
 
 export interface StageOptions {
@@ -152,7 +154,7 @@ export interface StageHandle {
   current: () => number;
   /** The opening's picture has settled into the first frame: the frame comes in around it. */
   showFrame: () => void;
-  /** The opening is over: the peek appears, and the words come once the scroll is still. */
+  /** The opening is over: the next frame peeks in, and the words come once the scroll is still. */
   ready: () => void;
   /** Straight to a case, in one soft move (the rail's tick, the wordmark, Home and End). */
   go: (index: number) => void;
@@ -284,37 +286,45 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     trigger?.kill();
     timeline?.kill();
     // Every frame at rest, to measure where it would sit.
-    parts.forEach((p, index) => {
+    parts.forEach(p => {
       if (p === null) {
         return;
       }
-      gsap.set(p.section, { visibility: index === 0 ? 'visible' : 'hidden', zIndex: 1 });
+      gsap.set(p.section, { zIndex: 1 });
       gsap.set(p.anchor, { x: 0, y: 0, scale: 1, opacity: 1 });
       if (p.rise !== null) {
         gsap.set(p.rise, { rotation: 0, transformOrigin: '50% 0%' });
-      }
-      if (p.peek !== null) {
-        gsap.set(p.peek, { opacity: 1 });
       }
     });
     const tl = gsap.timeline({ paused: true });
     const move = tween('landing.stage');
     const away = { x: window.innerWidth * STAGE_AWAY.x, y: window.innerHeight * STAGE_AWAY.y, scale: STAGE_AWAY.scale };
     const rests = parts.map(p => p?.anchor.getBoundingClientRect() ?? null);
-    const peeks = parts.map(p => p?.peek?.querySelector<HTMLElement>('.haunted-frame')?.getBoundingClientRect() ?? fallbackPeek());
+    // Each frame's own pose at the peek, and further down, off the screen, where it waits before that.
+    const peekPoses = rests.map(rest => (rest === null ? null : poseOver(rest, peekRect(rest))));
+    const belowPoses = peekPoses.map(pose => (pose === null ? null : { ...pose, y: pose.y + window.innerHeight * PEEK.height * 2 }));
+    // The first state: the first frame at rest, the second peeking (the real frame, not a copy), the rest away below.
+    parts.forEach((p, index) => {
+      if (p === null) {
+        return;
+      }
+      const pose = index === 1 ? peekPoses[1] : index > 1 ? belowPoses[index] : null;
+      gsap.set(p.section, { visibility: index <= 1 ? 'visible' : 'hidden' });
+      if (pose !== null) {
+        gsap.set(p.anchor, { x: pose.x, y: pose.y, scale: pose.scale, opacity: index > 1 ? 0 : 1 });
+      }
+    });
     for (let i = 0; i < count - 1; i += 1) {
       const A = parts[i];
       const B = parts[i + 1];
-      const restB = rests[i + 1];
-      if (A === null || B === null || restB === null) {
+      const pose = peekPoses[i + 1];
+      if (A === null || B === null || pose === null) {
         continue;
       }
-      const pose = poseOver(restB, peeks[i]);
-      // (A hair after the case itself, so that at rest only the case in hand is drawn.)
-      tl.set(B.section, { visibility: 'visible' }, i + 0.001)
-        // The next frame rises from its peek and grows into the centre; the current one scales up and leaves.
-        .fromTo(B.anchor, { x: pose.x, y: pose.y, scale: pose.scale }, { x: 0, y: 0, scale: 1, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
-        .to(A.anchor, { ...away, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
+      // The current frame scales up and leaves up and to the left; the next one, the very frame that was peeking at
+      // the bottom right, rises and grows from there into the centre. Scrolled back, it travels back down to its peek.
+      tl.fromTo(B.anchor, { x: pose.x, y: pose.y, scale: pose.scale }, { x: 0, y: 0, scale: 1, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
+        .fromTo(A.anchor, { x: 0, y: 0, scale: 1 }, { ...away, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
         .fromTo(A.anchor, { opacity: 1 }, { opacity: 0, ease: tween('ink.out').ease, duration: SCRUB.fadeOut, immediateRender: false }, i + 0.6)
         .set(A.section, { visibility: 'hidden' }, i + 1);
       // Hanging from a wire: a lean on the way, and one soft sway back as the new frame settles.
@@ -324,12 +334,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       if (B.rise !== null) {
         tl.fromTo(B.rise, { rotation: FRAME_SWING }, { rotation: 0, ease: tween('landing.swing').ease, duration: SCRUB.move, immediateRender: false }, i);
       }
-      // The peeking frame is the next one: it goes as that frame takes its place, and the one after peeks in last.
-      if (A.peek !== null) {
-        tl.fromTo(A.peek, { opacity: 1 }, { opacity: 0, ease: LINEAR, duration: SCRUB.peekOut, immediateRender: false }, i);
-      }
-      if (B.peek !== null) {
-        tl.fromTo(B.peek, { opacity: 0 }, { opacity: 1, ease: LINEAR, duration: SCRUB.peekIn, immediateRender: false }, i + 0.8);
+      // The frame after it comes up from below into the peek, once the way is clear.
+      const C = parts[i + 2];
+      const below = belowPoses[i + 2];
+      const peek = peekPoses[i + 2];
+      if (C != null && below != null && peek != null) {
+        // (A hair after the case itself, so that at rest only the case in hand and the next one are drawn.)
+        tl.set(C.section, { visibility: 'visible' }, i + 0.001)
+          .fromTo(C.anchor, { ...below, opacity: 0 }, { ...peek, opacity: 1, ease: move.ease, duration: SCRUB.peekRise, immediateRender: false }, i + SCRUB.peekFrom);
       }
     }
     // The timeline is exactly one unit for each move, and a label at every case, for the snap.
@@ -370,7 +382,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
 
   // The words wait for the opening; when it is over they come, once the scroll is still.
   const place = parts[current]?.place ?? null;
-  const peek = parts[current]?.peek ?? null;
+  /** The next case's frame, peeking in: it comes in once the opening is over. */
+  const peek = parts[current + 1]?.place ?? null;
   if (!shown) {
     if (place !== null) {
       gsap.set(place, { opacity: 0 });
@@ -509,6 +522,21 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   };
   window.addEventListener('scroll', onScroll, { passive: true });
 
+  // The next frame peeking in is the real frame: pressing it brings it in (one move), rather than opening it there.
+  const onClick = (event: MouseEvent) => {
+    const section = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-exhibit]') : null;
+    const index = section === null ? -1 : sections.indexOf(section);
+    if (index < 0 || index === Math.round(latest)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (!moving) {
+      moveTo(index);
+    }
+  };
+  stage.addEventListener('click', onClick, { capture: true });
+
   // ---- The keyboard: arrows, Page keys and Space go one case, like a gesture; Home and End to the ends.
   const go = (index: number) => {
     if (index < 0 || index >= count) {
@@ -600,6 +628,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       window.removeEventListener('touchstart', onTouchStart, { capture: true });
       window.removeEventListener('touchmove', onTouchMove, { capture: true });
       window.removeEventListener('scroll', onScroll);
+      stage.removeEventListener('click', onClick, { capture: true });
       window.removeEventListener('resize', onResize);
       if (moveTimer !== null) {
         clearTimeout(moveTimer);

@@ -4,8 +4,8 @@
 // - the frame, about 60% of the screen's height, centred a little left, in the case's own shape;
 // - the title beside the frame's bottom right: the case in italic serif (about 26px), its years (or "Sealed") under it;
 // - the editorial block at the bottom left: the headline (about 44px, Old Standard TT), the subline (18px) under it;
-// - on the first section, a "Scroll" cue at the bottom centre; on every section but the last, the next frame peeking
-//   in at the bottom right, sliding up and away as the page scrolls.
+// - on the first section, a "Scroll" cue at the bottom centre. (On the stage the next case's own frame peeks in at the
+//   bottom right: landing-stage.ts moves the real frame there; there is no copy of it here.)
 // Motion: the frame rises in (`paper.move`) as the section arrives (the first one as the wordmark docks), and drifts
 // up and away as it leaves (scrubbed with the scroll); the headline comes in line by line (`ink.in`). Phones: the
 // same pieces stacked, simple fades. Reduced motion: everything in place, fades only.
@@ -24,8 +24,6 @@ gsap.registerPlugin(useGSAP);
 interface ExhibitSectionProps {
   exhibit: Exhibit;
   index: number;
-  /** The next case, peeking in at the bottom right. */
-  next?: Exhibit;
   /** On the stage (a laptop at full motion): the section is a layer of the stage and landing-stage.ts moves it. */
   staged: boolean;
   /** The case the opening is about: its section waits for the opening, the others arrive as they are scrolled to. */
@@ -38,7 +36,7 @@ interface ExhibitSectionProps {
   children?: (frame: ReactNode) => ReactNode;
 }
 
-export default function ExhibitSection({ exhibit, index, next, staged, isStart, frameIn, wordsIn, children }: ExhibitSectionProps) {
+export default function ExhibitSection({ exhibit, index, staged, isStart, frameIn, wordsIn, children }: ExhibitSectionProps) {
   const rootRef = useRef<HTMLLIElement>(null);
   const first = isStart;
   const hasCue = index === 0;
@@ -73,7 +71,6 @@ export default function ExhibitSection({ exhibit, index, next, staged, isStart, 
       const headline = q('[data-exhibit-part="headline"]');
       const subline = q('[data-exhibit-part="subline"]');
       const title = q('[data-exhibit-part="title"]');
-      const peek = q('[data-exhibit-part="peek"]');
       const veil = q('[data-frame-part="veil"]');
       if (rise === null || anchor === null || words === null || headline === null || subline === null || title === null) {
         return;
@@ -163,7 +160,7 @@ export default function ExhibitSection({ exhibit, index, next, staged, isStart, 
           );
         }
         if (desktop === true) {
-          // Leaving: the frame drifts up and away, scrubbed with the scroll; the next frame's peek slides up and goes.
+          // Leaving: the frame drifts up and away, scrubbed with the scroll.
           triggers.push(
             ScrollTrigger.create({
               trigger: root,
@@ -173,17 +170,6 @@ export default function ExhibitSection({ exhibit, index, next, staged, isStart, 
               animation: gsap.fromTo(anchor, { y: 0, opacity: 1 }, { y: -90, opacity: 0.25, ease: LINEAR, immediateRender: false }),
             })
           );
-          if (peek !== null) {
-            triggers.push(
-              ScrollTrigger.create({
-                trigger: root,
-                start: 'top top',
-                end: 'bottom 40%',
-                scrub: true,
-                animation: gsap.fromTo(peek, { y: 0, opacity: 0.85 }, { y: '-60svh', opacity: 0, ease: LINEAR, immediateRender: false }),
-              })
-            );
-          }
           // A sealed case's veil sways, very slightly, all the time.
           if (veil !== null) {
             gsap.to(veil, { skewX: 0.7, scaleY: 1.008, ...tween('ghost'), yoyo: true, repeat: -1 });
@@ -262,11 +248,6 @@ export default function ExhibitSection({ exhibit, index, next, staged, isStart, 
         </div>
       )}
 
-      {next !== undefined && (
-        <div aria-hidden="true" data-exhibit-part="peek" className="pointer-events-none absolute right-[4vw] bottom-0 hidden translate-y-[42%] lg:block">
-          <Frame exhibit={next} peek className="h-[26svh] w-auto" />
-        </div>
-      )}
     </li>
   );
 }
