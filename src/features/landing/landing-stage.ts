@@ -1,26 +1,31 @@
 // src/features/landing/landing-stage.ts
-// The landing page's stage (landing fixes brief): on a laptop at full motion the cases are not locked steps but free,
-// silky scrolling. A tall track holds a sticky full-screen stage; Lenis smooths the scroll (a soft lerp, about 0.08)
-// and one timeline, scrubbed by the scroll position, plays every transition: the current frame scales up and leaves up
-// and to the left while the next, peeking at the bottom right, rises and grows into the centre. A fast scroll can pass
-// several cases; a slow one moves gently. Each frame hangs from a wire: it leans a degree or two as it travels and the
-// one coming in settles with one soft sway back. A soft snap eases to the nearest case label when scrolling stops (after a short delay, 0.4 to
-// 0.8s, power2.inOut); any scroll takes over, it never blocks or makes anyone wait. (ScrollTrigger's own `snap` is not
-// used: beside Lenis's programmatic scrolling its idle check never fired, so the snap is a Lenis scroll to the label's
-// position, from ScrollTrigger's `labelToScroll`.)
+// The landing page's stage (landing fixes brief; one case per gesture): on a laptop at full motion a tall track holds a
+// sticky full-screen stage, and one timeline, scrubbed by the scroll position, plays every transition: the current
+// frame scales up and leaves up and to the left while the next, peeking at the bottom right, rises and grows into the
+// centre. Each frame hangs from a wire: it leans a degree or two as it travels and the one coming in settles with one
+// soft sway back.
 //
-// Text only when the scroll has settled on a case: the headline, subline and title leave as soon as scrolling starts
-// (not part of the scrubbed timeline), and come back only after it has stopped on a case (after the snap): the
-// headline and subline blur in, the title is written in letter by letter, its years fading in after. After the last
-// case the track ends and the page scrolls on into the footer: no release, no retake.
+// One gesture moves exactly one case. A wheel or trackpad gesture, a swipe, or an arrow, Page or Space key press is
+// taken here (before Lenis sees it) and becomes one smooth Lenis scroll to the next or previous case (`landing.stage`).
+// While that move runs, input is ignored; a wheel gesture (a flick and all its trailing momentum, `LANDING_GESTURE`)
+// moves at most once, and a burst that meets a move still running is spent, so only a new
+// gesture that starts once the case has settled counts. However hard the flick, it is one case. Past the last case the
+// next gesture is let through to Lenis, and the page scrolls on into the footer as normal; scrolling up from the top
+// of the footer goes back to the last case in one move. The rail, Home, End and the header wordmark jump straight to
+// their case.
+//
+// Text only when the scroll has settled on a case: the headline, subline and title leave as soon as a move starts and
+// come back only once it has landed: the headline and subline blur in, the title is written in letter by letter, its
+// years fading in after.
 //
 // Everything animated is `transform` and `opacity`; the blur is on text blocks only. Pure DOM and GSAP: it reads the
 // section markup of ExhibitSection.tsx (`data-exhibit-part`) and knows nothing about any case.
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
-import { LANDING_BLUR, LANDING_SNAP, LINEAR, SCRUB, STEP, tween } from '@/lib/motion';
-import { jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
+import { LANDING_BLUR, LANDING_SETTLE, LINEAR, SCRUB, STEP, tween } from '@/lib/motion';
+import { getLenis, jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
+import { STORY_PACE } from '@/lib/story-pages';
 
 // ScrollTrigger is registered when a stage is made: it needs window.matchMedia as soon as it is registered.
 gsap.registerPlugin(SplitText);
@@ -30,6 +35,42 @@ export const LANDING_LERP = 0.08;
 
 /** How far a leaving frame goes, as a share of the screen, and how big it grows on the way out. */
 export const STAGE_AWAY = { x: -0.62, y: -0.8, scale: 1.7 } as const;
+
+/**
+ * What makes a wheel event a new gesture rather than the tail of the last one: a quiet gap of more than `gapMs`, and
+ * then either a gap of more than `momentumMs` or a push harder than the last event (a trackpad's momentum only ever
+ * dies away, so a tail never grows). However hard the flick, and however long its momentum trails, it is one gesture.
+ */
+export const LANDING_GESTURE = { gapMs: 300, momentumMs: 800, growth: 1.15 } as const;
+
+/** One wheel gesture at a time: `note` every wheel event, then `take` asks whether this gesture may still move. */
+export function createGestureGate({ gapMs, momentumMs, growth } = LANDING_GESTURE) {
+  let last = Number.NEGATIVE_INFINITY;
+  let lastSize = 0;
+  let used = false;
+  return {
+    note(now: number, delta: number): void {
+      const gap = now - last;
+      const size = Math.abs(delta);
+      if (gap > momentumMs || (gap > gapMs && size > lastSize * growth)) {
+        used = false;
+      }
+      last = now;
+      lastSize = size;
+    },
+    /** This gesture asks to move; `free` is false while a move runs. A gesture that meets a move is spent. */
+    take(free: boolean): boolean {
+      if (used) {
+        return false;
+      }
+      used = true;
+      return free;
+    },
+  };
+}
+
+/** How long a move may take before it is counted as landed whatever happens, past its own duration, in ms. */
+export const MOVE_GRACE_MS = 400;
 
 /** How far a frame leans as it travels, in degrees: it hangs from a wire, so it swings from its top edge. */
 export const FRAME_SWING = 1.8;
@@ -113,8 +154,10 @@ export interface StageHandle {
   showFrame: () => void;
   /** The opening is over: the peek appears, and the words come once the scroll is still. */
   ready: () => void;
-  /** To a case, scrolling there softly (the rail's tick, the wordmark, the keys). */
+  /** Straight to a case, in one soft move (the rail's tick, the wordmark, Home and End). */
   go: (index: number) => void;
+  /** A move is running: input is ignored. */
+  moving: () => boolean;
   /** The case the words are showing for, or null while they are away. */
   wordsFor: () => number | null;
   /** The scroll is at `at` (0 at the first case, count - 1 at the last): what the page tells it on every scroll. */
@@ -217,38 +260,21 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   };
   hideAllWords();
 
-  // ---- Settling: the scroll has been still for a moment. Between two cases it eases to the nearest one (the soft
-  // snap); on a case, the words come back. Any scroll starts the wait again, so nothing ever blocks.
+  // ---- Settling: the scroll has been still on a case for a moment: its words come back.
   let latest = position();
   let idleTimer: gsap.core.Tween | null = null;
+  let moving = false;
   const settleNow = () => {
-    if (!alive || !isReady) {
+    if (!alive || !isReady || moving) {
       return;
     }
-    if (Math.abs(latest - Math.round(latest)) < 0.02) {
+    if (Math.abs(latest - Math.round(latest)) < 0.02 && window.scrollY <= positionOf(count - 1) + 40) {
       showWords(Math.round(latest));
     }
   };
-  const idle = () => {
-    if (!alive || !isReady) {
-      return;
-    }
-    const nearest = Math.min(Math.max(Math.round(latest), 0), count - 1);
-    const off = Math.abs(latest - nearest);
-    // Past the last case the page is in the footer: no snap there.
-    if (off < 0.02 || window.scrollY > positionOf(count - 1) + 2) {
-      settleNow();
-      return;
-    }
-    const label = trigger !== null && trigger.end > trigger.start ? trigger.labelToScroll(`case${nearest}`) : positionOf(nearest);
-    const snap = tween('landing.snap');
-    // The further it has to go, the longer it takes: 0.4 to 0.8s.
-    const duration = LANDING_SNAP.min + Math.min(off / 0.5, 1) * (LANDING_SNAP.max - LANDING_SNAP.min);
-    scrollToY(label, { ease: snap.ease, duration });
-  };
   const settleSoon = () => {
     idleTimer?.kill();
-    idleTimer = gsap.delayedCall(LANDING_SNAP.delay, idle);
+    idleTimer = gsap.delayedCall(LANDING_SETTLE, settleNow);
   };
 
   // ---- The scrubbed timeline, and the snap.
@@ -354,38 +380,168 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
   }
 
-  // ---- The keyboard: arrows, Page keys and Space go to the next or the previous case; Home and End to the ends.
+  // ---- One move: a smooth Lenis scroll to a case. Input is ignored until it has landed.
+  let moveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The page went on into the footer: the next way back up returns to the last case. */
+  let inFooter = false;
+  const lastY = () => positionOf(count - 1);
+  const moveTo = (index: number) => {
+    const to = Math.min(Math.max(index, 0), count - 1);
+    moving = true;
+    inFooter = false;
+    hideWords();
+    const move = tween('landing.stage');
+    const landed = () => {
+      if (!moving) {
+        return;
+      }
+      moving = false;
+      if (moveTimer !== null) {
+        clearTimeout(moveTimer);
+        moveTimer = null;
+      }
+      settleSoon();
+    };
+    if (moveTimer !== null) {
+      clearTimeout(moveTimer);
+    }
+    // Counted as landed after its own time in any case, so a move that is cut short never locks the page.
+    moveTimer = setTimeout(landed, move.duration * 1000 + MOVE_GRACE_MS);
+    scrollToY(positionOf(to), { ...move, onComplete: landed });
+  };
+  /** One gesture's move, the way it points; from the footer, back up to the last case. */
+  const step = (direction: 1 | -1) => moveTo(window.scrollY > lastY() + 1 ? count - 1 : Math.round(latest) + direction);
+  /**
+   * Whether this gesture is the stage's (it moves a case) or the page's (Lenis scrolls on, into or within the footer).
+   * Past the last case going down, and within the footer, it is the page's; coming back up out of the footer, the
+   * stage's again.
+   */
+  const claims = (direction: 1 | -1, delta = 0): boolean => {
+    // While a move runs, every gesture is swallowed (so Lenis never takes over half-way).
+    if (moving) {
+      return true;
+    }
+    const y = window.scrollY;
+    const last = lastY();
+    if (y < last - 1) {
+      return true;
+    }
+    if (y <= last + 1) {
+      return direction < 0;
+    }
+    // In the footer: only a scroll up that would cross back into the cases.
+    if (direction > 0) {
+      return false;
+    }
+    const target = (getLenis()?.targetScroll ?? y) + delta;
+    return target <= last + 1;
+  };
+  /** Not ours: a dialog, a field, or something that scrolls itself. */
+  const notOurs = (target: EventTarget | null) =>
+    target instanceof Element && target.closest('[role="dialog"], [aria-modal="true"], input, textarea, select, [contenteditable="true"], [data-lenis-prevent]') !== null;
+
+  // The wheel (and a trackpad): one burst, one case. Taken before Lenis (capture, on the window), so Lenis never moves
+  // the page by itself while the cases are on screen.
+  const gate = createGestureGate();
+  const onWheel = (event: WheelEvent) => {
+    gate.note(event.timeStamp || performance.now(), event.deltaY);
+    if (!alive || event.ctrlKey || notOurs(event.target)) {
+      return;
+    }
+    const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : 0;
+    if (delta === 0) {
+      return;
+    }
+    const direction = delta > 0 ? 1 : -1;
+    if (!claims(direction, delta)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (isReady && gate.take(!moving)) {
+      step(direction);
+    }
+  };
+  window.addEventListener('wheel', onWheel, { capture: true, passive: false });
+
+  // A swipe: one per touch, once it has gone far enough to mean it.
+  let touchFrom: number | null = null;
+  let touchUsed = false;
+  const onTouchStart = (event: TouchEvent) => {
+    touchFrom = event.touches[0]?.clientY ?? null;
+    touchUsed = false;
+  };
+  const onTouchMove = (event: TouchEvent) => {
+    const y = event.touches[0]?.clientY;
+    if (!alive || touchFrom === null || y === undefined || notOurs(event.target)) {
+      return;
+    }
+    const delta = touchFrom - y;
+    if (Math.abs(delta) < STORY_PACE.gestureTolerance) {
+      if (window.scrollY < lastY() - 1) {
+        event.preventDefault();
+      }
+      return;
+    }
+    const direction = delta > 0 ? 1 : -1;
+    if (!claims(direction, delta)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (isReady && !touchUsed && !moving) {
+      step(direction);
+    }
+    touchUsed = true;
+  };
+  window.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
+  window.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
+
+  // Anything else that brings the page back up out of the footer (a key, the scrollbar): back to the last case.
+  const onScroll = () => {
+    const y = window.scrollY;
+    const last = lastY();
+    if (y > last + 1) {
+      inFooter = true;
+    } else if (inFooter && !moving && isReady && y < last - 1) {
+      moveTo(count - 1);
+    }
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // ---- The keyboard: arrows, Page keys and Space go one case, like a gesture; Home and End to the ends.
   const go = (index: number) => {
     if (index < 0 || index >= count) {
       return;
     }
-    scrollToY(positionOf(index), tween('landing.stage'));
+    moveTo(index);
   };
   const onKey = (event: KeyboardEvent) => {
-    if (!isReady || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+    if (!isReady || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || notOurs(event.target)) {
       return;
     }
     const target = event.target instanceof Element ? event.target : null;
-    if (target !== null && target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]') !== null) {
-      return;
-    }
     // Space presses a focused button or link: it is theirs.
     const pressable = target?.closest('button, a[href]') != null;
-    const at = Math.round(latest);
+    let direction: 1 | -1 | 0 = 0;
     if (event.key === 'ArrowDown' || event.key === 'PageDown' || (event.key === ' ' && !event.shiftKey && !pressable)) {
-      if (at < count - 1) {
-        event.preventDefault();
-        go(at + 1);
-      }
+      direction = 1;
     } else if (event.key === 'ArrowUp' || event.key === 'PageUp' || (event.key === ' ' && event.shiftKey && !pressable)) {
-      if (at > 0 && window.scrollY <= positionOf(count - 1) + 1) {
-        event.preventDefault();
-        go(at - 1);
+      direction = -1;
+    }
+    if (direction !== 0) {
+      // Past the last case, or in the footer, the keys scroll the page as usual.
+      if (!claims(direction) || (direction < 0 && window.scrollY > lastY() + 1)) {
+        return;
+      }
+      event.preventDefault();
+      if (!moving) {
+        step(direction);
       }
     } else if (event.key === 'Home') {
       event.preventDefault();
       go(0);
-    } else if (event.key === 'End' && window.scrollY < positionOf(count - 1) - 1) {
+    } else if (event.key === 'End' && window.scrollY < lastY() - 1) {
       event.preventDefault();
       go(count - 1);
     }
@@ -424,6 +580,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       settleNow();
     },
     go,
+    moving: () => moving,
     wordsFor: () => wordsFor,
     update,
     timeline: () => timeline,
@@ -439,7 +596,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       trigger?.kill();
       timeline?.kill();
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('wheel', onWheel, { capture: true });
+      window.removeEventListener('touchstart', onTouchStart, { capture: true });
+      window.removeEventListener('touchmove', onTouchMove, { capture: true });
+      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
+      if (moveTimer !== null) {
+        clearTimeout(moveTimer);
+      }
       if (resizeTimer !== null) {
         clearTimeout(resizeTimer);
       }

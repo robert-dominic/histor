@@ -30,12 +30,12 @@ export function getLenis(): Lenis | null {
  * Scrolls the page to `y`. Through Lenis when there is one, otherwise with GSAP's ScrollToPlugin.
  * Any scroll the reader starts takes over.
  */
-export function scrollToY(y: number, { ease, duration } = tween('paper.move')): void {
+export function scrollToY(y: number, { ease, duration, onComplete }: { ease: string; duration: number; onComplete?: () => void } = tween('paper.move')): void {
   if (instance !== null) {
-    instance.scrollTo(y, { duration, easing: gsap.parseEase(ease), force: true });
+    instance.scrollTo(y, { duration, easing: gsap.parseEase(ease), force: true, onComplete: () => onComplete?.() });
     return;
   }
-  gsap.to(window, { scrollTo: { y, autoKill: true }, ease, duration });
+  gsap.to(window, { scrollTo: { y, autoKill: true }, ease, duration, onComplete, onInterrupt: onComplete });
 }
 
 /**

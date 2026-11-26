@@ -7,8 +7,7 @@ import { act } from '@testing-library/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createLandingStage, FRAME_SWING, LANDING_LERP, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
-import { LANDING_SNAP } from '@/lib/motion';
+import { createGestureGate, createLandingStage, FRAME_SWING, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
 import * as smoothScroll from '@/lib/smooth-scroll';
 import { stubMatchMedia } from '@/test/match-media';
 
@@ -26,6 +25,28 @@ let stage: StageHandle;
 let changes: number[];
 let sections: HTMLElement[];
 let track: HTMLElement;
+const setY = (y: number) => Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+/** Every scroll the stage has asked for, by its target. */
+const moves = () => vi.mocked(smoothScroll.scrollToY).mock.calls.map(call => call[0]);
+/** The last move lands: the page is there, and Lenis says it is done. */
+const land = () => {
+  const call = vi.mocked(smoothScroll.scrollToY).mock.calls.at(-1)!;
+  setY(call[0]);
+  stage.update(call[0] / 100);
+  act(() => call[1]!.onComplete!());
+};
+const wheel = (deltaY: number, timeStamp: number) => {
+  const event = new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'timeStamp', { value: timeStamp });
+  act(() => void document.body.dispatchEvent(event));
+  return event;
+};
+const touch = (type: 'touchstart' | 'touchmove', clientY: number) => {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as TouchEvent;
+  Object.defineProperty(event, 'touches', { value: [{ clientY }] });
+  act(() => void document.body.dispatchEvent(event));
+  return event;
+};
 const part = (index: number, name: string) => {
   if (name === 'name' || name === 'years') {
     return sections[index].querySelector<HTMLElement>(name === 'name' ? '[data-exhibit-part="title"] h2' : '[data-exhibit-part="title"] p')!;
@@ -50,6 +71,8 @@ function make(count = 4, start = 0, shown = false) {
   track.appendChild(root);
   document.body.appendChild(track);
   Object.defineProperty(track, 'offsetHeight', { value: count * 100, configurable: true });
+  // The track starts at the top of the page: on screen, it moves up as the page scrolls.
+  track.getBoundingClientRect = () => ({ top: -window.scrollY, bottom: count * 100 - window.scrollY, left: 0, right: 0, width: 0, height: count * 100, x: 0, y: -window.scrollY, toJSON: () => ({}) });
   Object.defineProperty(root, 'offsetHeight', { value: 100, configurable: true });
   changes = [];
   stage = createLandingStage({ track, stage: root, sections, start, shown, onChange: index => changes.push(index) });
@@ -57,6 +80,7 @@ function make(count = 4, start = 0, shown = false) {
 
 beforeEach(() => {
   stubMatchMedia();
+  setY(0);
   vi.spyOn(smoothScroll, 'setSmoothLerp').mockImplementation(() => undefined);
   vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);
   vi.spyOn(smoothScroll, 'jumpToY').mockImplementation(() => undefined);
@@ -69,7 +93,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('the landing stage: free scrolling', () => {
+describe('the landing stage: smooth scrolling', () => {
   test('Lenis follows the wheel softly (a lerp of about 0.08) while the landing is there, and lets go after', () => {
     make();
     expect(LANDING_LERP).toBe(0.08);
@@ -88,51 +112,7 @@ describe('the landing stage: free scrolling', () => {
     expect(trigger.animation).toBe(timeline);
   });
 
-  test('a soft snap: when scrolling stops between two cases it eases to the nearest, after a short delay, 0.4 to 0.8s, power2.inOut', () => {
-    make(4);
-    stage.ready();
-    expect(LANDING_SNAP.delay).toBeLessThanOrEqual(0.3);
-    expect([LANDING_SNAP.min, LANDING_SNAP.max]).toEqual([0.4, 0.8]);
-    // Stopped a third of the way past case 1: nearest is 1.
-    stage.update(1.3);
-    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
-    settle();
-    expect(smoothScroll.scrollToY).toHaveBeenCalledTimes(1);
-    const [target, options] = vi.mocked(smoothScroll.scrollToY).mock.calls[0];
-    expect(target).toBe(100);
-    expect(options!.ease).toBe('power2.inOut');
-    expect(options!.duration).toBeGreaterThanOrEqual(0.4);
-    expect(options!.duration).toBeLessThanOrEqual(0.8);
-    // Further from a case takes longer; the other way round, to the next.
-    vi.mocked(smoothScroll.scrollToY).mockClear();
-    stage.update(1.45);
-    settle();
-    const far = vi.mocked(smoothScroll.scrollToY).mock.calls[0];
-    expect(far[1]!.duration).toBeGreaterThan(options!.duration as number);
-    vi.mocked(smoothScroll.scrollToY).mockClear();
-    stage.update(2.6);
-    settle();
-    expect(vi.mocked(smoothScroll.scrollToY).mock.calls[0][0]).toBe(300);
-  });
-
-  test('the snap never blocks: more scrolling cancels it, and on a case there is nothing to snap', () => {
-    make(4);
-    stage.ready();
-    stage.update(1.3);
-    // The scroll goes on before the delay is up: the first wait is dropped, so only the last place is snapped to.
-    stage.update(1.6);
-    settle();
-    expect(smoothScroll.scrollToY).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(smoothScroll.scrollToY).mock.calls[0][0]).toBe(200);
-    // And once it is on a case, there is nothing to snap: the words come instead.
-    vi.mocked(smoothScroll.scrollToY).mockClear();
-    stage.update(2);
-    settle();
-    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
-    expect(stage.wordsFor()).toBe(2);
-  });
-
-  test('the scrub timeline has a label at every case, which the snap goes to', () => {
+  test('the scrub timeline has a label at every case, and no snap of its own', () => {
     make(4);
     const trigger = ScrollTrigger.getAll().find(each => each.trigger === track)!;
     expect(trigger.vars.scrub).toBe(true);
@@ -275,40 +255,202 @@ describe('the words: only once the scroll has settled on a case', () => {
   });
 });
 
-describe('moving by key and by the rail: soft, and never blocking', () => {
-  test('arrows, Page keys and Space go to the next or the previous case; Home and End to the ends', () => {
+describe('one case per gesture', () => {
+  test('one wheel gesture moves one case, as a smooth Lenis scroll with the stage\'s easing; it is taken before Lenis', () => {
     make(4);
     stage.ready();
-    stage.update(1);
-    press('ArrowDown');
-    expect(smoothScroll.scrollToY).toHaveBeenLastCalledWith(200, expect.objectContaining({ ease: 'power3.inOut' }));
-    press('PageUp');
-    expect(smoothScroll.scrollToY).toHaveBeenLastCalledWith(0, expect.anything());
-    press('End');
-    expect(smoothScroll.scrollToY).toHaveBeenLastCalledWith(300, expect.anything());
-    press('Home');
-    expect(smoothScroll.scrollToY).toHaveBeenLastCalledWith(0, expect.anything());
+    const lenisSaw = vi.fn();
+    window.addEventListener('wheel', lenisSaw);
+    const event = wheel(80, 1000);
+    window.removeEventListener('wheel', lenisSaw);
+    expect(event.defaultPrevented).toBe(true);
+    expect(lenisSaw).not.toHaveBeenCalled();
+    expect(moves()).toEqual([100]);
+    expect(vi.mocked(smoothScroll.scrollToY).mock.calls[0][1]).toMatchObject({ ease: 'power3.inOut', duration: 1.1 });
+    expect(stage.moving()).toBe(true);
   });
 
-  test('Space on a button is the button\'s; keys do nothing before the opening is over', () => {
+  test('while a move runs, input is ignored; its trailing momentum never moves a second case', () => {
+    make(5);
+    stage.ready();
+    wheel(120, 1000);
+    // The flick goes on, hard, and its momentum trails after the case has landed: all one gesture.
+    for (let t = 1040; t < 1600; t += 40) {
+      wheel(300, t);
+    }
+    land();
+    for (let t = 1600; t < 2400; t += 60) {
+      wheel(20, t);
+    }
+    expect(moves()).toEqual([100]);
+    // A new gesture, after a pause, once the case has settled: one more case.
+    wheel(60, 3400);
+    expect(moves()).toEqual([100, 200]);
+  });
+
+  test('momentum is told apart from a new gesture: a dying tail with a gap in it is still the same gesture', () => {
+    const gate = createGestureGate();
+    gate.note(0, 600);
+    expect(gate.take(true)).toBe(true);
+    // A pause longer than the gap, but the tail is weaker: still the same flick.
+    gate.note(LANDING_GESTURE.gapMs + 50, 200);
+    expect(gate.take(true)).toBe(false);
+    // A harder push after a gap: a new gesture.
+    gate.note(2 * LANDING_GESTURE.gapMs + 100, 400);
+    expect(gate.take(true)).toBe(true);
+    // A long quiet: always a new gesture, however soft.
+    gate.note(5000, 10);
+    expect(gate.take(true)).toBe(true);
+  });
+
+  test('a hard flick still moves only one case', () => {
+    make(6);
+    stage.ready();
+    for (let t = 0; t < 900; t += 16) {
+      wheel(900, 5000 + t);
+    }
+    expect(moves()).toEqual([100]);
+  });
+
+  test('a new gesture that starts while the move is still running is spent, even once the case has landed', () => {
+    make(4);
+    stage.ready();
+    wheel(80, 1000);
+    wheel(120, 1500);
+    land();
+    wheel(80, 1560);
+    wheel(80, 1620);
+    expect(moves()).toEqual([100]);
+    wheel(80, 2600);
+    expect(moves()).toEqual([100, 200]);
+  });
+
+  test('going back: one gesture, one case', () => {
+    make(4, 2);
+    stage.ready();
+    setY(200);
+    stage.update(2);
+    wheel(-80, 1000);
+    expect(moves()).toEqual([100]);
+  });
+
+  test('a swipe moves one case per touch, and only once it means it', () => {
+    make(4);
+    stage.ready();
+    touch('touchstart', 500);
+    expect(touch('touchmove', 496).defaultPrevented).toBe(true);
+    expect(moves()).toEqual([]);
+    touch('touchmove', 400);
+    touch('touchmove', 200);
+    expect(moves()).toEqual([100]);
+    land();
+    touch('touchmove', 100);
+    expect(moves()).toEqual([100]);
+    touch('touchstart', 500);
+    touch('touchmove', 400);
+    expect(moves()).toEqual([100, 200]);
+  });
+
+  test('arrows, Page keys and Space go one case; while it moves they are ignored; Home and End jump to the ends', () => {
+    make(4);
+    stage.ready();
+    press('ArrowDown');
+    press('ArrowDown');
+    press('PageDown');
+    expect(moves()).toEqual([100]);
+    land();
+    press(' ');
+    expect(moves()).toEqual([100, 200]);
+    land();
+    press('PageUp');
+    expect(moves()).toEqual([100, 200, 100]);
+    land();
+    press('End');
+    expect(moves().at(-1)).toBe(300);
+    land();
+    press('Home');
+    expect(moves().at(-1)).toBe(0);
+  });
+
+  test('Space on a button is the button\'s; nothing moves before the opening is over; a dialog keeps its own wheel', () => {
     make(3);
     press('ArrowDown');
-    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
+    wheel(80, 1000);
+    expect(moves()).toEqual([]);
     stage.ready();
     const button = document.createElement('button');
     document.body.appendChild(button);
     act(() => void button.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })));
-    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
+    expect(moves()).toEqual([]);
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.appendChild(dialog);
+    const event = new WheelEvent('wheel', { deltaY: 80, bubbles: true, cancelable: true });
+    dialog.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(moves()).toEqual([]);
   });
 
-  test('nothing is locked: every request goes through, one after another', () => {
-    make(5);
+  test('the rail and the wordmark jump straight to their case, in one move', () => {
+    make(6);
     stage.ready();
-    stage.go(3);
-    stage.go(1);
     stage.go(4);
-    expect(smoothScroll.scrollToY).toHaveBeenCalledTimes(3);
-    expect(vi.mocked(smoothScroll.scrollToY).mock.calls.map(call => call[0])).toEqual([300, 100, 400]);
+    expect(moves()).toEqual([400]);
+    land();
+    stage.go(0);
+    expect(moves()).toEqual([400, 0]);
+  });
+
+  test('past the last case the next gesture goes to Lenis, into the footer; scrolling up from the top of the footer goes back to the last case', () => {
+    make(3, 2);
+    stage.ready();
+    setY(200);
+    stage.update(2);
+    // Down from the last case: not the stage's, so Lenis scrolls on.
+    const down = wheel(80, 1000);
+    expect(down.defaultPrevented).toBe(false);
+    expect(moves()).toEqual([]);
+    // Deep in the footer, up: still the page's.
+    setY(900);
+    expect(wheel(-80, 2000).defaultPrevented).toBe(false);
+    // Near its top, a scroll up that would cross back into the cases: one move, back to the last case.
+    setY(230);
+    expect(wheel(-80, 3000).defaultPrevented).toBe(true);
+    expect(moves()).toEqual([200]);
+    // The rest of that gesture, still far down the page as the move begins, is swallowed too: never Lenis's.
+    setY(260);
+    expect(wheel(-80, 3040).defaultPrevented).toBe(true);
+    expect(moves()).toEqual([200]);
+  });
+
+  test('anything else that brings the page up out of the footer (a key, the scrollbar) goes back to the last case', () => {
+    make(3, 2);
+    stage.ready();
+    setY(600);
+    act(() => void window.dispatchEvent(new Event('scroll')));
+    setY(150);
+    act(() => void window.dispatchEvent(new Event('scroll')));
+    expect(moves()).toEqual([200]);
+  });
+
+  test('a move that is cut short never locks the page: it counts as landed after its own time', () => {
+    vi.useFakeTimers();
+    make(4);
+    stage.ready();
+    wheel(80, 1000);
+    expect(stage.moving()).toBe(true);
+    vi.advanceTimersByTime(1100 + MOVE_GRACE_MS + 10);
+    expect(stage.moving()).toBe(false);
+    vi.useRealTimers();
+  });
+
+  test('the words go as a move starts', () => {
+    make(3);
+    stage.ready();
+    settle();
+    expect(stage.wordsFor()).toBe(0);
+    wheel(80, 1000);
+    expect(stage.wordsFor()).toBeNull();
   });
 
   test('a page opened at a case in the address starts there', () => {
@@ -316,6 +458,7 @@ describe('moving by key and by the rail: soft, and never blocking', () => {
     expect(smoothScroll.jumpToY).toHaveBeenCalledWith(200);
   });
 });
+
 
 describe('poseOver', () => {
   test('puts a frame over a target rectangle', () => {
