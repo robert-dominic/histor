@@ -42,6 +42,16 @@ describe('/credits', () => {
     }
     expect(app.textContent).toContain('Pixabay');
     expect(app.textContent).toContain('Special Elite');
+    // The sealed cases' pictures on the landing page.
+    for (const credit of [
+      'The Nemesis of Neglect, John Tenniel, Punch, 1888',
+      'The ransom bills found in 1980, FBI photograph',
+      'The Children of Edward, Paul Delaroche, 1830',
+      'The Dancing Mania, engraving by Hendrik Hondius after Pieter Bruegel, 1642',
+      'Amelia Earhart, NASA archive photograph',
+    ]) {
+      expect(app.textContent).toContain(credit);
+    }
   });
 
   test('each image credit once; the music only while it plays', () => {

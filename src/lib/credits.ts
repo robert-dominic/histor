@@ -2,6 +2,7 @@
 // What the /credits page lists (the fix list): each case's credits, built from its own data (the legend's video, the
 // chapters' images, the portraits and maps, its sound and, while it plays, its music), and the app's own credits (the
 // fonts, the sound and music sources, the libraries). Pure.
+import { exhibits } from '@/cases';
 import { LANDING_PLAYLIST } from '@/landing/music';
 import { storyImageCredit } from '@/lib/image-credit';
 import { MUSIC_ENABLED } from '@/lib/sound/levels';
@@ -59,6 +60,11 @@ export const APP_CREDITS: { heading: string; lines: CreditLine[] }[] = [
       { what: 'Music', credit: 'Pixabay (pixabay.com): the landing page plays the story playlist, quietly, once the music button is pressed' },
       ...LANDING_PLAYLIST.map(track => ({ what: `Landing music · ${track.title}`, credit: track.credit })),
     ],
+  },
+  {
+    // The sealed cases' pictures in their frames on the landing page, until each case has its own.
+    heading: 'The archive',
+    lines: exhibits.flatMap(exhibit => (exhibit.status === 'sealed' && exhibit.frameImage !== undefined ? [{ what: exhibit.title, credit: exhibit.frameImage.credit }] : [])),
   },
   {
     heading: 'Libraries',

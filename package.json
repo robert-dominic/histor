@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "music:import": "node scripts/music-import.mjs",
-    "sfx:import": "node scripts/sfx-import.mjs"
+    "sfx:import": "node scripts/sfx-import.mjs",
+    "landing:images": "node scripts/landing-images.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

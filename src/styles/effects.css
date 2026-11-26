@@ -732,6 +732,10 @@ body::after {
 .opening-detail img {
   filter: saturate(0.7) sepia(0.18) brightness(0.82) contrast(1.06);
 }
+/* A sealed case's picture: a touch further into the dark, the case not yet opened (a static grade, never animated). */
+.haunted-frame[data-status='sealed'] .haunted-frame__opening > img {
+  filter: saturate(0.6) sepia(0.22) brightness(0.68) contrast(1.08);
+}
 /* The light catching the gilt on hover: a dull pool of light that follows the cursor across the gilt (moved by transform,
    Frame.tsx and use-frame-tilt.ts). The frame's clip-path keeps it inside. */
 .haunted-frame__glint {

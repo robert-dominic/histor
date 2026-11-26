@@ -3,6 +3,11 @@ import type { Case, ImageAsset, RegistryEntry } from '@/types/case';
 import maryCeleste from '@/cases/mary-celeste/case';
 import { formatCaseYears } from '@/lib/case-years';
 import { validateCase } from '@/lib/validate-case';
+import ripperImage from '@/landing/images/ripper.webp';
+import cooperImage from '@/landing/images/cooper.webp';
+import princesImage from '@/landing/images/princes.webp';
+import dancingImage from '@/landing/images/dancing.webp';
+import earhartImage from '@/landing/images/earhart.webp';
 
 /** The shape of a case's frame on the landing page (landing brief, 1): the frames are not all the same. */
 export type FrameShape = 'landscape' | 'portrait' | 'square';
@@ -26,7 +31,7 @@ export interface Exhibit {
   headline: string;
   /** The smaller line under it. */
   subline: string;
-  /** For an open case: one of its own chapter images, shown in the frame. */
+  /** The picture in the frame: an open case's own chapter image, or a sealed case's period picture. */
   frameImage?: ImageAsset;
   /** For an open case: its data. */
   data?: Case;
@@ -48,6 +53,8 @@ interface ExhibitSource {
   data?: Case;
   /** Which chapter's image the frame shows (an open case). */
   frameChapter?: string;
+  /** A sealed case's picture for its frame, until it has chapters of its own (src/landing/images, `npm run landing:images`). */
+  image?: ImageAsset;
 }
 
 /**
@@ -76,6 +83,7 @@ const SOURCES: ExhibitSource[] = [
     frame: 'portrait',
     headline: 'Some names were never written down.',
     subline: 'Whitechapel, 1888. Five women killed. The killer was never named.',
+    image: { src: ripperImage, alt: 'A Punch cartoon of a hooded phantom marked CRIME, knife raised, drifting through a dark London slum.', credit: 'The Nemesis of Neglect, John Tenniel, Punch, 1888', isIllustration: true },
   },
   {
     id: 'db-cooper',
@@ -85,6 +93,7 @@ const SOURCES: ExhibitSource[] = [
     frame: 'landscape',
     headline: "He jumped. The money didn't all land.",
     subline: 'A quiet man hijacked a plane, took $200,000 and parachuted into a stormy night. He was never seen again.',
+    image: { src: cooperImage, alt: 'Rotted, torn twenty-dollar bills laid out in rows on white paper.', credit: 'The ransom bills found in 1980, FBI photograph', isIllustration: false },
   },
   {
     id: 'princes-in-the-tower',
@@ -94,6 +103,7 @@ const SOURCES: ExhibitSource[] = [
     frame: 'square',
     headline: 'Two boys went in. History lost them.',
     subline: 'The young King Edward V and his brother were last seen in the Tower of London.',
+    image: { src: princesImage, alt: 'A painting of two young boys in black sitting close together on a curtained bed, a small dog at their feet.', credit: 'The Children of Edward, Paul Delaroche, 1830', isIllustration: true },
   },
   {
     id: 'dancing-plague',
@@ -103,6 +113,7 @@ const SOURCES: ExhibitSource[] = [
     frame: 'portrait',
     headline: 'Strasbourg danced. Some never stopped.',
     subline: 'In July 1518, a woman began to dance in the street. Within weeks, dozens could not stop. The cure? More music.',
+    image: { src: dancingImage, alt: 'An old engraving of women dancing in a trance, each held up by two men, on a road past a bridge.', credit: 'The Dancing Mania, engraving by Hendrik Hondius after Pieter Bruegel, 1642', isIllustration: true },
   },
   {
     id: 'amelia-earhart',
@@ -112,6 +123,7 @@ const SOURCES: ExhibitSource[] = [
     frame: 'landscape',
     headline: 'A last call over the Pacific.',
     subline: 'Then silence, and a search that has never ended.',
+    image: { src: earhartImage, alt: 'A black-and-white photograph of Amelia Earhart standing in front of her twin-engine aeroplane.', credit: 'Amelia Earhart, NASA archive photograph', isIllustration: false },
   },
 ];
 
@@ -130,7 +142,7 @@ function opens(source: ExhibitSource): source is ExhibitSource & { data: Case } 
 /** Every exhibit, in order, each open only if its case data exists and validates. */
 export const exhibits: Exhibit[] = SOURCES.map(source => {
   const open = opens(source);
-  const image = open ? source.data?.story.find(section => section.id === source.frameChapter)?.image : undefined;
+  const image = open ? source.data?.story.find(section => section.id === source.frameChapter)?.image : source.image;
   return {
     id: source.id,
     title: source.title,

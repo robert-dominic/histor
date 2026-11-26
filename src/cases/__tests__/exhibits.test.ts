@@ -35,12 +35,13 @@ describe('the exhibits', () => {
     }
   });
 
-  test('an open case shows one of its own chapter images; a sealed one has none, and no data', () => {
+  test('an open case shows one of its own chapter images; a sealed one a period picture of its own, and no data', () => {
     const open = exhibits[0];
     expect(maryCeleste.story.map(section => section.image)).toContain(open.frameImage);
     expect(open.data).toBe(maryCeleste);
     for (const sealed of exhibits.filter(exhibit => exhibit.status === 'sealed')) {
-      expect(sealed.frameImage).toBeUndefined();
+      expect(sealed.frameImage, sealed.id).toMatchObject({ alt: expect.any(String), credit: expect.any(String) });
+      expect(sealed.frameImage!.alt.length).toBeGreaterThan(20);
       expect(sealed.data).toBeUndefined();
     }
   });

@@ -295,15 +295,36 @@ describe('one section per case (landing brief, 3)', () => {
     expect(steps(featuredShadow)).toBeGreaterThan(steps(css.slice(css.indexOf('.haunted-frame {'), css.indexOf('/* The main painting'))));
   });
 
-  test('an open case shows its image; a sealed one a dark veil with a brass plaque, "Sealed"', () => {
+  test('every case shows its picture in its frame: an open case one of its own, a sealed case a period picture; no veils', () => {
     renderHome();
     const open = document.getElementById('exhibit-mary-celeste')!;
     expect(open.querySelector('[data-exhibit-part="rise"] .haunted-frame img')!.getAttribute('src')).toBe(exhibits[0].frameImage!.src);
     expect(open.querySelector('[data-exhibit-part="rise"] .haunted-frame img')!.getAttribute('loading')).toBe('lazy');
-    const sealed = document.getElementById('exhibit-db-cooper')!;
-    const veil = sealed.querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')!;
-    expect(veil.className).toContain('frame-veil');
-    expect(veil.querySelector('.frame-plaque')!.textContent).toBe('Sealed');
+    for (const exhibit of exhibits.filter(each => each.status === 'sealed')) {
+      const section = document.getElementById(`exhibit-${exhibit.id}`)!;
+      const img = section.querySelector<HTMLImageElement>('[data-exhibit-part="rise"] .haunted-frame img')!;
+      expect(img.getAttribute('src'), exhibit.id).toBe(exhibit.frameImage!.src);
+      expect(img.getAttribute('src'), exhibit.id).toMatch(/\.webp$/);
+      expect(section.querySelector('[data-frame-part="veil"]')).toBeNull();
+      // Still sealed: the small "Sealed" under the title, and the plaque on a press.
+      expect(within(section).getByRole('heading', { level: 2 }).nextElementSibling!.textContent).toBe('Sealed');
+      expect(section.querySelector(`button[aria-label="${exhibit.title}: sealed"]`)).not.toBeNull();
+    }
+  });
+
+  test('the sealed pictures are the owner\'s, in the repo as WebP under 300 KB each', () => {
+    const files = ['ripper', 'cooper', 'princes', 'dancing', 'earhart'];
+    for (const name of files) {
+      const size = readFileSync(resolve(__dirname, `../../landing/images/${name}.webp`)).length;
+      expect(size, name).toBeLessThanOrEqual(300 * 1024);
+    }
+    expect(exhibits.filter(each => each.status === 'sealed').map(each => each.frameImage!.credit)).toEqual([
+      'The Nemesis of Neglect, John Tenniel, Punch, 1888',
+      'The ransom bills found in 1980, FBI photograph',
+      'The Children of Edward, Paul Delaroche, 1830',
+      'The Dancing Mania, engraving by Hendrik Hondius after Pieter Bruegel, 1642',
+      'Amelia Earhart, NASA archive photograph',
+    ]);
   });
 
   test('the "Scroll" cue on the first section only; each case has exactly one frame, and no copy of another case\'s', () => {
@@ -417,7 +438,6 @@ describe('hover and click (landing brief, 4)', () => {
     // The glint is where the cursor is.
     expect(Number(gsap.getProperty(glint, 'x'))).toBeCloseTo(200, 0);
     expect(Number(gsap.getProperty(glint, 'y'))).toBeCloseTo(0, 0);
-    expect(gsap.getTweensOf(button.querySelector('[data-frame-part="veil"]')).some(tween => tween.vars.rotation !== undefined)).toBe(true);
     // The cursor leaves: back to flat, easing out.
     act(() => {
       fireEvent.pointerLeave(button, { pointerType: 'mouse' });
@@ -482,7 +502,7 @@ function stubMedia({ desktop, reduced = false }: { desktop: boolean; reduced?: b
 }
 
 describe('phones and reduced motion (landing brief, 6)', () => {
-  test('a phone: the same pieces stacked, simple fades; no rising, no veil sway; tall frames narrower', () => {
+  test('a phone: the same pieces stacked, simple fades; no rising; tall frames narrower', () => {
     vi.unstubAllGlobals();
     stubMedia({ desktop: false });
     renderHome();
@@ -490,14 +510,13 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     const rise = section.querySelector('[data-exhibit-part="rise"]')!;
     // Fades only: nothing set to rise from below.
     expect(gsap.getProperty(rise, 'y')).toBe(0);
-    expect(gsap.getTweensOf(section.querySelector('[data-frame-part="veil"]'))).toHaveLength(0);
     expect(section.querySelector('[data-exhibit-part="rise"] .haunted-frame')!.className).toContain('max-lg:w-[72%]');
     // The header keeps the wordmark and the music button.
     const header = document.querySelector<HTMLElement>('[data-landing="header"]')!;
     expect(header.querySelector('[data-landing="music"]')).not.toBeNull();
   });
 
-  test('a laptop at full motion: frames rise in, the veil sways; reduced motion: none of it, fades only', () => {
+  test('a laptop at full motion: the stage; reduced motion: a plain stack, fades only', () => {
     vi.unstubAllGlobals();
     stubMedia({ desktop: true });
     const { unmount } = renderHome();
@@ -508,14 +527,12 @@ describe('phones and reduced motion (landing brief, 6)', () => {
     expect(document.querySelector<HTMLElement>('[data-landing="track"]')!.style.height).toBe(`${exhibits.length * 100}svh`);
     expect(document.querySelector('[data-landing="stage"]')!.className).toContain('sticky');
     expect(ripper().style.visibility).toBe('hidden');
-    expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')).some(tween => tween.vars.repeat === -1)).toBe(true);
     unmount();
     vi.unstubAllGlobals();
     stubMedia({ desktop: true, reduced: true });
     renderHome();
     expect(document.querySelector('main')!.dataset.staged).toBe('false');
     expect(gsap.getProperty(ripper().querySelector('[data-exhibit-part="rise"]'), 'y')).toBe(0);
-    expect(gsap.getTweensOf(ripper().querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]'))).toHaveLength(0);
   });
 });
 
