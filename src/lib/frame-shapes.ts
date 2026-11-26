@@ -10,3 +10,6 @@ export const FRAME_SHAPES: Record<FrameShape, { ratio: string; height: string }>
   portrait: { ratio: '3 / 4', height: 'min(60svh, 60vw)' },
   square: { ratio: '1 / 1', height: 'min(60svh, 55vw)' },
 };
+
+/** The main painting (the first case): a wider frame, 3 to 2, still about 60% of the screen's height. */
+export const FEATURED_SHAPE = { ratio: '3 / 2', height: 'min(60svh, 40vw)' } as const;

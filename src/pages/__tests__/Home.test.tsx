@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { exhibits } from '@/cases';
-import { FRAME_SHAPES } from '@/lib/frame-shapes';
+import { FEATURED_SHAPE, FRAME_SHAPES } from '@/lib/frame-shapes';
 import * as smoothScroll from '@/lib/smooth-scroll';
 import { LANDING_DESCRIPTION, LANDING_TITLE } from '@/lib/landing-meta';
 import { OPENING_IMAGE_WAIT_MS } from '@/features/landing/Opening';
@@ -214,9 +214,26 @@ describe('one section per case (landing brief, 3)', () => {
       expect(section.querySelector('[data-exhibit-part="subline"]')!.textContent).toBe(exhibit.subline);
       const frame = section.querySelector<HTMLElement>(':scope [data-exhibit-part="rise"] .haunted-frame')!;
       expect(frame.dataset.frame).toBe(exhibit.frame);
-      expect(frame.style.aspectRatio).toBe(FRAME_SHAPES[exhibit.frame].ratio);
+      expect(frame.style.aspectRatio).toBe((exhibit.featured ? FEATURED_SHAPE : FRAME_SHAPES[exhibit.frame]).ratio);
     }
     expect(new Set(exhibits.map(exhibit => exhibit.frame)).size).toBeGreaterThan(2);
+  });
+
+  test('the first frame is the main painting: wider, with a thicker, heavier moulding than the rest', () => {
+    renderHome();
+    const frames = exhibits.map(exhibit => document.querySelector<HTMLElement>(`#exhibit-${exhibit.id} [data-exhibit-part="rise"] .haunted-frame`)!);
+    expect(frames.map(frame => frame.dataset.featured)).toEqual(['true', 'false', 'false', 'false', 'false', 'false']);
+    expect(exhibits.map(exhibit => exhibit.featured)).toEqual([true, false, false, false, false, false]);
+    const ratio = (text: string) => text.split('/').map(Number).reduce((a, b) => a / b);
+    expect(ratio(FEATURED_SHAPE.ratio)).toBeGreaterThan(ratio(FRAME_SHAPES.landscape.ratio));
+    const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    const plain = css.match(/\.haunted-frame \{[^}]*padding: clamp\((\d+)px, ([\d.]+)%, (\d+)px\)/)!;
+    const heavy = css.match(/\.haunted-frame\[data-featured='true'\] \{\s*padding: clamp\((\d+)px, ([\d.]+)%, (\d+)px\)/)!;
+    expect(Number(heavy[3])).toBeGreaterThan(Number(plain[3]));
+    expect(Number(heavy[2])).toBeGreaterThan(Number(plain[2]));
+    const steps = (rule: string) => (rule.match(/inset 0 0 0 \d+px/g) ?? []).length;
+    const featuredShadow = css.slice(css.indexOf("[data-featured='true'] {"), css.indexOf("/* Rot from the edges"));
+    expect(steps(featuredShadow)).toBeGreaterThan(steps(css.slice(css.indexOf('.haunted-frame {'), css.indexOf('/* The main painting'))));
   });
 
   test('an open case shows its image; a sealed one a dark veil with a brass plaque, "Sealed"', () => {

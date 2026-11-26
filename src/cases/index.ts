@@ -20,6 +20,8 @@ export interface Exhibit {
   teaser: string;
   status: 'open' | 'sealed';
   frame: FrameShape;
+  /** The main painting: a wider frame with a thicker, heavier moulding (the first case). */
+  featured: boolean;
   /** The section's editorial line, large. */
   headline: string;
   /** The smaller line under it. */
@@ -38,6 +40,8 @@ interface ExhibitSource {
   yearEnd?: number;
   teaser: string;
   frame: FrameShape;
+  /** The main painting: wider, with a heavier moulding. */
+  featured?: boolean;
   headline: string;
   subline: string;
   /** The case's data, once it exists. Without it, the case stays sealed. */
@@ -58,6 +62,7 @@ const SOURCES: ExhibitSource[] = [
     yearEnd: 1873,
     teaser: maryCeleste.teaser,
     frame: 'landscape',
+    featured: true,
     headline: 'Every legend began as something that happened.',
     subline: 'Histor is for anyone who has ever wondered which part of the story is true.',
     data: maryCeleste,
@@ -134,6 +139,7 @@ export const exhibits: Exhibit[] = SOURCES.map(source => {
     teaser: source.teaser,
     status: open ? 'open' : 'sealed',
     frame: source.frame,
+    featured: source.featured === true,
     headline: source.headline,
     subline: source.subline,
     ...(image === undefined ? {} : { frameImage: image }),

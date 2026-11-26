@@ -4,7 +4,7 @@
 // small brass plaque reading "Sealed". Decorative: what it is, is said by its section.
 import type { CSSProperties } from 'react';
 import type { Exhibit } from '@/cases';
-import { FRAME_SHAPES } from '@/lib/frame-shapes';
+import { FEATURED_SHAPE, FRAME_SHAPES } from '@/lib/frame-shapes';
 
 interface FrameProps {
   exhibit: Exhibit;
@@ -14,11 +14,11 @@ interface FrameProps {
 }
 
 export default function Frame({ exhibit, peek = false, className = '' }: FrameProps) {
-  const shape = FRAME_SHAPES[exhibit.frame];
+  const shape = exhibit.featured ? FEATURED_SHAPE : FRAME_SHAPES[exhibit.frame];
   const style = { aspectRatio: shape.ratio, '--frame-h': shape.height } as CSSProperties;
   const image = exhibit.frameImage;
   return (
-    <div data-frame={exhibit.frame} data-status={exhibit.status} aria-hidden="true" style={style} className={`haunted-frame block ${className}`}>
+    <div data-frame={exhibit.frame} data-status={exhibit.status} data-featured={exhibit.featured} aria-hidden="true" style={style} className={`haunted-frame block ${className}`}>
       <div className="haunted-frame__opening">
         {image !== undefined && exhibit.status === 'open' ? (
           <img src={image.src} alt="" loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />
