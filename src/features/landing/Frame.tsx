@@ -14,7 +14,7 @@ interface FrameProps {
 
 export default function Frame({ exhibit, className = '' }: FrameProps) {
   const shape = exhibit.featured ? FEATURED_SHAPE : FRAME_SHAPES[exhibit.frame];
-  const style = { aspectRatio: shape.ratio, '--frame-h': shape.height } as CSSProperties;
+  const style = { aspectRatio: shape.ratio, '--frame-h': shape.height, '--frame-h-phone': shape.phone } as CSSProperties;
   const image = exhibit.frameImage;
   return (
     <div data-frame={exhibit.frame} data-status={exhibit.status} data-featured={exhibit.featured} aria-hidden="true" style={style} className={`haunted-frame block ${className}`}>

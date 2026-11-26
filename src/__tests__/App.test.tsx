@@ -42,7 +42,7 @@ describe('App routing', () => {
   test('"/" renders the landing page with every registry entry', () => {
     renderAppAt('/');
 
-    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
+    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem', { hidden: true })).toHaveLength(registry.length);
     for (const entry of registry) {
       expect(screen.getAllByText(entry.title, { exact: false }).length).toBeGreaterThan(0);
     }
@@ -88,7 +88,7 @@ describe('App routing', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Return to home' }));
 
     expect(window.location.pathname).toBe('/');
-    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
+    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem', { hidden: true })).toHaveLength(registry.length);
   });
 
   test.each(['/about', '/case', '/case/mary-celeste/extra', '/cases/mary-celeste'])(
@@ -108,7 +108,7 @@ describe('App routing', () => {
 
     expect(window.location.pathname).toBe('/');
     expect(screen.queryByText('Page not found')).toBeNull();
-    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem')).toHaveLength(registry.length);
+    expect(within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem', { hidden: true })).toHaveLength(registry.length);
   });
 
   test('none of the Vite starter content is left', () => {

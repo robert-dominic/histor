@@ -30,6 +30,11 @@ function renderHome() {
     </MemoryRouter>
   );
 }
+/** The stage's own move to case `index` (a key, the rail, the wordmark): its ease and duration. */
+function stageMoveTo(index: number) {
+  const move = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.vars?.at === index);
+  return move === undefined ? undefined : { ease: move.vars.ease, duration: move.duration() };
+}
 /** Ends every tween now running, so the docking lands. */
 const settle = () => act(() => gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1)));
 
@@ -44,7 +49,7 @@ afterEach(() => {
 describe('the landing page: one section per case', () => {
   test('every exhibit, in order, as a list item with its title', () => {
     renderHome();
-    const items = within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem');
+    const items = within(screen.getByRole('list', { name: 'The cases' })).getAllByRole('listitem', { hidden: true });
     expect(items).toHaveLength(exhibits.length);
     exhibits.forEach((exhibit, index) => expect(items[index].textContent).toContain(exhibit.title));
   });
@@ -177,16 +182,12 @@ describe('the header (landing v3 brief)', () => {
   });
 
   test('pressing the wordmark scrolls softly back to the first case, without leaving the page', () => {
-    const to = vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);
     renderHome();
     const link = document.querySelector<HTMLAnchorElement>('[data-landing="header"] a[aria-label="Histor, back to the top"]')!;
     const allowed = fireEvent.click(link);
-    // The click is handled (not a navigation), and the scroll is soft: a tween's ease and duration, not a jump.
+    // The click is handled (not a navigation), and the move is soft: the stage's move to case 0, not a jump.
     expect(allowed).toBe(false);
-    expect(to).toHaveBeenCalledTimes(1);
-    expect(to.mock.calls[0][0]).toBe(0);
-    expect(typeof to.mock.calls[0][1]!.ease).toBe('string');
-    expect(to.mock.calls[0][1]!.duration).toBeGreaterThan(0.5);
+    expect(stageMoveTo(0)).toMatchObject({ ease: 'power3.inOut' });
   });
 
   test('the music button is there, off until clicked, its tooltip "Play music" in the shared tooltip style', () => {
@@ -266,7 +267,8 @@ describe('one section per case (landing brief, 3)', () => {
     renderHome();
     for (const exhibit of exhibits) {
       const section = document.getElementById(`exhibit-${exhibit.id}`)!;
-      const title = within(section).getByRole('heading', { level: 2, name: exhibit.title });
+      const title = section.querySelector<HTMLElement>('h2')!;
+      expect(title.textContent).toBe(exhibit.title);
       expect(title.className).toContain('italic');
       expect(title.nextElementSibling!.textContent).toBe(exhibit.status === 'open' ? exhibit.years : 'Sealed');
       expect(section.querySelector('[data-exhibit-part="headline"]')!.textContent).toBe(exhibit.headline);
@@ -307,7 +309,7 @@ describe('one section per case (landing brief, 3)', () => {
       expect(img.getAttribute('src'), exhibit.id).toMatch(/\.webp$/);
       expect(section.querySelector('[data-frame-part="veil"]')).toBeNull();
       // Still sealed: the small "Sealed" under the title, and the plaque on a press.
-      expect(within(section).getByRole('heading', { level: 2 }).nextElementSibling!.textContent).toBe('Sealed');
+      expect(within(section).getByRole('heading', { level: 2, hidden: true }).nextElementSibling!.textContent).toBe('Sealed');
       expect(section.querySelector(`button[aria-label="${exhibit.title}: sealed"]`)).not.toBeNull();
     }
   });
@@ -384,6 +386,9 @@ describe('hover and click (landing brief, 4)', () => {
   test('a sealed case: a plaque card beside the frame, heard as the modal sound; Escape or a click outside closes it', () => {
     const heard: StoryEvent[] = [];
     const stop = onStoryEvent(event => heard.push(event));
+    // (As a plain stack, where every case is in reach.)
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
     renderHome();
     const button = screen.getByRole('button', { name: 'D. B. Cooper: sealed' });
     fireEvent.click(button);
@@ -509,6 +514,8 @@ describe('cursors (landing, last pass)', () => {
   });
 
   test('the sealed plaque has a close button, which closes it and gives the focus back', () => {
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
     renderHome();
     const button = document.querySelector<HTMLButtonElement>('button[aria-label="Jack the Ripper: sealed"]')!;
     fireEvent.click(button);
@@ -531,7 +538,9 @@ describe('the progress rail and the end (landing brief, 5)', () => {
     expect(ticks[0].getAttribute('aria-current')).toBe('true');
     expect(ticks.slice(1).every(tick => tick.getAttribute('aria-current') === null)).toBe(true);
     fireEvent.click(ticks[3]);
-    expect(to).toHaveBeenCalledTimes(1);
+    // On the stage a tick plays the move to its case.
+    expect(stageMoveTo(3)).toMatchObject({ ease: 'power3.inOut' });
+    to.mockRestore();
   });
 
   test('no "more cases" section: the last case is followed directly by the footer', () => {
@@ -564,18 +573,31 @@ function stubMedia({ desktop, reduced = false }: { desktop: boolean; reduced?: b
 }
 
 describe('phones and reduced motion (landing brief, 6)', () => {
-  test('a phone: the same pieces stacked, simple fades; no rising; tall frames narrower', () => {
+  test('a phone at full motion: the same stage as a laptop, its frames sized for the phone (mobile pass)', () => {
     vi.unstubAllGlobals();
     stubMedia({ desktop: false });
     renderHome();
+    expect(document.querySelector('main')!.dataset.staged).toBe('true');
+    expect(document.querySelector('[data-landing="stage"]')!.className).toContain('sticky');
     const section = document.getElementById('exhibit-jack-the-ripper')!;
-    const rise = section.querySelector('[data-exhibit-part="rise"]')!;
-    // Fades only: nothing set to rise from below.
-    expect(gsap.getProperty(rise, 'y')).toBe(0);
-    expect(section.querySelector('[data-exhibit-part="rise"] .haunted-frame')!.className).toContain('max-lg:w-[72%]');
+    expect(section.className).toContain('absolute inset-0');
+    const frame = section.querySelector<HTMLElement>('[data-exhibit-part="rise"] .haunted-frame')!;
+    expect(frame.className).toContain('h-(--frame-h-phone)');
+    expect(frame.style.getPropertyValue('--frame-h-phone')).toBe(FRAME_SHAPES.portrait.phone);
     // The header keeps the wordmark and the music button.
     const header = document.querySelector<HTMLElement>('[data-landing="header"]')!;
     expect(header.querySelector('[data-landing="music"]')).not.toBeNull();
+  });
+
+  test('a phone under reduced motion: the same pieces stacked, simple fades; no rising; tall frames narrower', () => {
+    vi.unstubAllGlobals();
+    stubMedia({ desktop: false, reduced: true });
+    renderHome();
+    expect(document.querySelector('main')!.dataset.staged).toBe('false');
+    const section = document.getElementById('exhibit-jack-the-ripper')!;
+    const rise = section.querySelector('[data-exhibit-part="rise"]')!;
+    expect(gsap.getProperty(rise, 'y')).toBe(0);
+    expect(section.querySelector('[data-exhibit-part="rise"] .haunted-frame')!.className).toContain('max-lg:w-[72%]');
   });
 
   test('a laptop at full motion: the stage; reduced motion: a plain stack, fades only', () => {

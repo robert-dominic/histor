@@ -203,7 +203,8 @@ export default function ExhibitSection({ exhibit, index, staged, isStart, frameI
 
   // On a phone a tall frame would fill the screen: portrait and square frames are narrower there, centred.
   const narrow = exhibit.frame === 'portrait' ? 'max-lg:mx-auto max-lg:w-[72%]' : exhibit.frame === 'square' ? 'max-lg:mx-auto max-lg:w-[86%]' : 'w-full';
-  const frame = <Frame exhibit={exhibit} className={`${narrow} lg:h-(--frame-h) lg:w-auto`} />;
+  // On the stage the frame has its own height everywhere (the phone's smaller), and its width follows its shape.
+  const frame = <Frame exhibit={exhibit} className={staged ? 'h-(--frame-h-phone) w-auto lg:h-(--frame-h)' : `${narrow} lg:h-(--frame-h) lg:w-auto`} />;
   return (
     <li
       ref={rootRef}
@@ -211,19 +212,28 @@ export default function ExhibitSection({ exhibit, index, staged, isStart, frameI
       data-exhibit={exhibit.id}
       data-exhibit-index={index}
       aria-labelledby={titleId}
-      className={`relative flex flex-col gap-7 px-4 pt-10 pb-10 first:pt-24 sm:px-8 lg:block lg:p-0 lg:first:pt-0 ${
-        staged ? 'lg:absolute lg:inset-0 lg:overflow-hidden' : 'lg:h-svh lg:min-h-[40rem] lg:overflow-hidden'
-      }`}
+      className={
+        staged
+          ? 'absolute inset-0 block overflow-hidden'
+          : 'relative flex flex-col gap-7 px-4 pt-10 pb-10 first:pt-24 sm:px-8 lg:block lg:h-svh lg:min-h-[40rem] lg:overflow-hidden lg:p-0 lg:first:pt-0'
+      }
     >
       {/* The frame, and its title to its right, low. The title stays put while the frame moves. */}
-      <div data-exhibit-part="place" className="flex flex-col gap-5 lg:absolute lg:top-[43%] lg:left-[45%] lg:block lg:-translate-x-1/2 lg:-translate-y-1/2">
+      {/* On the phone's stage the frame is centred near the top, its title under it; on a laptop, a little left of
+          centre, its title beside it. */}
+      <div
+        data-exhibit-part="place"
+        className={`flex flex-col gap-5 lg:absolute lg:top-[43%] lg:left-[45%] lg:block lg:-translate-x-1/2 lg:-translate-y-1/2 ${
+          staged ? 'max-lg:absolute max-lg:top-[max(5.5rem,12svh)] max-lg:left-1/2 max-lg:w-max max-lg:max-w-[92vw] max-lg:-translate-x-1/2 max-lg:items-center max-lg:gap-4' : ''
+        }`}
+      >
         <div data-exhibit-part="anchor">
           <div data-exhibit-part="rise" className="relative [perspective:1400px]">
             <span aria-hidden="true" className="haunted-frame-shadow" />
             {children === undefined ? frame : children(frame)}
           </div>
         </div>
-        <div data-exhibit-part="title" className="lg:absolute lg:bottom-1 lg:left-[calc(100%+2rem)] lg:w-[15rem]">
+        <div data-exhibit-part="title" className={`lg:absolute lg:bottom-1 lg:left-[calc(100%+2rem)] lg:w-[15rem] ${staged ? 'max-lg:text-center' : ''}`}>
           <h2 id={titleId} className="font-record text-[clamp(1.375rem,1.1rem+0.5vw,1.625rem)] leading-tight italic">
             {exhibit.title}
           </h2>
@@ -232,11 +242,14 @@ export default function ExhibitSection({ exhibit, index, staged, isStart, frameI
       </div>
 
       {/* The editorial block: bottom left on a laptop. */}
-      <div data-exhibit-part="words" className="max-w-[34rem] lg:absolute lg:bottom-[6svh] lg:left-[5.5vw]">
-        <p data-exhibit-part="headline" className="font-record text-[clamp(1.75rem,0.9rem+2.25vw,2.75rem)] leading-[1.1] text-night-ink">
+      <div
+        data-exhibit-part="words"
+        className={`max-w-[34rem] lg:absolute lg:bottom-[6svh] lg:left-[5.5vw] ${staged ? 'max-lg:absolute max-lg:inset-x-6 max-lg:bottom-[max(4.5rem,11svh)]' : ''}`}
+      >
+        <p data-exhibit-part="headline" className="font-record text-[clamp(1.5rem,0.9rem+2.25vw,2.75rem)] leading-[1.1] text-night-ink">
           {exhibit.headline}
         </p>
-        <p data-exhibit-part="subline" className="mt-3 max-w-xl font-record text-[1.125rem] leading-snug text-night-ink/70">
+        <p data-exhibit-part="subline" className="mt-3 max-w-xl font-record text-[1rem] leading-snug text-night-ink/70 sm:text-[1.125rem]">
           {exhibit.subline}
         </p>
       </div>

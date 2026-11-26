@@ -143,13 +143,16 @@ export function poseOver(rest: { left: number; top: number; width: number; heigh
 
 /** Where the next frame waits, peeking in at the bottom right: its height a share of the screen's, set in from the
  * right edge, and part of it below the bottom edge. */
-export const PEEK = { height: 0.26, right: 0.04, below: 0.42 } as const;
+export const PEEK = { height: 0.26, right: 0.04, below: 0.42, maxWidth: 0.3, belowNarrow: 0.58 } as const;
 
 /** The rectangle the next frame peeks in at, for a frame whose resting box is `rest` (it keeps its own shape). */
 export function peekRect(rest: { width: number; height: number }, screen = { width: window.innerWidth, height: window.innerHeight }) {
-  const height = screen.height * PEEK.height;
+  // Never wider than a share of the screen (a phone), and on a narrow screen lower, clear of the words.
+  const aspect = rest.height > 0 ? rest.width / rest.height : 1;
+  const height = Math.min(screen.height * PEEK.height, (screen.width * PEEK.maxWidth) / aspect);
+  const below = screen.width < 1024 ? PEEK.belowNarrow : PEEK.below;
   const width = rest.height > 0 ? (height * rest.width) / rest.height : height;
-  return { left: screen.width * (1 - PEEK.right) - width, top: screen.height - height * (1 - PEEK.below), width, height };
+  return { left: screen.width * (1 - PEEK.right) - width, top: screen.height - height * (1 - below), width, height };
 }
 
 export interface StageOptions {
