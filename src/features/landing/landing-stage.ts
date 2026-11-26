@@ -385,6 +385,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     const nearest = Math.round(at);
     if (nearest !== current) {
       current = nearest;
+      markCurrent(nearest);
       onChange(nearest);
     }
     // Scrolling has started (or the page has gone on into the footer): the words go at once.
@@ -660,6 +661,21 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   };
   window.addEventListener('scroll', onScroll, { passive: true });
 
+  // Only the case in hand can be pressed: the next frame, peeking in, is not a way to it (scroll, swipe, a key or the
+  // rail are). It is marked so (CSS: no pointer, no press), and a press on it does nothing.
+  function markCurrent(index: number) {
+    sections.forEach((section, i) => section.setAttribute('data-current', String(i === index)));
+  }
+  markCurrent(current);
+  const onClick = (event: MouseEvent) => {
+    const section = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-exhibit]') : null;
+    if (section !== null && section.getAttribute('data-current') !== 'true') {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+  stage.addEventListener('click', onClick, { capture: true });
+
   // ---- The keyboard: arrows, Page keys and Space play one move, like a gesture; Home and End to the ends.
   const go = (index: number) => {
     if (index < 0 || index >= count) {
@@ -766,6 +782,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
         clearTimeout(gesture.quiet);
       }
       window.removeEventListener('scroll', onScroll);
+      stage.removeEventListener('click', onClick, { capture: true });
+      sections.forEach(section => section.removeAttribute('data-current'));
       window.removeEventListener('resize', onResize);
       if (moveTimer !== null) {
         clearTimeout(moveTimer);

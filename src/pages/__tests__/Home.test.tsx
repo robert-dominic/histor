@@ -459,6 +459,40 @@ function Probe({ onPath }: { onPath: (path: string) => void }) {
   return null;
 }
 
+describe('no click on blank space (landing, last pass)', () => {
+  test('clicking empty space, text or the next-case preview does nothing; only the centred frame opens', () => {
+    vi.unstubAllGlobals();
+    stubMedia({ desktop: true });
+    let path = '';
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/case/:id" element={<Probe onPath={value => (path = value)} />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    const stage = document.querySelector<HTMLElement>('[data-landing="stage"]')!;
+    const sections = exhibits.map(exhibit => document.getElementById(`exhibit-${exhibit.id}`)!);
+    expect(sections.map(section => section.getAttribute('data-current'))).toEqual(sections.map((_, index) => String(index === 0)));
+    const before = gsap.globalTimeline.getChildren(false, true, false).length;
+    // Empty space, a headline, the preview (the next case's own frame): nothing happens.
+    for (const target of [stage, sections[0].querySelector('[data-exhibit-part="headline"]')!, sections[1].querySelector('.haunted-frame')!]) {
+      fireEvent.click(target);
+    }
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(path).toBe('');
+    expect(gsap.globalTimeline.getChildren(false, true, false).some(child => child.data === 'landing-enter')).toBe(false);
+    expect(gsap.globalTimeline.getChildren(false, true, false).length).toBe(before);
+    // The CSS takes the press away from the preview altogether.
+    const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    expect(css).toMatch(/\[data-landing='stage'\] \[data-exhibit\]\[data-current='false'\] \{\s*pointer-events: none;/);
+    // The centred frame still opens its case.
+    fireEvent.click(screen.getByRole('link', { name: 'Open the case: The Mary Celeste' }));
+    expect(gsap.globalTimeline.getChildren(false, false, true).some(child => child.data === 'landing-enter')).toBe(true);
+  });
+});
+
 describe('the progress rail and the end (landing brief, 5)', () => {
   test('one tick per case on the left, the first current; a tick goes to its case', () => {
     const to = vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);

@@ -850,3 +850,9 @@ html[data-landing-stage='held'] {
   .eq-bar:nth-child(3) { transform: scaleY(0.4); }
   .eq-bar:nth-child(4) { transform: scaleY(0.8); }
 }
+
+/* The landing page: only the case in hand can be pressed. The next frame, peeking in at the bottom right, is not a way
+   to it (scroll, swipe, a key or the rail are): no press, no tilt. */
+[data-landing='stage'] [data-exhibit][data-current='false'] {
+  pointer-events: none;
+}

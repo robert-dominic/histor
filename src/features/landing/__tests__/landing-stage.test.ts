@@ -584,6 +584,28 @@ describe('one case per gesture, the frames following the hand', () => {
   });
 });
 
+describe('only the case in hand can be pressed', () => {
+  test('the next frame, peeking in, is marked not current; a press on it does nothing at all', () => {
+    make(3);
+    stage!.ready();
+    expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['true', 'false', 'false']);
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    act(() => void part(1, 'anchor').dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    settle();
+    expect(place()).toBe(0);
+    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
+    // The one in hand keeps its own press.
+    const own = new MouseEvent('click', { bubbles: true, cancelable: true });
+    act(() => void part(0, 'anchor').dispatchEvent(own));
+    expect(own.defaultPrevented).toBe(false);
+    // Moved on: the marks follow.
+    press('ArrowDown');
+    settle();
+    expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['false', 'true', 'false']);
+  });
+});
+
 describe('peekRect', () => {
   test('the bottom right, a quarter of the screen high, keeping the frame\'s own shape, part of it below the edge', () => {
     const rect = peekRect({ width: 400, height: 300 }, { width: 1440, height: 900 });
