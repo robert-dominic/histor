@@ -75,6 +75,15 @@ export class LandingMusic {
     return this.current?.track ?? null;
   }
 
+  /** How far through the current track it is, 0 to 1 (0 when nothing plays): the button's ring fills with it. */
+  progress(): number {
+    const audio = this.current?.audio;
+    if (audio === undefined || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      return 0;
+    }
+    return Math.min(Math.max(audio.currentTime / audio.duration, 0), 1);
+  }
+
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => void this.listeners.delete(listener);

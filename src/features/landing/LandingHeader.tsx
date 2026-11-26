@@ -4,8 +4,8 @@
 // playing). Its wordmark is the docking target of the opening's.
 import type { Ref } from 'react';
 import { Link } from 'react-router-dom';
-import { MusicIcon } from '@/components/icons';
 import IconButton from '@/components/IconButton';
+import MusicButtonFace from '@/features/landing/MusicButtonFace';
 import { useLandingMusic } from '@/features/landing/use-landing-music';
 
 interface LandingHeaderProps {
@@ -50,9 +50,9 @@ export default function LandingHeader({ onHome, markRef, docked }: LandingHeader
             label={music.playing ? 'Pause music' : 'Play music'}
             tip={music.tip}
             aria-pressed={music.playing}
-            icon={<MusicIcon />}
+            icon={<MusicButtonFace playing={music.playing} ringRef={music.ringRef} />}
             onClick={music.toggle}
-            className="border border-night-ink/25"
+            className="relative"
           />
         )}
       </nav>

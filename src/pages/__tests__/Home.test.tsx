@@ -15,6 +15,9 @@ import { LANDING_DESCRIPTION, LANDING_TITLE } from '@/lib/landing-meta';
 import { OPENING_IMAGE_WAIT_MS } from '@/features/landing/Opening';
 import { useLandingMusic } from '@/features/landing/use-landing-music';
 import { FRAME_TILT } from '@/features/landing/use-frame-tilt';
+import { RING } from '@/features/landing/music-ring';
+import { LANDING_PLAYLIST } from '@/landing/music';
+import { LANDING_MUSIC_VOLUME, LandingMusic } from '@/lib/landing-music';
 import { freshMemory, soundFor } from '@/lib/sound/sound-map';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import Home from '@/pages/Home';
@@ -194,6 +197,62 @@ describe('the header (landing v3 brief)', () => {
     const tooltip = button.parentElement!.querySelector<HTMLElement>('[data-tooltip]')!;
     expect(tooltip.textContent).toBe('Play music');
     expect(tooltip.className).toContain('desk-slip');
+  });
+
+  test('off: a music note with a small slash (muted), the ring empty', () => {
+    renderHome();
+    const button = document.querySelector<HTMLButtonElement>('[data-landing="music"]')!;
+    const face = button.querySelector('[data-music="muted"]')!;
+    expect(face.querySelectorAll('path').length).toBe(2);
+    expect(face.innerHTML).toContain('M4 4l16 16');
+    expect(button.querySelector('[data-music="bars"]')).toBeNull();
+    const progress = button.querySelector<SVGCircleElement>('[data-music="progress"]')!;
+    expect(Number(progress.style.strokeDashoffset || progress.getAttribute('stroke-dashoffset'))).toBeCloseTo(RING.circumference, 3);
+  });
+
+  test('playing: moving equaliser bars, a thin ring that fills as the track plays, and the track and artist in the tooltip', () => {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+    renderHome();
+    const button = document.querySelector<HTMLButtonElement>('[data-landing="music"]')!;
+    const tooltip = () => button.parentElement!.querySelector<HTMLElement>('[data-tooltip]')!;
+    expect(tooltip().textContent).toBe('Play music');
+    const progress = vi.spyOn(LandingMusic.prototype, 'progress').mockReturnValue(0.25);
+    act(() => {
+      fireEvent.click(button);
+    });
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(button.querySelector('[data-music="muted"]')).toBeNull();
+    expect(button.querySelectorAll('[data-music="bars"] .eq-bar')).toHaveLength(4);
+    // The tooltip: the track's title and its artist, e.g. "Deep Sea · Universfield".
+    const text = tooltip().textContent!;
+    const track = LANDING_PLAYLIST.find(each => text.startsWith(`${each.title} · `))!;
+    expect(track).toBeDefined();
+    expect(text).toBe(`${track.title} · ${track.credit.replace(/\s*\(Pixabay\)$/, '')}`);
+    // The ring fills with the track and starts again on the next one.
+    act(() => {
+      gsap.ticker.tick();
+    });
+    const ring = button.querySelector<SVGCircleElement>('[data-music="progress"]')!;
+    expect(Number(ring.style.strokeDashoffset)).toBeCloseTo(RING.circumference * 0.75, 3);
+    progress.mockReturnValue(0);
+    act(() => {
+      gsap.ticker.tick();
+    });
+    expect(Number(ring.style.strokeDashoffset)).toBeCloseTo(RING.circumference, 3);
+    // And off again: the slash is back.
+    act(() => {
+      fireEvent.click(button);
+    });
+    expect(button.querySelector('[data-music="muted"]')).not.toBeNull();
+    expect(tooltip().textContent).toBe('Play music');
+    expect(LANDING_MUSIC_VOLUME).toBe(0.15);
+  });
+
+  test('the equaliser bars are constant motion that stands still under reduced motion', () => {
+    const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    expect(css).toMatch(/@keyframes eq-bar/);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.eq-bar \{ animation: none/);
   });
 
   test('the music button is there once the landing has tracks', () => {

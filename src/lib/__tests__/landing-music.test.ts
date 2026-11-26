@@ -110,6 +110,19 @@ describe('the landing music', () => {
     expect(music.track!.src).toBe(made[1].src);
   });
 
+  test('progress: how far through the current track, and 0 again for the next one', () => {
+    const music = make();
+    expect(music.progress()).toBe(0);
+    music.start();
+    made[0].duration = 200;
+    made[0].currentTime = 50;
+    expect(music.progress()).toBe(0.25);
+    made[0].currentTime = 198;
+    made[0].emit('timeupdate');
+    expect(music.track!.src).toBe(made[1].src);
+    expect(music.progress()).toBe(0);
+  });
+
   test('the tooltip: "Play music", then the track playing with its artist', () => {
     expect(artistOf('Universfield (Pixabay)')).toBe('Universfield');
     expect(artistOf('Leberch (Nikita Kondrashev) (Pixabay)')).toBe('Leberch (Nikita Kondrashev)');

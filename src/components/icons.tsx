@@ -83,3 +83,15 @@ export function MusicIcon() {
     </Icon>
   );
 }
+
+/** A note with a small slash through it: music, muted (off). */
+export function MusicOffIcon() {
+  return (
+    <Icon>
+      <path d="M9 18V6l10-2v12" />
+      <circle cx="6.5" cy="18" r="2.5" />
+      <circle cx="16.5" cy="16" r="2.5" />
+      <path d="M4 4l16 16" />
+    </Icon>
+  );
+}
