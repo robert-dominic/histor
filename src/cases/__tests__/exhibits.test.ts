@@ -10,16 +10,26 @@ describe('the exhibits', () => {
     expect(exhibits.map(exhibit => [exhibit.title, exhibit.years, exhibit.frame, exhibit.status])).toEqual([
       ['The Mary Celeste', '1872 – 1873', 'landscape', 'open'],
       ['Jack the Ripper', '1888', 'portrait', 'sealed'],
-      ['The Lost Colony of Roanoke', '1587 – 1590', 'landscape', 'sealed'],
+      ['D. B. Cooper', '1971', 'landscape', 'sealed'],
       ['The Princes in the Tower', '1483', 'square', 'sealed'],
-      ['The Dyatlov Pass', '1959', 'portrait', 'sealed'],
+      ['The Dancing Plague', '1518', 'portrait', 'sealed'],
       ['Amelia Earhart', '1937', 'landscape', 'sealed'],
     ]);
     expect(exhibits[0]).toMatchObject({
       headline: 'Every legend began as something that happened.',
       subline: 'Histor is for anyone who has ever wondered which part of the story is true.',
     });
-    expect(exhibits[4]).toMatchObject({ headline: 'The tent was cut from the inside.', subline: 'Nine hikers in the Ural Mountains. None came home.' });
+    expect(exhibits.map(exhibit => exhibit.id)).toEqual(['mary-celeste', 'jack-the-ripper', 'db-cooper', 'princes-in-the-tower', 'dancing-plague', 'amelia-earhart']);
+    expect(exhibits[2]).toMatchObject({
+      headline: "He jumped. The money didn't all land.",
+      subline: 'A quiet man hijacked a plane, took $200,000 and parachuted into a stormy night. He was never seen again.',
+    });
+    expect(exhibits[4]).toMatchObject({
+      headline: 'Strasbourg danced. Some never stopped.',
+      subline: 'In July 1518, a woman began to dance in the street. Within weeks, dozens could not stop. The cure? More music.',
+    });
+    // Roanoke and the Dyatlov Pass are no longer in the archive.
+    expect(exhibits.some(exhibit => /roanoke|dyatlov/i.test(exhibit.id + exhibit.title))).toBe(false);
     for (const exhibit of exhibits) {
       expect(exhibit.teaser.length, exhibit.id).toBeGreaterThan(0);
     }

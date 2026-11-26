@@ -300,7 +300,7 @@ describe('one section per case (landing brief, 3)', () => {
     const open = document.getElementById('exhibit-mary-celeste')!;
     expect(open.querySelector('[data-exhibit-part="rise"] .haunted-frame img')!.getAttribute('src')).toBe(exhibits[0].frameImage!.src);
     expect(open.querySelector('[data-exhibit-part="rise"] .haunted-frame img')!.getAttribute('loading')).toBe('lazy');
-    const sealed = document.getElementById('exhibit-roanoke')!;
+    const sealed = document.getElementById('exhibit-db-cooper')!;
     const veil = sealed.querySelector('[data-exhibit-part="rise"] [data-frame-part="veil"]')!;
     expect(veil.className).toContain('frame-veil');
     expect(veil.querySelector('.frame-plaque')!.textContent).toBe('Sealed');
@@ -364,10 +364,10 @@ describe('hover and click (landing brief, 4)', () => {
     const heard: StoryEvent[] = [];
     const stop = onStoryEvent(event => heard.push(event));
     renderHome();
-    const button = screen.getByRole('button', { name: 'The Lost Colony of Roanoke: sealed' });
+    const button = screen.getByRole('button', { name: 'D. B. Cooper: sealed' });
     fireEvent.click(button);
-    const plaque = screen.getByRole('dialog', { name: 'The Lost Colony of Roanoke, sealed' });
-    expect(plaque.textContent).toContain('1587 – 1590');
+    const plaque = screen.getByRole('dialog', { name: 'D. B. Cooper, sealed' });
+    expect(plaque.textContent).toContain('1971');
     expect(plaque.textContent).toContain(exhibits[2].subline);
     expect(plaque.textContent).toContain('Sealed — case file in preparation.');
     expect(button.getAttribute('aria-expanded')).toBe('true');
@@ -387,7 +387,7 @@ describe('hover and click (landing brief, 4)', () => {
   test('hover: the frame tilts around its centre toward the cursor (up to about 8°, perspective about 1200px), lifts toward the viewer and shifts; its shadow goes the other way; the glint follows the cursor; it eases back flat', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: !query.includes('prefers-reduced-motion: reduce'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }));
     renderHome();
-    const button = document.querySelector<HTMLButtonElement>('button[aria-label="The Lost Colony of Roanoke: sealed"]')!;
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="D. B. Cooper: sealed"]')!;
     const frame = button.querySelector<HTMLElement>('.haunted-frame')!;
     const shadow = button.closest('[data-exhibit-part="rise"]')!.querySelector<HTMLElement>('.haunted-frame-shadow')!;
     const glint = button.querySelector<HTMLElement>('[data-frame-part="glint"]')!;
