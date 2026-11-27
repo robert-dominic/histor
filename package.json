@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "music:import": "node scripts/music-import.mjs",
     "sfx:import": "node scripts/sfx-import.mjs",
-    "landing:images": "node scripts/landing-images.mjs"
+    "landing:images": "node scripts/landing-images.mjs",
+    "landing:textures": "node scripts/landing-textures.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

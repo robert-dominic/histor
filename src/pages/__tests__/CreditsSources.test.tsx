@@ -3,6 +3,8 @@
 // /credits and /sources (the fix list): every credit grouped by case, built from each case's data, with the app's own
 // credits; each case's sources; the report's ⓘ links to the case's credits.
 import { cleanup, render, screen, within } from '@testing-library/react';
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import App from '@/App';
 import maryCeleste from '@/cases/mary-celeste/case';
@@ -98,5 +100,29 @@ describe('the header on /credits and /sources', () => {
     expect(home.querySelector('img')!.className).not.toContain('opacity-0');
     expect(header.querySelector('[data-landing="music"]')).toBeNull();
     expect(header.querySelector('button')).toBeNull();
+  });
+});
+
+describe('the textures (dreadful frames)', () => {
+  test('/credits lists the six landing textures in their own group, each with its Pixabay author', () => {
+    renderAt('/credits');
+    const app = document.getElementById('histor')!;
+    expect(app.textContent).toContain('Textures');
+    for (const author of ['Gerd Altmann', 'BRRT', 'Clker-Free-Vector-Images', 'H G', 'OpenClipart-Vectors', 'Susann Mielke']) {
+      expect(app.textContent).toContain(author);
+    }
+  });
+
+  test('the textures are in the repo as sized WebP (under 200 KB) and the two SVGs; no originals', () => {
+    const dir = resolve(__dirname, '../../landing/textures');
+    for (const name of ['paper-old.webp', 'paper-burnt.webp', 'tear-line.webp', 'frame-torn.webp']) {
+      expect(statSync(resolve(dir, name)).size, name).toBeLessThanOrEqual(200 * 1024);
+    }
+    for (const name of ['torn-edge.svg', 'tape.svg']) {
+      expect(existsSync(resolve(dir, name)), name).toBe(true);
+    }
+    for (const original of ['paper-old.jpg', 'paper-burnt.png', 'tear-line.png', 'frame-torn.png']) {
+      expect(existsSync(resolve(dir, original)), original).toBe(false);
+    }
   });
 });

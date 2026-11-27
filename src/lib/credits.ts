@@ -67,6 +67,18 @@ export const APP_CREDITS: { heading: string; lines: CreditLine[] }[] = [
     lines: exhibits.flatMap(exhibit => (exhibit.status === 'sealed' && exhibit.frameImage !== undefined ? [{ what: exhibit.title, credit: exhibit.frameImage.credit }] : [])),
   },
   {
+    // The landing frames' textures (src/landing/textures, `npm run landing:textures`): all Pixabay Content License.
+    heading: 'Textures',
+    lines: [
+      { what: 'Old paper (paper-old)', credit: 'Image by Gerd Altmann from Pixabay (Pixabay Content License)' },
+      { what: 'Tear line (tear-line)', credit: 'Image by BRRT from Pixabay, image 5033206 (Pixabay Content License)' },
+      { what: 'Torn edge (torn-edge)', credit: 'Image by Clker-Free-Vector-Images from Pixabay, image 35818 (Pixabay Content License)' },
+      { what: 'Torn frame (frame-torn)', credit: 'Image by H G from Pixabay, image 7353779 (Pixabay Content License)' },
+      { what: 'Tape (tape)', credit: 'Image by OpenClipart-Vectors from Pixabay, image 145367 (Pixabay Content License)' },
+      { what: 'Burnt paper (paper-burnt)', credit: 'Image by Susann Mielke from Pixabay, image 1162429 (Pixabay Content License)' },
+    ],
+  },
+  {
     heading: 'Libraries',
     lines: [
       { what: 'React', credit: 'MIT License' },
