@@ -941,6 +941,42 @@ export default function Story({
         window.addEventListener('wheel', noteWheel, { capture: true, passive: true });
         cleanups.push(() => window.removeEventListener('wheel', noteWheel, { capture: true }));
         let pressUsed = false;
+        // A finger (mobile pass): where it is, followed here before the Observer sees it (capture, on the window), so a
+        // finger on a page panel that still scrolls can scroll it, and every other swipe is a step, like a scroll.
+        const finger = { y: 0, dy: 0, panel: false };
+        const pointOf = (event: Event): number | null => {
+          if ('touches' in event) {
+            const touch = (event as TouchEvent).touches[0] ?? (event as TouchEvent).changedTouches?.[0];
+            return touch === undefined ? null : touch.clientY;
+          }
+          return 'clientY' in event ? (event as PointerEvent).clientY : null;
+        };
+        const fingerDown = (event: Event) => {
+          if (event.type === 'pointerdown' && (event as PointerEvent).pointerType === 'mouse') {
+            return;
+          }
+          finger.y = pointOf(event) ?? 0;
+          finger.dy = 0;
+          finger.panel = false;
+        };
+        const fingerMove = (event: Event) => {
+          if (event.type === 'pointermove' && (event as PointerEvent).pointerType === 'mouse') {
+            return;
+          }
+          const y = pointOf(event);
+          if (y !== null) {
+            finger.dy = finger.y - y;
+            finger.y = y;
+          }
+        };
+        const fingerEvents: [string, (event: Event) => void][] = [
+          ['touchstart', fingerDown],
+          ['pointerdown', fingerDown],
+          ['touchmove', fingerMove],
+          ['pointermove', fingerMove],
+        ];
+        fingerEvents.forEach(([type, listener]) => window.addEventListener(type, listener, { capture: true, passive: true }));
+        cleanups.push(() => fingerEvents.forEach(([type, listener]) => window.removeEventListener(type, listener, { capture: true })));
         /** Whether something else should take this gesture: a dialog, the controls, a page panel that still scrolls. */
         const notOurs = (event: Event) => {
           const target = event.target instanceof Element ? event.target : null;
@@ -954,12 +990,24 @@ export default function Story({
           if (panel === null || panel.scrollHeight <= panel.clientHeight + 1) {
             return false;
           }
+          const canScroll = (down: boolean) => (down ? panel.scrollTop + panel.clientHeight < panel.scrollHeight - 1 : panel.scrollTop > 0);
           if (event.type === 'wheel') {
-            const down = (event as WheelEvent).deltaY > 0;
-            return down ? panel.scrollTop + panel.clientHeight < panel.scrollHeight - 1 : panel.scrollTop > 0;
+            return canScroll((event as WheelEvent).deltaY > 0);
           }
-          // A finger on a page that scrolls: it scrolls the page.
-          return true;
+          // A finger: the press itself is ours (the Observer must see where it starts). As it moves, the panel takes it
+          // while the panel can still scroll the way the finger goes; a touch that has scrolled the panel stays the
+          // panel's to its end, so reaching the end of the page never turns the same swipe into a step.
+          if (event.type === 'touchstart' || event.type === 'pointerdown') {
+            return false;
+          }
+          if (finger.panel) {
+            return true;
+          }
+          if (finger.dy !== 0 && canScroll(finger.dy > 0)) {
+            finger.panel = true;
+            return true;
+          }
+          return false;
         };
         const gesture = (self: Observer, direction: 1 | -1) => {
           if (current < 0) {
