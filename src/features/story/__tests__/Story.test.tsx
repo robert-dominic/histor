@@ -85,6 +85,24 @@ function wheelBurst(target: Element, { count = 1, deltaY = 60, apart = 8, after 
   });
 }
 
+/** A finger on `target`, from `y0` to `y1` (a swipe up, to read on, has y1 < y0). */
+function swipe(target: Element, y0: number, y1: number) {
+  const fire = (type: string, y: number) => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    const point = { clientX: 100, clientY: y, pageX: 100, pageY: y, identifier: 0, target };
+    Object.defineProperty(event, 'touches', { value: type === 'touchend' ? [] : [point] });
+    Object.defineProperty(event, 'changedTouches', { value: [point] });
+    target.dispatchEvent(event);
+  };
+  act(() => {
+    fire('touchstart', y0);
+    for (let step = 1; step <= 6; step += 1) {
+      fire('touchmove', y0 + ((y1 - y0) * step) / 6);
+    }
+    fire('touchend', y1);
+  });
+}
+
 const stepOf = (container: HTMLElement) => (container.querySelector('[data-story="root"]') as HTMLElement).dataset.step;
 const stageOf = (container: HTMLElement) => container.querySelector('[data-story="stage"]') as HTMLElement;
 
@@ -340,6 +358,29 @@ describe('Story: scenes', () => {
 });
 
 describe('Story: the roll call', () => {
+  test('a phone: a page taller than its panel is read to its end first; only from its bottom does a swipe move on, and from its top a swipe back goes to the step before', () => {
+    const { container } = renderStory(maryCeleste, READ);
+    settleSteps();
+    finishWriting(container);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    const panel = container.querySelector<HTMLElement>('[data-story="chapter"][data-active="true"] [data-story="page"]')!;
+    let top = 0;
+    Object.defineProperty(panel, 'scrollHeight', { value: 900, configurable: true });
+    Object.defineProperty(panel, 'clientHeight', { value: 400, configurable: true });
+    Object.defineProperty(panel, 'scrollTop', { get: () => top, set: value => void (top = value), configurable: true });
+    const inside = panel.querySelector('[data-story="paragraph"]') ?? panel;
+    // In the middle of the text: the swipe is the panel's (it scrolls natively), not a step.
+    swipe(inside, 500, 200);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    // At its bottom: the next swipe moves on.
+    top = 500;
+    swipe(inside, 500, 200);
+    settleSteps();
+    expect(stepOf(container)).toBe('hook-0');
+  });
+
   test('under 768px there is no crew card: its column is hidden on phones, in the stage and in the plain page', () => {
     const { container } = renderStory();
     const columns = container.querySelectorAll<HTMLElement>('[data-story="roll-call-column"]');

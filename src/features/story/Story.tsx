@@ -41,7 +41,8 @@ import {
 import { useStepPlayer, type StepDriver } from '@/features/story/use-step-player';
 import { dayNightStep, imageGrade, skyColour, textTone } from '@/lib/day-night';
 import { hashUnit } from '@/lib/desk';
-import { INK_RISE, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
+import { INK_RISE, LINEAR, MOTION, MOTION_QUERIES, tween } from '@/lib/motion';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import { questionLines } from '@/lib/phrases';
 import { holdSmoothScroll, jumpToY, releaseSmoothScroll } from '@/lib/smooth-scroll';
 import { STORY_PACE, readingSeconds } from '@/lib/story-pages';
@@ -54,7 +55,7 @@ import type { Narration, Reference, Source, StorySection, Voyage } from '@/types
 import { takeApparition } from '@/lib/apparition';
 
 // ScrollTrigger is registered inside the component: it needs window.matchMedia as soon as it is registered.
-gsap.registerPlugin(useGSAP, Observer);
+gsap.registerPlugin(useGSAP, Observer, ScrollToPlugin);
 
 /** The shadow on the deck at its most visible (dread pass, 6): faint. */
 const APPARITION_PEAK = 0.24;
@@ -1120,6 +1121,15 @@ export default function Story({
         });
 
         // ---- "Play the story": each step is held for its time, then the next one comes.
+        /** The page panel scrolling itself to its end while "Play the story" holds it (a phone). */
+        let readScroll: gsap.core.Tween | null = null;
+        cleanups.push(() => readScroll?.kill());
+        const stopReadScroll = () => {
+          readScroll?.kill();
+          readScroll = null;
+        };
+        ['touchstart', 'wheel', 'keydown'].forEach(type => window.addEventListener(type, stopReadScroll, { passive: true }));
+        cleanups.push(() => ['touchstart', 'wheel', 'keydown'].forEach(type => window.removeEventListener(type, stopReadScroll)));
         const untilSettled = () => (animating ? new Promise<void>(resolve => settled.push(resolve)) : Promise.resolve());
         driverRef.current = {
           ready: async () => {
@@ -1142,7 +1152,15 @@ export default function Story({
               const text = all('[data-story="paragraph"], [data-story="name"]', scenes[now.chapter])
                 .map(element => element.textContent ?? '')
                 .join(' ');
-              return Math.max(STORY_PACE.playHoldAtLeast, readingSeconds(text) - writer.seconds);
+              const hold = Math.max(STORY_PACE.playHoldAtLeast, readingSeconds(text) - writer.seconds);
+              // A page taller than its panel (a phone): it scrolls gently to its end over the hold, so the story only
+              // moves on once all of its text has been shown. Any gesture of the reader's takes over.
+              const panel = scenes[now.chapter]?.querySelector<HTMLElement>('[data-story="page"]');
+              if (panel != null && panel.scrollHeight > panel.clientHeight + 1 && panel.scrollTop + panel.clientHeight < panel.scrollHeight - 1) {
+                readScroll?.kill();
+                readScroll = gsap.to(panel, { scrollTo: { y: 'max', autoKill: true }, ease: LINEAR, duration: hold });
+              }
+              return hold;
             }
             if (now.kind === 'hook') {
               return STORY_PACE.hookHold;
@@ -1163,6 +1181,7 @@ export default function Story({
             return now.line === phrases.length - 1 ? read + STORY_PACE.beforeFork : read;
           },
           next: async () => {
+            stopReadScroll();
             await untilSettled();
             const now = steps[current];
             if (now === undefined || now.kind === 'fork' || current + 1 >= steps.length) {
