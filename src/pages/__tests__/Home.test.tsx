@@ -318,6 +318,14 @@ describe('one section per case (landing brief, 3)', () => {
     }
     expect(css).toMatch(/\.haunted-frame__opening \{[^}]*mask: url\('\.\.\/landing\/textures\/torn-edge\.svg'\)/);
     expect(css).toMatch(/\.evidence-stain \{[^}]*mix-blend-mode: multiply;[^}]*opacity: 0\.\d+;/);
+    // The picture first: the stain at most 10%, the picture at full contrast with only a very light sepia.
+    const stain = Number(css.match(/\.evidence-stain \{[^}]*opacity: (0\.\d+);/)![1]);
+    expect(stain).toBeLessThanOrEqual(0.1);
+    const grades = [...css.matchAll(/\.haunted-frame[^{]*img[^{]*\{\s*filter: ([^;]+);/g)].map(match => match[1]);
+    expect(grades.length).toBeGreaterThan(0);
+    for (const grade of grades) {
+      expect(grade).toMatch(/^sepia\(0\.(0\d|1)\)$/);
+    }
     // frame-torn is kept for later, not used.
     expect(css).not.toContain('frame-torn');
   });

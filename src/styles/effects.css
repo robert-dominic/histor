@@ -677,22 +677,20 @@ body::after {
   -webkit-mask: url('../landing/textures/torn-edge.svg') center / 100% 100% no-repeat;
   mask: url('../landing/textures/torn-edge.svg') center / 100% 100% no-repeat;
 }
+/* The picture comes first: full opacity and full contrast, only a very light sepia; the ageing is noticed second. */
 .haunted-frame__opening > img,
 .opening-detail img {
-  filter: saturate(0.7) sepia(0.18) brightness(0.82) contrast(1.06);
+  filter: sepia(0.08);
 }
-/* A sealed case's picture: a touch further into the dark, the case not yet opened (a static grade, never animated). */
-.haunted-frame[data-status='sealed'] .haunted-frame__opening > img {
-  filter: saturate(0.6) sepia(0.22) brightness(0.68) contrast(1.08);
-}
-/* Old paper laid over the picture: every image aged and stained. */
+/* Old paper laid over the picture, faintly: every image aged and stained, the photo still clear. */
 .evidence-stain {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background: url('../landing/textures/paper-old.webp') center / cover no-repeat;
   mix-blend-mode: multiply;
-  opacity: 0.38;
+  /* At most 10%: a stain you notice second. */
+  opacity: 0.1;
 }
 /* A tear across one corner (some pieces). */
 .evidence-tear {
