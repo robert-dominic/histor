@@ -89,6 +89,13 @@ export function settleTarget(base: number, at: number, carry: number = LANDING_D
 /** How far through a move the words of the case it is heading for start to fade in. */
 export const LANDING_WORDS_AT = 0.45;
 
+/**
+ * When a wheel gesture counts as let go before the wheel is quiet: the frames have reached the case ahead (or behind),
+ * or the events have been dying away (a flick's momentum: `decaying` in a row, each smaller than the last) once it has
+ * gone past the carry. The rest of that momentum is swallowed, so it never moves a second case.
+ */
+export const LANDING_LETGO = { decaying: 4, shrink: 0.95 } as const;
+
 /** How long a move may take before it is counted as landed whatever happens, past its own duration, in ms. */
 export const MOVE_GRACE_MS = 400;
 
@@ -580,6 +587,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   const gate = createGestureGate();
   /** The gesture now arriving met the frames moving, so it is spent: its events are swallowed to its end. */
   let spent = false;
+  let shrinking = 0;
+  let lastDelta = 0;
   const onWheel = (event: WheelEvent) => {
     const raw = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * window.innerHeight : event.deltaY;
     const fresh = gate.note(event.timeStamp || performance.now(), raw);
@@ -599,6 +608,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       return;
     }
     if (fresh) {
+      shrinking = 0;
+      lastDelta = 0;
       spent = busy() && gesture === null;
       if (!spent && gesture === null) {
         if (window.scrollY > lastY() + 1) {
@@ -612,6 +623,15 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
     if (gesture !== null && !spent) {
       follow(delta);
+      // Let go early: at the case ahead or behind, or as a flick's momentum dies away past the carry. Its tail is spent.
+      shrinking = Math.abs(delta) < lastDelta * LANDING_LETGO.shrink ? shrinking + 1 : 0;
+      lastDelta = Math.abs(delta);
+      const moved = Math.abs(gesture.travelled / (window.innerHeight * LANDING_DRAG.perCase));
+      if (moved >= 1 || (moved > LANDING_DRAG.carry && shrinking >= LANDING_LETGO.decaying)) {
+        spent = true;
+        release();
+        return;
+      }
       releaseSoon();
     }
   };

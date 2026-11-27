@@ -355,9 +355,14 @@ describe('one case per gesture, the frames following the hand', () => {
     wheel(5000, 1000);
     settle();
     expect(place()).toBe(3);
+    // The rest of that gesture is spent: it never moves a second case.
     wheel(-20000, 1030);
     settle();
-    expect(place()).toBe(1);
+    expect(place()).toBe(3);
+    // A new gesture back: no further than one case.
+    wheel(-20000, 3000);
+    settle();
+    expect(place()).toBe(2);
   });
 
   test('let go past about 25%: the frames finish the move to the next case, softly (about 0.6s, power3.out)', () => {
@@ -433,6 +438,50 @@ describe('one case per gesture, the frames following the hand', () => {
     quiet();
     settle();
     expect(place()).toBe(2);
+  });
+
+  test('input counts again as soon as the frames have landed (about 0.6s), while the words are still coming in', () => {
+    make(4);
+    stage!.ready();
+    settle();
+    press('ArrowDown');
+    // Part-way through the move the words of the case it heads for start to come in: they never wait for it to end.
+    const timing = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.vars?.at === 1)!;
+    timing.progress(0.6);
+    act(() => {
+      (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).filter(child => child.vars?.at === undefined && child.duration() < 0.5).forEach(child => child.progress(1));
+    });
+    expect(stage!.wordsFor()).toBe(1);
+    expect(stage!.moving()).toBe(true);
+    // The frames land: input counts at once, even though the title is still being written.
+    act(() => void timing.progress(1));
+    expect(stage!.moving()).toBe(false);
+    expect(part(1, 'name').querySelectorAll('div').length).toBeGreaterThan(0);
+    // A new gesture now cuts the words short and moves.
+    wheel(80, 9000);
+    expect(stage!.gesturing()).toBe(true);
+    expect(stage!.wordsFor()).toBeNull();
+    expect(part(1, 'name').querySelector('div')).toBeNull();
+    quiet();
+    settle();
+    expect(place()).toBe(2);
+  });
+
+  test('a flick is let go as soon as its momentum starts dying past the carry, not seconds later when the wheel is quiet', () => {
+    make(5);
+    stage!.ready();
+    let t = 1000;
+    for (const size of [60, 70, 70, 66, 60, 52, 44, 36]) {
+      wheel(size, (t += 16));
+    }
+    // Let go already (no quiet wait): the frames are on their way to case 1, and the tail is swallowed.
+    expect(stage!.gesturing()).toBe(false);
+    expect(stage!.moving()).toBe(true);
+    for (let size = 30; size > 1; size *= 0.85) {
+      expect(wheel(size, (t += 16)).defaultPrevented).toBe(true);
+    }
+    settle();
+    expect(place()).toBe(1);
   });
 
   test('a new gesture that starts while the frames are still settling is spent, to its end', () => {
