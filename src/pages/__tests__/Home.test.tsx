@@ -120,6 +120,23 @@ describe('the opening (landing v2 brief, 1)', () => {
     expect(main.dataset.ready).toBe('false');
   });
 
+  test('the wordmark stays visible the whole way: it travels up, settles in the header and stays there while the frame comes in', () => {
+    vi.useFakeTimers();
+    renderHome();
+    const mark = document.querySelector<HTMLElement>('[data-landing="opening-mark"]')!;
+    const markTimeline = gsap.getTweensOf(mark)[0].parent!;
+    // Docked, and well past it: the opening's own wordmark is still on screen (the frame is not in yet).
+    act(() => {
+      markTimeline.progress(1);
+    });
+    expect(document.querySelector('main')!.dataset.ready).toBe('false');
+    expect(Number(gsap.getProperty(mark, 'opacity'))).toBe(1);
+    // Nothing in the opening ever fades it out: only the opening's end takes it away, with the header's own in place.
+    const fades = gsap.getTweensOf(mark).filter(tween => tween.vars.opacity === 0);
+    expect(fades).toHaveLength(0);
+    expect(document.querySelector<HTMLElement>('[data-landing="header-mark"]')!.style.opacity).toBe('1');
+  });
+
   test('a picture that never loads does not hold the opening: the wordmark still docks', async () => {
     vi.useFakeTimers();
     renderHome();

@@ -176,14 +176,15 @@ export default function Opening({ targetRef, detail, onDock, onSettle, onDone }:
     markTimeline
       .to(mark, { x: () => dockTo().x, scale: () => dockTo().scale, transformOrigin: '0 0', ...tween('landing.dock') }, 'dock')
       .to(mark, { y: () => dockTo().y, ...tween('landing.dockRise') }, 'dock');
-    // Docked: the header's own wordmark takes over at once, so there is never a moment with neither on screen.
+    // Docked: the wordmark stays on screen, exactly where the header's own sits, until the opening has gone (the
+    // opening is drawn over the header, its black still covering it while the frame comes in, so hiding this one now
+    // would leave no wordmark at all). The header's own is made ready underneath, and takes over when it ends.
     markTimeline.call(
       () => {
         const target = targetRef.current;
         if (target !== null) {
           gsap.set(target, { opacity: 1 });
         }
-        gsap.set(mark, { opacity: 0 });
       },
       undefined,
       `dock+=${tween('landing.dock').duration}`
