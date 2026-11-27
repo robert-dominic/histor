@@ -366,6 +366,32 @@ describe('one section per case (landing brief, 3)', () => {
     expect(document.querySelector('[data-exhibit-part="peek"]')).toBeNull();
   });
 
+  test('a sealed case: a strip of rust tape across one corner, SEALED on it in the case file\'s face; the open case has none; the small Sealed tag stays, and a click still opens the plaque', () => {
+    // (As a plain stack, where every case can be pressed.)
+    vi.unstubAllGlobals();
+    stubMatchMedia({ reducedMotion: true });
+    renderHome();
+    for (const exhibit of exhibits) {
+      const section = document.getElementById(`exhibit-${exhibit.id}`)!;
+      const tape = section.querySelector<HTMLElement>('[data-frame-part="sealed-tape"]');
+      if (exhibit.status === 'sealed') {
+        expect(tape, exhibit.id).not.toBeNull();
+        expect(tape!.textContent).toBe('Sealed');
+        expect(tape!.className).toContain('font-voice');
+        expect(tape!.className).toContain('uppercase');
+        expect(section.querySelector('h2')!.nextElementSibling!.textContent).toBe('Sealed');
+      } else {
+        expect(tape, exhibit.id).toBeNull();
+      }
+    }
+    const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
+    expect(css).toMatch(/\.evidence-sealed \{[^}]*background: #9e3326;[^}]*mask: url\('\.\.\/landing\/textures\/tape\.svg'\)/);
+    expect(css).not.toContain('.frame-plaque');
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Jack the Ripper: sealed"]')!;
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+  });
+
   test('no gilt anywhere in the frames\' styles: no bright, saturated gold', () => {
     const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
     const frames = css.slice(css.indexOf("/* ---- The landing page's frames"), css.indexOf('/* The scroll cue'));
