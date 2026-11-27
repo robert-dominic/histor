@@ -86,6 +86,9 @@ export function settleTarget(base: number, at: number, carry: number = LANDING_D
   return Math.abs(moved) > carry ? base + Math.sign(moved) : base;
 }
 
+/** How far through a move the words of the case it is heading for start to fade in. */
+export const LANDING_WORDS_AT = 0.45;
+
 /** How long a move may take before it is counted as landed whatever happens, past its own duration, in ms. */
 export const MOVE_GRACE_MS = 400;
 
@@ -252,7 +255,13 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     tl.to(wordsOf(p), { ...sharp, ...tween('landing.blur') }, 0);
     writeTitle(index, p, tl);
   };
+  /** The words of the case a move is heading for, due part-way through the move (not after it). */
+  let wordsCall: gsap.core.Tween | null = null;
+  /** The case a move (not the hand's) is heading for: its words may show while the frames still travel. */
+  let arriving: number | null = null;
   const hideWords = () => {
+    wordsCall?.kill();
+    wordsCall = null;
     const index = wordsFor;
     if (index === null) {
       return;
@@ -355,8 +364,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       if (A.rise !== null) {
         tl.fromTo(A.rise, { rotation: 0 }, { rotation: -FRAME_SWING, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i);
       }
+      // The arriving frame is still at its peek (it leans only on the way, and is straight again on landing), so the
+      // preview never rocks while the hand hesitates over it.
       if (B.rise !== null) {
-        tl.fromTo(B.rise, { rotation: FRAME_SWING }, { rotation: 0, ease: tween('landing.swing').ease, duration: SCRUB.move, immediateRender: false }, i);
+        tl.fromTo(B.rise, { rotation: 0 }, { rotation: FRAME_SWING, ease: move.ease, duration: SCRUB.move / 2, immediateRender: false }, i).to(
+          B.rise,
+          { rotation: 0, ease: tween('landing.swing').ease, duration: SCRUB.move / 2 },
+          i + SCRUB.move / 2
+        );
       }
       // The frame after it comes up from below into the peek, once the way is clear.
       const C = parts[i + 2];
@@ -392,7 +407,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       onChange(nearest);
     }
     // Scrolling has started (or the page has gone on into the footer): the words go at once.
-    if (wordsFor !== null && (Math.abs(at - wordsFor) > 0.004 || window.scrollY > positionOf(count - 1) + 40)) {
+    const comingIn = arriving !== null && wordsFor === arriving;
+    if (wordsFor !== null && !comingIn && (Math.abs(at - wordsFor) > 0.004 || window.scrollY > positionOf(count - 1) + 40)) {
       hideWords();
     }
     settleSoon();
@@ -440,11 +456,21 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     move?.kill();
     gsap.killTweensOf(proxy);
     const timing = tween(token);
+    // The words fade in during the move, from about half-way: they never wait for it to end, and never hold it up.
+    arriving = target;
+    wordsCall = gsap.delayedCall(timing.duration * LANDING_WORDS_AT, () => {
+      wordsCall = null;
+      if (alive && isReady && arriving === target && window.scrollY <= lastY() + 40) {
+        showWords(target);
+      }
+    });
     const landed = () => {
       if (!moving) {
         return;
       }
+      // Input counts again the moment the frames are there, whatever the words are doing.
       moving = false;
+      arriving = null;
       move = null;
       if (moveTimer !== null) {
         clearTimeout(moveTimer);
@@ -473,6 +499,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   // ---- The hand: while a gesture lasts, the frames follow it (no more than one case ahead or back), gliding just
   // behind it; when it is let go they finish the move, or ease back, and settle.
   const startGesture = () => {
+    arriving = null;
     proxy.at = position();
     const base = Math.round(proxy.at);
     hideWords();
@@ -768,6 +795,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       }
       alive = false;
       idleTimer?.kill();
+      wordsCall?.kill();
       textTimelines.forEach(tl => tl.kill());
       splits.forEach(split => split.revert());
       splits.clear();

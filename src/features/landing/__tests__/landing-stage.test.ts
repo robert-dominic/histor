@@ -214,8 +214,13 @@ describe('the landing stage: smooth scrolling', () => {
     const timeline = stage!.timeline()!;
     timeline.time(1);
     expect(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))).toBeCloseTo(0, 3);
-    timeline.time(0.01);
-    expect(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))).toBeGreaterThan(FRAME_SWING - 0.5);
+    // Half-way it leans; at its peek it is straight, so the preview never rocks while the hand hesitates over it.
+    timeline.time(0.5);
+    expect(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))).toBeCloseTo(FRAME_SWING, 3);
+    for (const at of [0, 0.02, 0.05]) {
+      timeline.time(at);
+      expect(Math.abs(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))), String(at)).toBeLessThan(0.1);
+    }
   });
 
   test('the case nearest the scroll is the current one; a fast scroll passes several', () => {
@@ -355,16 +360,16 @@ describe('one case per gesture, the frames following the hand', () => {
     expect(place()).toBe(1);
   });
 
-  test('let go past about 25%: the frames finish the move to the next case, softly (about 1s, power3.out)', () => {
+  test('let go past about 25%: the frames finish the move to the next case, softly (about 0.6s, power3.out)', () => {
     make(4);
     stage!.ready();
     wheel(reach() * 0.3, 1000);
     settle();
     quiet();
     expect(stage!.gesturing()).toBe(false);
-    const finish = gsap.getTweensOf(gsap.globalTimeline.getChildren(false, true, false).map(child => (child as gsap.core.Tween).targets?.()[0]).find(Boolean)!).at(-1)!;
+    const finish = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.vars?.at !== undefined)!;
     expect(finish.vars).toMatchObject({ at: 1, ease: 'power3.out' });
-    expect(finish.duration()).toBe(1);
+    expect(finish.duration()).toBe(0.6);
     settle();
     expect(place()).toBe(1);
     expect(changes.at(-1)).toBe(1);
@@ -482,13 +487,13 @@ describe('one case per gesture, the frames following the hand', () => {
     expect(place()).toBe(1);
   });
 
-  test('arrows, Page keys and Space play the move (slower and softer: about 1.2s, power3.inOut); ignored while it moves', () => {
+  test('arrows, Page keys and Space play the move (about 0.6s, power3.inOut); ignored while it moves', () => {
     make(4);
     stage!.ready();
     press('ArrowDown');
     const move = gsap.globalTimeline.getChildren(false, true, false).at(-1) as gsap.core.Tween;
     expect(move.vars).toMatchObject({ at: 1, ease: 'power3.inOut' });
-    expect(move.duration()).toBe(1.2);
+    expect(move.duration()).toBe(0.6);
     press('ArrowDown');
     press('PageDown');
     settle();
@@ -574,7 +579,7 @@ describe('one case per gesture, the frames following the hand', () => {
     stage!.ready();
     press('ArrowDown');
     expect(stage!.moving()).toBe(true);
-    act(() => void vi.advanceTimersByTime(1200 + MOVE_GRACE_MS + 10));
+    act(() => void vi.advanceTimersByTime(600 + MOVE_GRACE_MS + 10));
     expect(stage!.moving()).toBe(false);
   });
 

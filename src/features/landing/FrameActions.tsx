@@ -51,7 +51,7 @@ export function OpenFrame({ exhibit, children }: { exhibit: Exhibit; children: R
       }}
       className={`block rounded-[2px] ${FOCUS}`}
     >
-      {children}
+      <span data-frame-part="tilt" className="block">{children}</span>
     </Link>
   );
 }
@@ -109,7 +109,7 @@ export function SealedFrame({ exhibit, children }: { exhibit: Exhibit; children:
         onClick={() => toggle(!open)}
         className={`block w-full cursor-pointer rounded-[2px] text-left lg:w-auto ${FOCUS}`}
       >
-        {children}
+        <span data-frame-part="tilt" className="block">{children}</span>
       </button>
       <Popover
         open={open}

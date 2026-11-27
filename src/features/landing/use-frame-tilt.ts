@@ -2,7 +2,7 @@
 // A frame on hover (landing v3 brief; landing fixes): it tilts around its centre toward the cursor (rotateX and rotateY
 // up to about 8°) under a deep perspective (about 1200px), lifts a little toward the viewer and shifts slightly toward
 // the cursor, and its shadow moves the opposite way; the glint follows the cursor across the gilt. Everything follows
-// the mouse through gsap.quickTo (about 0.6s, power3.out) and eases back to flat when the cursor leaves, with no spring
+// the mouse through gsap.quickTo (about 0.6s, power3.out) and eases back to flat when the cursor leaves (the same setters), with no spring
 // and no jitter: the cursor is measured against the frame's own untransformed box, never against the tilted frame. A
 // sealed case's veil stirs. Only with a mouse on a laptop, at full motion; transforms and opacity only.
 import { useEffect, type RefObject } from 'react';
@@ -29,7 +29,9 @@ export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
     if (!window.matchMedia(`${DESKTOP_QUERY} and ${MOTION_QUERIES.full} and (hover: hover) and (pointer: fine)`).matches) {
       return;
     }
-    const frame = element.querySelector<HTMLElement>('.haunted-frame');
+    // The tilt has its own inner wrapper (FrameActions.tsx), which nothing else ever animates: the stage moves the
+    // anchor, swings the rise, and an open case's click scales the frame itself, so none of them can undo the tilt.
+    const frame = element.querySelector<HTMLElement>('[data-frame-part="tilt"]') ?? element.querySelector<HTMLElement>('.haunted-frame');
     const glint = element.querySelector<HTMLElement>('[data-frame-part="glint"]');
     const veil = element.querySelector<HTMLElement>('[data-frame-part="veil"]');
     // The shadow is under the frame, in the same wrapper.
@@ -85,11 +87,18 @@ export function useFrameTilt(ref: RefObject<HTMLElement | null>): void {
       }
     };
     const leave = () => {
-      // Back to flat, easing out.
-      const release = tween('landing.tiltRelease');
-      gsap.to(frame, { rotationX: 0, rotationY: 0, x: 0, y: 0, z: 0, ...release, overwrite: 'auto', onComplete: () => void (frame.style.willChange = '') });
+      // Back to flat, through the same quickTo setters (a separate tween here would kill them, and the tilt would
+      // stop working until the page was reloaded: the tilt bug).
+      turnY(0);
+      turnX(0);
+      shiftX(0);
+      shiftY(0);
+      lift(0);
+      shadowX?.(0);
+      shadowY?.(0);
+      frame.style.willChange = '';
       if (shadow !== null) {
-        gsap.to(shadow, { x: 0, y: 0, ...release, overwrite: 'auto', onComplete: () => void (shadow.style.willChange = '') });
+        shadow.style.willChange = '';
       }
       if (glint !== null) {
         gsap.to(glint, { opacity: 0, ...tween('hover') });

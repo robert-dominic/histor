@@ -414,7 +414,9 @@ describe('hover and click (landing brief, 4)', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ matches: !query.includes('prefers-reduced-motion: reduce'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }));
     renderHome();
     const button = document.querySelector<HTMLButtonElement>('button[aria-label="D. B. Cooper: sealed"]')!;
-    const frame = button.querySelector<HTMLElement>('.haunted-frame')!;
+    // The tilt has its own inner wrapper, which nothing else animates.
+    const frame = button.querySelector<HTMLElement>('[data-frame-part="tilt"]')!;
+    expect(frame.querySelector('.haunted-frame')).not.toBeNull();
     const shadow = button.closest('[data-exhibit-part="rise"]')!.querySelector<HTMLElement>('.haunted-frame-shadow')!;
     const glint = button.querySelector<HTMLElement>('[data-frame-part="glint"]')!;
     // The cursor is measured against the box that does not move: the link around the frame, not the tilted frame.
@@ -447,14 +449,21 @@ describe('hover and click (landing brief, 4)', () => {
     act(() => {
       fireEvent.pointerLeave(button, { pointerType: 'mouse' });
     });
-    const back = gsap.getTweensOf(frame).find(tween => tween.vars.rotationX === 0)!;
-    expect(back.vars.ease).toBe('power3.out');
     act(() => {
-      back.progress(1);
+      gsap.getTweensOf(frame).forEach(tween => tween.progress(1));
     });
     expect(Number(gsap.getProperty(frame, 'rotationY'))).toBe(0);
     expect(Number(gsap.getProperty(frame, 'x'))).toBe(0);
     expect(Number(gsap.getProperty(frame, 'z'))).toBe(0);
+    // And it tilts again, every time (the setters are never killed by the way back).
+    act(() => {
+      fireEvent.pointerEnter(button, { pointerType: 'mouse' });
+      fireEvent.pointerMove(button, { pointerType: 'mouse', clientX: 0, clientY: 100 });
+    });
+    act(() => {
+      gsap.getTweensOf(frame).forEach(tween => tween.progress(1));
+    });
+    expect(Number(gsap.getProperty(frame, 'rotationY'))).toBeCloseTo(-FRAME_TILT, 0);
   });
 });
 
