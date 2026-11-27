@@ -1201,6 +1201,18 @@ describe('Story: the central question, one scroll for all of it (the fix list)',
 describe('Story: the autoplay bar', () => {
   const bar = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('[data-story="play-control"]')!;
 
+  test('on a phone (under 768px) the control is a small round play/pause icon at the side, its words and line hidden', () => {
+    const { container } = renderStory();
+    const control = bar(container);
+    for (const name of ['max-md:size-10', 'max-md:rounded-full', 'max-md:right-3', 'max-md:bottom-auto!', 'max-md:top-[calc(var(--case-header)+3.25rem)]']) {
+      expect(control.className, name).toContain(name);
+    }
+    expect(control.querySelector('[data-story="play-words"]')!.className).toContain('max-md:hidden');
+    expect(control.querySelector('[data-story="play-progress"]')!.parentElement!.className).toContain('max-md:hidden');
+    // Still a named button: its label says what it does.
+    expect(control.getAttribute('aria-label')).toMatch(/^(Play|Pause) the story$/);
+  });
+
   test('one control: a bar at the bottom centre, "▶ Playing — click or press Space to pause" while it plays', () => {
     const { container } = renderStory(testCase, PLAY);
     expect(container.querySelectorAll('[data-story-control][data-story="play-control"]')).toHaveLength(1);

@@ -4,6 +4,8 @@
 // Playing: "▶ Playing — click or press Space to pause". Paused: "❚❚ Paused — press Space to continue". A click on it,
 // or Space, plays and pauses (Space not while a modal or a text field has the focus, nor on another button, which
 // Space presses). It fades to faint after a few seconds without the mouse moving, and comes back as soon as it moves.
+// Under 768px it is a small round play/pause icon at the side of the screen (below the image's ⓘ), never over the
+// text: the words and the progress line are a laptop's.
 
 import { useEffect, useState } from 'react';
 import type { StoryPlayer } from '@/features/story/use-step-player';
@@ -74,16 +76,19 @@ export default function PlayBar({ player }: { player: StoryPlayer }) {
       aria-label={playing ? 'Pause the story' : 'Play the story'}
       aria-pressed={playing}
       onClick={toggle}
-      className="fixed bottom-[max(0.875rem,env(safe-area-inset-bottom))] left-1/2 z-30 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-sm border border-night-ink/25 bg-night/85 px-4 pt-2.5 pb-3 text-night-ink shadow-lg shadow-black/40 backdrop-blur-sm transition-[opacity,visibility,color,border-color] duration-500 ease-out hover:border-night-ink/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass data-[idle=true]:opacity-30 data-[idle=true]:hover:opacity-100 data-[visible=false]:invisible data-[visible=false]:opacity-0 sm:bottom-5"
+      // Phones (under 768px): a small round play/pause at the side, below the image's ⓘ, never over the text.
+      className="max-md:grid max-md:size-10 max-md:place-items-center max-md:rounded-full max-md:p-0! max-md:top-[calc(var(--case-header)+3.25rem)] max-md:right-3 max-md:bottom-auto! max-md:left-auto! max-md:translate-x-0! fixed bottom-[max(0.875rem,env(safe-area-inset-bottom))] left-1/2 z-30 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-sm border border-night-ink/25 bg-night/85 px-4 pt-2.5 pb-3 text-night-ink shadow-lg shadow-black/40 backdrop-blur-sm transition-[opacity,visibility,color,border-color] duration-500 ease-out hover:border-night-ink/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass data-[idle=true]:opacity-30 data-[idle=true]:hover:opacity-100 data-[visible=false]:invisible data-[visible=false]:opacity-0 sm:bottom-5"
     >
-      <span data-story="play-state" className="flex items-center gap-2.5 font-voice text-[0.75rem] tracking-[0.08em] whitespace-nowrap sm:text-[0.8125rem]">
+      <span data-story="play-state" className="flex items-center gap-2.5 max-md:gap-0 font-voice text-[0.75rem] tracking-[0.08em] whitespace-nowrap sm:text-[0.8125rem]">
         <span aria-hidden="true" className="w-3 text-center text-brass">
           {playing ? '▶' : '❚❚'}
         </span>
-        {playing ? 'Playing — click or press Space to pause' : 'Paused — press Space to continue'}
+        <span data-story="play-words" className="max-md:hidden">
+          {playing ? 'Playing — click or press Space to pause' : 'Paused — press Space to continue'}
+        </span>
       </span>
-      {/* The whole story's progress: a thin line along the bottom, moved by Story.tsx. */}
-      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] bg-night-ink/10">
+      {/* The whole story's progress: a thin line along the bottom, moved by Story.tsx (not on the phone's small button). */}
+      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[2px] bg-night-ink/10 max-md:hidden">
         <span data-story="play-progress" className="block h-full origin-left scale-x-0 bg-brass/80" />
       </span>
     </button>
