@@ -653,29 +653,49 @@ body::after {
    it is CSS on the piece itself, inside the tilt wrapper: the tilt and the move never touch it. Textures from
    src/landing/textures (credited on /credits). */
 .haunted-frame {
+  --frame-edge: 7px;
+  --frame-mount: clamp(12px, 3.2%, 20px);
   position: relative;
   isolation: isolate;
   rotate: var(--piece-tilt, 0deg);
+  /* From the outside in: a thin dark frame, like old blackened wood or iron (near-black brown, a faint inner
+     highlight, a soft shadow on the wall); a narrow mount of scorched paper; the picture. */
+  padding: calc(var(--frame-edge) + var(--frame-mount));
+  background: linear-gradient(160deg, #241b14, #120d09 55%, #1b140e);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 236 214 / 0.07),
+    inset 0 1px 0 var(--frame-edge) rgb(0 0 0 / 0.25),
+    0 10px 26px rgb(0 0 0 / 0.55),
+    0 2px 6px rgb(0 0 0 / 0.5);
 }
-/* The scorched backing: a burnt piece of paper behind the picture, a little larger than it. */
+/* The scorched mount: the whole burnt sheet drawn into a narrow band inside the frame, so its burnt edge shows. */
 .evidence-backing {
   position: absolute;
-  inset: -5% -4.5% -6.5% -4%;
+  inset: var(--frame-edge);
   z-index: 0;
   pointer-events: none;
-  background: url('../landing/textures/paper-burnt.webp') center / cover no-repeat;
-  rotate: var(--backing-tilt, 0deg);
-  filter: brightness(0.82) saturate(0.8);
+  background: url('../landing/textures/paper-burnt.webp') center / 100% 100% no-repeat, #2a1c12;
 }
-/* The picture: its own edges torn. */
+/* The picture: its own edges torn, subtly (the mask a little larger than the picture, so only its tips bite in), and
+   never stretched: portrait pictures use the torn edge as it is, square ones in its own proportions, landscape ones a
+   quarter-turned copy. */
 .haunted-frame__opening {
   position: relative;
   z-index: 1;
   height: 100%;
   overflow: hidden;
   background: #0b0907;
-  -webkit-mask: url('../landing/textures/torn-edge.svg') center / 100% 100% no-repeat;
-  mask: url('../landing/textures/torn-edge.svg') center / 100% 100% no-repeat;
+  -webkit-mask: url('../landing/textures/torn-edge.svg') center / 104% 104% no-repeat;
+  mask: url('../landing/textures/torn-edge.svg') center / 104% 104% no-repeat;
+}
+.haunted-frame[data-frame='square'] .haunted-frame__opening {
+  /* Square: the portrait edge kept in its own proportions (wider than tall would stretch it). */
+  -webkit-mask-size: 104% auto;
+  mask-size: 104% auto;
+}
+.haunted-frame[data-frame='landscape'] .haunted-frame__opening {
+  -webkit-mask-image: url('../landing/textures/torn-edge-landscape.svg');
+  mask-image: url('../landing/textures/torn-edge-landscape.svg');
 }
 /* The picture comes first: full opacity and full contrast, only a very light sepia; the ageing is noticed second. */
 .haunted-frame__opening > img,

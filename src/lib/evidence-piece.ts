@@ -14,8 +14,6 @@ export interface TapeStrip {
 export interface Piece {
   /** The piece's tilt, between -2° and 2°. */
   tilt: number;
-  /** The scorched backing's own small tilt against the picture. */
-  backingTilt: number;
   /** One or two strips of tape, at slightly different angles. */
   tapes: TapeStrip[];
   /** A tear across one corner, or none. */
@@ -44,5 +42,5 @@ export function pieceOf(id: string): Piece {
   // Some pieces (not all) are torn across a corner, never the one a sealed tape crosses (top right).
   const torn = unit('torn') < 0.55;
   const tear = torn ? (['tl', 'bl', 'br'] as const)[Math.floor(unit('corner') * 3) % 3] : null;
-  return { tilt, backingTilt: Math.round((unit('backing') * 2.4 - 1.2) * 100) / 100, tapes, tear };
+  return { tilt, tapes, tear };
 }

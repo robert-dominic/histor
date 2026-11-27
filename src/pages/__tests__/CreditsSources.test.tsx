@@ -118,7 +118,7 @@ describe('the textures (dreadful frames)', () => {
     for (const name of ['paper-old.webp', 'paper-burnt.webp', 'tear-line.webp', 'frame-torn.webp']) {
       expect(statSync(resolve(dir, name)).size, name).toBeLessThanOrEqual(200 * 1024);
     }
-    for (const name of ['torn-edge.svg', 'tape.svg']) {
+    for (const name of ['torn-edge.svg', 'torn-edge-landscape.svg', 'tape.svg']) {
       expect(existsSync(resolve(dir, name)), name).toBe(true);
     }
     for (const original of ['paper-old.jpg', 'paper-burnt.png', 'tear-line.png', 'frame-torn.png']) {

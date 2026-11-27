@@ -4,7 +4,7 @@
 // at most `long` px on the long side and under 200 KB each (the quality, then the size, lowered until they fit); the
 // SVGs as they are. The originals are never committed. Prints each file's size before and after. Needs ffmpeg.
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,5 +68,17 @@ for (const { from: name, to: out, long } of PICTURES) {
 for (const name of SVGS) {
   copyFileSync(join(from, name), join(to, name));
   console.log(`  ${name}: copied (${kb(statSync(join(to, name)).size)})`);
+}
+// The torn edge turned a quarter, for landscape pictures (the original is portrait, 270 by 360), so it is never
+// stretched across a wide picture.
+const torn = readFileSync(join(from, 'torn-edge.svg'), 'utf8');
+const open = torn.match(/<svg[^>]*>/);
+if (open !== null) {
+  const inner = torn.slice(open.index + open[0].length, torn.lastIndexOf('</svg>'));
+  writeFileSync(
+    join(to, 'torn-edge-landscape.svg'),
+    `<?xml version='1.0' encoding='utf-8'?>\n<!-- torn-edge.svg turned a quarter, for landscape pictures (scripts/landing-textures.mjs). -->\n<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 270"><g transform="translate(360 0) rotate(90)">${inner}</g></svg>\n`
+  );
+  console.log('  torn-edge-landscape.svg: written');
 }
 process.exit(failed === 0 ? 0 : 1);

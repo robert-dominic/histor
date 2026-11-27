@@ -1,6 +1,6 @@
 // src/features/landing/Frame.tsx
-// A case's frame on the landing page (dreadful frames): not art but evidence. The picture sits on a piece of scorched
-// paper a little larger than itself, its own edges torn, aged by old paper laid over it, held to the wall by one or two
+// A case's frame on the landing page (dreadful frames): not art but evidence. From the outside in: a thin dark frame,
+// a narrow scorched-paper mount, then the picture, its edges subtly torn, faintly aged; held to the wall by one or two
 // strips of tape, sometimes torn across a corner, and a little crooked (between -2° and 2°). A sealed case has a strip
 // of rust tape across its top right corner with "SEALED" printed on it in the case file's typewriter face. The choices are made per
 // case from its id, so they never change between visits (`pieceOf`, src/lib/evidence-piece.ts). Everything is CSS on this element (effects.css), which sits inside the tilt
@@ -24,7 +24,6 @@ export default function Frame({ exhibit, className = '' }: FrameProps) {
     '--frame-h': shape.height,
     '--frame-h-phone': shape.phone,
     '--piece-tilt': `${piece.tilt}deg`,
-    '--backing-tilt': `${piece.backingTilt}deg`,
   } as CSSProperties;
   const image = exhibit.frameImage;
   return (

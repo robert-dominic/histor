@@ -326,6 +326,12 @@ describe('one section per case (landing brief, 3)', () => {
     for (const grade of grades) {
       expect(grade).toMatch(/^sepia\(0\.(0\d|1)\)$/);
     }
+    // A thin dark frame, then a narrow scorched mount, then the picture.
+    expect(css).toMatch(/\.haunted-frame \{[^}]*--frame-edge: [678]px;[^}]*--frame-mount: clamp\(12px, [\d.]+%, 20px\);/);
+    expect(css).toMatch(/\.evidence-backing \{[^}]*inset: var\(--frame-edge\);/);
+    // The torn edge is never stretched across a wide picture: landscape pictures have their own, square ones keep its shape.
+    expect(css).toMatch(/\[data-frame='landscape'\] \.haunted-frame__opening \{[^}]*mask-image: url\('\.\.\/landing\/textures\/torn-edge-landscape\.svg'\)/);
+    expect(css).toMatch(/\[data-frame='square'\] \.haunted-frame__opening \{[^}]*mask-size: 104% auto;/);
     // frame-torn is kept for later, not used.
     expect(css).not.toContain('frame-torn');
   });
