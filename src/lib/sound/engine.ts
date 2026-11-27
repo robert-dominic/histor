@@ -239,8 +239,22 @@ export class SoundEngine {
     this.changed();
   }
 
-  /** The tab is hidden (or shown again): everything fades out (or back in). */
-  setHidden(hidden: boolean): void {
+  /** A loading state is on screen (src/lib/loading.ts): nothing is heard until it has gone. */
+  private held = false;
+
+  /** Holds every sound silent while a loader is on screen, and lets it be heard again once it has gone. */
+  setHeld(held: boolean): void {
+    this.held = held;
+    this.setHidden(this.tabHidden);
+  }
+
+  /** The tab itself is hidden. */
+  private tabHidden = false;
+
+  /** The tab is hidden (or shown again): everything fades out (or back in). Held while loading, it stays silent. */
+  setHidden(tabHidden: boolean): void {
+    this.tabHidden = tabHidden;
+    const hidden = tabHidden || this.held;
     this.hidden = hidden;
     const ctx = this.ctx;
     if (ctx === null || this.graph === null) {

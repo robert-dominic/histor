@@ -14,6 +14,7 @@ import { finishLegendIntro } from '@/test/legend-intro';
 import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
 import { sound } from '@/lib/sound';
+import { beginLoading, resetLoading } from '@/lib/loading';
 
 // Keep the real validator, but let single tests replace its result.
 vi.mock('@/lib/validate-case', async importOriginal => {
@@ -146,6 +147,18 @@ describe('Case page: open case', () => {
     expect(scrollTo).toHaveBeenCalledWith(0, 0);
     expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('while a loader shows, nothing runs: no legend intro, no play choice, no story; they start once it has gone', () => {
+    // A loader somewhere on the page (the desk's, say) holds everything.
+    const end = beginLoading();
+    renderCasePage(`/case/${openEntry.id}`);
+    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
+    act(() => end());
+    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    resetLoading();
   });
 
   test('a fresh visit (storage cleared): the legend intro first, then the play modal after it', () => {

@@ -5,6 +5,7 @@
 // (`[data-eye-zone]`), never over text or a control, and only where it fits. It fades in out of the dark, looks to one
 // side, and fades away. A barely audible breath comes with it (the `eye` event). Under reduced motion it never appears.
 // A one-second timer counts activity; nothing runs between appearances.
+import { isLoading } from '@/lib/loading';
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import Face from '@/features/dread/Face';
@@ -48,7 +49,7 @@ export default function EyeWatcher() {
     const inputs = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
     inputs.forEach(type => window.addEventListener(type, input, { passive: true }));
     const tick = setInterval(() => {
-      if (document.visibilityState === 'hidden' || performance.now() - lastInput > EYE.activeWithin * 1000) {
+      if (document.visibilityState === 'hidden' || isLoading() || performance.now() - lastInput > EYE.activeWithin * 1000) {
         return;
       }
       active += 1;

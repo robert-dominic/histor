@@ -8,6 +8,8 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader, { type StoryStartState } from '@/components/CaseHeader';
 import Preloader from '@/features/dread/Preloader';
+import { useLoading } from '@/lib/loading';
+import { loadersEnabled } from '@/lib/preloader';
 import { getCaseById } from '@/cases';
 import LegendIntro from '@/features/legend/LegendIntro';
 import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
@@ -73,7 +75,11 @@ export default function Case() {
   const storyStart = (useLocation().state as Partial<StoryStartState> | null)?.storyStart;
   // The story is only there to scroll to once the intro has made its point, or was seen on an earlier visit. The intro
   // is shown once ever (the fix list): seen before, it is not there at all and the story is the first screen.
-  const showStory = caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
+  // Nothing runs behind a loader (src/lib/loading.ts): the legend intro, the play choice and the story wait for it.
+  // The page's own loader (below) says when it has gone; until then nothing starts.
+  const [loaded, setLoaded] = useState(() => !loadersEnabled());
+  const loading = useLoading() || !loaded;
+  const showStory = !loading && caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
 
   // The legend intro is always the first screen, on every visit and from every path (sound-files brief, 1). The bug
   // was that the play modal came first: a reload kept the title link's state (which brought the story up at once)
@@ -179,11 +185,11 @@ export default function Case() {
         />
       )}
       {/* "Opening the case…", only if the fonts and the first images take longer than about 400ms (landing v2 brief, 5). */}
-      <Preloader label="Opening the case…" showAfterMs={400} images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
+      <Preloader label="Opening the case…" showAfterMs={400} onDone={() => setLoaded(true)} images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
         {/* The legend intro is shown once ever (histor:intro-seen); after that the story starts at chapter 1. */}
-        {!introSeenBefore && (
+        {!introSeenBefore && !loading && (
         <LegendIntro
           key={`${caseData.id}:${storyStart ?? 0}`}
           legendIntro={caseData.legendIntro}

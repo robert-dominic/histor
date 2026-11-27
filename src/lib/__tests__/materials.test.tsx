@@ -2,13 +2,15 @@
 // src/lib/__tests__/materials.test.tsx
 // Materials (dread pass, 1): a seeded torn edge and marks per file, the case's materials validated and written to the
 // page, and the preloader shown once per page load, gone within about three seconds.
+import gsap from 'gsap';
 import { act, cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MaterialsScope from '@/app/MaterialsScope';
 import maryCeleste from '@/cases/mary-celeste/case';
 import Preloader from '@/features/dread/Preloader';
 import { DECKLES, deckleOf, paperMarks } from '@/lib/materials';
-import { PRELOAD_MAX_MS, forgetPreloader } from '@/lib/preloader';
+import { PRELOAD_MAX_MS, forgetPreloader, setLoadersEnabled } from '@/lib/preloader';
+import { isLoading, resetLoading } from '@/lib/loading';
 import { validateCase } from '@/lib/validate-case';
 import { stubMatchMedia } from '@/test/match-media';
 import type { Case } from '@/types/case';
@@ -48,6 +50,12 @@ describe('the case\'s materials', () => {
 });
 
 describe('the loading screens (landing v2 brief, 5)', () => {
+  beforeEach(() => setLoadersEnabled(true));
+  afterEach(() => {
+    setLoadersEnabled(false);
+    resetLoading();
+  });
+
   test('the desk\'s "Recovering the files…": once per page load, never taking a click, gone within about three seconds', () => {
     stubMatchMedia();
     forgetPreloader();
@@ -67,6 +75,37 @@ describe('the loading screens (landing v2 brief, 5)', () => {
     // Not again on this page load.
     const again = render(<Preloader label="Recovering the files…" once images={[]} />);
     expect(again.container.querySelector('[data-preloader]')).toBeNull();
+  });
+
+  test('a loader holds the loading state from the moment it is mounted until it has fully gone', async () => {
+    stubMatchMedia();
+    forgetPreloader();
+    resetLoading();
+    vi.useFakeTimers();
+    // Quick: held only until everything is in, then let go with no loader at all.
+    const quick = render(<Preloader label="Opening the case…" showAfterMs={400} images={[]} />);
+    expect(isLoading()).toBe(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(isLoading()).toBe(false);
+    quick.unmount();
+    // Slow: held through the grace, while it shows, and until it has faded away.
+    vi.stubGlobal('Image', class { onload: (() => void) | null = null; onerror: (() => void) | null = null; set src(_value: string) {} });
+    const slow = render(<Preloader label="Opening the case…" showAfterMs={400} images={['/slow.webp']} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(410);
+    });
+    expect(slow.container.querySelector('[data-preloader]')).not.toBeNull();
+    expect(isLoading()).toBe(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PRELOAD_MAX_MS + 100);
+      gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1));
+    });
+    expect(slow.container.querySelector('[data-preloader]')).toBeNull();
+    expect(isLoading()).toBe(false);
+    slow.unmount();
+    vi.unstubAllGlobals();
   });
 
   test('the story\'s "Opening the case…" only shows if loading takes longer than about 400ms', async () => {

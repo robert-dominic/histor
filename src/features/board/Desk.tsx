@@ -39,6 +39,7 @@ import { loadFloorPositions, saveFloorPositions } from '@/lib/floor-positions';
 import { emitStoryEvent } from '@/lib/story-events';
 import { isDeskGuideOff } from '@/lib/desk-guide-seen';
 import Preloader from '@/features/dread/Preloader';
+import { useLoading } from '@/lib/loading';
 import GhostLines from '@/features/dread/GhostLines';
 import LegendTwitch from '@/features/dread/LegendTwitch';
 
@@ -115,6 +116,8 @@ function DeskScreen() {
   // unless they asked for it not to open by itself.
   const [guideOnArrival] = useState(() => !isDeskGuideOff(caseData.id));
   const [guideShown, setGuideShown] = useState(false);
+  // Nothing runs behind the loader (src/lib/loading.ts): the guide, the ghost lines and the twitches wait for it.
+  const loading = useLoading();
   // An open file is shown over the desk (the child route); the desk underneath cannot be reached meanwhile.
   const openId = useParams().evidenceId;
   const fileOpen = openId !== undefined;
@@ -488,7 +491,7 @@ function DeskScreen() {
                       onDrop={handleFloorDrop}
                     />
                     {/* The files breathe out lines of their own text, now and then (dread pass, 3). */}
-                    <GhostLines evidence={caseData.evidence} paused={fileOpen} />
+                    <GhostLines evidence={caseData.evidence} paused={fileOpen || loading} />
                   </div>
                 </div>
                 <SetAsideTray layout={layout} filesHref={`${base}/files`} slips={slips} fitted />
@@ -524,7 +527,7 @@ function DeskScreen() {
         )}
         <Lamp />
         {/* The lamp dips when a Legend stamp lands; opened legends twitch now and then (dread pass, 5). */}
-        <LegendTwitch />
+        {!loading && <LegendTwitch />}
         {/* The desk's own dark places for the face (dread pass, 4): its bottom corners, tall enough for it. */}
         {desktop && (
           <>
@@ -533,7 +536,7 @@ function DeskScreen() {
           </>
         )}
       </main>
-      {!fileOpen && (
+      {!fileOpen && !loading && (
         <DeskGuide
           caseId={caseData.id}
           startOpen={guideOnArrival && !guideShown}

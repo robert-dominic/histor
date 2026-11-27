@@ -23,3 +23,8 @@ if (typeof HTMLElement !== 'undefined') {
     },
   });
 }
+
+// No loader holds a page in tests (a loader waits for fonts and pictures jsdom never has). A test of the loaders
+// themselves turns them back on (`setLoadersEnabled(true)`).
+import { setLoadersEnabled } from '@/lib/preloader';
+setLoadersEnabled(false);

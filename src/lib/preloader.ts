@@ -17,3 +17,15 @@ export function takePreloader(): boolean {
 export function forgetPreloader(): void {
   shownThisLoad = false;
 }
+
+let enabled = true;
+
+/** Whether a loader may show at all: in a browser that can say what the visitor prefers, and not switched off. */
+export function loadersEnabled(): boolean {
+  return enabled && typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+}
+
+/** For tests: loaders on or off (src/test/setup.ts turns them off; a test of the loaders turns them back on). */
+export function setLoadersEnabled(on: boolean): void {
+  enabled = on;
+}

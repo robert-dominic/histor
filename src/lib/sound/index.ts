@@ -5,6 +5,7 @@
 // The playlist player (music.ts) and the case's playlists are kept in the repo, unused. Started once by the app
 // (startSound). Nothing sounds before the first gesture; everything fades out while the tab is hidden.
 
+import { isLoading, onLoadingChange } from '@/lib/loading';
 import { useSyncExternalStore } from 'react';
 import { SoundEngine, type Channel } from '@/lib/sound/engine';
 import { Narrator } from '@/lib/sound/narration';
@@ -145,6 +146,10 @@ export function startSound(engine: SoundEngine = sound): () => void {
   if (already !== null && already.place !== 'away') {
     place(already);
   }
+  // While a loader is on screen nothing is heard, and no moment plays a sound (src/lib/loading.ts).
+  const held = () => engine.setHeld(isLoading());
+  held();
+  const stopHeld = onLoadingChange(held);
   const stop = onStoryEvent(event => {
     if (event.type === 'place') {
       place(event);
@@ -152,7 +157,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
     }
     // The loops keep up with the moments even before the sound starts, so they are right once it does.
     loops.hear(event);
-    if (!engine.running || silenced) {
+    if (!engine.running || silenced || isLoading()) {
       return;
     }
     const row = soundFor(event, memory);
@@ -167,6 +172,7 @@ export function startSound(engine: SoundEngine = sound): () => void {
     document.removeEventListener('visibilitychange', visibility);
     document.removeEventListener('click', press, true);
     stop();
+    stopHeld();
     stopStart();
     loops.kill();
   };

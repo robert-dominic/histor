@@ -8,7 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
-import { PRELOAD_MAX_MS, takePreloader } from '@/lib/preloader';
+import { PRELOAD_MAX_MS, loadersEnabled, takePreloader } from '@/lib/preloader';
+import { beginLoading } from '@/lib/loading';
 import { typeElement } from '@/lib/typewriter';
 import HistorMark from '@/components/HistorMark';
 
@@ -33,6 +34,8 @@ interface PreloaderProps {
   once?: boolean;
   /** Show nothing unless loading takes longer than this many ms (the story's). 0 shows it at once. */
   showAfterMs?: number;
+  /** It has fully gone (or was never needed): whatever waits for it may start. */
+  onDone?: () => void;
 }
 
 /** What the loading screen waits for: the fonts, then each image. */
@@ -40,30 +43,54 @@ function waitsFor(images: string[]): Promise<unknown>[] {
   return [document.fonts?.ready ?? Promise.resolve(), ...images.map(imageReady)];
 }
 
-export default function Preloader({ images, label, once = false, showAfterMs = 0 }: PreloaderProps) {
-  const [allowed] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && (!once || takePreloader()));
+export default function Preloader({ images, label, once = false, showAfterMs = 0, onDone }: PreloaderProps) {
+  const [allowed] = useState(() => loadersEnabled() && (!once || takePreloader()));
   const [imageList] = useState(images);
   /** Past the grace period and still loading: the screen may show. */
   const [armed, setArmed] = useState(showAfterMs <= 0);
+  /** It has gone (or was never needed): whatever waits for it may run. */
+  const [done, setDone] = useState(!allowed);
+  // While it is here (waiting to see whether it is needed, or on screen), nothing else runs (src/lib/loading.ts).
   useEffect(() => {
-    if (!allowed || armed) {
+    if (done) {
+      return;
+    }
+    return beginLoading();
+  }, [done]);
+  const doneRef = useRef(onDone);
+  useEffect(() => {
+    doneRef.current = onDone;
+  }, [onDone]);
+  useEffect(() => {
+    if (done) {
+      doneRef.current?.();
+    }
+  }, [done]);
+  const armedRef = useRef(armed);
+  useEffect(() => {
+    if (!allowed || armed || done) {
       return;
     }
     let settled = false;
     void Promise.allSettled(waitsFor(imageList)).then(() => {
       settled = true;
+      // Everything was in before the grace was up: no loader at all.
+      if (!armedRef.current) {
+        setDone(true);
+      }
     });
     const timer = window.setTimeout(() => {
       if (!settled) {
+        armedRef.current = true;
         setArmed(true);
       }
     }, showAfterMs);
     return () => window.clearTimeout(timer);
-  }, [allowed, armed, imageList, showAfterMs]);
-  return allowed && armed ? <LoaderScreen images={imageList} label={label} /> : null;
+  }, [allowed, armed, done, imageList, showAfterMs]);
+  return allowed && armed && !done ? <LoaderScreen images={imageList} label={label} onGone={() => setDone(true)} /> : null;
 }
 
-function LoaderScreen({ images: imageList, label }: { images: string[]; label: string }) {
+function LoaderScreen({ images: imageList, label, onGone }: { images: string[]; label: string; onGone: () => void }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const show = true;
   const [gone, setGone] = useState(false);
@@ -96,7 +123,10 @@ function LoaderScreen({ images: imageList, label }: { images: string[]; label: s
         }
         finished = true;
         gsap.to(bar, { scaleX: 1, ...tween('dread.progress'), overwrite: true });
-        gsap.to(root, { opacity: 0, ...tween('scene'), delay: tween('dread.progress').duration, onComplete: () => setGone(true) });
+        gsap.to(root, { opacity: 0, ...tween('scene'), delay: tween('dread.progress').duration, onComplete: () => {
+          setGone(true);
+          onGone();
+        } });
       };
       const cap = setTimeout(finish, PRELOAD_MAX_MS);
       void Promise.allSettled(waits).then(() => {
