@@ -88,7 +88,7 @@ describe('the footer: big and typographic (landing v2 brief, 4)', () => {
     expect(footer.querySelector('[data-footer="copyright"]')!.textContent).toBe('© 2026 Histor');
     expect(footer.querySelector('[data-footer="byline"]')!.textContent).toBe('Designed and built by Robert');
     expect(screen.getByRole('link', { name: 'Robert' }).getAttribute('href')).toBe(DESIGNER_URL);
-    expect(DESIGNER_URL).toBe('https://histor-vestigia.vercel.app/');
+    expect(DESIGNER_URL).toBe('https://devzohar.vercel.app');
   });
 
   test('links have a drawn underline on hover (a transform), the letters rise one by one (a fade under reduced motion)', () => {
