@@ -392,6 +392,28 @@ describe('one section per case (landing brief, 3)', () => {
     expect(button.getAttribute('aria-expanded')).toBe('true');
   });
 
+  test('the decoration never moves on its own: the move touches only each frame\'s outer anchor, the tilt only its inner wrapper, and nothing animates the paper, the tape or the tear', () => {
+    vi.unstubAllGlobals();
+    stubMedia({ desktop: true });
+    renderHome();
+    act(() => {
+      fireEvent.click(screen.getAllByRole('button', { name: /^Go to/, hidden: true })[1]);
+    });
+    const decoration = [...document.querySelectorAll('[data-frame-part="backing"], [data-frame-part="stain"], [data-frame-part="tape"], [data-frame-part="tear"], [data-frame-part="sealed-tape"], .haunted-frame, .haunted-frame__opening')];
+    expect(decoration.length).toBeGreaterThan(20);
+    expect(gsap.getTweensOf(decoration)).toHaveLength(0);
+    // The move (a timeline) animates anchors, never a tilt wrapper (the tilt's own setters are not part of it).
+    const moving = (gsap.globalTimeline.getChildren(false, false, true) as gsap.core.Timeline[])
+      .flatMap(timeline => timeline.getChildren(true, true, false))
+      .flatMap(child => ((child as gsap.core.Tween).targets?.() ?? []) as Element[]);
+    expect(moving.some(target => target instanceof Element && target.matches('[data-exhibit-part="anchor"]'))).toBe(true);
+    expect(moving.some(target => target instanceof Element && target.matches('[data-frame-part="tilt"]'))).toBe(false);
+    // The pieces are drawn by CSS and markup: Frame.tsx and its piece plan animate nothing.
+    for (const file of ['../../features/landing/Frame.tsx', '../../lib/evidence-piece.ts']) {
+      expect(readFileSync(resolve(__dirname, file), 'utf8'), file).not.toMatch(/from 'gsap'|gsap\./);
+    }
+  });
+
   test('no gilt anywhere in the frames\' styles: no bright, saturated gold', () => {
     const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
     const frames = css.slice(css.indexOf("/* ---- The landing page's frames"), css.indexOf('/* The scroll cue'));
