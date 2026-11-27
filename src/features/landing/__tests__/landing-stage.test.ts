@@ -188,10 +188,18 @@ describe('one committed move, with these numbers', () => {
     }
     expect(gsap.getTweensOf(sections.map(section => section.querySelector('[data-frame-part="tilt"]')!))).toHaveLength(0);
     expect(gsap.getTweensOf(sections.map(section => part(sections.indexOf(section), 'rise')))).toHaveLength(0);
-    // A jump while a move runs ends that one first: no frame has more than one tween moving it.
+    // A rewind while a move runs ends that one first; on its path no frame is ever moved by two tweens at once (its
+    // legs follow one another).
     stage!.go(3);
     for (const index of [0, 1, 2, 3]) {
-      expect(gsap.getTweensOf(part(index, 'anchor')).filter(tween => tween.duration() > 0).length, String(index)).toBeLessThanOrEqual(1);
+      const legs = gsap
+        .getTweensOf(part(index, 'anchor'))
+        .filter(tween => tween.duration() > 0)
+        .map(tween => [tween.startTime(), tween.endTime()] as const)
+        .sort((x, y) => x[0] - y[0]);
+      for (let i = 1; i < legs.length; i += 1) {
+        expect(legs[i][0], String(index)).toBeGreaterThanOrEqual(legs[i - 1][1] - 1e-9);
+      }
     }
   });
 
@@ -496,28 +504,51 @@ describe('slower moves on a touch screen', () => {
   });
 });
 
-describe('a smooth long jump', () => {
-  test('more than one case away: the frame in hand and its words fade out (0.3s), the cases between are never animated, then the normal arrival (0.55s, expo.out)', () => {
-    make(6);
+describe('the rewind (the wordmark, the rail, Home and End, more than one case away)', () => {
+  /** The rewind's own path: the timeline the move eases through once. */
+  const pathOf = () => (stage!.timeline()!.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.targets()[0] instanceof gsap.core.Timeline)!;
+
+  test('one continuous motion through every case between, about 0.45s a case, power2.inOut over the whole; each frame is seen passing', () => {
+    make(6, 4);
+    stage!.ready();
+    stage!.go(1);
+    const rewind = pathOf();
+    expect(rewind.duration()).toBeCloseTo(3 * 0.45, 5);
+    expect(rewind.vars.ease).toBe('power2.inOut');
+    const path = rewind.targets()[0] as gsap.core.Timeline;
+    // Every case between is on the path: each frame passes through the centre.
+    for (const index of [3, 2]) {
+      expect(path.getChildren(true, true, false).some(child => (child as gsap.core.Tween).targets().includes(part(index, 'anchor'))), String(index)).toBe(true);
+    }
+    // Half-way, the middle case is on its way through the centre.
+    act(() => void stage!.timeline()!.time(rewind.duration() / 2));
+    expect(sections[3].style.visibility === 'visible' || sections[2].style.visibility === 'visible').toBe(true);
+    finish();
+    expect(changes).toEqual([1]);
+    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'visible', 'visible', 'hidden', 'hidden', 'hidden']);
+    expect(Number(gsap.getProperty(part(1, 'anchor'), 'scale'))).toBe(1);
+  });
+
+  test('capped at 2.4s in all, however many cases', () => {
+    make(10, 9);
+    stage!.ready();
+    stage!.go(0);
+    expect(pathOf().duration()).toBe(2.4);
+  });
+
+  test('the words are hidden during the rewind and come in on arrival; input counts again then', () => {
+    make(6, 4);
     stage!.ready();
     act(() => void gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1)));
-    stage!.go(4);
-    const tl = stage!.timeline()!;
-    const fade = tweenOn(part(0, 'anchor'));
-    expect([fade.startTime(), fade.duration(), fade.vars.opacity, fade.vars.ease]).toEqual([0, 0.3, 0, 'power2.in']);
-    expect(tweenOn(part(0, 'words')).duration()).toBe(0.3);
-    // The cases between: no tweens at all.
-    for (const index of [2, 3]) {
-      expect(gsap.getTweensOf(part(index, 'anchor')), String(index)).toHaveLength(0);
-    }
-    const arrive = (tl.getChildren(true, true, false) as gsap.core.Tween[]).find(child => child.targets().includes(part(4, 'anchor')) && child.duration() > 0)!;
-    expect([arrive.startTime(), arrive.duration(), arrive.vars.ease]).toEqual([0.3, 0.55, 'expo.out']);
-    expect(arrive.vars).toMatchObject({ x: 0, y: 0, scale: 1 });
-    const words = tweenOn(part(4, 'words'));
-    expect(words.startTime()).toBeCloseTo(0.3 + 0.25, 5);
-    finish();
-    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'hidden', 'hidden', 'hidden', 'visible', 'visible']);
-    expect(changes).toEqual([4]);
+    stage!.go(0);
+    const seconds = pathOf().duration();
+    expect(tweenOn(part(4, 'words')).duration()).toBe(0.15);
+    const words = tweenOn(part(0, 'words'));
+    expect(words.startTime()).toBeCloseTo(seconds, 5);
+    act(() => void stage!.timeline()!.time(seconds - 0.05));
+    expect(stage!.moving()).toBe(true);
+    act(() => void stage!.timeline()!.time(seconds + 0.05));
+    expect(stage!.moving()).toBe(false);
   });
 
   test('one case away: the normal move', () => {
@@ -527,19 +558,17 @@ describe('a smooth long jump', () => {
     expect(tweenOn(part(0, 'anchor')).vars).toMatchObject({ scale: 1.3, ease: 'power2.in' });
   });
 
-  test('from the footer: first the page scrolls up to the stage (about 1.2s, power3.inOut), then the jump', () => {
+  test('from the footer: the page scroll up and the rewind run together, the same length and ease, one smooth motion', () => {
     make(6, 5);
     stage!.ready();
     setY(800);
-    stage!.go(1);
+    stage!.go(0);
     const [y, options] = vi.mocked(smoothScroll.scrollToY).mock.calls.at(-1)!;
-    expect(y).toBe(500);
-    expect(options).toMatchObject({ duration: 1.2, ease: 'power3.inOut' });
-    expect(changes).toEqual([]);
-    setY(500);
-    act(() => options!.onComplete!());
-    expect(changes).toEqual([1]);
-    expect(tweenOn(part(5, 'anchor')).duration()).toBe(0.3);
+    expect(y).toBe(0);
+    expect(options).toMatchObject({ ease: 'power2.inOut', duration: 2.25 });
+    // The rewind has started at once, with the same length: not after the scroll.
+    expect(changes).toEqual([0]);
+    expect(pathOf().duration()).toBeCloseTo(2.25, 5);
   });
 });
 

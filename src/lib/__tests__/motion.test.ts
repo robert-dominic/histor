@@ -45,7 +45,7 @@ const NAMES: TokenName[] = [
   'landing.arrive',
   'landing.textOut',
   'landing.textIn',
-  'landing.jumpOut',
+  'landing.rewind',
   'landing.return',
 ];
 

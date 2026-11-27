@@ -50,7 +50,7 @@ export type TokenName =
   | 'landing.arrive'
   | 'landing.textOut'
   | 'landing.textIn'
-  | 'landing.jumpOut'
+  | 'landing.rewind'
   | 'landing.return';
 
 export interface MotionToken {
@@ -150,8 +150,8 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.textOut': { ease: 'power1.out', duration: 0.15 },
   /** The new headline and subline fading in with a small rise, from 0.25s to 0.6s into the move. */
   'landing.textIn': { ease: 'power2.out', duration: 0.35 },
-  /** A long jump (more than one case away): the frame in hand and its words fade out before the target arrives. */
-  'landing.jumpOut': { ease: 'power2.in', duration: 0.3 },
+  /** A rewind across several cases (the wordmark, the rail, Home, End): about this long a case, eased once over the whole. */
+  'landing.rewind': { ease: 'power2.inOut', duration: 0.45 },
   /** From the footer back up to the stage, before a jump: the page itself scrolls (Lenis). */
   'landing.return': { ease: 'power3.inOut', duration: 1.2 },
 };
@@ -223,4 +223,10 @@ export const LANDING_MOVE = { wordsAt: 0.25, titleFrom: 0.35, titleTo: 0.75, unl
  * must also go further (`swipeMin`, px) before it counts. Desktop timing is `LANDING_MOVE`'s.
  */
 export const LANDING_TOUCH = { arrive: 0.9, leave: 0.6, swipeMin: 40 } as const;
+
+/** The longest a rewind across the cases takes, however many it passes, in seconds. */
+export const LANDING_REWIND_MAX = 2.4;
+
+/** A rewind's path is built one unit of time per case, played straight, then eased once over the whole. */
+export const REWIND_LEG = 1;
 

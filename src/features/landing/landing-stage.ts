@@ -24,7 +24,7 @@
 // any case.
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
-import { INK_RISE, LANDING_MOVE, LANDING_TOUCH, MOTION, STEP, tween, type TokenName } from '@/lib/motion';
+import { INK_RISE, LANDING_MOVE, LANDING_REWIND_MAX, LANDING_TOUCH, LINEAR, MOTION, REWIND_LEG, STEP, tween, type TokenName } from '@/lib/motion';
 import { getLenis, jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
 import { STORY_PACE } from '@/lib/story-pages';
 
@@ -330,17 +330,27 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       step(next);
     }
   };
-  const lock = () => {
+  const lock = (seconds = moment('unlockAt')) => {
     moving = true;
     if (moveTimer !== null) {
       clearTimeout(moveTimer);
     }
     // Counted as landed after its own time in any case, so a move that is cut short never locks the page.
-    moveTimer = setTimeout(unlock, moment('unlockAt') * 1000 + MOVE_GRACE_MS);
+    moveTimer = setTimeout(unlock, seconds * 1000 + MOVE_GRACE_MS);
   };
   const moveTo = (index: number) => {
     const to = Math.min(Math.max(index, 0), count - 1);
     // From the footer, the frames are already on the last case: only the page comes back up.
+    if (window.scrollY > lastY() + 1 && to !== current) {
+      // From the footer to another case: the page scrolls up and the frames rewind together, one smooth motion
+      // (the same length and ease for both).
+      inFooter = false;
+      queued = 0;
+      const seconds = Math.abs(to - current) > 1 ? rewindSeconds(current, to) : moment('unlockAt');
+      scrollToY(positionOf(to), { ease: tween('landing.rewind').ease, duration: seconds });
+      from(current, to);
+      return;
+    }
     if (window.scrollY > lastY() + 1) {
       // From the footer: first the page scrolls up to the stage (Lenis, about 1.2s), then the move, if it goes on.
       // One clean scroll that lands on the last case and stays there: nothing queued before, during or after it.
@@ -384,10 +394,10 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     if (A === null || B === null) {
       return;
     }
-    lock();
+    lock(Math.abs(b - a) > 1 ? rewindSeconds(a, b) : moment('unlockAt'));
     window.dispatchEvent(new CustomEvent(LANDING_MOVE_EVENT, { detail: { from: a, to: b } }));
     if (Math.abs(b - a) > 1) {
-      jump(a, b);
+      rewind(a, b);
       return;
     }
     const forward = b > a;
@@ -462,70 +472,78 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     tl.call(unlock, undefined, moment('unlockAt'));
   }
 
+  /** How long a rewind across from `a` to `b` takes: about 0.45s a case, at most 2.4s. */
+  const rewindSeconds = (a: number, b: number) => Math.min(Math.abs(b - a) * tween('landing.rewind').duration, LANDING_REWIND_MAX);
+
   /**
-   * A long jump (more than one case away: the wordmark, the rail, Home, End): the frame in hand, its preview and its
-   * words fade out (0.3s); then the cases between are skipped, never animated, and the target arrives as usual
-   * (0.55s, expo.out), its preview rising into the corner and its words coming in on the move's own timing.
+   * A rewind (more than one case away: the wordmark, the rail, Home, End): one continuous motion through every case
+   * between, each frame seen passing, about 0.45s a case and at most 2.4s in all, power2.inOut over the whole. Each
+   * case's step is the same path as a normal move, played straight; the whole is eased once. The words are hidden
+   * meanwhile and come in on arrival, on the move's own timing.
    */
-  function jump(a: number, b: number) {
-    const out = tween('landing.jumpOut');
+  function rewind(a: number, b: number) {
+    const dir = b > a ? 1 : -1;
+    const seconds = rewindSeconds(a, b);
     current = b;
     onChange(b);
     markCurrent(b);
     if (window.scrollY <= lastY() + 1) {
       jumpToY(positionOf(b));
     }
+    // Every frame the path touches is set going by it alone.
+    parts.forEach(p => p !== null && gsap.killTweensOf(p.anchor));
+    // The path: one unit of time per case, played straight.
+    const path = gsap.timeline({ paused: true });
+    const at = (i: number) => parts[i]?.anchor;
+    const visible = (i: number, time: number, on: boolean) => {
+      const p = parts[i];
+      if (p != null) {
+        path.set(p.section, { visibility: on ? 'visible' : 'hidden' }, time);
+      }
+    };
+    const leg = (i: number, from: Pose, fromOpacity: number, to: Pose, toOpacity: number, time: number) => {
+      const anchor = at(i);
+      if (anchor != null) {
+        path.fromTo(anchor, { ...from, opacity: fromOpacity }, { ...to, opacity: toOpacity, ease: LINEAR, duration: REWIND_LEG, immediateRender: false }, time);
+      }
+    };
+    for (let k = 0, c = a; c !== b; k += 1, c += dir) {
+      const n = c + dir;
+      if (dir === 1) {
+        visible(n + 1, k, true);
+        leg(c, rest, 1, away, 0, k);
+        leg(n, peeks[n] ?? rest, 1, rest, 1, k);
+        if (n + 1 < count) {
+          leg(n + 1, belows[n + 1] ?? rest, 0, peeks[n + 1] ?? rest, 1, k);
+        }
+        visible(c, (k + 1) * REWIND_LEG, false);
+      } else {
+        visible(n, k, true);
+        leg(c, rest, 1, peeks[c] ?? rest, 1, k);
+        leg(n, away, 0, rest, 1, k);
+        if (c + 1 < count) {
+          leg(c + 1, peeks[c + 1] ?? rest, 1, belows[c + 1] ?? rest, 0, k);
+          visible(c + 1, (k + 1) * REWIND_LEG, false);
+        }
+      }
+    }
     const tl = gsap.timeline({
       onComplete: () => {
         if (move === tl) {
           move = null;
         }
+        path.kill();
         settleOn(b);
       },
     });
     move = tl;
     const old = wordsFor;
     wordsFor = null;
-    if (old !== null) {
-      revertSplit(old);
-      const p = parts[old];
-      const words = p === null ? [] : [p.words, p.title].filter((element): element is HTMLElement => element !== null);
-      gsap.killTweensOf(words);
-      tl.to(words, { opacity: 0, ...out, overwrite: 'auto' }, 0);
-    }
-    const leaving = [a, a + 1].map(i => parts[i]?.anchor).filter((anchor): anchor is HTMLElement => anchor != null);
-    gsap.killTweensOf(leaving);
-    tl.to(leaving, { opacity: 0, ...out, overwrite: 'auto' }, 0);
-    // The cases between are skipped: everything is set straight to where the target's arrival starts.
-    const B = parts[b];
-    const next = b + 1 < count ? parts[b + 1] : null;
-    const start = b > a ? (peeks[b] ?? rest) : away;
-    tl.call(
-      () => {
-        parts.forEach((p, i) => {
-          if (p !== null && i !== b && i !== b + 1) {
-            gsap.set(p.section, { visibility: 'hidden' });
-          }
-        });
-        if (B !== null) {
-          gsap.set(B.section, { visibility: 'visible', zIndex: 2 });
-        }
-        if (next != null) {
-          gsap.set(next.section, { visibility: 'visible', zIndex: 1 });
-        }
-      },
-      undefined,
-      out.duration
-    );
-    const arrive = tween('landing.arrive');
-    if (B !== null) {
-      tl.set(B.anchor, { ...start, opacity: b > a ? 1 : 0 }, out.duration).to(B.anchor, { ...rest, opacity: 1, ...arrive, overwrite: 'auto' }, out.duration);
-    }
-    if (next != null) {
-      tl.set(next.anchor, { ...(belows[b + 1] ?? rest), opacity: 0 }, out.duration).to(next.anchor, { ...(peeks[b + 1] ?? rest), opacity: 1, ...arrive, overwrite: 'auto' }, out.duration);
-    }
-    wordsIn(b, tl, out.duration);
-    tl.call(unlock, undefined, out.duration + LANDING_MOVE.unlockAt);
+    wordsOut(old, tl);
+    tl.to(path, { progress: 1, ease: tween('landing.rewind').ease, duration: seconds }, 0);
+    // The words come in on arrival, as after a move.
+    wordsIn(b, tl, seconds - moment('wordsAt'));
+    tl.call(unlock, undefined, seconds);
   }
 
   // ---- The first state.
