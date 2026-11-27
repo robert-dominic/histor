@@ -168,12 +168,17 @@ describe('the sound controls', () => {
 });
 
 describe('the Histor mark in the header (quick fixes, 4)', () => {
-  test('beside the case title, inside its link, hidden from screen readers', () => {
+  test('beside the case title, its own link back to the landing page, on this case\'s frame; the title goes to the case\'s start', () => {
     render(<MemoryRouter><CaseHeader caseId="test-case" title="Test Case" years="1900" /></MemoryRouter>);
-    const link = document.querySelector('[data-case-header="title-link"]')!;
-    const mark = link.querySelector('[data-histor-mark]')!;
+    const home = document.querySelector<HTMLAnchorElement>('[data-case-header="home"]')!;
+    expect(home.getAttribute('href')).toBe('/#test-case');
+    expect(home.getAttribute('aria-label')).toBe('Histor, back to the archive');
+    const mark = home.querySelector('[data-histor-mark]')!;
     expect(mark.getAttribute('aria-hidden')).toBe('true');
-    expect(mark.nextElementSibling?.getAttribute('data-case-header')).toBe('title');
+    const link = document.querySelector('[data-case-header="title-link"]')!;
+    expect(link.getAttribute('href')).toBe('/case/test-case');
     expect(link.textContent).toBe('Test Case');
+    // The page's heading is the case's title alone.
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Test Case');
   });
 });

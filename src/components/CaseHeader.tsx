@@ -106,28 +106,39 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
       style={startHidden ? { opacity: 0 } : undefined}
       className="fixed inset-x-0 top-0 z-30 flex h-[var(--case-header)] items-center justify-between gap-4 border-b border-night-ink/10 bg-night px-4 lg:px-6"
     >
-      <h1 className="flex min-w-0 font-legend text-[1.1875rem] leading-none text-night-ink lg:text-[1.625rem]">
+      <div className="flex min-w-0 items-center gap-2 font-legend text-[1.1875rem] leading-none text-night-ink lg:gap-2.5 lg:text-[1.625rem]">
+        {/* The Histor mark (cream, quick fixes 4) goes back to the landing page, to this case's own frame; the title, to
+            the start of the case. */}
         <Link
-          to={storyHref}
-          onClick={event => {
-            // A plain click: a fresh token, so the page goes to the story's start even when it is already there.
-            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-              return;
-            }
-            event.preventDefault();
-            navigate(storyHref, { state: { storyStart: Date.now() } satisfies StoryStartState });
-          }}
-          data-case-header="title-link"
-          title="Back to the start of the story"
-          className="flex min-w-0 items-center gap-2 rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass lg:gap-2.5"
+          to={`/#${caseId}`}
+          aria-label="Histor, back to the archive"
+          title="Back to the archive"
+          data-case-header="home"
+          className="shrink-0 rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass"
         >
-          {/* The Histor mark, cream, beside the case's title (quick fixes, 4). */}
-          <HistorMark className="h-[0.95em] w-auto shrink-0" />
-          <span data-case-header="title" className="inline-block min-w-0 truncate">
-            {title}
-          </span>
+          <HistorMark className="block h-[0.95em] w-auto" />
         </Link>
-      </h1>
+        <h1 className="flex min-w-0">
+          <Link
+            to={storyHref}
+            onClick={event => {
+              // A plain click: a fresh token, so the page goes to the story's start even when it is already there.
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+              }
+              event.preventDefault();
+              navigate(storyHref, { state: { storyStart: Date.now() } satisfies StoryStartState });
+            }}
+            data-case-header="title-link"
+            title="Back to the start of the story"
+            className="flex min-w-0 items-center rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass"
+          >
+            <span data-case-header="title" className="inline-block min-w-0 truncate">
+              {title}
+            </span>
+          </Link>
+        </h1>
+      </div>
       <div className="relative flex shrink-0 items-center gap-3 lg:gap-4">
         {/* Sound after a reload (the fix list): placed, not laid out, so nothing moves as it comes and goes. Under the
             speaker on a phone and a tablet; to the left of the years on a laptop, in the header's own line. */}
