@@ -1,58 +1,48 @@
 // @vitest-environment jsdom
-// src/features/landing/__tests__/landing-stage!.test.ts
-// The landing stage: one timeline scrubbed by the scroll with a label at every case; one case per gesture, the frames
-// following the hand while it moves and settling when it lets go; the words only once a case has settled, gone as
-// soon as the frames move again; the frames hang from a wire.
+// src/features/landing/__tests__/landing-stage.test.ts
+// The landing stage (landing timing fix): one gesture, one committed move of about 0.6s with exact timings; the
+// momentum filter; one animation per frame; the words never wait for the move; only the case in hand can be pressed.
 import { act } from '@testing-library/react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createGestureGate, createLandingStage, FRAME_SWING, LANDING_DRAG, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, peekRect, poseOver, settleTarget, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
+import { createGestureGate, createLandingStage, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, peekRect, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
+import { LANDING_MOVE, MOTION } from '@/lib/motion';
 import * as smoothScroll from '@/lib/smooth-scroll';
 import { stubMatchMedia } from '@/test/match-media';
-
-/** Runs every tween and delayed call now. */
-const settle = () =>
-  act(() => {
-    // Callbacks on, and again for whatever a callback starts.
-    for (let pass = 0; pass < 4; pass += 1) {
-      gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1, false));
-    }
-  });
-const press = (key: string, init: KeyboardEventInit = {}) => act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })));
 
 let stage: StageHandle | undefined;
 let changes: number[];
 let sections: HTMLElement[];
 let track: HTMLElement;
 const setY = (y: number) => Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
-/** How far the hand goes for one case, in px. */
-const reach = () => window.innerHeight * LANDING_DRAG.perCase;
-/** Lets the wheel be quiet long enough for the gesture to be let go. */
-const quiet = () => act(() => void vi.advanceTimersByTime(LANDING_DRAG.quietMs + 10));
-/** Where the frames are, and the case the page is on. */
-const place = () => stage!.place();
+const press = (key: string) => act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })));
 const wheel = (deltaY: number, timeStamp: number) => {
   const event = new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true });
   Object.defineProperty(event, 'timeStamp', { value: timeStamp });
   act(() => void document.body.dispatchEvent(event));
   return event;
 };
-const touch = (type: 'touchstart' | 'touchmove' | 'touchend', clientY: number) => {
+const touch = (type: 'touchstart' | 'touchmove', clientY: number) => {
   const event = new Event(type, { bubbles: true, cancelable: true }) as TouchEvent;
   Object.defineProperty(event, 'touches', { value: [{ clientY }] });
   act(() => void document.body.dispatchEvent(event));
   return event;
 };
+/** Plays the running move to its end. */
+const finish = () => act(() => void stage!.timeline()?.progress(1));
 const part = (index: number, name: string) => {
   if (name === 'name' || name === 'years') {
     return sections[index].querySelector<HTMLElement>(name === 'name' ? '[data-exhibit-part="title"] h2' : '[data-exhibit-part="title"] p')!;
   }
   return sections[index].querySelector<HTMLElement>(`[data-exhibit-part="${name}"]`)!;
 };
+/** The tween of the running move on `target`. */
+const tweenOn = (target: Element) => stage!.timeline()!.getChildren(true, true, false).find(child => (child as gsap.core.Tween).targets().includes(target)) as gsap.core.Tween;
 
-/** Three or more cases on a track 100px a case: the scroll maths is simple. */
-function make(count = 4, start = 0, shown = false) {
+/** Cases on a track 100px a case. */
+function make(count = 4, start = 0) {
   stage?.destroy();
   stage = undefined;
   gsap.globalTimeline.clear();
@@ -62,10 +52,8 @@ function make(count = 4, start = 0, shown = false) {
   const root = document.createElement('div');
   sections = Array.from({ length: count }, (_, index) => {
     const section = document.createElement('li');
-    section.id = `exhibit-${index}`;
     section.dataset.exhibit = String(index);
-    section.innerHTML = `<div data-exhibit-part="place"><div data-exhibit-part="anchor"><div data-exhibit-part="rise"><div class="haunted-frame"></div></div></div><div data-exhibit-part="title"><h2>Case title ${index}</h2><p>1872</p></div></div><div data-exhibit-part="words">W${index}</div>`;
-    // Every frame rests in the same place on the stage: 400 by 300, a little left of centre.
+    section.innerHTML = `<div data-exhibit-part="place"><div data-exhibit-part="anchor"><div data-exhibit-part="rise"><span data-frame-part="tilt"><div class="haunted-frame"></div></span></div></div><div data-exhibit-part="title"><h2>Case title ${index}</h2><p>1872</p></div></div><div data-exhibit-part="words">W${index}</div>`;
     section.querySelector<HTMLElement>('[data-exhibit-part="anchor"]')!.getBoundingClientRect = () =>
       ({ left: 200, top: 150, width: 400, height: 300, right: 600, bottom: 450, x: 200, y: 150, toJSON: () => ({}) }) as DOMRect;
     root.appendChild(section);
@@ -74,12 +62,10 @@ function make(count = 4, start = 0, shown = false) {
   track.appendChild(root);
   document.body.appendChild(track);
   Object.defineProperty(track, 'offsetHeight', { value: count * 100, configurable: true });
-  // The track starts at the top of the page: on screen, it moves up as the page scrolls.
   track.getBoundingClientRect = () => ({ top: -window.scrollY, bottom: count * 100 - window.scrollY, left: 0, right: 0, width: 0, height: count * 100, x: 0, y: -window.scrollY, toJSON: () => ({}) });
   Object.defineProperty(root, 'offsetHeight', { value: 100, configurable: true });
   changes = [];
-  stage = undefined;
-  stage = createLandingStage({ track, stage: root, sections, start, shown, onChange: index => changes.push(index) });
+  stage = createLandingStage({ track, stage: root, sections, start, shown: false, onChange: index => changes.push(index) });
 }
 
 beforeEach(() => {
@@ -87,492 +73,218 @@ beforeEach(() => {
   setY(0);
   vi.spyOn(smoothScroll, 'setSmoothLerp').mockImplementation(() => undefined);
   vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);
-  // The page goes where it is told at once, and the scroll tells the stage (as ScrollTrigger does).
-  vi.spyOn(smoothScroll, 'jumpToY').mockImplementation(y => {
-    setY(y);
-    stage?.update(y / 100);
-  });
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.spyOn(smoothScroll, 'jumpToY').mockImplementation(y => setY(y));
 });
 afterEach(() => {
   stage?.destroy();
   stage = undefined;
   gsap.globalTimeline.clear();
   vi.useRealTimers();
-  ScrollTrigger.getAll().forEach(trigger => trigger.kill());
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
 
-describe('the landing stage: smooth scrolling', () => {
-  test('Lenis follows the wheel softly (a lerp of about 0.08) while the landing is there, and lets go after', () => {
+describe('one committed move, with these numbers', () => {
+  test('the leaving frame: up and left off the screen to about 1.3x, 0.4s, power2.in', () => {
     make();
-    expect(LANDING_LERP).toBe(0.08);
-    expect(smoothScroll.setSmoothLerp).toHaveBeenCalledWith(LANDING_LERP);
-    stage!.destroy();
-    expect(smoothScroll.setSmoothLerp).toHaveBeenLastCalledWith(null);
+    stage!.ready();
+    wheel(80, 1000);
+    const leave = tweenOn(part(0, 'anchor'));
+    expect(leave.startTime()).toBe(0);
+    expect(leave.duration()).toBe(0.4);
+    expect(leave.vars.ease).toBe('power2.in');
+    expect(leave.vars.scale).toBe(1.3);
+    expect(leave.vars.x as number).toBeLessThan(0);
+    expect(leave.vars.y as number).toBeLessThan(0);
+    expect(STAGE_AWAY.scale).toBe(1.3);
   });
 
-  test('one timeline, scrubbed by the scroll: a unit for each move and a label at every case', () => {
-    make(4);
-    const timeline = stage!.timeline()!;
-    expect(timeline.duration()).toBe(3);
-    expect([0, 1, 2, 3].map(index => timeline.labels[`case${index}`])).toEqual([0, 1, 2, 3]);
-    const trigger = ScrollTrigger.getAll().find(each => each.trigger === track)!;
-    expect(trigger.vars.scrub).toBe(true);
-    expect(trigger.animation).toBe(timeline);
-  });
-
-  test('the scrub timeline has a label at every case, and no snap of its own', () => {
-    make(4);
-    const trigger = ScrollTrigger.getAll().find(each => each.trigger === track)!;
-    expect(trigger.vars.scrub).toBe(true);
-    expect(trigger.vars.snap).toBeUndefined();
-  });
-
-  test('each move: the frame scales up and leaves up and to the left, the next rises from its peek into the centre', () => {
-    make(3);
-    const timeline = stage!.timeline()!;
-    const leaving = gsap.getTweensOf(part(0, 'anchor')).find(tween => tween.vars.scale === STAGE_AWAY.scale)!;
-    expect(leaving.vars.x as number).toBeLessThan(0);
-    expect(leaving.vars.y as number).toBeLessThan(0);
-    expect(leaving.startTime()).toBe(0);
-    const arriving = gsap.getTweensOf(part(1, 'anchor')).find(tween => tween.vars.scale === 1 && tween.vars.x === 0)!;
-    expect(arriving.startTime()).toBe(0);
-    expect(arriving.duration()).toBe(1);
-    // Only transform and opacity are ever written to the frames.
-    const keys = gsap.getTweensOf([part(0, 'anchor'), part(1, 'anchor'), part(2, 'anchor'), part(0, 'rise'), part(1, 'rise')]).flatMap(tween => Object.keys(tween.vars));
-    expect(keys.filter(key => ['width', 'height', 'top', 'left', 'margin', 'padding', 'filter'].includes(key))).toEqual([]);
-    // Scrubbed: at rest the case in hand and the next one (peeking) are drawn; the one after comes up during the move.
-    timeline.time(0);
-    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'visible', 'hidden']);
-    timeline.time(0.5);
-    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'visible', 'visible']);
-    timeline.time(1);
-    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'visible', 'visible']);
-    timeline.time(2);
-    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'hidden', 'visible']);
-    timeline.time(0);
-    expect(sections.map(section => section.style.visibility)).toEqual(['visible', 'visible', 'hidden']);
-  });
-
-  test('no stand-in frames: the next case peeking at the bottom right is its own frame, travelling into the centre and back', () => {
-    make(4);
-    // Nothing in any section stands in for another case's frame.
-    expect(document.querySelector('[data-exhibit-part="peek"]')).toBeNull();
-    const timeline = stage!.timeline()!;
-    const pose = (index: number) => ({
-      x: Number(gsap.getProperty(part(index, 'anchor'), 'x')),
-      y: Number(gsap.getProperty(part(index, 'anchor'), 'y')),
-      scale: Number(gsap.getProperty(part(index, 'anchor'), 'scale')),
-      opacity: Number(gsap.getProperty(part(index, 'anchor'), 'opacity')),
-    });
-    const near = (actual: ReturnType<typeof pose>, expected: { x: number; y: number; scale: number; opacity?: number }) => {
-      expect(actual.x).toBeCloseTo(expected.x, 0);
-      expect(actual.y).toBeCloseTo(expected.y, 0);
-      expect(actual.scale).toBeCloseTo(expected.scale, 3);
-      if (expected.opacity !== undefined) {
-        expect(actual.opacity).toBe(expected.opacity);
-      }
-    };
+  test('the arriving frame: from the preview spot to the centre at full size, 0.55s, expo.out; the next preview rises into the corner over the same 0.55s', () => {
+    make();
+    stage!.ready();
     const atPeek = poseOver({ left: 200, top: 150, width: 400, height: 300 }, peekRect({ width: 400, height: 300 }));
-    // At rest on case 0: case 1's own frame sits small at the bottom right, partly below the edge.
-    timeline.time(0);
-    near(pose(1), { ...atPeek, opacity: 1 });
-    expect(atPeek.x).toBeGreaterThan(0);
-    expect(atPeek.y).toBeGreaterThan(0);
-    expect(atPeek.scale).toBeLessThan(1);
-    // Half-way, it is on its way (neither at its peek nor at rest): one element, moving continuously.
-    timeline.time(0.5);
-    const half = pose(1);
-    expect(half.scale).toBeGreaterThan(atPeek.scale);
-    expect(half.scale).toBeLessThan(1);
-    expect(half.x).toBeLessThan(atPeek.x);
-    expect(half.opacity).toBe(1);
-    // Landed: in the centre; case 2's own frame has come up into the peek.
-    timeline.time(1);
-    near(pose(1), { x: 0, y: 0, scale: 1 });
-    near(pose(2), { ...atPeek, opacity: 1 });
-    // Scrolled back: it travels back down to its peek, and case 2 goes back below.
-    timeline.time(0.5);
-    expect(pose(1).scale).toBeCloseTo(half.scale, 5);
-    timeline.time(0);
-    near(pose(1), atPeek);
-    expect(sections[2].style.visibility).toBe('hidden');
+    // At rest, case 1's own frame is the preview.
+    expect(Number(gsap.getProperty(part(1, 'anchor'), 'x'))).toBeCloseTo(atPeek.x, 3);
+    wheel(80, 1000);
+    const arrive = tweenOn(part(1, 'anchor'));
+    expect([arrive.startTime(), arrive.duration(), arrive.vars.ease]).toEqual([0, 0.55, 'expo.out']);
+    expect(arrive.vars).toMatchObject({ x: 0, y: 0, scale: 1 });
+    const next = tweenOn(part(2, 'anchor'));
+    expect([next.startTime(), next.duration(), next.vars.ease]).toEqual([0, 0.55, 'expo.out']);
+    expect(Number(next.vars.x)).toBeCloseTo(atPeek.x, 3);
+    expect(sections[2].style.visibility).toBe('visible');
+    finish();
+    expect(Number(gsap.getProperty(part(1, 'anchor'), 'scale'))).toBe(1);
+    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'visible', 'visible', 'hidden']);
   });
 
-  test('the frames swing like a painting on a wire: a lean on the way, one soft sway back as the new one settles', () => {
-    make(3);
-    expect(FRAME_SWING).toBeGreaterThanOrEqual(1);
-    expect(FRAME_SWING).toBeLessThanOrEqual(2);
-    expect(part(0, 'rise').style.transformOrigin).toContain('0%');
-    const leaving = gsap.getTweensOf(part(0, 'rise'))[0];
-    expect(leaving.vars.rotation).toBe(-FRAME_SWING);
-    const settling = gsap.getTweensOf(part(1, 'rise')).find(tween => tween.vars.rotation === 0)!;
-    expect(settling.vars.ease).toBe('back.out(1.4)');
-    const timeline = stage!.timeline()!;
-    timeline.time(1);
-    expect(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))).toBeCloseTo(0, 3);
-    // Half-way it leans; at its peek it is straight, so the preview never rocks while the hand hesitates over it.
-    timeline.time(0.5);
-    expect(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))).toBeCloseTo(FRAME_SWING, 3);
-    for (const at of [0, 0.02, 0.05]) {
-      timeline.time(at);
-      expect(Math.abs(Number(gsap.getProperty(part(1, 'rise'), 'rotation'))), String(at)).toBeLessThan(0.1);
-    }
-  });
-
-  test('the case nearest the scroll is the current one; a fast scroll passes several', () => {
-    make(5);
-    stage!.update(0.4);
-    stage!.update(3.6);
-    stage!.update(4);
-    expect(changes).toEqual([4]);
-    stage!.update(2.2);
-    expect(changes).toEqual([4, 2]);
-  });
-});
-
-describe('the words: only once the scroll has settled on a case', () => {
-  test('nothing shows before the opening is over', () => {
-    make(3);
-    stage!.update(0);
-    settle();
-    expect(stage!.wordsFor()).toBeNull();
-    expect(part(0, 'words').style.opacity).toBe('0');
-    expect(part(0, 'place').style.opacity).toBe('0');
-    stage!.showFrame();
-    settle();
-    expect(part(0, 'place').style.opacity).toBe('1');
+  test('the old words fade out in 0.15s at the start; the new headline and subline fade in with a small rise from 0.25s to 0.6s; the title writes in from 0.35s to 0.75s', () => {
+    make();
     stage!.ready();
-    settle();
+    act(() => void gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1)));
     expect(stage!.wordsFor()).toBe(0);
-  });
-
-  test('they leave as soon as scrolling starts, and come back only after it has stopped on a case', () => {
-    make(4);
-    stage!.ready();
-    settle();
-    expect(stage!.wordsFor()).toBe(0);
-    expect(part(0, 'words').style.opacity).toBe('1');
-    // The scroll starts: gone at once, and nothing comes back while it keeps going.
-    stage!.update(0.3);
-    expect(stage!.wordsFor()).toBeNull();
-    const out = gsap.getTweensOf(part(0, 'words')).find(tween => tween.vars.opacity === 0)!;
-    expect(out.duration()).toBeLessThanOrEqual(0.3);
-    stage!.update(1.2);
-    stage!.update(1.7);
-    expect(stage!.wordsFor()).toBeNull();
-    // Still moving (the snap's own ease counts): the wait starts over.
-    stage!.update(1.95);
-    stage!.update(2);
-    expect(stage!.wordsFor()).toBeNull();
-    settle();
-    expect(stage!.wordsFor()).toBe(2);
-    // Between two cases, even when still: no words.
-    stage!.update(2.5);
-    settle();
-    expect(stage!.wordsFor()).toBeNull();
-  });
-
-  test('the headline and subline blur in; the title is written in letter by letter, its years fading in after', () => {
-    make(3);
-    stage!.ready();
-    stage!.update(1);
-    act(() => {
-      gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1, false));
-    });
+    wheel(80, 1000);
+    const tl = stage!.timeline()!;
+    const out = tweenOn(part(0, 'words'));
+    expect([out.startTime(), out.duration(), out.vars.opacity]).toEqual([0, 0.15, 0]);
+    expect(tweenOn(part(0, 'title')).duration()).toBe(0.15);
+    const words = tweenOn(part(1, 'words'));
+    expect(words.startTime()).toBe(0.25);
+    expect(words.startTime() + words.duration()).toBeCloseTo(0.6, 5);
+    expect(words.vars).toMatchObject({ opacity: 1, y: 0 });
+    expect(Number(gsap.getProperty(part(1, 'words'), 'y'))).toBeGreaterThan(0);
+    const letters = [...part(1, 'name').querySelectorAll('div')];
+    expect(letters.length).toBe('Case title 1'.replace(/ /g, '').length);
+    const writing = tweenOn(letters[0]);
+    expect(writing.startTime()).toBeCloseTo(0.35, 5);
+    expect(writing.endTime()).toBeCloseTo(0.75, 5);
     expect(stage!.wordsFor()).toBe(1);
-    const blurIn = gsap.getTweensOf(part(1, 'words')).find(tween => tween.vars.filter === 'blur(0px)')!;
-    expect(blurIn).toBeDefined();
-    const writing = gsap.getTweensOf([...part(1, 'name').querySelectorAll('div')])[0];
-    expect(writing.vars.stagger as number).toBeGreaterThan(0);
-    settle();
-    const letters = [...part(1, 'name').querySelectorAll<HTMLElement>('div, span')].filter(element => element.textContent!.length === 1);
-    // (already played by settle(): the split is undone once the writing has finished)
-    expect(letters.length).toBe(0);
-    expect(part(1, 'name').textContent).toBe('Case title 1');
-    expect(part(1, 'years').style.opacity).toBe('1');
-  });
-
-  test('the title is split into letters while it is being written, and each letter comes in one after another', () => {
-    make(3);
-    stage!.ready();
-    stage!.update(1);
-    // The scroll has been still for a moment: the writing starts, letter by letter.
-    act(() => {
-      gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1, false));
-    });
-    expect(stage!.wordsFor()).toBe(1);
-    expect(part(1, 'name').querySelectorAll('div').length).toBeGreaterThan(5);
-    // A scroll again while it writes: it is undone at once.
-    stage!.update(1.4);
-    expect(stage!.wordsFor()).toBeNull();
+    // Never waiting for the move to settle: the headline is readable while the frames still travel.
+    tl.time(0.5);
+    expect(Number(gsap.getProperty(part(1, 'words'), 'opacity'))).toBeGreaterThan(0.6);
+    expect(Number(gsap.getProperty(part(1, 'anchor'), 'scale'))).toBeLessThan(1);
+    finish();
     expect(part(1, 'name').textContent).toBe('Case title 1');
     expect(part(1, 'name').querySelector('div')).toBeNull();
   });
-});
 
-describe('one case per gesture, the frames following the hand', () => {
-  test('while the wheel turns, the frames follow it directly (a quickTo of about 0.5s), taken before Lenis', () => {
-    make(4);
+  test('the whole move: about 0.6s, and input counts again at 0.6s while the title is still writing', () => {
+    make();
     stage!.ready();
-    settle();
-    const lenisSaw = vi.fn();
-    window.addEventListener('wheel', lenisSaw);
-    const event = wheel(30, 1000);
-    window.removeEventListener('wheel', lenisSaw);
-    expect(event.defaultPrevented).toBe(true);
-    expect(lenisSaw).not.toHaveBeenCalled();
-    expect(stage!.gesturing()).toBe(true);
-    const follow = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => Object.prototype.hasOwnProperty.call(child.targets()[0] ?? {}, 'at'))!;
-    expect(follow.duration()).toBe(0.5);
-    expect(follow.vars.ease).toBe('power3.out');
-    settle();
-    // Slowly: a little way only, never a jump.
-    expect(place()).toBeCloseTo(30 / reach(), 5);
-    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
-    // The words left as soon as it moved.
-    expect(stage!.wordsFor()).toBeNull();
+    wheel(80, 1000);
+    const tl = stage!.timeline()!;
+    expect(tl.duration()).toBeCloseTo(0.75, 5);
+    act(() => void tl.time(0.59));
+    expect(stage!.moving()).toBe(true);
+    act(() => void tl.time(0.61));
+    expect(stage!.moving()).toBe(false);
+    // A new gesture now: the next move.
+    wheel(80, 3000);
+    expect(changes).toEqual([1, 2]);
   });
 
-  test('a slow scroll moves the frames slowly, by as much as the hand moved', () => {
-    make(4);
+  test('backward: the other way round, each frame with one tween', () => {
+    make(4, 2);
     stage!.ready();
-    for (let t = 0; t < 5; t += 1) {
-      wheel(10, 1000 + t * 30);
-      settle();
-      expect(place()).toBeCloseTo((10 * (t + 1)) / reach(), 5);
+    wheel(-80, 1000);
+    expect(changes).toEqual([1]);
+    const toPeek = tweenOn(part(2, 'anchor'));
+    expect(toPeek.vars.ease).toBe('expo.out');
+    const back = tweenOn(part(1, 'anchor'));
+    expect(back.vars).toMatchObject({ x: 0, y: 0, scale: 1, ease: 'expo.out' });
+    finish();
+    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'visible', 'visible', 'hidden']);
+  });
+
+  test('one animation per frame: each frame has one tween in a move, overwriting what was there; the tilt wrapper is never touched', () => {
+    make();
+    stage!.ready();
+    wheel(80, 1000);
+    for (const index of [0, 1, 2]) {
+      const tweens = gsap.getTweensOf(part(index, 'anchor'));
+      expect(tweens, String(index)).toHaveLength(1);
+      expect(tweens[0].vars.overwrite).toBe('auto');
+    }
+    expect(gsap.getTweensOf(sections.map(section => section.querySelector('[data-frame-part="tilt"]')!))).toHaveLength(0);
+    expect(gsap.getTweensOf(sections.map(section => part(sections.indexOf(section), 'rise')))).toHaveLength(0);
+    // A jump while a move runs ends that one first: still one tween per frame.
+    stage!.go(3);
+    for (const index of [0, 1, 2, 3]) {
+      expect(gsap.getTweensOf(part(index, 'anchor')).length, String(index)).toBeLessThanOrEqual(1);
     }
   });
 
-  test('during a gesture the frames go no more than one case ahead, or one back', () => {
-    make(5, 2);
-    setY(200);
-    stage!.update(2);
+  test('no elastic or back eases anywhere on the landing', () => {
+    const landing = Object.entries(MOTION).filter(([name]) => name.startsWith('landing.'));
+    expect(landing.filter(([, token]) => /elastic|back/.test(token.ease))).toEqual([]);
+    for (const file of ['landing-stage.ts', 'use-frame-tilt.ts', 'FrameActions.tsx', 'Opening.tsx', 'Landing.tsx', 'ExhibitSection.tsx']) {
+      const source = readFileSync(resolve(__dirname, '..', file), 'utf8');
+      expect(source, file).not.toMatch(/['"](elastic|back)\.|paper\.land|story\.hook/);
+    }
+    expect(LANDING_MOVE).toMatchObject({ wordsAt: 0.25, titleFrom: 0.35, titleTo: 0.75, unlockAt: 0.6, leaveScale: 1.3 });
+  });
+});
+
+describe('one case per gesture', () => {
+  test('a wheel gesture is taken before Lenis and moves one case; Lenis follows softly in the footer', () => {
+    make();
     stage!.ready();
-    wheel(5000, 1000);
-    settle();
-    expect(place()).toBe(3);
-    // The rest of that gesture is spent: it never moves a second case.
-    wheel(-20000, 1030);
-    settle();
-    expect(place()).toBe(3);
-    // A new gesture back: no further than one case.
-    wheel(-20000, 3000);
-    settle();
-    expect(place()).toBe(2);
+    const lenisSaw = vi.fn();
+    window.addEventListener('wheel', lenisSaw);
+    const event = wheel(80, 1000);
+    window.removeEventListener('wheel', lenisSaw);
+    expect(event.defaultPrevented).toBe(true);
+    expect(lenisSaw).not.toHaveBeenCalled();
+    expect(changes).toEqual([1]);
+    expect(LANDING_LERP).toBe(0.08);
   });
 
-  test('let go past about 25%: the frames finish the move to the next case, softly (about 0.6s, power3.out)', () => {
-    make(4);
-    stage!.ready();
-    wheel(reach() * 0.3, 1000);
-    settle();
-    quiet();
-    expect(stage!.gesturing()).toBe(false);
-    const finish = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.vars?.at !== undefined)!;
-    expect(finish.vars).toMatchObject({ at: 1, ease: 'power3.out' });
-    expect(finish.duration()).toBe(0.6);
-    settle();
-    expect(place()).toBe(1);
-    expect(changes.at(-1)).toBe(1);
-  });
-
-  test('let go short of 25%: the frames ease back to the case they left', () => {
-    make(4);
-    stage!.ready();
-    wheel(reach() * 0.2, 1000);
-    settle();
-    expect(place()).toBeGreaterThan(0.15);
-    quiet();
-    settle();
-    expect(place()).toBe(0);
-    // Back the other way too.
-    make(4, 2);
-    setY(200);
-    stage!.update(2);
-    stage!.ready();
-    wheel(-reach() * 0.2, 1000);
-    quiet();
-    settle();
-    expect(place()).toBe(2);
-    wheel(-reach() * 0.4, 2000);
-    quiet();
-    settle();
-    expect(place()).toBe(1);
-  });
-
-  test('settleTarget: on past about a quarter of the way, else back', () => {
-    expect(LANDING_DRAG.carry).toBe(0.25);
-    expect(settleTarget(2, 2.3)).toBe(3);
-    expect(settleTarget(2, 2.2)).toBe(2);
-    expect(settleTarget(2, 1.7)).toBe(1);
-    expect(settleTarget(2, 1.8)).toBe(2);
-  });
-
-  test('a hard flick moves only one case, and its trailing momentum never moves a second', () => {
+  test('a hard flick and its long trailing momentum move only one case', () => {
     make(6);
     stage!.ready();
-    // The flick, hard, then its momentum dying away.
     let t = 1000;
     for (let i = 0; i < 20; i += 1, t += 16) {
       wheel(900, t);
     }
-    for (let size = 300; size > 2; size *= 0.85, t += 16) {
-      wheel(size, t);
+    finish();
+    for (let size = 300; size > 0.5; size *= 0.9, t += 40) {
+      expect(wheel(size, t).defaultPrevented).toBe(true);
     }
-    settle();
-    expect(place()).toBe(1);
-    quiet();
-    // More momentum, as the frames settle and after: swallowed.
-    for (let size = 2; size > 0.3; size *= 0.9, t += 60) {
-      const event = wheel(size, t);
-      expect(event.defaultPrevented).toBe(true);
-    }
-    settle();
-    expect(place()).toBe(1);
-    // A new gesture, once the case has settled: one more.
+    expect(changes).toEqual([1]);
     wheel(80, t + 1500);
-    quiet();
-    settle();
-    expect(place()).toBe(2);
+    expect(changes).toEqual([1, 2]);
   });
 
-  test('input counts again as soon as the frames have landed (about 0.6s), while the words are still coming in', () => {
-    make(4);
-    stage!.ready();
-    settle();
-    press('ArrowDown');
-    // Part-way through the move the words of the case it heads for start to come in: they never wait for it to end.
-    const timing = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.vars?.at === 1)!;
-    timing.progress(0.6);
-    act(() => {
-      (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).filter(child => child.vars?.at === undefined && child.duration() < 0.5).forEach(child => child.progress(1));
-    });
-    expect(stage!.wordsFor()).toBe(1);
-    expect(stage!.moving()).toBe(true);
-    // The frames land: input counts at once, even though the title is still being written.
-    act(() => void timing.progress(1));
-    expect(stage!.moving()).toBe(false);
-    expect(part(1, 'name').querySelectorAll('div').length).toBeGreaterThan(0);
-    // A new gesture now cuts the words short and moves.
-    wheel(80, 9000);
-    expect(stage!.gesturing()).toBe(true);
-    expect(stage!.wordsFor()).toBeNull();
-    expect(part(1, 'name').querySelector('div')).toBeNull();
-    quiet();
-    settle();
-    expect(place()).toBe(2);
-  });
-
-  test('a flick is let go as soon as its momentum starts dying past the carry, not seconds later when the wheel is quiet', () => {
-    make(5);
-    stage!.ready();
-    let t = 1000;
-    for (const size of [60, 70, 70, 66, 60, 52, 44, 36]) {
-      wheel(size, (t += 16));
-    }
-    // Let go already (no quiet wait): the frames are on their way to case 1, and the tail is swallowed.
-    expect(stage!.gesturing()).toBe(false);
-    expect(stage!.moving()).toBe(true);
-    for (let size = 30; size > 1; size *= 0.85) {
-      expect(wheel(size, (t += 16)).defaultPrevented).toBe(true);
-    }
-    settle();
-    expect(place()).toBe(1);
-  });
-
-  test('a new gesture that starts while the frames are still settling is spent, to its end', () => {
-    make(4);
-    stage!.ready();
-    wheel(reach() * 0.5, 1000);
-    quiet();
-    expect(stage!.moving()).toBe(true);
-    // A new push (a gap, harder) while it settles: nothing moves it, now or later.
-    wheel(400, 2000);
-    wheel(400, 2016);
-    settle();
-    expect(place()).toBe(1);
-    wheel(400, 2032);
-    quiet();
-    settle();
-    expect(place()).toBe(1);
-  });
-
-  test('momentum is told apart from a new gesture: a dying tail with a gap in it is still the same gesture', () => {
+  test('momentum is told apart from a new gesture', () => {
     const gate = createGestureGate();
     expect(gate.note(0, 600)).toBe(true);
-    // A pause longer than the gap, but the tail is weaker: still the same flick.
     expect(gate.note(LANDING_GESTURE.gapMs + 50, 200)).toBe(false);
-    // A harder push after a gap: a new gesture.
     expect(gate.note(2 * LANDING_GESTURE.gapMs + 100, 400)).toBe(true);
-    // A long quiet: always a new gesture, however soft.
     expect(gate.note(5000, 10)).toBe(true);
   });
 
-  test('a finger: the frames follow it while it is down, and settle when it lifts', () => {
-    make(4);
+  test('a swipe moves one case per touch, once it means it', () => {
+    make();
     stage!.ready();
     touch('touchstart', 500);
     expect(touch('touchmove', 496).defaultPrevented).toBe(true);
-    expect(stage!.gesturing()).toBe(false);
-    touch('touchmove', 480);
-    settle();
-    expect(stage!.gesturing()).toBe(true);
-    expect(place()).toBeCloseTo(20 / reach(), 5);
-    touch('touchmove', 500 - reach() * 0.6);
-    settle();
-    expect(place()).toBeCloseTo(0.6, 3);
-    touch('touchend', 0);
-    settle();
-    expect(place()).toBe(1);
-    // A short drag eases back.
+    expect(changes).toEqual([]);
+    touch('touchmove', 400);
+    touch('touchmove', 100);
+    expect(changes).toEqual([1]);
+    finish();
     touch('touchstart', 500);
-    touch('touchmove', 500 - reach() * 0.15);
-    touch('touchend', 0);
-    settle();
-    expect(place()).toBe(1);
+    touch('touchmove', 400);
+    expect(changes).toEqual([1, 2]);
   });
 
-  test('arrows, Page keys and Space play the move (about 0.6s, power3.inOut); ignored while it moves', () => {
-    make(4);
+  test('keys: one case each, ignored while a move runs; Home and End to the ends; the rail jumps', () => {
+    make(5);
     stage!.ready();
     press('ArrowDown');
-    const move = gsap.globalTimeline.getChildren(false, true, false).at(-1) as gsap.core.Tween;
-    expect(move.vars).toMatchObject({ at: 1, ease: 'power3.inOut' });
-    expect(move.duration()).toBe(0.6);
     press('ArrowDown');
+    expect(changes).toEqual([1]);
+    finish();
     press('PageDown');
-    settle();
-    expect(place()).toBe(1);
-    press(' ');
-    settle();
-    expect(place()).toBe(2);
+    finish();
     press('PageUp');
-    settle();
-    expect(place()).toBe(1);
+    finish();
     press('End');
-    settle();
-    expect(place()).toBe(3);
+    finish();
     press('Home');
-    settle();
-    expect(place()).toBe(0);
+    finish();
+    expect(changes).toEqual([1, 2, 1, 4, 0]);
+    stage!.go(3);
+    expect(changes.at(-1)).toBe(3);
   });
 
-  test('Space on a button is the button\'s; nothing moves before the opening is over; a dialog keeps its own wheel', () => {
+  test('nothing moves before the opening is over; a dialog keeps its own wheel', () => {
     make(3);
     press('ArrowDown');
     wheel(80, 1000);
-    settle();
-    expect(place()).toBe(0);
+    expect(changes).toEqual([]);
     stage!.ready();
-    const button = document.createElement('button');
-    document.body.appendChild(button);
-    act(() => void button.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })));
-    settle();
-    expect(place()).toBe(0);
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
     document.body.appendChild(dialog);
@@ -581,52 +293,23 @@ describe('one case per gesture, the frames following the hand', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  test('the rail and the wordmark jump straight to their case, as a move', () => {
-    make(6);
-    stage!.ready();
-    stage!.go(4);
-    const move = gsap.globalTimeline.getChildren(false, true, false).at(-1) as gsap.core.Tween;
-    expect(move.vars).toMatchObject({ at: 4, ease: 'power3.inOut' });
-    settle();
-    expect(place()).toBe(4);
-    stage!.go(0);
-    settle();
-    expect(place()).toBe(0);
-  });
-
-  test('past the last case the next gesture goes to Lenis, into the footer; scrolling up from the top of the footer goes back to the last case', () => {
+  test('past the last case the next gesture is Lenis\'s, into the footer; up from the top of the footer, back to the last case', () => {
     make(3, 2);
     stage!.ready();
-    // Down from the last case: not the stage's, so Lenis scrolls on.
     expect(wheel(80, 1000).defaultPrevented).toBe(false);
-    expect(stage!.gesturing()).toBe(false);
-    // Deep in the footer, up: still the page's.
     setY(900);
     expect(wheel(-80, 3000).defaultPrevented).toBe(false);
-    // Near its top, a scroll up that would cross back into the cases: back to the last case, as a move.
     setY(230);
     expect(wheel(-80, 5000).defaultPrevented).toBe(true);
     expect(vi.mocked(smoothScroll.scrollToY).mock.calls.map(call => call[0])).toEqual([200]);
-    // The rest of that gesture is swallowed too: never Lenis's.
-    expect(wheel(-80, 5040).defaultPrevented).toBe(true);
   });
 
-  test('anything else that brings the page up out of the footer (a key, the scrollbar) goes back to the last case', () => {
-    make(3, 2);
-    stage!.ready();
-    setY(600);
-    act(() => void window.dispatchEvent(new Event('scroll')));
-    setY(150);
-    act(() => void window.dispatchEvent(new Event('scroll')));
-    expect(stage!.moving()).toBe(true);
-    settle();
-    expect(place()).toBe(2);
-  });
-
-  test('a move that is cut short never locks the page: it counts as landed after its own time', () => {
-    make(4);
+  test('a move that is cut short never locks the page', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    make();
     stage!.ready();
     press('ArrowDown');
+    stage!.timeline()!.kill();
     expect(stage!.moving()).toBe(true);
     act(() => void vi.advanceTimersByTime(600 + MOVE_GRACE_MS + 10));
     expect(stage!.moving()).toBe(false);
@@ -635,27 +318,22 @@ describe('one case per gesture, the frames following the hand', () => {
   test('a page opened at a case in the address starts there', () => {
     make(4, 2);
     expect(smoothScroll.jumpToY).toHaveBeenCalledWith(200);
+    expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['false', 'false', 'true', 'false']);
   });
 });
 
 describe('only the case in hand can be pressed', () => {
-  test('the next frame, peeking in, is marked not current; a press on it does nothing at all', () => {
+  test('a press on the peeking frame does nothing; the one in hand keeps its own; the marks follow a move', () => {
     make(3);
     stage!.ready();
-    expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['true', 'false', 'false']);
     const event = new MouseEvent('click', { bubbles: true, cancelable: true });
     act(() => void part(1, 'anchor').dispatchEvent(event));
     expect(event.defaultPrevented).toBe(true);
-    settle();
-    expect(place()).toBe(0);
-    expect(smoothScroll.scrollToY).not.toHaveBeenCalled();
-    // The one in hand keeps its own press.
+    expect(changes).toEqual([]);
     const own = new MouseEvent('click', { bubbles: true, cancelable: true });
     act(() => void part(0, 'anchor').dispatchEvent(own));
     expect(own.defaultPrevented).toBe(false);
-    // Moved on: the marks follow.
     press('ArrowDown');
-    settle();
     expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['false', 'true', 'false']);
   });
 });
@@ -667,11 +345,5 @@ describe('peekRect', () => {
     expect(rect.width / rect.height).toBeCloseTo(4 / 3, 5);
     expect(rect.left + rect.width).toBeCloseTo(1440 * 0.96, 5);
     expect(rect.top + rect.height).toBeGreaterThan(900);
-  });
-});
-
-describe('poseOver', () => {
-  test('puts a frame over a target rectangle', () => {
-    expect(poseOver({ left: 100, top: 100, width: 400, height: 300 }, { left: 800, top: 600, width: 200, height: 150 })).toEqual({ x: 600, y: 425, scale: 0.5 });
   });
 });

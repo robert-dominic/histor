@@ -1,40 +1,40 @@
 // src/features/landing/landing-stage.ts
-// The landing page's stage (landing fixes brief; one case per gesture): on a laptop at full motion a tall track holds a
-// sticky full-screen stage, and one timeline, scrubbed by the scroll position, plays every transition: the current
-// frame scales up and leaves up and to the left while the next, peeking at the bottom right, rises and grows into the
-// centre. Each frame hangs from a wire: it leans a degree or two as it travels and the one coming in settles with one
-// soft sway back.
+// The landing page's stage (landing timing fix): a tall track (one screen of scroll per case, so the address, the rail
+// and the footer work as a page) holds a sticky full-screen stage. One gesture triggers one committed move to the next
+// or the previous case, played on its own timeline of about 0.6s; nothing follows the hand and nothing is scrubbed.
 //
-// One gesture moves exactly one case. A wheel or trackpad gesture, a swipe, or an arrow, Page or Space key press is
-// taken here (before Lenis sees it) and becomes one smooth Lenis scroll to the next or previous case (`landing.stage`).
-// While that move runs, input is ignored; a wheel gesture (a flick and all its trailing momentum, `LANDING_GESTURE`)
-// moves at most once, and a burst that meets a move still running is spent, so only a new
-// gesture that starts once the case has settled counts. However hard the flick, it is one case. Past the last case the
-// next gesture is let through to Lenis, and the page scrolls on into the footer as normal; scrolling up from the top
-// of the footer goes back to the last case in one move. The rail, Home, End and the header wordmark jump straight to
-// their case.
+// A move, forward (backward plays the same the other way):
+//   0      the old headline, subline and title fade out (0.15s);
+//   0-0.4  the leaving frame goes up and left off the screen, growing to about 1.3x (power2.in);
+//   0-0.55 the arriving frame travels from the preview spot to the centre at full size (expo.out, no overshoot), and
+//          the next case's frame rises from below into the preview spot over the same 0.55s;
+//   0.25-0.6  the new headline and subline fade in with a small rise; they never wait for the move to settle;
+//   0.35-0.75 the title beside the frame is written in, letter by letter, its years (or "Sealed") with it;
+//   0.6    input counts again.
+// Exactly one animation controls each frame at a time: a move kills (or finishes) the one before it, and every tween
+// on a frame overwrites what was there. The move animates each frame's outer anchor only; the hover tilt has its own
+// inner wrapper (FrameActions.tsx), so the two never touch the same element. No elastic or back eases.
 //
-// Text only when the scroll has settled on a case: the headline, subline and title leave as soon as a move starts and
-// come back only once it has landed: the headline and subline blur in, the title is written in letter by letter, its
-// years fading in after.
+// Input: one wheel or trackpad gesture (a flick and all its trailing momentum, `LANDING_GESTURE`), one swipe, or one
+// arrow, Page or Space key press is one move; a gesture that meets a move still running is spent to its end. Past the
+// last case the next gesture is Lenis's and the page scrolls into the footer; scrolling up from the top of the footer
+// brings the page back to the last case. The rail, Home, End and the header wordmark jump straight to their case.
 //
-// Everything animated is `transform` and `opacity`; the blur is on text blocks only. Pure DOM and GSAP: it reads the
-// section markup of ExhibitSection.tsx (`data-exhibit-part`) and knows nothing about any case.
+// Pure DOM and GSAP: it reads the section markup of ExhibitSection.tsx (`data-exhibit-part`) and knows nothing about
+// any case.
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
-import { LANDING_BLUR, LANDING_SETTLE, SCRUB, STEP, tween } from '@/lib/motion';
+import { INK_RISE, LANDING_MOVE, STEP, tween } from '@/lib/motion';
 import { getLenis, jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
 import { STORY_PACE } from '@/lib/story-pages';
 
-// ScrollTrigger is registered when a stage is made: it needs window.matchMedia as soon as it is registered.
 gsap.registerPlugin(SplitText);
 
-/** How softly the page follows the wheel on the landing page (Lenis's lerp). */
+/** How softly the page follows the wheel on the landing page (Lenis's lerp), in the footer. */
 export const LANDING_LERP = 0.08;
 
 /** How far a leaving frame goes, as a share of the screen, and how big it grows on the way out. */
-export const STAGE_AWAY = { x: -0.62, y: -0.8, scale: 1.7 } as const;
+export const STAGE_AWAY = { x: -0.62, y: -0.8, scale: LANDING_MOVE.leaveScale } as const;
 
 /**
  * What makes a wheel event a new gesture rather than the tail of the last one: a quiet gap of more than `gapMs`, and
@@ -72,47 +72,17 @@ export function createGestureGate({ gapMs, momentumMs, growth } = LANDING_GESTUR
   };
 }
 
-/**
- * A gesture moving the frames by hand (landing, last pass): how far the hand goes for a whole case, as a share of the
- * screen's height (a wheel notch of about 100px is about a third of a case); how far past the case it must have gone,
- * when it is let go, to carry on to the next (else the frames ease back); and how long the wheel must be quiet for the
- * gesture to count as let go, in ms.
- */
-export const LANDING_DRAG = { perCase: 0.35, carry: 0.25, quietMs: 220 } as const;
-
-/** Where a gesture let go settles: the next case if it went past `carry` of the way, else back where it started. */
-export function settleTarget(base: number, at: number, carry: number = LANDING_DRAG.carry): number {
-  const moved = at - base;
-  return Math.abs(moved) > carry ? base + Math.sign(moved) : base;
-}
-
-/** How far through a move the words of the case it is heading for start to fade in. */
-export const LANDING_WORDS_AT = 0.45;
-
-/**
- * When a wheel gesture counts as let go before the wheel is quiet: the frames have reached the case ahead (or behind),
- * or the events have been dying away (a flick's momentum: `decaying` in a row, each smaller than the last) once it has
- * gone past the carry. The rest of that momentum is swallowed, so it never moves a second case.
- */
-export const LANDING_LETGO = { decaying: 4, shrink: 0.95 } as const;
-
-/** How long a move may take before it is counted as landed whatever happens, past its own duration, in ms. */
+/** How long past its own time a move counts as landed whatever happens, in ms: nothing can ever lock the page. */
 export const MOVE_GRACE_MS = 400;
-
-/** How far a frame leans as it travels, in degrees: it hangs from a wire, so it swings from its top edge. */
-export const FRAME_SWING = 1.8;
-
 
 /** The section's pieces that move. */
 interface Parts {
   section: HTMLElement;
   /** The frame and its title, together: the opening fades them in. */
   place: HTMLElement | null;
-  /** The frame, and what moves with it. */
+  /** The frame's outer wrapper: the only thing a move animates on a frame. */
   anchor: HTMLElement;
-  /** The frame's own wrapper inside it: what swings, from its top edge. */
-  rise: HTMLElement | null;
-  /** The title beside the frame, with its name (written in) and its years (faded in after). */
+  /** The title beside the frame, with its name (written in) and its years. */
   title: HTMLElement | null;
   name: HTMLElement | null;
   years: HTMLElement | null;
@@ -130,7 +100,6 @@ function partsOf(section: HTMLElement): Parts | null {
     section,
     place: section.querySelector<HTMLElement>('[data-exhibit-part="place"]'),
     anchor,
-    rise: section.querySelector<HTMLElement>('[data-exhibit-part="rise"]'),
     title,
     name: title?.querySelector<HTMLElement>('h2') ?? null,
     years: title?.querySelector<HTMLElement>('p') ?? null,
@@ -138,11 +107,10 @@ function partsOf(section: HTMLElement): Parts | null {
   };
 }
 
-/** The headline and subline: they blur in and out. (The title is written, not blurred.) */
-const wordsOf = (parts: Parts): HTMLElement[] => (parts.words === null ? [] : [parts.words]);
+type Pose = { x: number; y: number; scale: number };
 
 /** The pose (x, y, scale) that puts a box with the rectangle `rest` over the rectangle `target`. */
-export function poseOver(rest: { left: number; top: number; width: number; height: number }, target: { left: number; top: number; width: number; height: number }) {
+export function poseOver(rest: { left: number; top: number; width: number; height: number }, target: { left: number; top: number; width: number; height: number }): Pose {
   const scale = rest.width > 0 && target.width > 0 ? target.width / rest.width : 0.35;
   return {
     x: target.left + target.width / 2 - (rest.left + rest.width / 2),
@@ -180,257 +148,266 @@ export interface StageOptions {
 }
 
 export interface StageHandle {
-  /** The case nearest the scroll position. */
+  /** The case on screen (the one a move is heading for, while it moves). */
   current: () => number;
   /** The opening's picture has settled into the first frame: the frame comes in around it. */
   showFrame: () => void;
-  /** The opening is over: the next frame peeks in, and the words come once the scroll is still. */
+  /** The opening is over: the next frame peeks in, the words come, and gestures count. */
   ready: () => void;
-  /** Straight to a case, in one soft move (the rail's tick, the wordmark, Home and End). */
+  /** Straight to a case, in one move (the rail's tick, the wordmark, Home and End). */
   go: (index: number) => void;
-  /** The frames are moving (by hand or not): a new gesture is ignored. */
+  /** A move is running: a new gesture is ignored. */
   moving: () => boolean;
-  /** Where the frames are, in cases (0 at the first): what the hand and the moves drive. */
-  place: () => number;
-  /** A gesture is moving the frames by hand. */
-  gesturing: () => boolean;
   /** The case the words are showing for, or null while they are away. */
   wordsFor: () => number | null;
-  /** The scroll is at `at` (0 at the first case, count - 1 at the last): what the page tells it on every scroll. */
-  update: (at: number) => void;
-  /** The scrubbed timeline: one unit for each move, a label at every case. */
+  /** The running move's timeline, if any. */
   timeline: () => gsap.core.Timeline | null;
   destroy: () => void;
 }
 
 export function createLandingStage({ track, stage, sections, start, shown, onChange }: StageOptions): StageHandle {
-  gsap.registerPlugin(ScrollTrigger);
   const parts = sections.map(partsOf);
   const count = sections.length;
   let current = Math.min(Math.max(start, 0), count - 1);
   let isReady = shown;
   let alive = true;
-  /** The case the words are on screen for (or being written for). */
+  let moving = false;
+  /** The case the words are on screen for (or coming in for). */
   let wordsFor: number | null = null;
-  const textTimelines = new Map<number, gsap.core.Timeline>();
   const splits = new Map<number, SplitText>();
-  const blurred = { opacity: 0, filter: `blur(${LANDING_BLUR}px)` };
-  const sharp = { opacity: 1, filter: 'blur(0px)', clearProps: 'filter' };
   setSmoothLerp(LANDING_LERP);
 
   /** Scroll pixels for one case. */
   const caseHeight = () => (count > 1 ? (track.offsetHeight - stage.offsetHeight) / (count - 1) : window.innerHeight);
   const trackTop = () => track.getBoundingClientRect().top + window.scrollY;
   const positionOf = (index: number) => trackTop() + index * caseHeight();
-  /** How far through the cases the scroll is: 0 at the first, count - 1 at the last. */
-  const position = () => (count > 1 ? Math.min(Math.max((window.scrollY - trackTop()) / caseHeight(), 0), count - 1) : 0);
+  const lastY = () => positionOf(count - 1);
 
-  // ---- The words: they leave as soon as scrolling starts, and come back once it has settled on a case.
+  // ---- The poses: each frame at rest, at the peek, below the screen (waiting), and away (gone up and left).
+  let rest: Pose = { x: 0, y: 0, scale: 1 };
+  let peeks: (Pose | null)[] = [];
+  let belows: (Pose | null)[] = [];
+  let away: Pose = rest;
+  const measure = () => {
+    parts.forEach(p => p !== null && gsap.set(p.anchor, { x: 0, y: 0, scale: 1 }));
+    const rests = parts.map(p => p?.anchor.getBoundingClientRect() ?? null);
+    peeks = rests.map(box => (box === null ? null : poseOver(box, peekRect(box))));
+    belows = peeks.map(pose => (pose === null ? null : { ...pose, y: pose.y + window.innerHeight * PEEK.height * 2 }));
+    rest = { x: 0, y: 0, scale: 1 };
+    away = { x: window.innerWidth * STAGE_AWAY.x, y: window.innerHeight * STAGE_AWAY.y, scale: STAGE_AWAY.scale };
+  };
+  /** Everything at rest on case `index`: it in the centre, the next one peeking, the rest hidden. */
+  const settleOn = (index: number) => {
+    parts.forEach((p, i) => {
+      if (p === null) {
+        return;
+      }
+      gsap.killTweensOf(p.anchor);
+      const pose = i === index ? rest : i === index + 1 ? peeks[i] : belows[i];
+      gsap.set(p.anchor, { ...(pose ?? rest), opacity: i === index || i === index + 1 ? 1 : 0 });
+      gsap.set(p.section, { visibility: i === index || i === index + 1 ? 'visible' : 'hidden', zIndex: i === index ? 2 : 1 });
+    });
+    markCurrent(index);
+  };
+
+  // ---- The words.
   const revertSplit = (index: number) => {
     splits.get(index)?.revert();
     splits.delete(index);
   };
-  const writeTitle = (index: number, p: Parts, tl: gsap.core.Timeline) => {
-    if (p.title === null) {
-      return;
-    }
-    gsap.set(p.title, { opacity: 1 });
-    if (p.name === null) {
-      return;
-    }
-    const split = SplitText.create(p.name, { type: 'chars', aria: 'auto' });
-    splits.set(index, split);
-    gsap.set(split.chars, { opacity: 0 });
-    if (p.years !== null) {
-      gsap.set(p.years, { opacity: 0 });
-    }
-    tl.to(split.chars, { opacity: 1, ...tween('landing.write'), stagger: STEP.fast / 4 }, 0);
-    if (p.years !== null) {
-      tl.to(p.years, { opacity: 1, ...tween('ink.in'), duration: STEP.base }, '>');
-    }
-    tl.call(() => revertSplit(index), undefined, '>');
-  };
-  const showWords = (index: number) => {
-    const p = parts[index];
-    if (p === null || wordsFor === index) {
-      return;
-    }
-    wordsFor = index;
-    const tl = gsap.timeline();
-    textTimelines.set(index, tl);
-    gsap.set(wordsOf(p), blurred);
-    tl.to(wordsOf(p), { ...sharp, ...tween('landing.blur') }, 0);
-    writeTitle(index, p, tl);
-  };
-  /** The words of the case a move is heading for, due part-way through the move (not after it). */
-  let wordsCall: gsap.core.Tween | null = null;
-  /** The case a move (not the hand's) is heading for: its words may show while the frames still travel. */
-  let arriving: number | null = null;
-  const hideWords = () => {
-    wordsCall?.kill();
-    wordsCall = null;
-    const index = wordsFor;
-    if (index === null) {
-      return;
-    }
-    wordsFor = null;
-    const p = parts[index];
-    textTimelines.get(index)?.kill();
-    textTimelines.delete(index);
-    revertSplit(index);
-    if (p === null) {
-      return;
-    }
-    gsap.to(wordsOf(p), { opacity: 0, filter: `blur(${LANDING_BLUR}px)`, ...tween('ink.out'), duration: STEP.fast, overwrite: true });
-    if (p.title !== null) {
-      gsap.to(p.title, { opacity: 0, ...tween('ink.out'), duration: STEP.fast, overwrite: true });
-      if (p.years !== null) {
-        gsap.set(p.years, { opacity: 1 });
-      }
-    }
-  };
-  /** Everything but the words of the case in hand is away before the first scroll. */
+  /** The words of every case away, at once. */
   const hideAllWords = () => {
     parts.forEach(p => {
       if (p !== null) {
-        gsap.set(wordsOf(p), blurred);
-        if (p.title !== null) {
-          gsap.set(p.title, { opacity: 0 });
-        }
+        gsap.set([...(p.words === null ? [] : [p.words]), ...(p.title === null ? [] : [p.title])], { opacity: 0, y: 0 });
       }
     });
   };
-  hideAllWords();
-
-  // ---- Settling: the scroll has been still on a case for a moment: its words come back.
-  let latest = position();
-  let idleTimer: gsap.core.Tween | null = null;
-  let moving = false;
-  const settleNow = () => {
-    if (!alive || !isReady || moving) {
+  /** Adds to `tl` the old case's words fading out (0.15s at its start). */
+  const wordsOut = (index: number | null, tl: gsap.core.Timeline) => {
+    const p = index === null ? null : parts[index];
+    if (index !== null) {
+      revertSplit(index);
+    }
+    if (p == null) {
       return;
     }
-    if (Math.abs(latest - Math.round(latest)) < 0.02 && window.scrollY <= positionOf(count - 1) + 40) {
-      showWords(Math.round(latest));
-    }
+    const out = [...(p.words === null ? [] : [p.words]), ...(p.title === null ? [] : [p.title])];
+    gsap.killTweensOf(out);
+    tl.to(out, { opacity: 0, ...tween('landing.textOut'), overwrite: 'auto' }, 0);
   };
-  const settleSoon = () => {
-    idleTimer?.kill();
-    idleTimer = gsap.delayedCall(LANDING_SETTLE, settleNow);
+  /** Adds to `tl` the new case's words: the headline and subline from `wordsAt`, the title written from `titleFrom`. */
+  const wordsIn = (index: number, tl: gsap.core.Timeline) => {
+    const p = parts[index];
+    if (p === null) {
+      return;
+    }
+    wordsFor = index;
+    if (p.words !== null) {
+      gsap.killTweensOf(p.words);
+      gsap.set(p.words, { opacity: 0, y: INK_RISE });
+      tl.to(p.words, { opacity: 1, y: 0, ...tween('landing.textIn'), overwrite: 'auto' }, LANDING_MOVE.wordsAt);
+    }
+    if (p.title === null || p.name === null) {
+      return;
+    }
+    const title = p.title;
+    gsap.killTweensOf(title);
+    revertSplit(index);
+    const split = SplitText.create(p.name, { type: 'chars', aria: 'auto' });
+    splits.set(index, split);
+    gsap.set(title, { opacity: 1, y: 0 });
+    gsap.set(split.chars, { opacity: 0 });
+    // The letters are spread so the last one has finished at `titleTo`.
+    const write = tween('landing.write');
+    const span = LANDING_MOVE.titleTo - LANDING_MOVE.titleFrom;
+    const stagger = split.chars.length > 1 ? Math.max(span - write.duration, 0) / (split.chars.length - 1) : 0;
+    const from = LANDING_MOVE.titleFrom;
+    tl.to(split.chars, { opacity: 1, ...write, stagger }, from);
+    if (p.years !== null) {
+      gsap.set(p.years, { opacity: 0 });
+      tl.to(p.years, { opacity: 1, ...tween('landing.textOut') }, from + span - tween('landing.textOut').duration);
+    }
+    tl.call(() => revertSplit(index), undefined, from + span);
   };
 
-  // ---- The scrubbed timeline, and the snap.
-  let timeline: gsap.core.Timeline | null = null;
-  let trigger: ScrollTrigger | null = null;
-  const build = () => {
-    trigger?.kill();
-    timeline?.kill();
-    // Every frame at rest, to measure where it would sit.
-    parts.forEach(p => {
-      if (p === null) {
-        return;
-      }
-      gsap.set(p.section, { zIndex: 1 });
-      gsap.set(p.anchor, { x: 0, y: 0, scale: 1, opacity: 1 });
-      if (p.rise !== null) {
-        gsap.set(p.rise, { rotation: 0, transformOrigin: '50% 0%' });
-      }
-    });
-    const tl = gsap.timeline({ paused: true });
-    const move = tween('landing.stage');
-    const away = { x: window.innerWidth * STAGE_AWAY.x, y: window.innerHeight * STAGE_AWAY.y, scale: STAGE_AWAY.scale };
-    const rests = parts.map(p => p?.anchor.getBoundingClientRect() ?? null);
-    // Each frame's own pose at the peek, and further down, off the screen, where it waits before that.
-    const peekPoses = rests.map(rest => (rest === null ? null : poseOver(rest, peekRect(rest))));
-    const belowPoses = peekPoses.map(pose => (pose === null ? null : { ...pose, y: pose.y + window.innerHeight * PEEK.height * 2 }));
-    // The first state: the first frame at rest, the second peeking (the real frame, not a copy), the rest away below.
-    parts.forEach((p, index) => {
-      if (p === null) {
-        return;
-      }
-      const pose = index === 1 ? peekPoses[1] : index > 1 ? belowPoses[index] : null;
-      gsap.set(p.section, { visibility: index <= 1 ? 'visible' : 'hidden' });
-      if (pose !== null) {
-        gsap.set(p.anchor, { x: pose.x, y: pose.y, scale: pose.scale, opacity: index > 1 ? 0 : 1 });
-      }
-    });
-    for (let i = 0; i < count - 1; i += 1) {
-      const A = parts[i];
-      const B = parts[i + 1];
-      const pose = peekPoses[i + 1];
-      if (A === null || B === null || pose === null) {
-        continue;
-      }
-      // The current frame scales up and leaves up and to the left; the next one, the very frame that was peeking at
-      // the bottom right, rises and grows from there into the centre. Scrolled back, it travels back down to its peek.
-      tl.fromTo(B.anchor, { x: pose.x, y: pose.y, scale: pose.scale }, { x: 0, y: 0, scale: 1, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
-        .fromTo(A.anchor, { x: 0, y: 0, scale: 1 }, { ...away, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i)
-        .fromTo(A.anchor, { opacity: 1 }, { opacity: 0, ease: tween('ink.out').ease, duration: SCRUB.fadeOut, immediateRender: false }, i + 0.6)
-        .set(A.section, { visibility: 'hidden' }, i + 1);
-      // Hanging from a wire: a lean on the way, and one soft sway back as the new frame settles.
-      if (A.rise !== null) {
-        tl.fromTo(A.rise, { rotation: 0 }, { rotation: -FRAME_SWING, ease: move.ease, duration: SCRUB.move, immediateRender: false }, i);
-      }
-      // The arriving frame is still at its peek (it leans only on the way, and is straight again on landing), so the
-      // preview never rocks while the hand hesitates over it.
-      if (B.rise !== null) {
-        tl.fromTo(B.rise, { rotation: 0 }, { rotation: FRAME_SWING, ease: move.ease, duration: SCRUB.move / 2, immediateRender: false }, i).to(
-          B.rise,
-          { rotation: 0, ease: tween('landing.swing').ease, duration: SCRUB.move / 2 },
-          i + SCRUB.move / 2
-        );
-      }
-      // The frame after it comes up from below into the peek, once the way is clear.
-      const C = parts[i + 2];
-      const below = belowPoses[i + 2];
-      const peek = peekPoses[i + 2];
-      if (C != null && below != null && peek != null) {
-        // (A hair after the case itself, so that at rest only the case in hand and the next one are drawn.)
-        tl.set(C.section, { visibility: 'visible' }, i + 0.001)
-          .fromTo(C.anchor, { ...below, opacity: 0 }, { ...peek, opacity: 1, ease: move.ease, duration: SCRUB.peekRise, immediateRender: false }, i + SCRUB.peekFrom);
-      }
-    }
-    // The timeline is exactly one unit for each move, and a label at every case, for the snap.
-    tl.set({}, {}, Math.max(count - 1, 0));
-    for (let i = 0; i < count; i += 1) {
-      tl.addLabel(`case${i}`, i);
-    }
-    timeline = tl;
-    trigger = ScrollTrigger.create({
-      trigger: track,
-      start: 'top top',
-      end: 'bottom bottom',
-      animation: tl,
-      scrub: true,
-      onUpdate: () => update(position()),
-    });
-  };
-  const update = (at: number) => {
-    latest = at;
-    const nearest = Math.round(at);
-    if (nearest !== current) {
-      current = nearest;
-      markCurrent(nearest);
-      onChange(nearest);
-    }
-    // Scrolling has started (or the page has gone on into the footer): the words go at once.
-    const comingIn = arriving !== null && wordsFor === arriving;
-    if (wordsFor !== null && !comingIn && (Math.abs(at - wordsFor) > 0.004 || window.scrollY > positionOf(count - 1) + 40)) {
-      hideWords();
-    }
-    settleSoon();
-  };
-  build();
-
-  // The page opens at the case the address names.
-  if (current > 0) {
-    jumpToY(positionOf(current));
-    ScrollTrigger.refresh();
+  // ---- Which case is the one in hand: only it can be pressed (the next frame, peeking in, cannot).
+  function markCurrent(index: number) {
+    sections.forEach((section, i) => section.setAttribute('data-current', String(i === index)));
   }
 
-  // The words wait for the opening; when it is over they come, once the scroll is still.
+  // ---- One committed move.
+  let move: gsap.core.Timeline | null = null;
+  let moveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The page went on into the footer: the next way back up returns to the last case. */
+  let inFooter = false;
+  const unlock = () => {
+    moving = false;
+    if (moveTimer !== null) {
+      clearTimeout(moveTimer);
+      moveTimer = null;
+    }
+  };
+  const lock = () => {
+    moving = true;
+    if (moveTimer !== null) {
+      clearTimeout(moveTimer);
+    }
+    // Counted as landed after its own time in any case, so a move that is cut short never locks the page.
+    moveTimer = setTimeout(unlock, LANDING_MOVE.unlockAt * 1000 + MOVE_GRACE_MS);
+  };
+  const moveTo = (index: number) => {
+    const to = Math.min(Math.max(index, 0), count - 1);
+    // From the footer, the frames are already on the last case: only the page comes back up.
+    if (window.scrollY > lastY() + 1) {
+      inFooter = false;
+      lock();
+      scrollToY(positionOf(to), { ...tween('landing.stage'), onComplete: unlock });
+      if (to !== current) {
+        from(current, to);
+      }
+      return;
+    }
+    if (to === current) {
+      return;
+    }
+    from(current, to);
+  };
+  /** Plays the move from case `a` to case `b`. */
+  function from(a: number, b: number) {
+    // One animation per frame: whatever was running ends where it was going first.
+    if (move !== null) {
+      const running = move;
+      move = null;
+      running.progress(1);
+      running.kill();
+    }
+    const A = parts[a];
+    const B = parts[b];
+    if (A === null || B === null) {
+      return;
+    }
+    lock();
+    const forward = b > a;
+    const leave = tween('landing.leave');
+    const arrive = tween('landing.arrive');
+    current = b;
+    onChange(b);
+    markCurrent(b);
+    // The page's place follows at once: the stage is sticky, so this moves nothing on screen.
+    if (window.scrollY <= lastY() + 1) {
+      jumpToY(positionOf(b));
+    }
+    const tl = gsap.timeline({
+      onComplete: () => {
+        if (move === tl) {
+          move = null;
+        }
+        settleOn(b);
+      },
+    });
+    move = tl;
+    const old = wordsFor;
+    wordsFor = null;
+    wordsOut(old, tl);
+    const show = (i: number) => {
+      const p = parts[i];
+      if (p != null) {
+        gsap.set(p.section, { visibility: 'visible' });
+      }
+    };
+    const animate = (i: number, to: Pose, opacity: number, timing: { ease: string; duration: number }, start?: Pose, startOpacity?: number) => {
+      const p = parts[i];
+      if (p == null) {
+        return;
+      }
+      gsap.killTweensOf(p.anchor);
+      if (start !== undefined) {
+        gsap.set(p.anchor, { ...start, opacity: startOpacity ?? 1 });
+      }
+      tl.to(p.anchor, { ...to, opacity, ...timing, overwrite: 'auto' }, 0);
+    };
+    show(a);
+    show(b);
+    gsap.set(A.section, { zIndex: forward ? 1 : 2 });
+    gsap.set(B.section, { zIndex: forward ? 2 : 1 });
+    if (forward) {
+      // The one in hand leaves up and left; the next comes from its peek (or, a jump, from the peek spot) to the centre.
+      animate(a, away, 0, leave);
+      const arriveFrom = b === a + 1 ? undefined : (peeks[b] ?? rest);
+      animate(b, rest, 1, arrive, arriveFrom, 1);
+      // The old peek, if it is not the one arriving, goes back down.
+      if (a + 1 !== b && parts[a + 1] != null) {
+        show(a + 1);
+        animate(a + 1, belows[a + 1] ?? rest, 0, leave);
+      }
+    } else {
+      // Back: the one in hand goes down to the peek (or away below, a jump); the earlier one comes back from away.
+      animate(a, b + 1 === a ? (peeks[a] ?? rest) : (belows[a] ?? rest), b + 1 === a ? 1 : 0, arrive);
+      animate(b, rest, 1, arrive, away, 0);
+      if (parts[a + 1] != null) {
+        show(a + 1);
+        animate(a + 1, belows[a + 1] ?? rest, 0, leave);
+      }
+    }
+    // The next preview rises from below into the corner over the same 0.55s.
+    const next = b + 1;
+    if (next < count && next !== a) {
+      show(next);
+      animate(next, peeks[next] ?? rest, 1, arrive, belows[next] ?? rest, 0);
+    }
+    wordsIn(b, tl);
+    tl.call(unlock, undefined, LANDING_MOVE.unlockAt);
+  }
+
+  // ---- The first state.
+  measure();
+  hideAllWords();
+  settleOn(current);
+  if (current > 0) {
+    jumpToY(positionOf(current));
+  }
   const place = parts[current]?.place ?? null;
-  /** The next case's frame, peeking in: it comes in once the opening is over. */
   const peek = parts[current + 1]?.place ?? null;
   if (!shown) {
     if (place !== null) {
@@ -441,125 +418,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
   }
 
-  // ---- The frames' place, in cases (0 at the first, count - 1 at the last): `proxy.at`. Whatever moves the frames moves
-  // this, and the page's scroll follows it at once, so the scrubbed timeline (and the rail, the hash, the words) follow.
-  const proxy = { at: position() };
-  const sync = () => jumpToY(positionOf(proxy.at));
-  /** The page went on into the footer: the next way back up returns to the last case. */
-  let inFooter = false;
-  const lastY = () => positionOf(count - 1);
-  /** A move that is not the hand's (a key, the rail, a gesture let go), and the hand's own gesture. */
-  let move: gsap.core.Tween | null = null;
-  let moveTimer: ReturnType<typeof setTimeout> | null = null;
-  let gesture: { base: number; travelled: number; follow: (value: number) => void; quiet: ReturnType<typeof setTimeout> | null } | null = null;
-  const busy = () => moving;
-
-  /** Plays the frames to `to` with `token`'s ease and duration; input is ignored until they are there. */
-  const playTo = (to: number, token: 'landing.stage' | 'landing.release') => {
-    const target = Math.min(Math.max(to, 0), count - 1);
-    moving = true;
-    inFooter = false;
-    hideWords();
-    move?.kill();
-    gsap.killTweensOf(proxy);
-    const timing = tween(token);
-    // The words fade in during the move, from about half-way: they never wait for it to end, and never hold it up.
-    arriving = target;
-    wordsCall = gsap.delayedCall(timing.duration * LANDING_WORDS_AT, () => {
-      wordsCall = null;
-      if (alive && isReady && arriving === target && window.scrollY <= lastY() + 40) {
-        showWords(target);
-      }
-    });
-    const landed = () => {
-      if (!moving) {
-        return;
-      }
-      // Input counts again the moment the frames are there, whatever the words are doing.
-      moving = false;
-      arriving = null;
-      move = null;
-      if (moveTimer !== null) {
-        clearTimeout(moveTimer);
-        moveTimer = null;
-      }
-      proxy.at = target;
-      sync();
-      settleSoon();
-    };
-    if (moveTimer !== null) {
-      clearTimeout(moveTimer);
-    }
-    // Counted as landed after its own time in any case, so a move that is cut short never locks the page.
-    moveTimer = setTimeout(landed, timing.duration * 1000 + MOVE_GRACE_MS);
-    if (window.scrollY > lastY() + 1) {
-      // From the footer: the page itself comes back up, with the move's ease.
-      scrollToY(positionOf(target), { ...timing, onComplete: landed });
-      return;
-    }
-    proxy.at = position();
-    move = gsap.to(proxy, { at: target, ...timing, onUpdate: sync, onComplete: landed });
-  };
-  /** The move a key plays (and the rail, Home, End and the wordmark): slower and softer than the hand. */
-  const moveTo = (index: number) => playTo(index, 'landing.stage');
-
-  // ---- The hand: while a gesture lasts, the frames follow it (no more than one case ahead or back), gliding just
-  // behind it; when it is let go they finish the move, or ease back, and settle.
-  const startGesture = () => {
-    arriving = null;
-    proxy.at = position();
-    const base = Math.round(proxy.at);
-    hideWords();
-    const follow = gsap.quickTo(proxy, 'at', { ...tween('landing.follow'), onUpdate: sync });
-    gesture = { base, travelled: 0, follow, quiet: null };
-    moving = true;
-    inFooter = false;
-  };
-  /** The hand has moved `delta` px more (down positive). */
-  const follow = (delta: number) => {
-    if (gesture === null) {
-      return;
-    }
-    gesture.travelled += delta;
-    const reach = window.innerHeight * LANDING_DRAG.perCase;
-    const lo = Math.max(gesture.base - 1, 0);
-    const hi = Math.min(gesture.base + 1, count - 1);
-    gesture.follow(Math.min(Math.max(gesture.base + gesture.travelled / reach, lo), hi));
-  };
-  /** The gesture is let go: on to the next case if it went far enough, else back. */
-  const release = () => {
-    const g = gesture;
-    if (g === null) {
-      return;
-    }
-    gesture = null;
-    if (g.quiet !== null) {
-      clearTimeout(g.quiet);
-    }
-    const reach = window.innerHeight * LANDING_DRAG.perCase;
-    const at = Math.min(Math.max(g.base + g.travelled / reach, g.base - 1, 0), g.base + 1, count - 1);
-    moving = false;
-    playTo(settleTarget(g.base, at), 'landing.release');
-  };
-  /** The wheel has been quiet a moment: the gesture is let go. */
-  const releaseSoon = () => {
-    if (gesture === null) {
-      return;
-    }
-    if (gesture.quiet !== null) {
-      clearTimeout(gesture.quiet);
-    }
-    gesture.quiet = setTimeout(release, LANDING_DRAG.quietMs);
-  };
-
   /**
-   * Whether this input is the stage's (it moves the frames) or the page's (Lenis scrolls on, into or within the
-   * footer). Past the last case going down, and within the footer, it is the page's; coming back up out of the footer,
-   * the stage's again.
+   * Whether this input is the stage's (it moves a case) or the page's (Lenis scrolls on, into or within the footer).
+   * Past the last case going down, and within the footer, it is the page's; coming back up out of the footer, the
+   * stage's again.
    */
   const claims = (direction: 1 | -1, delta = 0): boolean => {
-    // While the frames move (by hand or not), every input is swallowed, so Lenis never takes over half-way.
-    if (busy()) {
+    // While a move runs, every input is swallowed, so Lenis never takes over half-way.
+    if (moving) {
       return true;
     }
     const y = window.scrollY;
@@ -570,7 +436,6 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     if (y <= last + 1) {
       return direction < 0;
     }
-    // In the footer: only a scroll up that would cross back into the cases.
     if (direction > 0) {
       return false;
     }
@@ -580,18 +445,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   /** Not ours: a dialog, a field, or something that scrolls itself. */
   const notOurs = (target: EventTarget | null) =>
     target instanceof Element && target.closest('[role="dialog"], [aria-modal="true"], input, textarea, select, [contenteditable="true"], [data-lenis-prevent]') !== null;
+  /** One gesture's move, the way it points; from the footer, back up to the last case. */
+  const step = (direction: 1 | -1) => moveTo(window.scrollY > lastY() + 1 ? count - 1 : current + direction);
 
-  // The wheel (and a trackpad), taken before Lenis (capture, on the window). A new gesture (`LANDING_GESTURE`: not a
-  // flick's dying momentum) starts the hand; its events move the frames; a quiet moment lets it go. The momentum
-  // trailing after it is let go is the same gesture, and is swallowed: one flick, one case.
+  // The wheel (and a trackpad), taken before Lenis (capture, on the window): one gesture, one move.
   const gate = createGestureGate();
-  /** The gesture now arriving met the frames moving, so it is spent: its events are swallowed to its end. */
-  let spent = false;
-  let shrinking = 0;
-  let lastDelta = 0;
   const onWheel = (event: WheelEvent) => {
     const raw = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * window.innerHeight : event.deltaY;
-    const fresh = gate.note(event.timeStamp || performance.now(), raw);
+    gate.note(event.timeStamp || performance.now(), raw);
     if (!alive || event.ctrlKey || notOurs(event.target)) {
       return;
     }
@@ -599,105 +460,50 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     if (delta === 0) {
       return;
     }
-    if (!claims(delta > 0 ? 1 : -1, delta)) {
+    const direction = delta > 0 ? 1 : -1;
+    if (!claims(direction, delta)) {
       return;
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!isReady) {
-      return;
-    }
-    if (fresh) {
-      shrinking = 0;
-      lastDelta = 0;
-      spent = busy() && gesture === null;
-      if (!spent && gesture === null) {
-        if (window.scrollY > lastY() + 1) {
-          // Up out of the footer: back to the last case, as a move.
-          spent = true;
-          moveTo(count - 1);
-          return;
-        }
-        startGesture();
-      }
-    }
-    if (gesture !== null && !spent) {
-      follow(delta);
-      // Let go early: at the case ahead or behind, or as a flick's momentum dies away past the carry. Its tail is spent.
-      shrinking = Math.abs(delta) < lastDelta * LANDING_LETGO.shrink ? shrinking + 1 : 0;
-      lastDelta = Math.abs(delta);
-      const moved = Math.abs(gesture.travelled / (window.innerHeight * LANDING_DRAG.perCase));
-      if (moved >= 1 || (moved > LANDING_DRAG.carry && shrinking >= LANDING_LETGO.decaying)) {
-        spent = true;
-        release();
-        return;
-      }
-      releaseSoon();
+    if (isReady && gate.take(!moving)) {
+      step(direction);
     }
   };
   window.addEventListener('wheel', onWheel, { capture: true, passive: false });
 
-  // A finger: the frames follow it while it is down, and settle when it lifts.
+  // A swipe: one move per touch, once it has gone far enough to mean it.
   let touchFrom: number | null = null;
-  let touchLast: number | null = null;
-  let touching = false;
+  let touchUsed = false;
   const onTouchStart = (event: TouchEvent) => {
     touchFrom = event.touches[0]?.clientY ?? null;
-    touchLast = touchFrom;
-    touching = false;
+    touchUsed = false;
   };
   const onTouchMove = (event: TouchEvent) => {
     const y = event.touches[0]?.clientY;
-    if (!alive || touchFrom === null || touchLast === null || y === undefined || notOurs(event.target)) {
+    if (!alive || touchFrom === null || y === undefined || notOurs(event.target)) {
       return;
     }
-    const total = touchFrom - y;
-    if (!touching && Math.abs(total) < STORY_PACE.gestureTolerance) {
+    const delta = touchFrom - y;
+    if (Math.abs(delta) < STORY_PACE.gestureTolerance) {
       if (window.scrollY < lastY() - 1) {
         event.preventDefault();
       }
       return;
     }
-    if (!touching && !claims(total > 0 ? 1 : -1, total)) {
+    const direction = delta > 0 ? 1 : -1;
+    if (!touchUsed && !claims(direction, delta)) {
       return;
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!isReady) {
-      return;
+    if (isReady && !touchUsed && !moving) {
+      step(direction);
     }
-    if (!touching) {
-      touching = true;
-      if (busy()) {
-        touchFrom = null;
-        return;
-      }
-      if (window.scrollY > lastY() + 1) {
-        touchFrom = null;
-        moveTo(count - 1);
-        return;
-      }
-      startGesture();
-      // The first few pixels, before it counted, count too.
-      follow(total);
-      touchLast = y;
-      return;
-    }
-    follow(touchLast - y);
-    touchLast = y;
-  };
-  const onTouchEnd = () => {
-    touchFrom = null;
-    touchLast = null;
-    if (touching) {
-      touching = false;
-      release();
-    }
+    touchUsed = true;
   };
   window.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
   window.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
-  window.addEventListener('touchend', onTouchEnd, { capture: true });
-  window.addEventListener('touchcancel', onTouchEnd, { capture: true });
 
   // Anything else that brings the page back up out of the footer (a key, the scrollbar): back to the last case.
   const onScroll = () => {
@@ -705,18 +511,13 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     const last = lastY();
     if (y > last + 1) {
       inFooter = true;
-    } else if (inFooter && !busy() && isReady && y < last - 1) {
+    } else if (inFooter && !moving && isReady && y < last - 1) {
       moveTo(count - 1);
     }
   };
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  // Only the case in hand can be pressed: the next frame, peeking in, is not a way to it (scroll, swipe, a key or the
-  // rail are). It is marked so (CSS: no pointer, no press), and a press on it does nothing.
-  function markCurrent(index: number) {
-    sections.forEach((section, i) => section.setAttribute('data-current', String(i === index)));
-  }
-  markCurrent(current);
+  // Only the case in hand can be pressed: a press on another (the peeking frame) does nothing at all.
   const onClick = (event: MouseEvent) => {
     const section = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-exhibit]') : null;
     if (section !== null && section.getAttribute('data-current') !== 'true') {
@@ -726,18 +527,11 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   };
   stage.addEventListener('click', onClick, { capture: true });
 
-  // ---- The keyboard: arrows, Page keys and Space play one move, like a gesture; Home and End to the ends.
+  // ---- The keyboard: arrows, Page keys and Space go one case, like a gesture; Home and End to the ends.
   const go = (index: number) => {
-    if (index < 0 || index >= count) {
-      return;
+    if (index >= 0 && index < count) {
+      moveTo(index);
     }
-    if (gesture !== null) {
-      if (gesture.quiet !== null) {
-        clearTimeout(gesture.quiet);
-      }
-      gesture = null;
-    }
-    moveTo(index);
   };
   const onKey = (event: KeyboardEvent) => {
     if (!isReady || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || notOurs(event.target)) {
@@ -758,8 +552,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
         return;
       }
       event.preventDefault();
-      if (!busy()) {
-        moveTo(Math.round(latest) + direction);
+      if (!moving) {
+        step(direction);
       }
     } else if (event.key === 'Home') {
       event.preventDefault();
@@ -771,18 +565,16 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   };
   window.addEventListener('keydown', onKey);
 
-  // ---- A new window size: the poses are measured again.
+  // ---- A new window size: the poses are measured again, and everything set at rest.
   let resizeTimer: ReturnType<typeof setTimeout> | null = null;
   const onResize = () => {
     if (resizeTimer !== null) {
       clearTimeout(resizeTimer);
     }
     resizeTimer = setTimeout(() => {
-      if (alive) {
-        hideWords();
-        build();
-        ScrollTrigger.refresh();
-        settleSoon();
+      if (alive && !moving) {
+        measure();
+        settleOn(current);
       }
     }, 250);
   };
@@ -798,49 +590,38 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     ready: () => {
       isReady = true;
       if (peek !== null) {
-        gsap.to(peek, { opacity: 1, ...tween('landing.blur') });
+        gsap.to(peek, { opacity: 1, ...tween('landing.textIn') });
       }
-      settleNow();
+      // The first case's words: the same timing as a move's, from its start.
+      if (wordsFor === null) {
+        wordsIn(current, gsap.timeline());
+      }
     },
     go,
     moving: () => moving,
-    place: () => proxy.at,
-    gesturing: () => gesture !== null,
     wordsFor: () => wordsFor,
-    update,
-    timeline: () => timeline,
+    timeline: () => move,
     destroy: () => {
       if (!alive) {
         return;
       }
       alive = false;
-      idleTimer?.kill();
-      wordsCall?.kill();
-      textTimelines.forEach(tl => tl.kill());
+      move?.kill();
       splits.forEach(split => split.revert());
       splits.clear();
-      trigger?.kill();
-      timeline?.kill();
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('wheel', onWheel, { capture: true });
       window.removeEventListener('touchstart', onTouchStart, { capture: true });
       window.removeEventListener('touchmove', onTouchMove, { capture: true });
-      window.removeEventListener('touchend', onTouchEnd, { capture: true });
-      window.removeEventListener('touchcancel', onTouchEnd, { capture: true });
-      move?.kill();
-      gsap.killTweensOf(proxy);
-      if (gesture?.quiet != null) {
-        clearTimeout(gesture.quiet);
-      }
       window.removeEventListener('scroll', onScroll);
       stage.removeEventListener('click', onClick, { capture: true });
       sections.forEach(section => section.removeAttribute('data-current'));
       window.removeEventListener('resize', onResize);
-      if (moveTimer !== null) {
-        clearTimeout(moveTimer);
-      }
       if (resizeTimer !== null) {
         clearTimeout(resizeTimer);
+      }
+      if (moveTimer !== null) {
+        clearTimeout(moveTimer);
       }
       setSmoothLerp(null);
     },

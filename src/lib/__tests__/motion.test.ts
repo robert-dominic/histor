@@ -36,15 +36,15 @@ const NAMES: TokenName[] = [
   'landing.blur',
   'landing.dock',
   'landing.dockRise',
-  'landing.swing',
   'landing.write',
   'landing.musicIn',
   'landing.musicOut',
   'landing.tilt',
-  'landing.tiltRelease',
-  'landing.follow',
-  'landing.release',
   'landing.stage',
+  'landing.leave',
+  'landing.arrive',
+  'landing.textOut',
+  'landing.textIn',
 ];
 
 describe('motion tokens', () => {

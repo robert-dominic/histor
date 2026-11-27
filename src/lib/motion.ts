@@ -41,15 +41,15 @@ export type TokenName =
   | 'landing.blur'
   | 'landing.dock'
   | 'landing.dockRise'
-  | 'landing.swing'
   | 'landing.write'
   | 'landing.musicIn'
   | 'landing.musicOut'
   | 'landing.tilt'
-  | 'landing.tiltRelease'
-  | 'landing.follow'
-  | 'landing.release'
-  | 'landing.stage';
+  | 'landing.stage'
+  | 'landing.leave'
+  | 'landing.arrive'
+  | 'landing.textOut'
+  | 'landing.textIn';
 
 export interface MotionToken {
   ease: string;
@@ -129,8 +129,6 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.dock': { ease: 'power3.inOut', duration: 0.8 },
   /** ...and its rise, which runs ahead of the sideways move, so the path is a curve, not a diagonal. */
   'landing.dockRise': { ease: 'power2.out', duration: 0.8 },
-  /** A frame swinging like a painting on a wire: it settles from its slight lean with one soft sway back. */
-  'landing.swing': { ease: 'back.out(1.4)', duration: 1.5 },
   /** One letter of a frame's title being written (staggered by about a fifth of a second over four). */
   'landing.write': { ease: 'power1.out', duration: 0.14 },
   /** The landing music fading in when started, and one track crossfading into the next (about 3s). */
@@ -139,14 +137,17 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.musicOut': { ease: 'sine.inOut', duration: 1.5 },
   /** A frame following the cursor in 3D: about 0.6s, power3.out (used with gsap.quickTo). */
   'landing.tilt': { ease: 'power3.out', duration: 0.6 },
-  /** ...and easing back flat when the cursor leaves: no spring, no jitter. */
-  'landing.tiltRelease': { ease: 'power3.out', duration: 0.8 },
-  /** The frames following the hand during a gesture (gsap.quickTo): they glide just behind it, never jump. */
-  'landing.follow': { ease: 'power3.out', duration: 0.5 },
-  /** A gesture let go: the frames finish the move to the next case, or ease back to this one, and settle softly. */
-  'landing.release': { ease: 'power3.out', duration: 0.6 },
   /** One case giving way to the next when it is not the hand moving it (a key, the rail, Home, End, the wordmark). */
   'landing.stage': { ease: 'power3.inOut', duration: 0.6 },
+  // ---- One committed move between two cases (landing timing fix): about 0.6s in all.
+  /** The leaving frame: up and left off the screen, growing to about 1.3x. */
+  'landing.leave': { ease: 'power2.in', duration: 0.4 },
+  /** The arriving frame, from the preview spot to the centre at full size; and the next preview rising into the corner. No overshoot. */
+  'landing.arrive': { ease: 'expo.out', duration: 0.55 },
+  /** The old headline, subline and title fading out at the start. */
+  'landing.textOut': { ease: 'power1.out', duration: 0.15 },
+  /** The new headline and subline fading in with a small rise, from 0.25s to 0.6s into the move. */
+  'landing.textIn': { ease: 'power2.out', duration: 0.35 },
 };
 
 /** How blurred landing text is while it is out of focus, in px. Text lines only, never a large layer. */
@@ -203,11 +204,10 @@ export const MOTION_QUERIES = {
   reduced: '(prefers-reduced-motion: reduce)',
 } as const;
 
-/** How long the landing's scroll must have been still on a case before its words come back, in seconds. */
-export const LANDING_SETTLE = 0.15;
-
 /**
- * The scrubbed landing timeline's own units (landing fixes brief): one move of the frames is one unit of the
- * timeline, which the scroll position maps to; the rest are shares of it.
+ * One committed landing move's moments, in seconds from its start (landing timing fix): the new headline and subline
+ * start at `wordsAt`; the title beside the frame writes in from `titleFrom` to `titleTo`; input counts again at
+ * `unlockAt` (the move itself is about 0.6s; the title may still be writing). The leaving frame grows to `leaveScale`.
  */
-export const SCRUB = { move: 1, fadeOut: 0.4, peekFrom: 0.4, peekRise: 0.6 } as const;
+export const LANDING_MOVE = { wordsAt: 0.25, titleFrom: 0.35, titleTo: 0.75, unlockAt: 0.6, leaveScale: 1.3 } as const;
+

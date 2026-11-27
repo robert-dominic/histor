@@ -30,11 +30,6 @@ function renderHome() {
     </MemoryRouter>
   );
 }
-/** The stage's own move to case `index` (a key, the rail, the wordmark): its ease and duration. */
-function stageMoveTo(index: number) {
-  const move = (gsap.globalTimeline.getChildren(false, true, false) as gsap.core.Tween[]).find(child => child.vars?.at === index);
-  return move === undefined ? undefined : { ease: move.vars.ease, duration: move.duration() };
-}
 /** Ends every tween now running, so the docking lands. */
 const settle = () => act(() => gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1)));
 
@@ -185,9 +180,18 @@ describe('the header (landing v3 brief)', () => {
     renderHome();
     const link = document.querySelector<HTMLAnchorElement>('[data-landing="header"] a[aria-label="Histor, back to the top"]')!;
     const allowed = fireEvent.click(link);
-    // The click is handled (not a navigation), and the move is soft: the stage's move to case 0, not a jump.
+    // The click is handled (not a navigation): the stage moves back to case 0.
     expect(allowed).toBe(false);
-    expect(stageMoveTo(0)).toMatchObject({ ease: 'power3.inOut' });
+    const current = () => [...document.querySelectorAll('[data-exhibit]')].findIndex(section => section.getAttribute('data-current') === 'true');
+    expect(current()).toBe(0);
+    act(() => {
+      fireEvent.click(screen.getAllByRole('button', { name: /^Go to/, hidden: true })[3]);
+    });
+    expect(current()).toBe(3);
+    act(() => {
+      fireEvent.click(link);
+    });
+    expect(current()).toBe(0);
   });
 
   test('the music button is there, off until clicked, its tooltip "Play music" in the shared tooltip style', () => {
@@ -548,7 +552,7 @@ describe('the progress rail and the end (landing brief, 5)', () => {
     expect(ticks.slice(1).every(tick => tick.getAttribute('aria-current') === null)).toBe(true);
     fireEvent.click(ticks[3]);
     // On the stage a tick plays the move to its case.
-    expect(stageMoveTo(3)).toMatchObject({ ease: 'power3.inOut' });
+    expect(document.querySelectorAll('[data-exhibit]')[3].getAttribute('data-current')).toBe('true');
     to.mockRestore();
   });
 
