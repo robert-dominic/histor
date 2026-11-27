@@ -51,7 +51,7 @@ inclusion: always
 | `creak` | Too quiet for too long on the desk (dread pass) | dread |
 | `jump-sting` | "You trusted a legend." (dread pass) | dread |
 
-**Repeated sounds never machine-gun:** the pen at most 12 a second (`SOUND.penTicksPerSecond`), the typewriter at most 14 (`SOUND.typeKeysPerSecond`); they, the click and the file actions vary their pitch (±4%) and level (±12%) a little each time (`SAMPLES_VARY`). **Typed text gets the typewriter; written text gets the pen** (`src/lib/typewriter.ts`, `src/lib/quill-writing.ts`).
+**Repeated sounds never machine-gun:** the pen at most 18 a second (`SOUND.penTicksPerSecond`, raised with the pen's 1.5× pace so its sound keeps up), the typewriter at most 14 (`SOUND.typeKeysPerSecond`); they, the click and the file actions vary their pitch (±4%) and level (±12%) a little each time (`SAMPLES_VARY`). **Typed text gets the typewriter; written text gets the pen** (`src/lib/typewriter.ts`, `src/lib/quill-writing.ts`).
 
 ## Cut (sound-files brief, 3)
 

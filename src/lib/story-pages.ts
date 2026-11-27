@@ -6,14 +6,14 @@ import { parseRefs } from '@/lib/parse-refs';
 /** The story's pace: every timing to tune by feel, in one place. */
 export const STORY_PACE = {
   // ---- Writing speed: the pen.
-  /** The pen writes at about 3× reading pace (240 words a minute), so it leads the eye. */
-  penWordsPerMinute: 720,
+  /** The pen writes at about 4.5× reading pace (240 words a minute), so it leads the eye (mobile pass: 1.5× the old 720). */
+  penWordsPerMinute: 1080,
   /** No page's body takes longer than this to write, in seconds; a long one is written a whole word at a time. */
-  maxWriteSeconds: 6,
+  maxWriteSeconds: 4,
   /** Above this many letters a second, the pen writes whole words instead. */
-  maxLettersPerSecond: 80,
+  maxLettersPerSecond: 120,
   /** The chapter heading is written in about this long, in seconds. */
-  headingSeconds: 1.6,
+  headingSeconds: 1.07,
   /** The kicker is typed at this many letters a second. */
   kickerRate: 40,
   /** Before a weighted phrase the pen pauses this long (seconds), then writes it this many times slower. */

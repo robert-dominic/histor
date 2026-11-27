@@ -10,6 +10,10 @@ const plain = (text: string) => parseRefs(text).map(segment => (segment.kind ===
 describe('STORY_PACE: one object to tune', () => {
   test('writing speed, the hold before a hook, the hook hold and the auto-play reading time are all here', () => {
     expect(STORY_PACE.penWordsPerMinute).toBeGreaterThan(STORY_PACE.readWordsPerMinute);
+    // About 1.5× the pen's old pace (720 words a minute, 6s at most, 1.6s for a heading), its sound keeping up.
+    expect(STORY_PACE.penWordsPerMinute).toBe(1080);
+    expect(STORY_PACE.maxWriteSeconds).toBe(4);
+    expect(STORY_PACE.headingSeconds).toBeCloseTo(1.6 / 1.5, 2);
     for (const key of ['hookHold', 'playHoldAtLeast', 'readWordsPerMinute', 'hookDecay', 'dissolve', 'beforeFork'] as const) {
       expect(STORY_PACE[key], key).toBeGreaterThan(0);
     }

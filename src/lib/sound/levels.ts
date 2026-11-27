@@ -34,7 +34,7 @@ export const SOUND = {
   /** No more one-shot sounds than this at once; another is simply skipped. */
   maxVoices: 14,
   /** The pen's scratch: never more ticks a second than this, however fast it writes. */
-  penTicksPerSecond: 12,
+  penTicksPerSecond: 18,
   /** The typewriter's keys (review-fixes brief, 8): never more than this many a second. */
   typeKeysPerSecond: 14,
 } as const;
