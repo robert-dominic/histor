@@ -340,6 +340,13 @@ describe('Story: scenes', () => {
 });
 
 describe('Story: the roll call', () => {
+  test('under 768px there is no crew card: its column is hidden on phones, in the stage and in the plain page', () => {
+    const { container } = renderStory();
+    const columns = container.querySelectorAll<HTMLElement>('[data-story="roll-call-column"]');
+    expect(columns.length).toBeGreaterThan(0);
+    columns.forEach(column => expect(column.className).toContain('max-md:hidden'));
+  });
+
   test('chapter 1\'s roll call is a crew list: a slip of aged paper, headed from the case data, with dark ink', () => {
     const { container } = renderStory();
     const section = maryCeleste.story[0];

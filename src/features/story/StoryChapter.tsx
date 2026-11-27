@@ -99,7 +99,7 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
         {/* The roll call: a crew list, a slip of aged paper on the other side of the image from the page (below it on
             phones), with the whole list already written. */}
         {rollCall !== undefined && rollCall.length > 0 && (
-          <div className="px-5 pb-12 sm:px-10 lg:absolute lg:top-1/2 lg:right-[clamp(1.5rem,5vw,5rem)] lg:-translate-y-1/2 lg:px-0 lg:pb-0">
+          <div data-story="roll-call-column" className="px-5 pb-12 max-md:hidden sm:px-10 lg:absolute lg:top-1/2 lg:right-[clamp(1.5rem,5vw,5rem)] lg:-translate-y-1/2 lg:px-0 lg:pb-0">
             <div data-story="crew-slip" className="story-crew-slip relative w-[min(100%,22rem)] rotate-[1.5deg] rounded-[2px] px-4 pt-4 pb-3.5 text-ink lg:w-[min(17.5rem,22vw)] lg:px-5 lg:pt-5 lg:pb-4">
               <span aria-hidden="true" className="desk-pin absolute -top-1 left-1/2 size-2.5 -translate-x-1/2 rounded-full" />
               {section.rollCallTitle !== undefined && (

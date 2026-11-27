@@ -160,7 +160,8 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
       {rollCall !== undefined && rollCall.length > 0 && (
         <div
           data-story="roll-call-column"
-          className="pointer-events-none absolute inset-x-0 top-[calc(var(--case-header)+2.75rem)] z-[3] flex justify-end px-5 sm:px-10 lg:inset-x-auto lg:top-1/2 lg:right-[clamp(1.5rem,5vw,5rem)] lg:-translate-y-1/2 lg:px-0"
+          // Phones (under 768px): no crew card, so nothing crowds the page.
+          className="pointer-events-none absolute inset-x-0 max-md:hidden top-[calc(var(--case-header)+2.75rem)] z-[3] flex justify-end px-5 sm:px-10 lg:inset-x-auto lg:top-1/2 lg:right-[clamp(1.5rem,5vw,5rem)] lg:-translate-y-1/2 lg:px-0"
         >
           <div
             data-story="crew-slip"
