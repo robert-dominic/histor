@@ -37,25 +37,36 @@ export const LANDING_LERP = 0.08;
 export const STAGE_AWAY = { x: -0.62, y: -0.8, scale: LANDING_MOVE.leaveScale } as const;
 
 /**
- * What makes a wheel event a new gesture rather than the tail of the last one: a quiet gap of more than `gapMs`, and
- * then either a gap of more than `momentumMs` or a push harder than the last event (a trackpad's momentum only ever
- * dies away, so a tail never grows). However hard the flick, and however long its momentum trails, it is one gesture.
+ * What makes a wheel event a new gesture rather than the tail of the last one (fast-scroll fix):
+ * - a mouse wheel's notch: a delta of at least `notchMin` px the same size as the last one (within `notchTolerance`),
+ *   in a gesture whose deltas have never shrunk: every notch is a new gesture, however quickly they come;
+ * - after a quiet gap of more than `gapMs`, a push harder than the last event (by `growth`);
+ * - after more than `momentumMs` of quiet, anything.
+ * A trackpad's momentum only ever dies away (each delta smaller than the last, by `shrink`), so a flick and all its
+ * trailing momentum stay one gesture, however long it trails; equal deltas after it has begun to shrink are still its
+ * tail, and so are the small equal deltas of a finger resting on the pad (under `notchMin`).
  */
-export const LANDING_GESTURE = { gapMs: 300, momentumMs: 800, growth: 1.15 } as const;
+export const LANDING_GESTURE = { gapMs: 300, momentumMs: 800, growth: 1.15, notchMin: 40, notchTolerance: 1, shrink: 0.98 } as const;
 
 /** One wheel gesture at a time: `note` every wheel event, then `take` asks whether this gesture may still move. */
-export function createGestureGate({ gapMs, momentumMs, growth } = LANDING_GESTURE) {
+export function createGestureGate({ gapMs, momentumMs, growth, notchMin, notchTolerance, shrink } = LANDING_GESTURE) {
   let last = Number.NEGATIVE_INFINITY;
   let lastSize = 0;
   let used = false;
+  /** The gesture's deltas have begun to die away: it is momentum, and its equal deltas are no notches. */
+  let dying = false;
   return {
     /** Notes a wheel event; true when it starts a new gesture (not the tail of the last). */
     note(now: number, delta: number): boolean {
       const gap = now - last;
       const size = Math.abs(delta);
-      const fresh = gap > momentumMs || (gap > gapMs && size > lastSize * growth);
+      const notch = !dying && size >= notchMin && Math.abs(size - lastSize) <= notchTolerance;
+      const fresh = gap > momentumMs || (gap > gapMs && size > lastSize * growth) || notch;
       if (fresh) {
         used = false;
+        dying = false;
+      } else if (size < lastSize * shrink) {
+        dying = true;
       }
       last = now;
       lastSize = size;
@@ -284,11 +295,18 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   let moveTimer: ReturnType<typeof setTimeout> | null = null;
   /** The page went on into the footer: the next way back up returns to the last case. */
   let inFooter = false;
+  /** A new gesture that came while a move ran: started the moment that move ends (one at most). */
+  let queued: 1 | -1 | 0 = 0;
   const unlock = () => {
     moving = false;
     if (moveTimer !== null) {
       clearTimeout(moveTimer);
       moveTimer = null;
+    }
+    const next = queued;
+    queued = 0;
+    if (next !== 0 && alive && isReady && claims(next)) {
+      step(next);
     }
   };
   const lock = () => {
@@ -536,7 +554,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   const gate = createGestureGate();
   const onWheel = (event: WheelEvent) => {
     const raw = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * window.innerHeight : event.deltaY;
-    gate.note(event.timeStamp || performance.now(), raw);
+    const fresh = gate.note(event.timeStamp || performance.now(), raw);
     if (!alive || event.ctrlKey || notOurs(event.target)) {
       return;
     }
@@ -550,8 +568,14 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (isReady && gate.take(!moving)) {
+    if (!isReady) {
+      return;
+    }
+    if (gate.take(!moving)) {
       step(direction);
+    } else if (fresh && moving) {
+      // A real new gesture while a move runs: remembered (one, the latest), and started the moment the move ends.
+      queued = direction;
     }
   };
   window.addEventListener('wheel', onWheel, { capture: true, passive: false });

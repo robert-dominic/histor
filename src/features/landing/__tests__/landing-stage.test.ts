@@ -224,16 +224,87 @@ describe('one case per gesture', () => {
     make(6);
     stage!.ready();
     let t = 1000;
-    for (let i = 0; i < 20; i += 1, t += 16) {
-      wheel(900, t);
+    // A trackpad flick: it ramps up, then its momentum dies away (no two deltas the same while it is strong).
+    for (const size of [120, 380, 640, 900, 870]) {
+      wheel(size, (t += 16));
+    }
+    for (let size = 820; size > 0.5; size *= 0.9) {
+      wheel(size, (t += 16));
     }
     finish();
-    for (let size = 300; size > 0.5; size *= 0.9, t += 40) {
+    for (let size = 3; size > 0.5; size *= 0.9, t += 40) {
       expect(wheel(size, t).defaultPrevented).toBe(true);
     }
     expect(changes).toEqual([1]);
     wheel(80, t + 1500);
     expect(changes).toEqual([1, 2]);
+  });
+
+  test('quick equal mouse notches: each counts once the move has passed its 0.6s, with no dead time', () => {
+    make(6);
+    stage!.ready();
+    // A notch, then the next 120ms later: no stronger than the last, but a new gesture.
+    wheel(100, 1000);
+    expect(changes).toEqual([1]);
+    wheel(100, 1120);
+    // Remembered while the move runs, and started the moment it ends (0.6s), not a second later.
+    expect(changes).toEqual([1]);
+    act(() => void stage!.timeline()!.time(0.61));
+    expect(changes).toEqual([1, 2]);
+    // And so on, case to case, one case per notch.
+    wheel(100, 1250);
+    act(() => void stage!.timeline()!.time(0.61));
+    expect(changes).toEqual([1, 2, 3]);
+    // A notch after the move has passed its 0.6s counts at once.
+    act(() => void stage!.timeline()!.time(0.61));
+    expect(stage!.moving()).toBe(false);
+    wheel(100, 2600);
+    expect(changes).toEqual([1, 2, 3, 4]);
+  });
+
+  test('a momentum tail stays one gesture: shrinking deltas, and equal ones once it has begun to die away, never move again', () => {
+    const gate = createGestureGate();
+    expect(gate.note(0, 200)).toBe(true);
+    let t = 0;
+    for (const size of [180, 150, 120, 90, 90, 90, 60, 60, 40, 40, 20, 5, 5, 1, 1]) {
+      expect(gate.note((t += 16), size), String(size)).toBe(false);
+    }
+    // The small equal deltas of a finger on the pad are no notches either.
+    const pad = createGestureGate();
+    expect(pad.note(0, 4)).toBe(true);
+    for (let i = 1; i < 20; i += 1) {
+      expect(pad.note(i * 16, 4)).toBe(false);
+    }
+    // Equal mouse notches are each a new gesture.
+    const mouse = createGestureGate();
+    expect([0, 40, 80, 120].map(time => mouse.note(time, 100))).toEqual([true, true, true, true]);
+  });
+
+  test('a real new gesture during a move is remembered (one, not more) and starts the moment the move finishes', () => {
+    make(6);
+    stage!.ready();
+    wheel(100, 1000);
+    expect(changes).toEqual([1]);
+    // Three more notches while it moves: only one is kept.
+    wheel(100, 1100);
+    wheel(100, 1200);
+    wheel(100, 1300);
+    act(() => void stage!.timeline()!.time(0.61));
+    expect(changes).toEqual([1, 2]);
+    finish();
+    expect(changes).toEqual([1, 2]);
+    // A momentum tail during a move is not a new gesture: nothing is kept.
+    wheel(200, 5000);
+    for (let size = 180, t = 5016; size > 1; size *= 0.85, t += 16) {
+      wheel(size, t);
+    }
+    finish();
+    expect(changes).toEqual([1, 2, 3]);
+    // The way it points is the latest one's.
+    wheel(100, 9000);
+    wheel(-100, 9100);
+    act(() => void stage!.timeline()!.time(0.61));
+    expect(changes).toEqual([1, 2, 3, 4, 3]);
   });
 
   test('momentum is told apart from a new gesture', () => {
