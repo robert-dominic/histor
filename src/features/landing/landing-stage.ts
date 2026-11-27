@@ -72,6 +72,9 @@ export function createGestureGate({ gapMs, momentumMs, growth } = LANDING_GESTUR
   };
 }
 
+/** Sent on the window as every move starts, so whatever belongs to the case in hand (a sealed plaque) can close. */
+export const LANDING_MOVE_EVENT = 'histor:landing-move';
+
 /** How long past its own time a move counts as landed whatever happens, in ms: nothing can ever lock the page. */
 export const MOVE_GRACE_MS = 400;
 
@@ -328,6 +331,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       return;
     }
     lock();
+    window.dispatchEvent(new CustomEvent(LANDING_MOVE_EVENT, { detail: { from: a, to: b } }));
     const forward = b > a;
     const leave = tween('landing.leave');
     const arrive = tween('landing.arrive');

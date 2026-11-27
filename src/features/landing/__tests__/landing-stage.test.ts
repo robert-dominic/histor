@@ -7,7 +7,7 @@ import gsap from 'gsap';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { createGestureGate, createLandingStage, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, peekRect, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
+import { createGestureGate, createLandingStage, LANDING_MOVE_EVENT, LANDING_GESTURE, LANDING_LERP, MOVE_GRACE_MS, peekRect, poseOver, STAGE_AWAY, type StageHandle } from '@/features/landing/landing-stage';
 import { LANDING_MOVE, MOTION } from '@/lib/motion';
 import * as smoothScroll from '@/lib/smooth-scroll';
 import { stubMatchMedia } from '@/test/match-media';
@@ -319,6 +319,24 @@ describe('one case per gesture', () => {
     make(4, 2);
     expect(smoothScroll.jumpToY).toHaveBeenCalledWith(200);
     expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['false', 'false', 'true', 'false']);
+  });
+});
+
+describe('a move tells the page as it starts', () => {
+  test('every move (a gesture, a key, the rail) sends the move event at its start', () => {
+    make(5);
+    stage!.ready();
+    const heard: { from: number; to: number }[] = [];
+    const listener = (event: Event) => heard.push((event as CustomEvent).detail);
+    window.addEventListener(LANDING_MOVE_EVENT, listener);
+    wheel(80, 1000);
+    expect(heard).toEqual([{ from: 0, to: 1 }]);
+    finish();
+    press('ArrowDown');
+    finish();
+    stage!.go(0);
+    window.removeEventListener(LANDING_MOVE_EVENT, listener);
+    expect(heard.map(each => each.to)).toEqual([1, 2, 0]);
   });
 });
 

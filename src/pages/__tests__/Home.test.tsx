@@ -541,6 +541,36 @@ describe('cursors (landing, last pass)', () => {
   });
 });
 
+describe('the sealed plaque and a move (landing)', () => {
+  test('an open plaque closes as a move to another case starts, and is not open again on the way back', () => {
+    renderHome();
+    act(() => {
+      fireEvent.wheel(window, { deltaY: 40 });
+      settle();
+    });
+    // On the stage the Ripper is case 1: go there, open its plaque.
+    act(() => {
+      fireEvent.click(screen.getAllByRole('button', { name: /^Go to/, hidden: true })[1]);
+      settle();
+    });
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Jack the Ripper: sealed"]')!;
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    // A move away (the rail): it closes as the move starts.
+    const ticks = () => screen.getAllByRole('button', { name: /^Go to/, hidden: true });
+    act(() => {
+      fireEvent.click(ticks()[2]);
+    });
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    act(() => {
+      settle();
+      fireEvent.click(ticks()[1]);
+      settle();
+    });
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
 describe('the progress rail and the end (landing brief, 5)', () => {
   test('one tick per case on the left, the first current; a tick goes to its case', () => {
     const to = vi.spyOn(smoothScroll, 'scrollToY').mockImplementation(() => undefined);

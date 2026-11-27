@@ -2,7 +2,7 @@
 // What a frame does when pressed (landing brief, 4).
 // - An open case: a short transition (the frame scales up, the screen fades to black), then its page.
 // - A sealed case: a small plaque card rises beside the frame (the shared Popover) with its title, years, subline and
-//   "Sealed — case file in preparation."; its close button, Escape or a click outside closes it; heard as the modal sound.
+//   "Sealed — case file in preparation."; its close button, Escape, a click outside or a move to another case closes it; heard as the modal sound.
 // Both tilt toward the cursor on hover (use-frame-tilt.ts).
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,6 +12,7 @@ import IconButton from '@/components/IconButton';
 import { CloseIcon } from '@/components/icons';
 import type { Exhibit } from '@/cases';
 import { useFrameTilt } from '@/features/landing/use-frame-tilt';
+import { LANDING_MOVE_EVENT } from '@/features/landing/landing-stage';
 import { MOTION_QUERIES, tween } from '@/lib/motion';
 import { emitStoryEvent } from '@/lib/story-events';
 
@@ -90,7 +91,11 @@ export function SealedFrame({ exhibit, children }: { exhibit: Exhibit; children:
     };
     document.addEventListener('keydown', key);
     document.addEventListener('pointerdown', outside);
+    // A move to another case (a scroll, a swipe, a key, the rail, the wordmark) closes it as the move starts; coming
+    // back shows the frame without it until it is pressed again.
+    window.addEventListener(LANDING_MOVE_EVENT, close);
     return () => {
+      window.removeEventListener(LANDING_MOVE_EVENT, close);
       document.removeEventListener('keydown', key);
       document.removeEventListener('pointerdown', outside);
     };
