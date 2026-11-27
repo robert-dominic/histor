@@ -188,10 +188,10 @@ describe('one committed move, with these numbers', () => {
     }
     expect(gsap.getTweensOf(sections.map(section => section.querySelector('[data-frame-part="tilt"]')!))).toHaveLength(0);
     expect(gsap.getTweensOf(sections.map(section => part(sections.indexOf(section), 'rise')))).toHaveLength(0);
-    // A jump while a move runs ends that one first: still one tween per frame.
+    // A jump while a move runs ends that one first: no frame has more than one tween moving it.
     stage!.go(3);
     for (const index of [0, 1, 2, 3]) {
-      expect(gsap.getTweensOf(part(index, 'anchor')).length, String(index)).toBeLessThanOrEqual(1);
+      expect(gsap.getTweensOf(part(index, 'anchor')).filter(tween => tween.duration() > 0).length, String(index)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -302,6 +302,7 @@ describe('one case per gesture', () => {
     setY(230);
     expect(wheel(-80, 5000).defaultPrevented).toBe(true);
     expect(vi.mocked(smoothScroll.scrollToY).mock.calls.map(call => call[0])).toEqual([200]);
+    expect(vi.mocked(smoothScroll.scrollToY).mock.calls[0][1]).toMatchObject({ duration: 1.2, ease: 'power3.inOut' });
   });
 
   test('a move that is cut short never locks the page', () => {
@@ -319,6 +320,53 @@ describe('one case per gesture', () => {
     make(4, 2);
     expect(smoothScroll.jumpToY).toHaveBeenCalledWith(200);
     expect(sections.map(section => section.getAttribute('data-current'))).toEqual(['false', 'false', 'true', 'false']);
+  });
+});
+
+describe('a smooth long jump', () => {
+  test('more than one case away: the frame in hand and its words fade out (0.3s), the cases between are never animated, then the normal arrival (0.55s, expo.out)', () => {
+    make(6);
+    stage!.ready();
+    act(() => void gsap.globalTimeline.getChildren(false, true, true).forEach(child => child.progress(1)));
+    stage!.go(4);
+    const tl = stage!.timeline()!;
+    const fade = tweenOn(part(0, 'anchor'));
+    expect([fade.startTime(), fade.duration(), fade.vars.opacity, fade.vars.ease]).toEqual([0, 0.3, 0, 'power2.in']);
+    expect(tweenOn(part(0, 'words')).duration()).toBe(0.3);
+    // The cases between: no tweens at all.
+    for (const index of [2, 3]) {
+      expect(gsap.getTweensOf(part(index, 'anchor')), String(index)).toHaveLength(0);
+    }
+    const arrive = (tl.getChildren(true, true, false) as gsap.core.Tween[]).find(child => child.targets().includes(part(4, 'anchor')) && child.duration() > 0)!;
+    expect([arrive.startTime(), arrive.duration(), arrive.vars.ease]).toEqual([0.3, 0.55, 'expo.out']);
+    expect(arrive.vars).toMatchObject({ x: 0, y: 0, scale: 1 });
+    const words = tweenOn(part(4, 'words'));
+    expect(words.startTime()).toBeCloseTo(0.3 + 0.25, 5);
+    finish();
+    expect(sections.map(section => section.style.visibility)).toEqual(['hidden', 'hidden', 'hidden', 'hidden', 'visible', 'visible']);
+    expect(changes).toEqual([4]);
+  });
+
+  test('one case away: the normal move', () => {
+    make(6);
+    stage!.ready();
+    stage!.go(1);
+    expect(tweenOn(part(0, 'anchor')).vars).toMatchObject({ scale: 1.3, ease: 'power2.in' });
+  });
+
+  test('from the footer: first the page scrolls up to the stage (about 1.2s, power3.inOut), then the jump', () => {
+    make(6, 5);
+    stage!.ready();
+    setY(800);
+    stage!.go(1);
+    const [y, options] = vi.mocked(smoothScroll.scrollToY).mock.calls.at(-1)!;
+    expect(y).toBe(500);
+    expect(options).toMatchObject({ duration: 1.2, ease: 'power3.inOut' });
+    expect(changes).toEqual([]);
+    setY(500);
+    act(() => options!.onComplete!());
+    expect(changes).toEqual([1]);
+    expect(tweenOn(part(5, 'anchor')).duration()).toBe(0.3);
   });
 });
 

@@ -240,7 +240,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     tl.to(out, { opacity: 0, ...tween('landing.textOut'), overwrite: 'auto' }, 0);
   };
   /** Adds to `tl` the new case's words: the headline and subline from `wordsAt`, the title written from `titleFrom`. */
-  const wordsIn = (index: number, tl: gsap.core.Timeline) => {
+  const wordsIn = (index: number, tl: gsap.core.Timeline, at = 0) => {
     const p = parts[index];
     if (p === null) {
       return;
@@ -249,7 +249,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     if (p.words !== null) {
       gsap.killTweensOf(p.words);
       gsap.set(p.words, { opacity: 0, y: INK_RISE });
-      tl.to(p.words, { opacity: 1, y: 0, ...tween('landing.textIn'), overwrite: 'auto' }, LANDING_MOVE.wordsAt);
+      tl.to(p.words, { opacity: 1, y: 0, ...tween('landing.textIn'), overwrite: 'auto' }, at + LANDING_MOVE.wordsAt);
     }
     if (p.title === null || p.name === null) {
       return;
@@ -265,7 +265,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     const write = tween('landing.write');
     const span = LANDING_MOVE.titleTo - LANDING_MOVE.titleFrom;
     const stagger = split.chars.length > 1 ? Math.max(span - write.duration, 0) / (split.chars.length - 1) : 0;
-    const from = LANDING_MOVE.titleFrom;
+    const from = at + LANDING_MOVE.titleFrom;
     tl.to(split.chars, { opacity: 1, ...write, stagger }, from);
     if (p.years !== null) {
       gsap.set(p.years, { opacity: 0 });
@@ -303,12 +303,22 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     const to = Math.min(Math.max(index, 0), count - 1);
     // From the footer, the frames are already on the last case: only the page comes back up.
     if (window.scrollY > lastY() + 1) {
+      // From the footer: first the page scrolls up to the stage (Lenis, about 1.2s), then the move, if it goes on.
       inFooter = false;
       lock();
-      scrollToY(positionOf(to), { ...tween('landing.stage'), onComplete: unlock });
-      if (to !== current) {
-        from(current, to);
-      }
+      const target = to;
+      scrollToY(lastY(), {
+        ...tween('landing.return'),
+        onComplete: () => {
+          if (!alive) {
+            return;
+          }
+          unlock();
+          if (target !== current) {
+            from(current, target);
+          }
+        },
+      });
       return;
     }
     if (to === current) {
@@ -332,6 +342,10 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
     lock();
     window.dispatchEvent(new CustomEvent(LANDING_MOVE_EVENT, { detail: { from: a, to: b } }));
+    if (Math.abs(b - a) > 1) {
+      jump(a, b);
+      return;
+    }
     const forward = b > a;
     const leave = tween('landing.leave');
     const arrive = tween('landing.arrive');
@@ -402,6 +416,72 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
     wordsIn(b, tl);
     tl.call(unlock, undefined, LANDING_MOVE.unlockAt);
+  }
+
+  /**
+   * A long jump (more than one case away: the wordmark, the rail, Home, End): the frame in hand, its preview and its
+   * words fade out (0.3s); then the cases between are skipped, never animated, and the target arrives as usual
+   * (0.55s, expo.out), its preview rising into the corner and its words coming in on the move's own timing.
+   */
+  function jump(a: number, b: number) {
+    const out = tween('landing.jumpOut');
+    current = b;
+    onChange(b);
+    markCurrent(b);
+    if (window.scrollY <= lastY() + 1) {
+      jumpToY(positionOf(b));
+    }
+    const tl = gsap.timeline({
+      onComplete: () => {
+        if (move === tl) {
+          move = null;
+        }
+        settleOn(b);
+      },
+    });
+    move = tl;
+    const old = wordsFor;
+    wordsFor = null;
+    if (old !== null) {
+      revertSplit(old);
+      const p = parts[old];
+      const words = p === null ? [] : [p.words, p.title].filter((element): element is HTMLElement => element !== null);
+      gsap.killTweensOf(words);
+      tl.to(words, { opacity: 0, ...out, overwrite: 'auto' }, 0);
+    }
+    const leaving = [a, a + 1].map(i => parts[i]?.anchor).filter((anchor): anchor is HTMLElement => anchor != null);
+    gsap.killTweensOf(leaving);
+    tl.to(leaving, { opacity: 0, ...out, overwrite: 'auto' }, 0);
+    // The cases between are skipped: everything is set straight to where the target's arrival starts.
+    const B = parts[b];
+    const next = b + 1 < count ? parts[b + 1] : null;
+    const start = b > a ? (peeks[b] ?? rest) : away;
+    tl.call(
+      () => {
+        parts.forEach((p, i) => {
+          if (p !== null && i !== b && i !== b + 1) {
+            gsap.set(p.section, { visibility: 'hidden' });
+          }
+        });
+        if (B !== null) {
+          gsap.set(B.section, { visibility: 'visible', zIndex: 2 });
+        }
+        if (next != null) {
+          gsap.set(next.section, { visibility: 'visible', zIndex: 1 });
+        }
+      },
+      undefined,
+      out.duration
+    );
+    const arrive = tween('landing.arrive');
+    if (B !== null) {
+      tl.set(B.anchor, { ...start, opacity: b > a ? 1 : 0 }, out.duration).to(B.anchor, { ...rest, opacity: 1, ...arrive, overwrite: 'auto' }, out.duration);
+    }
+    if (next != null) {
+      tl.set(next.anchor, { ...(belows[b + 1] ?? rest), opacity: 0 }, out.duration).to(next.anchor, { ...(peeks[b + 1] ?? rest), opacity: 1, ...arrive, overwrite: 'auto' }, out.duration);
+    }
+    wordsIn(b, tl, out.duration);
+    tl.call(unlock, undefined, out.duration + LANDING_MOVE.unlockAt);
   }
 
   // ---- The first state.

@@ -45,6 +45,8 @@ const NAMES: TokenName[] = [
   'landing.arrive',
   'landing.textOut',
   'landing.textIn',
+  'landing.jumpOut',
+  'landing.return',
 ];
 
 describe('motion tokens', () => {

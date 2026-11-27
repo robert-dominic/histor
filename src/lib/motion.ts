@@ -49,7 +49,9 @@ export type TokenName =
   | 'landing.leave'
   | 'landing.arrive'
   | 'landing.textOut'
-  | 'landing.textIn';
+  | 'landing.textIn'
+  | 'landing.jumpOut'
+  | 'landing.return';
 
 export interface MotionToken {
   ease: string;
@@ -148,6 +150,10 @@ export const MOTION: Record<TokenName, MotionToken> = {
   'landing.textOut': { ease: 'power1.out', duration: 0.15 },
   /** The new headline and subline fading in with a small rise, from 0.25s to 0.6s into the move. */
   'landing.textIn': { ease: 'power2.out', duration: 0.35 },
+  /** A long jump (more than one case away): the frame in hand and its words fade out before the target arrives. */
+  'landing.jumpOut': { ease: 'power2.in', duration: 0.3 },
+  /** From the footer back up to the stage, before a jump: the page itself scrolls (Lenis). */
+  'landing.return': { ease: 'power3.inOut', duration: 1.2 },
 };
 
 /** How blurred landing text is while it is out of focus, in px. Text lines only, never a large layer. */
