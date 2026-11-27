@@ -4,6 +4,7 @@
 import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import SiteFooter from '@/components/SiteFooter';
+import LandingHeader from '@/features/landing/LandingHeader';
 import { registry } from '@/cases';
 import { APP_CREDITS, caseCredits, type CreditLine } from '@/lib/credits';
 
@@ -37,7 +38,8 @@ export default function Credits() {
   const cases = registry.flatMap(entry => (entry.sealed || entry.data === undefined ? [] : [caseCredits(entry.data)]));
   return (
     <>
-    <main data-page="credits" className="min-h-svh bg-night px-4 pt-14 pb-24 text-night-ink sm:px-8">
+    <LandingHeader docked plain />
+    <main data-page="credits" className="min-h-svh bg-night px-4 pt-24 pb-24 text-night-ink sm:px-8 lg:pt-28">
       <div className="mx-auto max-w-3xl">
         <h1 className="font-legend text-[clamp(2.25rem,1.8rem+2vw,3.25rem)] leading-none">Credits</h1>
         <p className="mt-3 font-voice text-[0.875rem] text-night-ink/70">

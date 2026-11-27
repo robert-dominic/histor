@@ -87,3 +87,16 @@ describe('the report\'s ⓘ', () => {
     expect(link.parentElement!.querySelector('[data-tooltip]')!.textContent).toBe('Credits & sources');
   });
 });
+
+describe('the header on /credits and /sources', () => {
+  test.each(['/credits', '/sources'])('%s: the normal header, its wordmark linking to the landing, and no music button', path => {
+    renderAt(path);
+    const header = document.querySelector<HTMLElement>('[data-landing="header"]')!;
+    const home = header.querySelector('a')!;
+    expect(home.getAttribute('href')).toBe('/');
+    expect(home.getAttribute('aria-label')).toBe('Histor, back to the archive');
+    expect(home.querySelector('img')!.className).not.toContain('opacity-0');
+    expect(header.querySelector('[data-landing="music"]')).toBeNull();
+    expect(header.querySelector('button')).toBeNull();
+  });
+});
