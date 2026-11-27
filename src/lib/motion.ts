@@ -217,3 +217,10 @@ export const MOTION_QUERIES = {
  */
 export const LANDING_MOVE = { wordsAt: 0.25, titleFrom: 0.35, titleTo: 0.75, unlockAt: 0.6, leaveScale: 1.3 } as const;
 
+/**
+ * The same move on a touch screen (landing fixes): slower, so a swipe reads as a page turning. The arrival takes
+ * `arrive` (still expo.out), the leaving frame `leave`, and the words' timing is scaled to match the arrival. A swipe
+ * must also go further (`swipeMin`, px) before it counts. Desktop timing is `LANDING_MOVE`'s.
+ */
+export const LANDING_TOUCH = { arrive: 0.9, leave: 0.6, swipeMin: 40 } as const;
+

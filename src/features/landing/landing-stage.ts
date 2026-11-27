@@ -24,7 +24,7 @@
 // any case.
 import gsap from 'gsap';
 import { SplitText } from 'gsap/SplitText';
-import { INK_RISE, LANDING_MOVE, STEP, tween } from '@/lib/motion';
+import { INK_RISE, LANDING_MOVE, LANDING_TOUCH, MOTION, STEP, tween, type TokenName } from '@/lib/motion';
 import { getLenis, jumpToY, scrollToY, setSmoothLerp } from '@/lib/smooth-scroll';
 import { STORY_PACE } from '@/lib/story-pages';
 
@@ -191,6 +191,25 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   const splits = new Map<number, SplitText>();
   setSmoothLerp(LANDING_LERP);
 
+  // ---- The pace: a touch screen's moves are slower (`LANDING_TOUCH`), the words' timing scaled with the arrival.
+  const touch = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  const pace = touch ? LANDING_TOUCH.arrive / MOTION['landing.arrive'].duration : 1;
+  const timing = (name: TokenName): { ease: string; duration: number } => {
+    const base = tween(name);
+    if (!touch) {
+      return base;
+    }
+    if (name === 'landing.arrive') {
+      return { ease: base.ease, duration: LANDING_TOUCH.arrive };
+    }
+    if (name === 'landing.leave') {
+      return { ease: base.ease, duration: LANDING_TOUCH.leave };
+    }
+    return { ease: base.ease, duration: base.duration * pace };
+  };
+  /** A moment of the move (`LANDING_MOVE`), at this screen's pace. */
+  const moment = (name: 'wordsAt' | 'titleFrom' | 'titleTo' | 'unlockAt') => LANDING_MOVE[name] * pace;
+
   /** Scroll pixels for one case. */
   const caseHeight = () => (count > 1 ? (track.offsetHeight - stage.offsetHeight) / (count - 1) : window.innerHeight);
   const trackTop = () => track.getBoundingClientRect().top + window.scrollY;
@@ -248,7 +267,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
     const out = [...(p.words === null ? [] : [p.words]), ...(p.title === null ? [] : [p.title])];
     gsap.killTweensOf(out);
-    tl.to(out, { opacity: 0, ...tween('landing.textOut'), overwrite: 'auto' }, 0);
+    tl.to(out, { opacity: 0, ...timing('landing.textOut'), overwrite: 'auto' }, 0);
   };
   /** Adds to `tl` the new case's words: the headline and subline from `wordsAt`, the title written from `titleFrom`. */
   const wordsIn = (index: number, tl: gsap.core.Timeline, at = 0) => {
@@ -260,7 +279,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     if (p.words !== null) {
       gsap.killTweensOf(p.words);
       gsap.set(p.words, { opacity: 0, y: INK_RISE });
-      tl.to(p.words, { opacity: 1, y: 0, ...tween('landing.textIn'), overwrite: 'auto' }, at + LANDING_MOVE.wordsAt);
+      tl.to(p.words, { opacity: 1, y: 0, ...timing('landing.textIn'), overwrite: 'auto' }, at + moment('wordsAt'));
     }
     if (p.title === null || p.name === null) {
       return;
@@ -274,13 +293,13 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     gsap.set(split.chars, { opacity: 0 });
     // The letters are spread so the last one has finished at `titleTo`.
     const write = tween('landing.write');
-    const span = LANDING_MOVE.titleTo - LANDING_MOVE.titleFrom;
+    const span = moment('titleTo') - moment('titleFrom');
     const stagger = split.chars.length > 1 ? Math.max(span - write.duration, 0) / (split.chars.length - 1) : 0;
-    const from = at + LANDING_MOVE.titleFrom;
+    const from = at + moment('titleFrom');
     tl.to(split.chars, { opacity: 1, ...write, stagger }, from);
     if (p.years !== null) {
       gsap.set(p.years, { opacity: 0 });
-      tl.to(p.years, { opacity: 1, ...tween('landing.textOut') }, from + span - tween('landing.textOut').duration);
+      tl.to(p.years, { opacity: 1, ...timing('landing.textOut') }, from + span - timing('landing.textOut').duration);
     }
     tl.call(() => revertSplit(index), undefined, from + span);
   };
@@ -315,7 +334,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       clearTimeout(moveTimer);
     }
     // Counted as landed after its own time in any case, so a move that is cut short never locks the page.
-    moveTimer = setTimeout(unlock, LANDING_MOVE.unlockAt * 1000 + MOVE_GRACE_MS);
+    moveTimer = setTimeout(unlock, moment('unlockAt') * 1000 + MOVE_GRACE_MS);
   };
   const moveTo = (index: number) => {
     const to = Math.min(Math.max(index, 0), count - 1);
@@ -365,8 +384,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       return;
     }
     const forward = b > a;
-    const leave = tween('landing.leave');
-    const arrive = tween('landing.arrive');
+    const leave = timing('landing.leave');
+    const arrive = timing('landing.arrive');
     current = b;
     onChange(b);
     markCurrent(b);
@@ -433,7 +452,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       animate(next, peeks[next] ?? rest, 1, arrive, belows[next] ?? rest, 0);
     }
     wordsIn(b, tl);
-    tl.call(unlock, undefined, LANDING_MOVE.unlockAt);
+    tl.call(unlock, undefined, moment('unlockAt'));
   }
 
   /**
@@ -593,7 +612,7 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
       return;
     }
     const delta = touchFrom - y;
-    if (Math.abs(delta) < STORY_PACE.gestureTolerance) {
+    if (Math.abs(delta) < (touch ? LANDING_TOUCH.swipeMin : STORY_PACE.gestureTolerance)) {
       if (window.scrollY < lastY() - 1) {
         event.preventDefault();
       }

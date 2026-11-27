@@ -394,6 +394,54 @@ describe('one case per gesture', () => {
   });
 });
 
+describe('slower moves on a touch screen', () => {
+  /** A phone: a coarse pointer, full motion. */
+  const coarse = () =>
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('pointer: coarse') || query.includes('no-preference'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined }));
+
+  test('the arrival about 0.9s (expo.out), the leaving frame about 0.6s, the words scaled to match; input again at the scaled end', () => {
+    coarse();
+    make();
+    stage!.ready();
+    touch('touchstart', 500);
+    touch('touchmove', 400);
+    const arrive = tweenOn(part(1, 'anchor'));
+    expect([arrive.duration(), arrive.vars.ease]).toEqual([0.9, 'expo.out']);
+    expect(tweenOn(part(0, 'anchor')).duration()).toBe(0.6);
+    const scale = 0.9 / 0.55;
+    const words = tweenOn(part(1, 'words'));
+    expect(words.startTime()).toBeCloseTo(0.25 * scale, 5);
+    expect(words.endTime()).toBeCloseTo(0.6 * scale, 5);
+    const writing = tweenOn(part(1, 'name').querySelector('div')!);
+    expect(writing.startTime()).toBeCloseTo(0.35 * scale, 5);
+    expect(writing.endTime()).toBeCloseTo(0.75 * scale, 5);
+    const tl = stage!.timeline()!;
+    act(() => void tl.time(0.6 * scale - 0.02));
+    expect(stage!.moving()).toBe(true);
+    act(() => void tl.time(0.6 * scale + 0.02));
+    expect(stage!.moving()).toBe(false);
+  });
+
+  test('a swipe must go further (about 40px) before it counts', () => {
+    coarse();
+    make();
+    stage!.ready();
+    touch('touchstart', 500);
+    touch('touchmove', 470);
+    expect(changes).toEqual([]);
+    touch('touchmove', 455);
+    expect(changes).toEqual([1]);
+  });
+
+  test('desktop timing stays as it was', () => {
+    make();
+    stage!.ready();
+    wheel(80, 1000);
+    expect(tweenOn(part(1, 'anchor')).duration()).toBe(0.55);
+    expect(tweenOn(part(0, 'anchor')).duration()).toBe(0.4);
+  });
+});
+
 describe('a smooth long jump', () => {
   test('more than one case away: the frame in hand and its words fade out (0.3s), the cases between are never animated, then the normal arrival (0.55s, expo.out)', () => {
     make(6);
