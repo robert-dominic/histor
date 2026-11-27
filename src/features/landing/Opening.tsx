@@ -14,6 +14,9 @@ import { blurredCopy, loadImage } from '@/lib/blurred-copy';
 import { MOTION_QUERIES, STEP, tween } from '@/lib/motion';
 import { pauseSmoothScroll, resumeSmoothScroll } from '@/lib/smooth-scroll';
 
+/** The Histor wordmark's own proportions (public/brand/histor-logo-cream.svg: its viewBox, 4562 by 828). */
+const WORDMARK_ASPECT = 4562 / 828;
+
 /** The longest the opening waits for the detail's picture, in ms. */
 export const OPENING_IMAGE_WAIT_MS = 2000;
 
@@ -150,19 +153,41 @@ export default function Opening({ targetRef, detail, onDock, onSettle, onDone }:
     }
 
     // ---- The wordmark: fades in on the black, then rises and shrinks into the header, on its own timing.
-    const target = targetRef.current;
-    const from = mark.getBoundingClientRect();
-    const to = target?.getBoundingClientRect();
+    // Measured when the dock begins, not at mount: on a reload the header's wordmark (an <img>) may not have loaded yet,
+    // and a width of 0 then would shrink the wordmark to nothing (it seemed to vanish until the frame settled). Its
+    // width is never trusted: it is the header's height times the logo's own proportions.
+    let dock: { x: number; y: number; scale: number } | null = null;
+    const dockTo = () => {
+      if (dock === null) {
+        const target = targetRef.current;
+        const from = mark.getBoundingClientRect();
+        const to = target?.getBoundingClientRect();
+        const fromWidth = from.width > 0 ? from.width : mark.offsetWidth;
+        const toWidth = to === undefined ? 0 : to.height > 0 ? to.height * WORDMARK_ASPECT : to.width;
+        dock = to === undefined || fromWidth <= 0 || toWidth <= 0 ? { x: 0, y: 0, scale: 1 } : { x: to.left - from.left, y: to.top - from.top, scale: toWidth / fromWidth };
+      }
+      return dock;
+    };
     const markTimeline = gsap.timeline({ onComplete: part });
     timelines.push(markTimeline);
     markTimeline.fromTo(mark, { opacity: 0 }, { opacity: 1, ...tween('landing.wordmark'), duration: STEP.base }, 0);
     markTimeline.addLabel('dock', STEP.base + STEP.fast / 2);
     markTimeline.call(() => fire('dock'), undefined, 'dock');
-    if (to !== undefined && from.width > 0) {
-      markTimeline
-        .to(mark, { x: to.left - from.left, scale: to.width / from.width, transformOrigin: '0 0', ...tween('landing.dock') }, 'dock')
-        .to(mark, { y: to.top - from.top, ...tween('landing.dockRise') }, 'dock');
-    }
+    markTimeline
+      .to(mark, { x: () => dockTo().x, scale: () => dockTo().scale, transformOrigin: '0 0', ...tween('landing.dock') }, 'dock')
+      .to(mark, { y: () => dockTo().y, ...tween('landing.dockRise') }, 'dock');
+    // Docked: the header's own wordmark takes over at once, so there is never a moment with neither on screen.
+    markTimeline.call(
+      () => {
+        const target = targetRef.current;
+        if (target !== null) {
+          gsap.set(target, { opacity: 1 });
+        }
+        gsap.set(mark, { opacity: 0 });
+      },
+      undefined,
+      `dock+=${tween('landing.dock').duration}`
+    );
 
     // ---- The picture: starts big and blurred, shrinks into its frame, sharpens and settles.
     const buildImage = (picture: HTMLImageElement | null) => {

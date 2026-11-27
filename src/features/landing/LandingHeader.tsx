@@ -42,7 +42,7 @@ export default function LandingHeader({ onHome, markRef, docked, plain = false }
           }
         }}
         className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass">
-        <img ref={markRef} src="/brand/histor-logo-cream.svg" alt="" data-landing="header-mark" className={`h-5 w-auto lg:h-6 ${plain ? "" : "opacity-0"}`} />
+        <img ref={markRef} src="/brand/histor-logo-cream.svg" alt="" data-landing="header-mark" className={`aspect-[4562/828] h-5 w-auto lg:h-6 ${plain ? "" : "opacity-0"}`} />
       </Link>
       <nav
         aria-label="Histor"
