@@ -645,88 +645,37 @@ body::after {
   animation: sound-locked 1.8s ease-in-out infinite;
 }
 
-/* ---- The landing page's frames (landing brief, 3; haunted, not shiny) ----
-   Old gilt gone black: a dark bronze ground, dull gold only where light catches the carving (top left, a little
-   bottom right), the carving's grain, grime in its grooves, cracks, chipped corners and dark rot creeping in from the
-   edges. No bright or polished gold anywhere: the lightest tone is a dull, brownish gold at low opacity. Static
-   layers only; the glint and the tilt are transforms (Frame.tsx). */
+/* ---- The landing page's frames: evidence, not art (dreadful frames) ----
+   No gilt: each picture is a piece of case-file evidence pinned to the wall. It sits on a piece of scorched paper a
+   little larger than itself, its own edges torn (torn-edge.svg as a mask), aged and stained by old paper laid over
+   it (multiply, low opacity), held up by one or two strips of tape, sometimes torn across a corner, and a little
+   crooked. The per-case choices (the angle, the tape, the tear) are fixed per case in Frame.tsx, from its id. All of
+   it is CSS on the piece itself, inside the tilt wrapper: the tilt and the move never touch it. Textures from
+   src/landing/textures (credited on /credits). */
 .haunted-frame {
   position: relative;
   isolation: isolate;
-  padding: clamp(12px, 6.5%, 44px);
-  background:
-    radial-gradient(70% 45% at 18% 6%, rgb(132 108 58 / 0.38), transparent 60%),
-    radial-gradient(55% 38% at 86% 97%, rgb(104 84 44 / 0.22), transparent 62%),
-    linear-gradient(180deg, rgb(122 100 56 / 0.2), transparent 7%, transparent 93%, rgb(0 0 0 / 0.45)),
-    linear-gradient(90deg, rgb(110 90 50 / 0.14), transparent 6%, transparent 94%, rgb(0 0 0 / 0.4)),
-    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.22) 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.16) 0 1px, transparent 1px 5px),
-    linear-gradient(155deg, #33291a 0%, #1f180f 28%, #2a2215 50%, #17120b 74%, #0c0906 100%);
-  /* Chipped corners, and a bite out of the left side and the bottom. */
-  /* The carving: an outer bead, a sunk channel, and a raised inner band, each dark and only faintly lit. */
-  box-shadow:
-    inset 0 0 0 2px #0a0805,
-    inset 0 0 0 3px rgb(118 96 52 / 0.22),
-    inset 0 0 0 6px #120d07,
-    inset 0 0 0 7px rgb(96 78 42 / 0.16),
-    inset 0 0 22px 6px rgb(0 0 0 / 0.7);
-  clip-path: polygon(
-    0 2.4%, 1.1% 0.9%, 2.6% 0, 61% 0, 62.2% 0.7%, 63.6% 0, 97.4% 0, 98.8% 1.2%, 100% 3%, 100% 96.2%, 99.2% 98%,
-    97.8% 100%, 41% 100%, 39.6% 99.3%, 38.4% 100%, 3.8% 100%, 1.5% 98.8%, 0 97%, 0 58%, 0.7% 56.6%, 0 55%
-  );
+  rotate: var(--piece-tilt, 0deg);
 }
-/* The main painting (the first case, landing fixes brief): a thicker, heavier moulding, with more carved steps, each dark
-   and only faintly lit. */
-.haunted-frame[data-featured='true'] {
-  padding: clamp(26px, 8%, 72px);
-  box-shadow:
-    inset 0 0 0 3px #0a0805,
-    inset 0 0 0 5px rgb(118 96 52 / 0.26),
-    inset 0 0 0 11px #120d07,
-    inset 0 0 0 13px rgb(96 78 42 / 0.2),
-    inset 0 0 0 21px #0e0a06,
-    inset 0 0 0 23px rgb(104 84 44 / 0.16),
-    inset 0 0 34px 10px rgb(0 0 0 / 0.75);
-}
-/* Rot from the edges, darker at the corners, and grime in the carving: on the gilt only (the picture sits above). */
-.haunted-frame::before {
-  content: '';
+/* The scorched backing: a burnt piece of paper behind the picture, a little larger than it. */
+.evidence-backing {
   position: absolute;
-  inset: 0;
+  inset: -5% -4.5% -6.5% -4%;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(34% 30% at 0 0, rgb(4 3 2 / 0.85), transparent 75%),
-    radial-gradient(30% 34% at 100% 0, rgb(4 3 2 / 0.7), transparent 75%),
-    radial-gradient(36% 30% at 100% 100%, rgb(4 3 2 / 0.85), transparent 75%),
-    radial-gradient(30% 30% at 0 100%, rgb(4 3 2 / 0.8), transparent 75%),
-    radial-gradient(120% 120% at 50% 50%, transparent 52%, rgb(6 5 3 / 0.7) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.04 0 0 0 0 0.02 0 0 0 1.6 -0.75'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E");
+  background: url('../landing/textures/paper-burnt.webp') center / cover no-repeat;
+  rotate: var(--backing-tilt, 0deg);
+  filter: brightness(0.82) saturate(0.8);
 }
-/* Cracks across the gilt: hairline dark lines, each with a faint lighter lip. */
-.haunted-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.7;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M0 18 L3 20 L5.5 19 L7 22' stroke='%23050403' stroke-width='0.14'/%3E%3Cpath d='M28 0 L27 2.5 L29.5 4 L28.6 6' stroke='%23050403' stroke-width='0.12'/%3E%3Cpath d='M100 64 L97 62.5 L95.6 65 L93.8 64' stroke='%23050403' stroke-width='0.14'/%3E%3Cpath d='M72 100 L73 97.2 L71.2 95.6 L72.4 93.6' stroke='%23050403' stroke-width='0.12'/%3E%3Cpath d='M0 81 L2.4 82.6 L4 81.8' stroke='%23050403' stroke-width='0.12'/%3E%3Cpath d='M0.1 18.4 L3.1 20.4' stroke='%23856c3a' stroke-opacity='0.25' stroke-width='0.15'/%3E%3Cpath d='M99.9 64.4 L97 62.9' stroke='%23856c3a' stroke-opacity='0.2' stroke-width='0.15'/%3E%3C/g%3E%3C/svg%3E")
-    center / 100% 100% no-repeat;
-}
-/* The picture's opening: a carved lip, dark, sunk into the frame. */
+/* The picture: its own edges torn. */
 .haunted-frame__opening {
   position: relative;
   z-index: 1;
   height: 100%;
   overflow: hidden;
-  background: #070605;
-  box-shadow:
-    0 0 0 2px #0d0a06,
-    0 0 0 4px rgb(96 78 42 / 0.28),
-    0 0 0 7px #120e08,
-    0 0 0 9px rgb(70 56 30 / 0.2),
-    inset 0 0 34px rgb(0 0 0 / 0.9);
+  background: #0b0907;
+  -webkit-mask: url('../landing/textures/torn-edge.svg') center / 100% 100% no-repeat;
+  mask: url('../landing/textures/torn-edge.svg') center / 100% 100% no-repeat;
 }
 .haunted-frame__opening > img,
 .opening-detail img {
@@ -736,20 +685,54 @@ body::after {
 .haunted-frame[data-status='sealed'] .haunted-frame__opening > img {
   filter: saturate(0.6) sepia(0.22) brightness(0.68) contrast(1.08);
 }
-/* The light catching the gilt on hover: a dull pool of light that follows the cursor across the gilt (moved by transform,
-   Frame.tsx and use-frame-tilt.ts). The frame's clip-path keeps it inside. */
+/* Old paper laid over the picture: every image aged and stained. */
+.evidence-stain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url('../landing/textures/paper-old.webp') center / cover no-repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.38;
+}
+/* A tear across one corner (some pieces). */
+.evidence-tear {
+  position: absolute;
+  z-index: 2;
+  width: 46%;
+  aspect-ratio: 1200 / 976;
+  pointer-events: none;
+  background: url('../landing/textures/tear-line.webp') center / contain no-repeat;
+  opacity: 0.85;
+}
+.evidence-tear[data-corner='tl'] { top: -6%; left: -6%; rotate: 180deg; }
+.evidence-tear[data-corner='tr'] { top: -6%; right: -6%; rotate: -90deg; }
+.evidence-tear[data-corner='bl'] { bottom: -6%; left: -6%; rotate: 90deg; }
+.evidence-tear[data-corner='br'] { bottom: -6%; right: -6%; }
+/* A strip of tape holding the piece to the wall: tape.svg as a mask over a pale, see-through tape colour. */
+.evidence-tape {
+  position: absolute;
+  z-index: 3;
+  width: clamp(3.5rem, 30%, 8rem);
+  aspect-ratio: 291.49 / 73.143;
+  pointer-events: none;
+  translate: -50% -50%;
+  background: rgb(214 204 178 / 0.62);
+  -webkit-mask: url('../landing/textures/tape.svg') center / 100% 100% no-repeat;
+  mask: url('../landing/textures/tape.svg') center / 100% 100% no-repeat;
+}
+/* The light catching the paper on hover: a pale pool that follows the cursor (moved by transform, use-frame-tilt.ts). */
 .haunted-frame__glint {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 0;
+  z-index: 5;
   width: 55%;
   aspect-ratio: 1;
   margin: -27.5% 0 0 -27.5%;
   pointer-events: none;
   opacity: 0;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(150 124 70 / 0.2), transparent);
+  background: radial-gradient(closest-side, rgb(150 142 126 / 0.14), transparent);
   mix-blend-mode: screen;
 }
 /* The shadow under a frame: its own soft layer, never a filter. */
@@ -772,7 +755,7 @@ body::after {
 /* The brass plaque on a veil: dull, worn brass, never bright. */
 .frame-plaque {
   background: linear-gradient(170deg, #6d5b34 0%, #54452a 45%, #3f3420 100%);
-  box-shadow: inset 0 1px 0 rgb(170 144 90 / 0.25), inset 0 -1px 0 rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.6);
+  box-shadow: inset 0 1px 0 rgb(120 110 92 / 0.25), inset 0 -1px 0 rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.6);
   color: #1b150c;
 }
 /* The scroll cue's thin line: a slow drop of light down it (constant motion). */

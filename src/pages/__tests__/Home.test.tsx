@@ -284,21 +284,42 @@ describe('one section per case (landing brief, 3)', () => {
     expect(new Set(exhibits.map(exhibit => exhibit.frame)).size).toBeGreaterThan(2);
   });
 
-  test('the first frame is the main painting: wider, with a thicker, heavier moulding than the rest', () => {
+  test('the first frame is the main piece: wider than the rest', () => {
     renderHome();
     const frames = exhibits.map(exhibit => document.querySelector<HTMLElement>(`#exhibit-${exhibit.id} [data-exhibit-part="rise"] .haunted-frame`)!);
     expect(frames.map(frame => frame.dataset.featured)).toEqual(['true', 'false', 'false', 'false', 'false', 'false']);
-    expect(exhibits.map(exhibit => exhibit.featured)).toEqual([true, false, false, false, false, false]);
-    const ratio = (text: string) => text.split('/').map(Number).reduce((a, b) => a / b);
+    const ratio = (text: string) => text.split('/').map(Number).reduce((x, y) => x / y);
     expect(ratio(FEATURED_SHAPE.ratio)).toBeGreaterThan(ratio(FRAME_SHAPES.landscape.ratio));
+  });
+
+  test('evidence, not art: each picture on scorched paper, its edges torn, aged by old paper, taped up, a little crooked; some torn across a corner', () => {
+    renderHome();
+    const tears: string[] = [];
+    for (const exhibit of exhibits) {
+      const piece = document.querySelector<HTMLElement>(`#exhibit-${exhibit.id} [data-exhibit-part="rise"] .haunted-frame`)!;
+      expect(piece.querySelector('[data-frame-part="backing"]'), exhibit.id).not.toBeNull();
+      expect(piece.querySelector('.haunted-frame__opening [data-frame-part="stain"]'), exhibit.id).not.toBeNull();
+      const tapes = piece.querySelectorAll<HTMLElement>('[data-frame-part="tape"]');
+      expect(tapes.length).toBeGreaterThanOrEqual(1);
+      expect(tapes.length).toBeLessThanOrEqual(2);
+      const tilt = parseFloat(piece.style.getPropertyValue('--piece-tilt'));
+      expect(Math.abs(tilt)).toBeLessThanOrEqual(2);
+      tears.push(piece.querySelector('[data-frame-part="tear"]')?.getAttribute('data-corner') ?? 'none');
+      // All inside the tilt wrapper: the move (on the anchor) and the tilt never touch the decoration.
+      expect(piece.closest('[data-frame-part="tilt"]'), exhibit.id).not.toBeNull();
+    }
+    // Some pieces are torn, not all.
+    expect(tears.some(tear => tear === 'none')).toBe(true);
+    expect(tears.some(tear => tear !== 'none')).toBe(true);
+    // The look is CSS, from the textures.
     const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
-    const plain = css.match(/\.haunted-frame \{[^}]*padding: clamp\((\d+)px, ([\d.]+)%, (\d+)px\)/)!;
-    const heavy = css.match(/\.haunted-frame\[data-featured='true'\] \{\s*padding: clamp\((\d+)px, ([\d.]+)%, (\d+)px\)/)!;
-    expect(Number(heavy[3])).toBeGreaterThan(Number(plain[3]));
-    expect(Number(heavy[2])).toBeGreaterThan(Number(plain[2]));
-    const steps = (rule: string) => (rule.match(/inset 0 0 0 \d+px/g) ?? []).length;
-    const featuredShadow = css.slice(css.indexOf("[data-featured='true'] {"), css.indexOf("/* Rot from the edges"));
-    expect(steps(featuredShadow)).toBeGreaterThan(steps(css.slice(css.indexOf('.haunted-frame {'), css.indexOf('/* The main painting'))));
+    for (const texture of ['paper-burnt.webp', 'torn-edge.svg', 'paper-old.webp', 'tape.svg', 'tear-line.webp']) {
+      expect(css, texture).toContain(`../landing/textures/${texture}`);
+    }
+    expect(css).toMatch(/\.haunted-frame__opening \{[^}]*mask: url\('\.\.\/landing\/textures\/torn-edge\.svg'\)/);
+    expect(css).toMatch(/\.evidence-stain \{[^}]*mix-blend-mode: multiply;[^}]*opacity: 0\.\d+;/);
+    // frame-torn is kept for later, not used.
+    expect(css).not.toContain('frame-torn');
   });
 
   test('every case shows its picture in its frame: an open case one of its own, a sealed case a period picture; no veils', () => {
@@ -345,21 +366,20 @@ describe('one section per case (landing brief, 3)', () => {
     expect(document.querySelector('[data-exhibit-part="peek"]')).toBeNull();
   });
 
-  test('the frames are haunted, not shiny: no bright, polished gold anywhere in their styles', () => {
+  test('no gilt anywhere in the frames\' styles: no bright, saturated gold', () => {
     const css = readFileSync(resolve(__dirname, '../../styles/effects.css'), 'utf8');
     const frames = css.slice(css.indexOf("/* ---- The landing page's frames"), css.indexOf('/* The scroll cue'));
-    // Every warm colour in them is dull: its brightest channel stays low.
-    const warm = (r: number, b: number) => r - b > 20;
-    for (const [, r, g, b] of frames.matchAll(/rgb\((\d+) (\d+) (\d+)/g)) {
-      if (warm(Number(r), Number(b))) {
-        expect(Math.max(Number(r), Number(g))).toBeLessThanOrEqual(180);
-      }
-    }
+    const colours = [...frames.matchAll(/rgb\((\d+) (\d+) (\d+)/g)].map(([, r, g, b]) => [Number(r), Number(g), Number(b)]);
     for (const [hex] of frames.matchAll(/#[0-9a-f]{6}/gi)) {
-      const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-      if (warm(r, b)) {
-        expect(Math.max(r, g), hex).toBeLessThanOrEqual(0x70);
-      }
+      colours.push([1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)));
+    }
+    for (const [r, g, b] of colours) {
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturation = max === 0 ? 0 : (max - min) / max;
+      // A gold: yellow-orange (red highest, green well above blue), bright and saturated.
+      const gold = r >= g && g > b && (g - b) / Math.max(r - b, 1) > 0.35 && max > 120 && saturation > 0.3;
+      expect(gold, `${r} ${g} ${b}`).toBe(false);
     }
   });
 });
