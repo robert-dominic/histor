@@ -394,6 +394,60 @@ describe('one case per gesture', () => {
   });
 });
 
+describe('the ends: the last case and the footer', () => {
+  test('a gesture is never queued past the last case: hard scrolling into the last case stays on it', () => {
+    make(4, 2);
+    stage!.ready();
+    wheel(100, 1000);
+    expect(changes).toEqual([3]);
+    // More notches while it moves to the last case: none is kept, since there is no case after it.
+    wheel(100, 1100);
+    wheel(100, 1200);
+    act(() => void stage!.timeline()!.time(0.61));
+    finish();
+    expect(changes).toEqual([3]);
+  });
+
+  test('back up from the footer: one clean scroll that lands on the last case and stays there, whatever comes during it', () => {
+    make(4, 3);
+    stage!.ready();
+    setY(600);
+    expect(wheel(-100, 1000).defaultPrevented).toBe(false);
+    setY(330);
+    expect(wheel(-100, 3000).defaultPrevented).toBe(true);
+    const [y, options] = vi.mocked(smoothScroll.scrollToY).mock.calls.at(-1)!;
+    expect(y).toBe(300);
+    // Fresh notches while the page scrolls back: nothing is queued.
+    setY(310);
+    wheel(-100, 3100);
+    wheel(-100, 3200);
+    setY(300);
+    act(() => options!.onComplete!());
+    // It lands on the last case and stays there: no move to the one before, no snap back.
+    expect(changes).toEqual([]);
+    expect(stage!.timeline()).toBeNull();
+    expect(stage!.current()).toBe(3);
+  });
+
+  test('entering the footer clears a queued gesture; leaving it some other way lands on the last case', () => {
+    make(4, 2);
+    stage!.ready();
+    wheel(100, 1000);
+    wheel(-100, 1100);
+    // Into the footer (a scroll of the page itself): the queued one is gone.
+    setY(700);
+    act(() => void window.dispatchEvent(new Event('scroll')));
+    act(() => void stage!.timeline()!.time(0.61));
+    finish();
+    expect(changes).toEqual([3]);
+    // Back up past the last case by the scrollbar: the page lands on the last case.
+    setY(150);
+    act(() => void window.dispatchEvent(new Event('scroll')));
+    expect(window.scrollY).toBe(300);
+    expect(changes).toEqual([3]);
+  });
+});
+
 describe('slower moves on a touch screen', () => {
   /** A phone: a coarse pointer, full motion. */
   const coarse = () =>

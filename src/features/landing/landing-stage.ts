@@ -316,6 +316,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
   let inFooter = false;
   /** A new gesture that came while a move ran: started the moment that move ends (one at most). */
   let queued: 1 | -1 | 0 = 0;
+  /** The page is scrolling itself back up from the footer to the last case: nothing is queued meanwhile. */
+  let returning = false;
   const unlock = () => {
     moving = false;
     if (moveTimer !== null) {
@@ -341,7 +343,10 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     // From the footer, the frames are already on the last case: only the page comes back up.
     if (window.scrollY > lastY() + 1) {
       // From the footer: first the page scrolls up to the stage (Lenis, about 1.2s), then the move, if it goes on.
+      // One clean scroll that lands on the last case and stays there: nothing queued before, during or after it.
       inFooter = false;
+      queued = 0;
+      returning = true;
       lock();
       const target = to;
       scrollToY(lastY(), {
@@ -350,6 +355,8 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
           if (!alive) {
             return;
           }
+          returning = false;
+          queued = 0;
           unlock();
           if (target !== current) {
             from(current, target);
@@ -592,9 +599,11 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     }
     if (gate.take(!moving)) {
       step(direction);
-    } else if (fresh && moving) {
-      // A real new gesture while a move runs: remembered (one, the latest), and started the moment the move ends.
-      queued = direction;
+    } else if (fresh && moving && !returning && window.scrollY <= lastY() + 1) {
+      // A real new gesture while a move runs: remembered (one, the latest), and started the moment the move ends;
+      // never one past the first or the last case (past the last is the footer's, and the page's own scroll).
+      const after = current + direction;
+      queued = after >= 0 && after < count ? direction : 0;
     }
   };
   window.addEventListener('wheel', onWheel, { capture: true, passive: false });
@@ -637,9 +646,19 @@ export function createLandingStage({ track, stage, sections, start, shown, onCha
     const y = window.scrollY;
     const last = lastY();
     if (y > last + 1) {
+      // Into the footer: nothing queued survives.
+      if (!inFooter) {
+        queued = 0;
+      }
       inFooter = true;
     } else if (inFooter && !moving && isReady && y < last - 1) {
-      moveTo(count - 1);
+      // Back up out of the footer some other way (a key, the scrollbar): it lands on the last case and stays there.
+      inFooter = false;
+      queued = 0;
+      jumpToY(lastY());
+    } else if (inFooter && y <= last + 1) {
+      inFooter = false;
+      queued = 0;
     }
   };
   window.addEventListener('scroll', onScroll, { passive: true });
