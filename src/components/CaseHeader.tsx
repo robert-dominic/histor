@@ -106,7 +106,10 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
       style={startHidden ? { opacity: 0 } : undefined}
       className="fixed inset-x-0 top-0 z-30 flex h-[var(--case-header)] items-center justify-between gap-4 border-b border-night-ink/10 bg-night px-4 lg:px-6"
     >
-      <div className="flex min-w-0 items-center gap-2 font-legend text-[1.1875rem] leading-none text-night-ink lg:gap-2.5 lg:text-[1.625rem]">
+      {/* One row, on the title's baseline: the years (and the UNSOLVED tag) sit on the same line as the title, whatever
+          the two fonts' metrics; the row is centred in the bar, and the speaker centred in the row. */}
+      <div data-case-header="row" className="flex w-full min-w-0 items-baseline justify-between gap-4 pt-1">
+      <div className="flex min-w-0 items-baseline gap-2 font-legend text-[1.1875rem] leading-none text-night-ink lg:gap-2.5 lg:text-[1.625rem]">
         {/* The Histor mark (cream, quick fixes 4) goes back to the landing page, to this case's own frame; the title, to
             the start of the case. */}
         <Link
@@ -114,7 +117,7 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
           aria-label="Histor, back to the archive"
           title="Back to the archive"
           data-case-header="home"
-          className="shrink-0 rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass"
+          className="shrink-0 self-center rounded-sm transition-colors duration-(--motion-hover-duration) ease-(--motion-hover-ease) hover:text-brass focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass"
         >
           <HistorMark className="block h-[0.95em] w-auto" />
         </Link>
@@ -139,7 +142,7 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
           </Link>
         </h1>
       </div>
-      <div className="relative flex shrink-0 items-center gap-3 lg:gap-4">
+      <div className="relative flex shrink-0 items-baseline gap-3 lg:gap-4">
         {/* Sound after a reload (the fix list): placed, not laid out, so nothing moves as it comes and goes. Under the
             speaker on a phone and a tablet; to the left of the years on a laptop, in the header's own line. */}
         <span
@@ -162,7 +165,10 @@ export default function CaseHeader({ caseId, title, years, unsolved = false, sta
             </span>
           )}
         </p>
-        <SoundControls hint={soundHint} engine={engine} />
+        <div className="self-center">
+          <SoundControls hint={soundHint} engine={engine} />
+        </div>
+      </div>
       </div>
     </header>
   );
