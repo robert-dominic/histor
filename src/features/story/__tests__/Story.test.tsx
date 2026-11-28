@@ -8,6 +8,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import realCase from '@/cases/mary-celeste/case';
 import { storyFixture as maryCeleste } from '@/test/story-fixture';
 import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
@@ -354,6 +355,68 @@ describe('Story: scenes', () => {
     const { container } = renderStory();
 
     expect((container.querySelector('[data-story="root"]') as HTMLElement).dataset.tone).toBe('night-ink');
+  });
+});
+
+describe('Story: free reading on a phone (under 768px)', () => {
+  /** The panel of the page on screen, with a page taller than the screen and its scroll position in `scroll.top`. */
+  function tallPanel(container: HTMLElement) {
+    const panel = container.querySelector<HTMLElement>('[data-story="chapter"][data-active="true"] [data-story="page"]')!;
+    const scroll = { top: 0 };
+    Object.defineProperty(panel, 'scrollHeight', { value: 1400, configurable: true });
+    Object.defineProperty(panel, 'clientHeight', { value: 600, configurable: true });
+    Object.defineProperty(panel, 'scrollTop', { get: () => scroll.top, set: value => void (scroll.top = value), configurable: true });
+    return { panel, scroll, inside: panel.querySelector('[data-story="paragraph"]') ?? panel };
+  }
+
+  test('the panel is the whole screen on a phone: the text starts at the top, not the middle, and scrolls like a page', () => {
+    const { container } = renderStory(realCase, READ);
+    for (const panel of container.querySelectorAll<HTMLElement>('[data-story="page"]')) {
+      expect(panel.className).toContain('max-md:top-0');
+      expect(panel.className).toContain('max-md:max-h-none');
+      expect(panel.className).toContain('overflow-y-auto');
+      expect(panel.className).toContain('max-md:pt-[calc(var(--case-header)+1.5rem)]');
+      // Centring is for a laptop only.
+      expect(panel.className).not.toMatch(/(^|\s)justify-center/);
+      expect(panel.className).not.toMatch(/(^|\s)items-center/);
+    }
+  });
+
+  test('the story moves on only from the bottom of the text and a new swipe, and back only from the very top', () => {
+    const { container } = renderStory(realCase, READ);
+    settleSteps();
+    finishWriting(container);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    const first = tallPanel(container);
+    // Anywhere before the bottom, a swipe up is the panel's to scroll.
+    first.scroll.top = 0;
+    swipe(first.inside, 500, 200);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    first.scroll.top = 400;
+    swipe(first.inside, 500, 200);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
+    // At the bottom (600 + 800 = 1400): the next swipe up is a step. There are no hooks: it is the next chapter.
+    first.scroll.top = 800;
+    swipe(first.inside, 500, 200);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    finishWriting(container);
+    settleSteps();
+    const second = tallPanel(container);
+    // The new chapter is read from its top; a swipe back from the middle scrolls the panel, not the story.
+    expect(second.scroll.top).toBe(0);
+    second.scroll.top = 300;
+    swipe(second.inside, 200, 500);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-1');
+    // From the very top, a swipe back goes to the chapter before.
+    second.scroll.top = 0;
+    swipe(second.inside, 200, 500);
+    settleSteps();
+    expect(stepOf(container)).toBe('page-0');
   });
 });
 

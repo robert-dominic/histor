@@ -566,6 +566,11 @@ export default function Story({
             }
           });
           scenes.forEach((scene, sceneIndex) => {
+            // A page reached afresh is read from its top (on a phone it scrolls like a normal page).
+            const panel = parts[sceneIndex].page;
+            if (panel !== null && (sceneIndex !== shown || freshPage) && panel.scrollTop !== 0) {
+              panel.scrollTop = 0;
+            }
             gsap.killTweensOf(scene);
             gsap.set(scene, { opacity: sceneIndex === shown ? 1 : 0 });
             scene.dataset.active = String(sceneIndex === shown && !question);

@@ -112,7 +112,9 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
       </div>
 
       {/* The page: a dark, softly faded panel on the left (along the bottom on phones) holding the chapter's text.
-          The image stays visible on the rest of the screen. The kicker is typed small, the heading written large at
+          The image stays visible on the rest of the screen. Under 768px the panel is the whole screen and reads like a
+          normal page: the text starts at the top and scrolls freely; the story moves to the next chapter only when the
+          reader is at its bottom and scrolls again, and back only from its very top (Story.tsx, `notOurs`). The kicker is typed small, the heading written large at
           the top, then the body in Old Standard TT at about 18 to 19px. The pen writes it
           all (Story.tsx); a click on the panel finishes the writing at once. Portals stay tappable, out of the Tab
           order: the full text below has them for the keyboard and screen readers. */}
@@ -122,7 +124,7 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
       <div
         ref={panelRef}
         data-story="page"
-        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[calc(42%+var(--page-widen,0px))] lg:flex-col lg:justify-center lg:bg-none lg:[scrollbar-width:none] lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
+        className="thin-scroll absolute inset-x-0 bottom-0 z-[3] max-h-[78svh] overflow-y-auto bg-linear-to-t from-night/95 via-night/85 to-transparent px-5 pt-16 pb-24 max-md:top-0 max-md:max-h-none max-md:bg-night/85 max-md:bg-none max-md:pt-[calc(var(--case-header)+1.5rem)] text-night-ink sm:px-10 lg:inset-y-0 lg:right-auto lg:flex lg:max-h-none lg:w-[calc(42%+var(--page-widen,0px))] lg:flex-col lg:justify-center lg:bg-none lg:[scrollbar-width:none] lg:pt-[calc(var(--case-header)+3.5rem)] lg:pr-[7%] lg:pb-20 lg:pl-[clamp(1.5rem,4vw,4rem)]"
       >
         <div ref={boxRef} data-story="page-inner" className="relative max-w-[calc(34rem+var(--page-widen,0px))]">
           {section.kicker !== undefined && (
