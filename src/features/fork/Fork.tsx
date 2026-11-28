@@ -1,10 +1,9 @@
 // src/features/fork/Fork.tsx
-// The fork, as a modal over the central question. Once the whole question is on screen and the reader scrolls on
-// (or "Play the story" has held on it), it rises and settles over a darkened backdrop (`paper.lift`, then
-// `paper.land`). The app types its prompt, then offers two large choices: open the case files, or stop here.
-// Stopping shows where historians stand, with two quiet ways out. The focus stays inside while it is open; Escape,
-// or scrolling back up, closes it and returns to the question. Reduced motion: it appears without animation.
-// Everything shown comes from props.
+// The closing modal, over the story's last chapter. Once the reader scrolls on from it (or "Play the story" has held
+// on it), it rises and settles over a darkened backdrop (`paper.lift`, then `paper.land`). The app types its bold
+// line, then the lines under it come in and one large button opens the case files. The focus stays inside while it
+// is open; Escape, or scrolling back up, closes it and returns to the chapter. Reduced motion: it appears without
+// animation. Everything shown comes from props.
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -23,16 +22,12 @@ const TYPE_RATE = 30;
 
 const CHOICE_CLASSES =
   'inline-flex min-h-14 min-w-[14rem] items-center justify-center rounded-sm px-8 font-voice text-base tracking-[0.14em] uppercase transition-[scale,background-color,color] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass active:scale-[0.97]';
-const QUIET_LINK_CLASSES =
-  'inline-flex min-h-11 items-center font-voice text-sm tracking-[0.1em] text-ghost-night underline underline-offset-4 transition-[color] duration-150 ease-out hover:text-night-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass';
 
 /** What can take the focus inside the modal. */
 const TAB_STOPS = 'a[href], button:not(:disabled), [tabindex="0"]';
 
 export interface ForkProps {
   fork: ForkData;
-  /** Shown to the reader who stops here. */
-  historiansSummary: string[];
   /** Where "Open the case files" goes. */
   filesHref: string;
   open: boolean;
@@ -40,11 +35,9 @@ export interface ForkProps {
   onClose: () => void;
 }
 
-export default function Fork({ fork, historiansSummary, filesHref, open, onClose }: ForkProps) {
+export default function Fork({ fork, filesHref, open, onClose }: ForkProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const closeRef = useRef<HTMLDivElement>(null);
-  const [stopped, setStopped] = useState(false);
   // Drawn while open, and until it has finished leaving.
   const [drawn, setDrawn] = useState(open);
   if (open && !drawn) {
@@ -97,27 +90,13 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
         gsap.set(letters, { opacity: 0 });
         typeLetters(timeline, letters, timeline.duration(), TYPE_RATE, (prompt.textContent ?? '').trim().length);
       }
+      // The lines under it come in one after another, then the button (no sound: the click is the button's own).
+      const lines = root.querySelectorAll<HTMLElement>('[data-fork="line"]');
+      timeline.fromTo(lines, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, ...tween('paper.lift'), stagger: STEP.base }, `>+=${STEP.fast}`);
       timeline.fromTo('[data-fork="choices"]', { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, ...tween('paper.lift') }, `>+=${STEP.fast}`);
-      // The buttons appearing are heard: the chapter's whoosh, not the typewriter's ding (the fix list).
-      timeline.call(() => emitStoryEvent({ type: 'choices' }), undefined, '<');
       return () => split?.revert();
     },
     { scope: rootRef, dependencies: [open], revertOnUpdate: true }
-  );
-
-  // Stopping here: where historians stand comes in, and the focus moves to it.
-  useGSAP(
-    () => {
-      if (!stopped) {
-        return;
-      }
-      closeRef.current?.focus({ preventScroll: true });
-      if (typeof window.matchMedia !== 'function' || window.matchMedia(MOTION_QUERIES.reduced).matches) {
-        return;
-      }
-      gsap.fromTo(closeRef.current, { opacity: 0, y: 8 }, { opacity: 1, y: 0, ...tween('paper.lift') });
-    },
-    { scope: rootRef, dependencies: [stopped] }
   );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -162,43 +141,27 @@ export default function Fork({ fork, historiansSummary, filesHref, open, onClose
         data-lenis-prevent
         className="thin-scroll relative max-h-[calc(100svh-2rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[2px] border border-night-ink/15 bg-night px-6 pt-10 pb-10 text-center text-night-ink shadow-2xl shadow-black/70 outline-none sm:px-12"
       >
-        <p className="mx-auto max-w-[34rem] font-voice text-[clamp(1.125rem,1rem+0.5vw,1.4375rem)] leading-[1.6] text-pretty">
+        <p className="mx-auto max-w-[34rem] font-voice text-[clamp(1.125rem,1rem+0.5vw,1.4375rem)] leading-[1.6] font-bold text-pretty">
           <span className="sr-only">{fork.prompt}</span>
           <span aria-hidden="true" data-fork="prompt">
             {fork.prompt}
           </span>
         </p>
 
-        {stopped ? (
-          <div ref={closeRef} tabIndex={-1} data-fork="close" className="mx-auto mt-8 max-w-[38rem] outline-none">
-            <div className="flex flex-col gap-4 font-record text-[clamp(1.0625rem,1rem+0.3vw,1.25rem)] leading-[1.65]">
-              {historiansSummary.map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
-            </div>
-            <nav aria-label="After the story" className="mt-8 flex flex-wrap justify-center gap-x-8 gap-y-1">
-              <Link to={filesHref} className={QUIET_LINK_CLASSES}>
-                Open the case files anyway
-              </Link>
-              <Link to="/" className={QUIET_LINK_CLASSES}>
-                Back to all cases
-              </Link>
-            </nav>
-          </div>
-        ) : (
-          <div data-fork="choices" className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link to={filesHref} className={`${CHOICE_CLASSES} border border-brass bg-brass text-night hover:bg-transparent hover:text-brass`}>
-              {fork.investigateLabel}
-            </Link>
-            <button
-              type="button"
-              onClick={() => setStopped(true)}
-              className={`${CHOICE_CLASSES} border border-night-ink/40 text-night-ink hover:border-night-ink`}
-            >
-              {fork.leaveLabel}
-            </button>
+        {fork.body !== undefined && (
+          <div className="mx-auto mt-7 flex max-w-[34rem] flex-col gap-4 font-record text-[clamp(1.0625rem,1rem+0.3vw,1.25rem)] leading-[1.65] text-night-ink/90">
+            {fork.body.map((paragraph, index) => (
+              <p key={index} data-fork="line" className="whitespace-pre-line text-pretty">
+                {paragraph}
+              </p>
+            ))}
           </div>
         )}
+        <div data-fork="choices" className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <Link to={filesHref} className={`${CHOICE_CLASSES} border border-brass bg-brass text-night hover:bg-transparent hover:text-brass`}>
+            {fork.investigateLabel}
+          </Link>
+        </div>
       </section>
     </div>
   );
