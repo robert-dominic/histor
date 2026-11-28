@@ -34,25 +34,33 @@ An archive of cases hung like a gallery's dark rooms (`src/features/landing`). V
 - **The header:** the wordmark on the left (it scrolls back to the first case); on the right only a music button (the story playlist, quietly, off until clicked: a muted note when off, moving equaliser bars in a progress ring when playing). The first frame, the Mary Celeste, is the main painting: wider, with a heavier moulding.
 - **The footer:** the giant HISTOR wordmark, the archive and about columns, © and "Designed and built by Robert".
 
-### 2. Legend intro
-The case's most famous legend, told dramatically. For the Mary Celeste this is the version later storytellers made famous: breakfast half-eaten, tea still warm. The legend is written out as if by a quill; then one stamp lands: "Legend". The app answers, typed like a typewriter: "Well... that part never happened.", then explains what really happened. It makes its point quickly and is always skippable. Job: hook the user and show the product's point.
+### 2. The hook
+The case's first screen, on its own, shown on every visit. The case's picture, very dark and slowly drifting under a soft moving fog; the hook lines appear one at a time, centred and unhurried (for the Mary Celeste: "The ship was sound. The cargo was untouched. There was food for six months. Everyone on board had vanished."); then the dateline ("December 1872. The Atlantic.") fades in and the screen dissolves into chapter 1. A small "Skip" is in the corner the whole time. It carries no legend, no stamp and no debunk: the case's legends are told, and taken apart, later. Job: put the mystery in the reader's head in under 20 seconds.
 
 ### 3. The real story
-A telling of what the record says, in steps: one gesture (a scroll, a swipe, a key) moves exactly one step, built with GSAP Observer. A rail on the left shows where the reader is and jumps to any chapter.
-- Told in short sections. Each section ends on a moment of curiosity (its hook) that pulls the user on.
+A telling of what the record says, in steps: one gesture (a scroll, a swipe, a key) moves exactly one step, built with GSAP Observer. A rail on the left shows where the reader is and jumps to any chapter. The story follows **the story pattern** below, for every case.
+- Told in short chapters, in plain sentences. Each chapter ends on a line that creates suspicion, which pulls the user on.
 - The screen grows darker as the story goes on.
-- Before chapter 1 the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. It opens once per page load however the reader arrives (after the legend intro, on a return visit, a reload or a direct link), and each time the intro's scroll cue is pressed. The case header carries the title. No gesture moves past the modal. Each chapter is a page beside its image, written by a pen; the next step brings the chapter's hook, then the next chapter.
+- Before chapter 1 the reader chooses, in a modal, "Play the story" or "Read at my pace"; the story starts once they do. It opens once per page load however the reader arrives (after the hook, on a return visit, a reload or a direct link), and each time the hook's end is reached.
 - Key references are marked and tappable: people, titles ("the captain"), pronouns for the ship ("she"), places, dates and terms. Tapping opens a **portal**: a short panel that explains the reference (with a mouse, resting on the name opens it too, and a click pins it). Portals work the same in the story and inside the case files. People show a portrait and profile. Places show an old map of that location. Terms show a plain definition.
+- On a phone (under 768px) a chapter is read like a normal page: its text starts at the top of the screen and scrolls freely. The story moves to the next chapter only when the reader is at the bottom and scrolls again, and back to the previous one only from the very top.
 - Job: give a newcomer full context, so nobody finishes the story confused.
 
-### 4. The question and the fork
-The story ends on the case's central question, stated plainly:
+#### The story pattern (the rule for every case)
+Every case's story follows this order. The text lives in `docs/content/<case>-story.md`: a blank line separates steps, and the lines within a step appear one after another.
+1. **The hook:** four short lines of what is strange, then the dateline.
+2. **The people:** who was there, named (in bold), with their roles and ages. Say what is already sad or odd about them.
+3. **The journey:** what they set out to do, and the last thing anyone knows for sure.
+4. **The discovery:** who found it, what they found and what was missing. Say what the finders were met with.
+5. **What doesn't add up:** the official inquiry, what it could not prove, and the questions that remain.
+6. **The legend grows:** how the myth was built, by whom and when, and that nobody has proved what happened.
+7. **The closing modal:** "The story ends here. The case doesn't." and one button into the case files.
 
-> Why would Captain Briggs abandon a sound ship, one he partly owned, and put his wife, his two-year-old daughter and his crew into a small lifeboat in the middle of the Atlantic?
-
-The question builds one line per step. Then, at the next step, the app speaks in a modal over the question: "Most people stop here. Want to see what the evidence says?"
-- **Open the case files:** continue to the board.
-- **I've heard enough:** a short close with where historians stand. The casual reader leaves satisfied.
+Writing rules for the story:
+- Plain sentences, one idea per line.
+- Every sea word (or any technical word) is explained once, where it first appears: a chronometer is "the two instruments a ship needed to know where it was".
+- Each chapter ends on a line that creates suspicion: a fact that fits badly, a question or a short flat sentence ("There was no one on board.").
+- Facts only from the case's sources (`content-integrity.md`); anything uncertain is marked ("Some say…").
 
 ### 5. The board
 Two kinds of objects: theories and evidence.
@@ -136,7 +144,7 @@ Avoid the look of the 2025 Costume Contest winner: no book or page-flip interfac
 ## V1 scope
 
 - Home with one open case and sealed placeholders.
-- Mary Celeste: legend intro, real story with portals, question and fork, board, verdict and case report.
+- Mary Celeste: hook, real story with portals and the closing modal, board, verdict and case report.
 - Investigation saved in the browser.
 - Sound with a mute control.
 - Works on phones; desktop first.
