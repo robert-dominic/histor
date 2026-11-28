@@ -229,11 +229,16 @@ export interface Voyage {
   points: VoyagePoint[];
 }
 
+/** The closing modal at the end of the story: a line in bold, a few plain lines, and the way into the case files. */
 export interface Fork {
-  /** e.g. "Most people stop here. Want to see what the evidence says?" */
+  /** The bold line, e.g. "The story ends here. The case doesn't." */
   prompt: string;
+  /** The lines under it, one paragraph each. */
+  body?: string[];
+  /** The button into the case files, e.g. "Open the case files". */
   investigateLabel: string;
-  leaveLabel: string;
+  /** An optional second way out (a short close with where historians stand). The closing modal has none. */
+  leaveLabel?: string;
 }
 
 // ---------- Theme ----------
@@ -321,7 +326,8 @@ export interface Case {
   deskGuideIntro?: string;
   legendIntro: LegendIntro;
   story: StorySection[];
-  centralQuestion: string;
+  /** The question the story ends on. Optional: a story may end on its last chapter and the closing modal. */
+  centralQuestion?: string;
   /**
    * The weighted parts of the central question: phrases that arrive like weighted words as the question builds.
    * Each must appear word for word in `centralQuestion`, e.g. "his two-year-old daughter".

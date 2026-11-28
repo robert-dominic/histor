@@ -103,8 +103,8 @@ interface StageControls {
 interface StoryProps {
   /** The chapters, in order. */
   story: StorySection[];
-  /** Shown on its own screen after the last chapter. */
-  centralQuestion: string;
+  /** Shown on its own screen after the last chapter. Optional: without it the story ends on its last chapter. */
+  centralQuestion?: string;
   /** The question's weighted parts. */
   centralQuestionEmphasis?: string[];
   /** The lines the question is shown in, one per step (`Case.centralQuestionLines`). */
@@ -118,7 +118,7 @@ interface StoryProps {
   /** The voyage, drawn on the chart as the story goes. */
   voyage?: Voyage;
   /** The fork after the central question, shown as a modal over it. */
-  fork?: Pick<ForkProps, 'fork' | 'historiansSummary' | 'filesHref'>;
+  fork?: Pick<ForkProps, 'fork' | 'filesHref'>;
   /** The reader's choice in the play modal, each time it is made (a new token): the story starts with it. */
   start?: { mode: 'play' | 'read'; token: number } | null;
 }
@@ -141,7 +141,8 @@ export default function Story({
   // Without matchMedia a reduced-motion request cannot be honoured, so nothing is animated.
   const canAnimate = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const cinematic = canAnimate && !reducedMotion;
-  const lines = useMemo(() => questionLines(centralQuestion, centralQuestionLines), [centralQuestion, centralQuestionLines]);
+  const lines = useMemo(() => (centralQuestion === undefined ? [] : questionLines(centralQuestion, centralQuestionLines)), [centralQuestion, centralQuestionLines]);
+  const hasQuestion = lines.length > 0;
   const hasFork = fork !== undefined;
   const steps = useMemo(() => buildSteps(story, lines.length, hasFork), [story, lines, hasFork]);
   const driverRef = useRef<StepDriver | null>(null);
@@ -161,7 +162,7 @@ export default function Story({
   const dayNight = useMemo(() => story.map((_, index) => dayNightStep(index, count)), [story, count]);
   const grades = useMemo(() => story.map((_, index) => imageGrade(index, count)), [story, count]);
   const route = useMemo(() => buildRoute(voyage, story), [voyage, story]);
-  const railLabels = useMemo(() => [...story.map(section => section.heading), 'The question'], [story]);
+  const railLabels = useMemo(() => [...story.map(section => section.heading), ...(hasQuestion ? ['The question'] : [])], [story, hasQuestion]);
 
   /** "Read at my pace" on the stacked page: to the top of the story, at once. */
   const goToTop = useCallback(() => {
@@ -299,6 +300,18 @@ export default function Story({
             });
             backToQuestionRef.current = () => question.scrollIntoView?.({ behavior: 'auto', block: 'start' });
           }
+          // No question: the closing modal comes once the reader scrolls past the last chapter.
+          const after = one('[data-story="after-question"]');
+          if (question === null && after !== null) {
+            ScrollTrigger.create({
+              trigger: after,
+              start: 'top 85%',
+              onEnter: () => setForkOpen(true),
+              onLeaveBack: () => setForkOpen(false),
+            });
+            const chapters = all('[data-story="chapter"]');
+            backToQuestionRef.current = () => chapters[chapters.length - 1]?.scrollIntoView?.({ behavior: 'auto', block: 'end' });
+          }
           let live = true;
           document.fonts?.ready.then(() => live && ScrollTrigger.refresh());
           return () => {
@@ -416,7 +429,7 @@ export default function Story({
         const setStep = (index: number) => {
           current = index;
           root.dataset.step = stepName(steps[index]);
-          setTick(tickOf(steps[index], count));
+          setTick(tickOf(steps[index], count, hasQuestion));
           // The play bar's line: how far through the whole story.
           if (playProgress !== null) {
             gsap.to(playProgress, { scaleX: steps.length <= 1 ? 1 : index / (steps.length - 1), ...tween('scene'), overwrite: true });
@@ -905,6 +918,9 @@ export default function Story({
           const last = steps.findLastIndex(entry => entry.kind === 'line');
           if (steps[current]?.kind === 'fork' && last >= 0) {
             void moveTo(last, false, 'backward', () => undefined);
+          } else if (steps[current]?.kind === 'fork' && current > 0) {
+            // No question: the closing modal sits over the last chapter, and closing it returns to that page.
+            void moveTo(current - 1, false, 'backward', () => undefined);
           } else {
             setForkOpen(false);
           }
@@ -1216,7 +1232,7 @@ export default function Story({
         };
       });
     },
-    { scope: rootRef, dependencies: [story, centralQuestion, centralQuestionEmphasis, centralQuestionLines, cinematic, route, steps, dayNight, count, canAnimate], revertOnUpdate: true }
+    { scope: rootRef, dependencies: [story, centralQuestion, centralQuestionEmphasis, centralQuestionLines, cinematic, route, steps, dayNight, count, canAnimate, hasQuestion], revertOnUpdate: true }
   );
 
   const jumpToTick = (tickIndex: number) => {
@@ -1240,18 +1256,22 @@ export default function Story({
             {story.map((section, index) => (
               <StoryScene key={section.id} section={section} index={index} grade={grades[index]} loadImage={index <= loadedThrough} />
             ))}
-            {/* The central question, over the last scene, one line per step. */}
-            <div data-story="question-layer" className="pointer-events-none absolute inset-0 z-[6] opacity-0">
-              <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
-            </div>
+            {/* The central question, over the last scene, one line per step (when the case has one). */}
+            {centralQuestion !== undefined && (
+              <div data-story="question-layer" className="pointer-events-none absolute inset-0 z-[6] opacity-0">
+                <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
+              </div>
+            )}
           </div>
         ) : (
           <>
             {story.map((section, index) => (
               <StoryChapter key={section.id} section={section} index={index} step={dayNight[index]} grade={grades[index]} route={route} />
             ))}
-            <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
-            {/* After the question, more black to scroll into: scrolling on brings the fork. */}
+            {centralQuestion !== undefined && (
+              <CentralQuestion question={centralQuestion} emphasis={centralQuestionEmphasis} lines={centralQuestionLines} narration={centralQuestionNarration} />
+            )}
+            {/* After the last chapter (or the question), more black to scroll into: scrolling on brings the closing modal. */}
             <div aria-hidden="true" data-story="after-question" className="h-[45svh] bg-black" />
           </>
         )}

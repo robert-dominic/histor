@@ -129,7 +129,7 @@ describe('dayNightStep', () => {
       return contrast(step.dark ? nightInk : ink, background(step.mix));
     });
 
-    expect(ratios).toHaveLength(6);
+    expect(ratios).toHaveLength(5);
     expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
   });
 });
@@ -165,7 +165,7 @@ describe('textTone: body text follows the background through a transition', () =
     const count = maryCeleste.story.length;
     const tones = maryCeleste.story.map((_, index) => textTone(dayNightStep(index, count).mix));
 
-    expect(tones).toEqual(['ink', 'ink', 'ink', 'night-ink', 'night-ink', 'night-ink']);
+    expect(tones).toEqual(['ink', 'ink', 'night-ink', 'night-ink', 'night-ink']);
   });
 });
 

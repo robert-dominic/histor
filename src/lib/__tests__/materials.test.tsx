@@ -7,6 +7,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import MaterialsScope from '@/app/MaterialsScope';
 import maryCeleste from '@/cases/mary-celeste/case';
+import { storyFixture } from '@/test/story-fixture';
 import Preloader from '@/features/dread/Preloader';
 import { DECKLES, deckleOf, paperMarks } from '@/lib/materials';
 import { PRELOAD_MAX_MS, forgetPreloader, setLoadersEnabled } from '@/lib/preloader';
@@ -141,7 +142,7 @@ describe('the loading screens (landing v2 brief, 5)', () => {
 
 describe('the apparition data (dread pass, 6)', () => {
   test('s-aboard names a figure, a direction and a delay; anything else is an error', () => {
-    expect(maryCeleste.story.find(section => section.id === 's-aboard')?.apparition).toEqual({ silhouette: 'figure', direction: 'right-to-left', delay: 1.6 });
+    expect(storyFixture.story.find(section => section.id === 's-aboard')?.apparition).toEqual({ silhouette: 'figure', direction: 'right-to-left', delay: 1.6 });
     const bad = { ...maryCeleste, story: maryCeleste.story.map((section, i) => (i === 0 ? { ...section, apparition: { silhouette: 'ghost', direction: 'up', delay: -1 } } : section)) } as unknown as Case;
     const errors = validateCase(bad);
     expect(errors).toContain('Field story[0].apparition.silhouette: Must be one of figure');

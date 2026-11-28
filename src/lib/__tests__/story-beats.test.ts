@@ -1,6 +1,6 @@
 // src/lib/__tests__/story-beats.test.ts
 import { describe, expect, test, vi } from 'vitest';
-import maryCeleste from '@/cases/mary-celeste/case';
+import { storyFixture as maryCeleste } from '@/test/story-fixture';
 import { MIN_BEAT_SECONDS, beatSeconds, beatWords, splitIntoBeats } from '@/lib/story-beats';
 import { emitStoryEvent, onStoryEvent } from '@/lib/story-events';
 

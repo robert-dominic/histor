@@ -7,6 +7,7 @@
 import { Fragment } from 'react';
 import PortalText from '@/features/portals/PortalText';
 import { parseRefs } from '@/lib/parse-refs';
+import { splitInline } from '@/lib/inline-markup';
 import { weightedPieces } from '@/lib/story-emphasis';
 
 /** Words and the spaces between them, in order. */
@@ -44,7 +45,8 @@ function Units({ text }: { text: string }) {
   );
 }
 
-export default function PenText({ text, emphasis }: { text: string; emphasis?: string[] }) {
+/** One run of the paragraph, with its weighted phrases. */
+function Run({ text, emphasis }: { text: string; emphasis?: string[] }) {
   return (
     <>
       {weightedPieces(text, emphasis).map((piece, index) =>
@@ -54,6 +56,27 @@ export default function PenText({ text, emphasis }: { text: string; emphasis?: s
           </span>
         ) : (
           <Units key={index} text={piece.text} />
+        )
+      )}
+    </>
+  );
+}
+
+/** A paragraph: **bold** and *italic* runs wrapped, lines kept (the page shows them with `whitespace-pre-line`). */
+export default function PenText({ text, emphasis }: { text: string; emphasis?: string[] }) {
+  return (
+    <>
+      {splitInline(text).map((part, index) =>
+        part.style === 'bold' ? (
+          <strong key={index} className="font-semibold">
+            <Run text={part.text} emphasis={emphasis} />
+          </strong>
+        ) : part.style === 'italic' ? (
+          <em key={index}>
+            <Run text={part.text} emphasis={emphasis} />
+          </em>
+        ) : (
+          <Run key={index} text={part.text} emphasis={emphasis} />
         )
       )}
     </>

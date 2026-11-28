@@ -144,7 +144,7 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
           </h2>
           <div aria-hidden="true" data-story="body" className="mt-5 flex flex-col gap-[0.85em] font-record text-[1.125rem] leading-[1.6] text-night-ink/90 lg:text-[1.1875rem]">
             {section.body.map((paragraph, paragraphIndex) => (
-              <p key={paragraphIndex} data-story="paragraph" className="text-pretty">
+              <p key={paragraphIndex} data-story="paragraph" className="text-pretty whitespace-pre-line">
                 <PenText text={paragraph} emphasis={section.emphasis} />
               </p>
             ))}
@@ -216,7 +216,7 @@ export default function StoryScene({ section, index, grade, loadImage }: StorySc
         className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:inset-x-3 focus-within:bottom-3 focus-within:z-40 focus-within:max-h-[55svh] focus-within:overflow-y-auto focus-within:rounded-sm focus-within:bg-night/95 focus-within:p-5 focus-within:font-record focus-within:text-[1.0625rem] focus-within:leading-normal focus-within:text-night-ink sm:focus-within:inset-x-auto sm:focus-within:left-1/2 sm:focus-within:w-[34rem] sm:focus-within:-translate-x-1/2"
       >
         {section.body.map((paragraph, paragraphIndex) => (
-          <p key={paragraphIndex} data-story="line" className="mb-3">
+          <p key={paragraphIndex} data-story="line" className="mb-3 whitespace-pre-line">
             <PortalText text={paragraph} />
           </p>
         ))}

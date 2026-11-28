@@ -271,7 +271,7 @@ describe('validateCase: weighted parts of the central question (data-foundation 
 });
 
 describe('validateCase: lines of the central question (data-foundation 3.18)', () => {
-  const question = createCase().centralQuestion;
+  const question = createCase().centralQuestion ?? '';
   const words = question.split(' ');
 
   test('may be left out; lines that give the question back exactly, joined with single spaces, are valid', () => {
@@ -306,7 +306,7 @@ describe('validateCase: lines of the central question (data-foundation 3.18)', (
   });
 
   test('the Mary Celeste lines are valid', async () => {
-    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
+    const maryCeleste = (await import('@/test/story-fixture')).storyFixture;
     expect(maryCeleste.centralQuestionLines).toHaveLength(5);
     expect(validateCase(maryCeleste)).toEqual([]);
   });
@@ -315,7 +315,7 @@ describe('validateCase: lines of the central question (data-foundation 3.18)', (
 describe('validateCase: the heading of the roll call\'s slip (data-foundation 3.19)', () => {
   test('may be left out, and a heading on a section with a roll call is valid', async () => {
     expect(validateCase(createCase())).toEqual([]);
-    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
+    const maryCeleste = (await import('@/test/story-fixture')).storyFixture;
     expect(maryCeleste.story[0].rollCallTitle).toBe('Crew list · Mary Celeste · Nov. 1872');
     expect(validateCase(maryCeleste)).toEqual([]);
   });

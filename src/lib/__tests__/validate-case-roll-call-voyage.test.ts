@@ -4,6 +4,7 @@
 // - Case.voyage: when present, points with unique ids, labels, valid positions, a chapter in the story and a kind
 import { describe, expect, test } from 'vitest';
 import maryCeleste from '@/cases/mary-celeste/case';
+import { storyFixture } from '@/test/story-fixture';
 import { validateCase } from '@/lib/validate-case';
 import type { Case, RollCallEntry, VoyagePoint } from '@/types/case';
 
@@ -85,7 +86,7 @@ describe('validateCase: roll call', () => {
   });
 
   test('the Mary Celeste roll call has ten people, all named, in order', () => {
-    const rollCall = maryCeleste.story[0].rollCall ?? [];
+    const rollCall = storyFixture.story[0].rollCall ?? [];
     expect(rollCall.map(entry => entry.name)).toEqual([
       'Benjamin Briggs',
       'Sarah Briggs',

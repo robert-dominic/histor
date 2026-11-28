@@ -87,7 +87,7 @@ export default function StoryChapter({ section, index, step, grade, route }: Sto
             </h2>
             <div data-story="text" className="mt-5 flex flex-col gap-[0.85em] font-record text-[1.125rem] leading-[1.6] text-night-ink/90 lg:text-[1.1875rem]">
               {section.body.map((paragraph, paragraphIndex) => (
-                <p key={paragraphIndex} data-story="line" className="text-pretty">
+                <p key={paragraphIndex} data-story="line" className="text-pretty whitespace-pre-line">
                   <PortalText text={paragraph} />
                 </p>
               ))}

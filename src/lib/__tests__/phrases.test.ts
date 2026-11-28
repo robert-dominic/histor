@@ -36,15 +36,15 @@ describe('splitIntoPhrases', () => {
 describe('splitQuestion', () => {
   test('splits at the commas and before "and", keeping the punctuation', async () => {
     const { splitQuestion } = await import('@/lib/phrases');
-    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
-    expect(splitQuestion(maryCeleste.centralQuestion)).toEqual([
+    const maryCeleste = (await import('@/test/story-fixture')).storyFixture;
+    expect(splitQuestion(maryCeleste.centralQuestion!)).toEqual([
       'Why would Captain Briggs abandon a sound ship,',
       'one he partly owned,',
       'and put his wife,',
       'his two-year-old daughter',
       'and his crew into a small lifeboat in the middle of the Atlantic?',
     ]);
-    expect(splitQuestion(maryCeleste.centralQuestion).join(' ')).toBe(maryCeleste.centralQuestion);
+    expect(splitQuestion(maryCeleste.centralQuestion!).join(' ')).toBe(maryCeleste.centralQuestion!);
   });
 
   test('a word that only starts with "and" is not split', async () => {
@@ -56,8 +56,8 @@ describe('splitQuestion', () => {
 describe('questionLines', () => {
   test('the case\'s own lines, when they give the question back exactly', async () => {
     const { questionLines } = await import('@/lib/phrases');
-    const maryCeleste = (await import('@/cases/mary-celeste/case')).default;
-    expect(questionLines(maryCeleste.centralQuestion, maryCeleste.centralQuestionLines)).toEqual([
+    const maryCeleste = (await import('@/test/story-fixture')).storyFixture;
+    expect(questionLines(maryCeleste.centralQuestion!, maryCeleste.centralQuestionLines)).toEqual([
       'Why would Captain Briggs abandon a sound ship,',
       'one he partly owned, and put his wife,',
       'his two-year-old daughter',

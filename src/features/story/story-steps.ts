@@ -57,12 +57,18 @@ export function chapterOf(step: StoryStep | undefined): number {
   return step !== undefined && (step.kind === 'page' || step.kind === 'hook') ? step.chapter : -1;
 }
 
-/** The progress rail's tick for a step: its chapter, or one past the last chapter for the question and the fork. */
-export function tickOf(step: StoryStep | undefined, chapters: number): number {
+/**
+ * The progress rail's tick for a step: its chapter, or one past the last chapter for the question and the fork. A case
+ * with no question (`hasQuestion` false) has no tick for it: its closing modal keeps the last chapter lit.
+ */
+export function tickOf(step: StoryStep | undefined, chapters: number, hasQuestion = true): number {
   if (step === undefined) {
     return -1;
   }
-  return step.kind === 'page' || step.kind === 'hook' ? step.chapter : chapters;
+  if (step.kind === 'page' || step.kind === 'hook') {
+    return step.chapter;
+  }
+  return hasQuestion ? chapters : chapters - 1;
 }
 
 /** The step a rail tick jumps to: the chapter's page, or the question's first line. */

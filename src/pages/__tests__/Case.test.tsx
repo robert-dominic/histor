@@ -258,7 +258,7 @@ describe('Case page: open case', () => {
     expect(intro.compareDocumentPosition(story) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  test('the story has every chapter of the case and ends on its central question', () => {
+  test('the story has every chapter of the case, and no central question or hooks', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
@@ -267,7 +267,9 @@ describe('Case page: open case', () => {
     for (const section of openEntry.data.story) {
       expect(within(story).getByRole('heading', { name: section.heading })).toBeDefined();
     }
-    expect(within(story).getByRole('heading', { name: openEntry.data.centralQuestion })).toBeDefined();
+    expect(openEntry.data.centralQuestion).toBeUndefined();
+    expect(story.querySelector('[data-story="question-layer"]')).toBeNull();
+    expect(story.querySelector('[data-story="hook-moment"]')).toBeNull();
   });
 
   test('remembers that the intro was seen once its end state is reached', () => {

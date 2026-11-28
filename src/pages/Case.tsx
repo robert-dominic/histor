@@ -216,7 +216,7 @@ export default function Case() {
               sources={caseData.sources}
               voyage={caseData.voyage}
               start={start}
-              fork={{ fork: caseData.fork, historiansSummary: caseData.historiansSummary, filesHref: `/case/${caseData.id}/files` }}
+              fork={{ fork: caseData.fork, filesHref: `/case/${caseData.id}/files` }}
             />
           </div>
         )}

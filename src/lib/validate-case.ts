@@ -1,5 +1,6 @@
 // src/lib/validate-case.ts
 import { APPARITION_SILHOUETTES, BOARD_MATERIALS, HOOK_SOUNDS, STAIN_MATERIALS, type AmbienceCue, type AmbienceLayer, type Case } from '@/types/case';
+import { stripInline } from '@/lib/inline-markup';
 import { isRefId, parseRefs } from '@/lib/parse-refs';
 
 /**
@@ -31,7 +32,8 @@ export function validateCase(caseData: Case): string[] {
     errors.push('Field deskGuideIntro: Must be a non-empty string when present');
   }
 
-  if (!caseData.centralQuestion || caseData.centralQuestion.trim() === '') {
+  // The central question is optional: a case may end its story on the closing modal instead.
+  if (caseData.centralQuestion !== undefined && (typeof caseData.centralQuestion !== 'string' || caseData.centralQuestion.trim() === '')) {
     errors.push('Field centralQuestion: Must be a non-empty string');
   }
 
@@ -551,9 +553,11 @@ export function validateCase(caseData: Case): string[] {
       }
       const plain = (text: unknown) =>
         typeof text === 'string'
-          ? parseRefs(text)
-              .map(segment => (segment.kind === 'text' ? segment.text : segment.label))
-              .join('')
+          ? stripInline(
+              parseRefs(text)
+                .map(segment => (segment.kind === 'text' ? segment.text : segment.label))
+                .join('')
+            )
           : '';
       const texts = [...(Array.isArray(section.body) ? section.body : []), section.hook].map(plain);
       emphasis.forEach((phrase: unknown, j) => {

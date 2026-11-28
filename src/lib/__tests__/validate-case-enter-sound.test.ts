@@ -58,8 +58,8 @@ describe('validateCase: StorySection.enterSound', () => {
     }
   });
 
-  test('the Mary Celeste marks only s-found and s-question', () => {
-    expect(maryCeleste.story.filter(section => section.enterSound === true).map(section => section.id)).toEqual(['s-found', 's-question']);
+  test('the Mary Celeste marks no chapter (no whoosh)', () => {
+    expect(maryCeleste.story.filter(section => section.enterSound === true).map(section => section.id)).toEqual([]);
     expect(errorsOf(maryCeleste)).toEqual([]);
   });
 });

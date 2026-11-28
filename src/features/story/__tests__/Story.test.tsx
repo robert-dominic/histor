@@ -8,7 +8,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import maryCeleste from '@/cases/mary-celeste/case';
+import { storyFixture as maryCeleste } from '@/test/story-fixture';
 import CaseHeader from '@/components/CaseHeader';
 import Story from '@/features/story/Story';
 import { parseRefs } from '@/lib/parse-refs';
@@ -167,9 +167,9 @@ describe('Story: the full text is in the DOM', () => {
     const { container } = renderStory();
 
     const question = container.querySelector('[data-story="question"]') as HTMLElement;
-    expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
+    expect(within(question).getByRole('heading', { name: maryCeleste.centralQuestion! })).toBeDefined();
     const phrases = [...question.querySelectorAll('[data-story="phrase"]')].map(phrase => phrase.textContent?.trim());
-    expect(phrases).toEqual(splitQuestion(maryCeleste.centralQuestion));
+    expect(phrases).toEqual(splitQuestion(maryCeleste.centralQuestion!));
   });
 });
 
@@ -525,7 +525,7 @@ describe('Story: without matchMedia', () => {
     for (const element of container.querySelectorAll<HTMLElement>('[data-story="line"]')) {
       expect(element.style.opacity).toBe('');
     }
-    expect(screen.getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
+    expect(screen.getByRole('heading', { name: maryCeleste.centralQuestion! })).toBeDefined();
   });
 });
 
@@ -1063,10 +1063,10 @@ describe('Story: the progress rail', () => {
       <MemoryRouter>
         <Story
           story={testCase.story}
-          centralQuestion={maryCeleste.centralQuestion}
+          centralQuestion={maryCeleste.centralQuestion!}
           references={testCase.references}
           sources={testCase.sources}
-          fork={{ fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/files' }}
+          fork={{ fork: maryCeleste.fork, filesHref: '/files' }}
           start={READ}
         />
       </MemoryRouter>
@@ -1080,13 +1080,13 @@ describe('Story: the progress rail', () => {
 });
 
 describe('Story: the central question, one scroll for all of it (the fix list)', () => {
-  const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/case/mary-celeste/files' };
+  const FORK = { fork: maryCeleste.fork, filesHref: '/case/mary-celeste/files' };
   function renderQuestion(start: Start = READ) {
     return render(
       <MemoryRouter>
         <Story
           story={testCase.story}
-          centralQuestion={maryCeleste.centralQuestion}
+          centralQuestion={maryCeleste.centralQuestion!}
           centralQuestionEmphasis={maryCeleste.centralQuestionEmphasis}
           references={testCase.references}
           sources={testCase.sources}
@@ -1112,7 +1112,7 @@ describe('Story: the central question, one scroll for all of it (the fix list)',
     const layer = container.querySelector<HTMLElement>('[data-story="question-layer"]')!;
     expect(stageOf(container).contains(layer)).toBe(true);
     expect(layer.querySelector('[data-story="question"]')?.className).toContain('bg-black');
-    expect(within(layer).getByRole('heading', { name: maryCeleste.centralQuestion })).toBeDefined();
+    expect(within(layer).getByRole('heading', { name: maryCeleste.centralQuestion! })).toBeDefined();
     expect(container.querySelector('[data-story="after-question"]')).toBeNull();
   });
 
@@ -1144,7 +1144,7 @@ describe('Story: the central question, one scroll for all of it (the fix list)',
     const { container } = render(
       <Story
         story={testCase.story}
-        centralQuestion={maryCeleste.centralQuestion}
+        centralQuestion={maryCeleste.centralQuestion!}
         centralQuestionEmphasis={maryCeleste.centralQuestionEmphasis}
         centralQuestionLines={maryCeleste.centralQuestionLines}
         references={testCase.references}
@@ -1208,20 +1208,6 @@ describe('Story: the central question, one scroll for all of it (the fix list)',
     wheelBurst(stageOf(container), { deltaY: -60 });
     settleSteps();
     expect(stepOf(container)).toBe(`line-${lines - 1}`);
-  });
-
-  test('"I\'ve heard enough" shows where historians stand, with two quiet links', () => {
-    const { container } = renderQuestion();
-    toQuestion(container);
-    wheelBurst(stageOf(container));
-    settleSteps();
-    const dialog = screen.getByRole('dialog', { name: 'What next' });
-    settleFork();
-    fireEvent.click(within(dialog).getByRole('button', { name: maryCeleste.fork.leaveLabel }));
-    for (const paragraph of maryCeleste.historiansSummary) {
-      expect(within(dialog).getByText(paragraph)).toBeDefined();
-    }
-    expect(within(dialog).getByRole('link', { name: 'Back to all cases' }).getAttribute('href')).toBe('/');
   });
 
   test('reduced motion: on a normal page the question is shown whole, and the fork appears without animation', () => {
@@ -1527,38 +1513,8 @@ describe('Story: the shadow on the deck (dread pass, 6)', () => {
   });
 });
 
-describe('Story: the fork\'s buttons appearing (the fix list)', () => {
-  test('are heard as the chapter whoosh (choices), never the typewriter ding', () => {
-    const events: StoryEvent[] = [];
-    const stop = onStoryEvent(event => events.push(event));
-    render(
-      <MemoryRouter>
-        <Story
-          story={testCase.story}
-          centralQuestion={maryCeleste.centralQuestion}
-          references={testCase.references}
-          sources={testCase.sources}
-          fork={{ fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/files' }}
-          start={READ}
-        />
-      </MemoryRouter>
-    );
-    const ticks = [...document.querySelectorAll<HTMLButtonElement>('[data-story="rail-tick"]')];
-    fireEvent.click(ticks.at(-1)!);
-    settleSteps();
-    wheelBurst(document.querySelector('[data-story="stage"]')!);
-    settleSteps();
-    act(() => {
-      const choices = document.querySelector('[data-fork="choices"]');
-      gsap.getTweensOf(choices).forEach(tween => (tween.parent ?? tween).progress(1));
-    });
-    expect(events.some(event => event.type === 'choices')).toBe(true);
-    stop();
-  });
-});
-
 describe('Story: "Play the story" runs on its own to the fork (two fixes, 2)', () => {
-  const FORK = { fork: maryCeleste.fork, historiansSummary: maryCeleste.historiansSummary, filesHref: '/files' };
+  const FORK = { fork: maryCeleste.fork, filesHref: '/files' };
   const flush = () =>
     act(async () => {
       for (let tick = 0; tick < 6; tick += 1) {
@@ -1590,7 +1546,7 @@ describe('Story: "Play the story" runs on its own to the fork (two fixes, 2)', (
   test('every chapter, hook and the question, each held for its time, until the fork opens; never paused', async () => {
     const { container } = render(
       <MemoryRouter>
-        <Story story={maryCeleste.story} centralQuestion={maryCeleste.centralQuestion} references={maryCeleste.references} sources={maryCeleste.sources} voyage={maryCeleste.voyage} fork={FORK} start={PLAY} />
+        <Story story={maryCeleste.story} centralQuestion={maryCeleste.centralQuestion!} references={maryCeleste.references} sources={maryCeleste.sources} voyage={maryCeleste.voyage} fork={FORK} start={PLAY} />
       </MemoryRouter>
     );
     // Spied after render, so only the player's holds (and timers made later) are seen.
