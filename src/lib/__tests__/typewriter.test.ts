@@ -5,7 +5,6 @@
 import gsap from 'gsap';
 import { describe, expect, test } from 'vitest';
 import { freshMemory, soundFor } from '@/lib/sound/sound-map';
-import { SOUND } from '@/lib/sound/levels';
 import { onStoryEvent, type StoryEvent } from '@/lib/story-events';
 import { TYPEWRITER, typeElement, typeLetters } from '@/lib/typewriter';
 
@@ -65,12 +64,8 @@ describe('typeLetters', () => {
 });
 
 describe('the typewriter in the event table', () => {
-  test('a key click for each letter, never more than about 14 a second', () => {
-    const memory = freshMemory();
-    const keys = Array.from({ length: 100 }, (_, index) => soundFor({ type: 'type-key' }, memory, 1000 + index * 10)).filter(row => row !== null);
-    expect(keys.length).toBeLessThanOrEqual(SOUND.typeKeysPerSecond);
-    expect(keys.length).toBeGreaterThanOrEqual(SOUND.typeKeysPerSecond - 1);
-    expect(keys[0]).toEqual({ cues: [{ sound: 'typewriter-key' }] });
+  test('typed letters are silent now: no sound on every letter (less noise)', () => {
+    expect(soundFor({ type: 'type-key' }, freshMemory(), 1000)).toBeNull();
   });
 
   test('the end of a long line is quiet now: the ding is the rank\'s alone (the fix list)', () => {
@@ -78,7 +73,7 @@ describe('the typewriter in the event table', () => {
     expect(soundFor({ type: 'rank', rank: 'historian' }, freshMemory())).toEqual({ cues: [{ sound: 'typewriter-ding' }] });
   });
 
-  test('written text keeps the pen', () => {
-    expect(soundFor({ type: 'pen' }, freshMemory(), 1000)).toEqual({ cues: [{ sound: 'scratch', pitch: 1 }] });
+  test('written text is silent now: no scratch on every stroke (less noise)', () => {
+    expect(soundFor({ type: 'pen' }, freshMemory(), 1000)).toBeNull();
   });
 });

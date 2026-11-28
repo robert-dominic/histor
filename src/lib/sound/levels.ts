@@ -33,10 +33,6 @@ export const SOUND = {
   defaultVolume: 0.8,
   /** No more one-shot sounds than this at once; another is simply skipped. */
   maxVoices: 14,
-  /** The pen's scratch: never more ticks a second than this, however fast it writes. */
-  penTicksPerSecond: 18,
-  /** The typewriter's keys (review-fixes brief, 8): never more than this many a second. */
-  typeKeysPerSecond: 14,
 } as const;
 
 /**
@@ -118,16 +114,14 @@ export const MIX = {
 export const SAMPLES = {
   click: { level: 0.32, tier: 'ui', vary: true, category: 'ui', cooldownMs: 60 },
   modal: { level: 0.4, tier: 'ui', vary: false, category: 'ui', cooldownMs: 150 },
-  'typewriter-key': { level: 0.3, tier: 'writing', vary: true, category: 'paper', cooldownMs: 0 },
   'typewriter-ding': { level: 0.42, tier: 'writing', vary: false, category: 'paper', cooldownMs: 0 },
   stamp: { level: 0.85, tier: 'stamp', vary: false, category: 'paper', cooldownMs: 0 },
-  chapter: { level: 0.5, tier: 'question', vary: false, category: 'paper', cooldownMs: 0 },
-  'dread-1': { level: 0.62, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
-  'dread-2': { level: 0.62, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
-  'dread-3': { level: 0.62, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
-  'dread-4': { level: 0.62, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
+  // The four dread stingers are 6 dB quieter than they were (0.62 to 0.31): they rotate under the hook screen's lines.
+  'dread-1': { level: 0.31, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
+  'dread-2': { level: 0.31, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
+  'dread-3': { level: 0.31, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
+  'dread-4': { level: 0.31, tier: 'dread', vary: false, category: 'dread', cooldownMs: 0 },
   question: { level: 0.4, tier: 'question', vary: false, category: 'ambience', cooldownMs: 0 },
-  'question-pulse': { level: 0.45, tier: 'question', vary: false, category: 'paper', cooldownMs: 0 },
   'room-tone': { level: 0.16, tier: 'loop', vary: false, category: 'ambience', cooldownMs: 0 },
   'file-pickup': { level: 0.42, tier: 'file', vary: true, category: 'paper', cooldownMs: 120 },
   'file-open': { level: 0.45, tier: 'file', vary: true, category: 'paper', cooldownMs: 150 },

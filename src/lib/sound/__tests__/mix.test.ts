@@ -40,9 +40,8 @@ describe('the priority order', () => {
     expect(SAMPLES.stamp.tier).toBe('stamp');
     expect(SAMPLES['jump-sting'].tier).toBe('dread');
     expect(SAMPLES['dread-1'].tier).toBe('dread');
-    expect(SAMPLES['question-pulse'].tier).toBe('question');
     expect(SAMPLES.pin.tier).toBe('file');
-    expect(SAMPLES['typewriter-key'].tier).toBe('writing');
+    expect(SAMPLES['typewriter-ding'].tier).toBe('writing');
     expect(SAMPLES.click.tier).toBe('ui');
     expect(SAMPLES['room-tone'].tier).toBe('loop');
   });

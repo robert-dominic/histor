@@ -298,7 +298,7 @@ describe('Case page: open case', () => {
       // It leaves quickly (a tween), then the story starts.
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
       // The page scrolls again once the choice is made.
-      expect(document.documentElement.style.overflow).toBe('');
+      await waitFor(() => expect(document.documentElement.style.overflow).toBe(''), { timeout: 5000 });
     } finally {
       // jsdom has no scrollIntoView of its own.
       delete (Element.prototype as Partial<Element>).scrollIntoView;

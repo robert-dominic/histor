@@ -18,8 +18,7 @@ export type StoryEvent =
   // `verdict`: the verdict and the report (the fix list: the desk's room tone stays at the desk).
   | { type: 'place'; place: 'story' | 'desk' | 'verdict' | 'away'; ambience?: CaseAmbience; playlists?: CaseTheme['playlists'] }
   // `depth`: how far into the night the story is, 0 (day) to 1 (night).
-  // `whoosh`: the chapter is marked to be heard entering (StorySection.enterSound, quick fixes 1).
-  | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number; whoosh?: boolean }
+  | { type: 'chapter-enter'; chapter: string; direction: StoryDirection; depth?: number }
   // A sentence of the text column starts to rise into view. `index` is its place in the chapter.
   | { type: 'beat'; chapter: string; index: number; direction: StoryDirection }
   // As the hook snaps in, forward or back. `sound`: the chapter's own dread sound, when it names one.
@@ -41,8 +40,6 @@ export type StoryEvent =
   | { type: 'stamp-hit' }
   // A popover (the share menu, the volume) opening or closing (use-popover.ts).
   | { type: 'popover'; open: boolean }
-  // A modal's buttons appearing (the fork's two choices, after its prompt): the fix list.
-  | { type: 'choices' }
   // How many ghost lines are on the desk now (dread pass): the murmur follows them.
   | { type: 'ghosts'; count: number }
   // A final choice hovered at the verdict (dread pass), or no longer: the heartbeat.

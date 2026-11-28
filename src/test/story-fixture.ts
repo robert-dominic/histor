@@ -64,8 +64,6 @@ const parts = {
     },
     {
       id: 's-found',
-      // The whoosh plays here and at the question only: where the suspense deepens (quick fixes, 1).
-      enterSound: true,
       emphasis: ['Nine days later', 'alone for nine days'],
       image: {
         src: foundImage,
@@ -128,7 +126,6 @@ const parts = {
     },
     {
       id: 's-question',
-      enterSound: true,
       emphasis: ['why they went'],
       image: {
         src: questionImage,

@@ -84,7 +84,7 @@ export default function HookScreen({ hook, image, onEnded, onDone }: HookScreenP
           at += HOOK_PACE.datelineIn + HOOK_PACE.datelineHold;
         }
         // The timeline ends once the dateline has been held; the dissolve follows.
-        timeline.to({}, { duration: 0 }, at);
+        timeline.call(() => undefined, undefined, at);
         return () => {
           timeline.kill();
           if (!finished) {

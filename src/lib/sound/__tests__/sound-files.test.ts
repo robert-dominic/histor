@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startSound } from '@/lib/sound';
 import { SoundEngine } from '@/lib/sound/engine';
-import { SAMPLES, SOUND } from '@/lib/sound/levels';
+import { SAMPLES } from '@/lib/sound/levels';
 import { SAMPLE_NAMES, SAMPLES_VARY, playSample, samples } from '@/lib/sound/samples';
 import { freshMemory, soundFor, type SoundRow } from '@/lib/sound/sound-map';
 import { SFX_FILES, sfxFfmpegArgs, sfxFilters } from '@/lib/sfx-import';
@@ -46,18 +46,17 @@ describe('the files', () => {
 
 describe('every moment plays its file', () => {
   test('the story: a chapter, the pen (the legend\'s own slower), the typewriter, a hook, the question, the modals', () => {
-    // The whoosh is rare (quick fixes, 1): only a chapter marked enterSound is heard entering.
-    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'forward', whoosh: true })).toContain('chapter');
+    // Less noise: no whoosh, and nothing on every line or step (a chapter appearing, the pen, a typed letter, a name
+    // un-written, a line of the question).
     expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'forward' })).toEqual([]);
-    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'backward', whoosh: false })).toEqual([]);
-    expect(one({ type: 'pen' })).toEqual(['scratch']);
-    expect(one({ type: 'pen', hand: 'legend' })).toEqual(['scratch']);
-    expect(one({ type: 'type-key' })).toEqual(['typewriter-key']);
-    // The ding is the rank's alone (the fix list): a long typed line ends quietly; a modal's buttons whoosh.
-    expect(one({ type: 'type-return' })).toEqual([]);
-    expect(one({ type: 'choices' })).toEqual(['chapter']);
+    expect(one({ type: 'chapter-enter', chapter: 'c', direction: 'backward' })).toEqual([]);
+    expect(one({ type: 'pen' })).toEqual([]);
+    expect(one({ type: 'pen', hand: 'legend' })).toEqual([]);
+    expect(one({ type: 'type-key' })).toEqual([]);
+    expect(one({ type: 'beat', chapter: 'c', index: 0, direction: 'forward' })).toEqual([]);
+    expect(one({ type: 'roll-call-out', chapter: 'c', name: 'n', order: 0, direction: 'forward' })).toEqual([]);
+    expect(one({ type: 'question-line', index: 0, direction: 'forward' })).toEqual([]);
     expect(HOOK_SOUNDS).toContain(one({ type: 'hook', chapter: 'c', direction: 'forward' })[0]);
-    expect(one({ type: 'question-line', index: 0, direction: 'forward' })).toEqual(['question-pulse']);
     expect(one({ type: 'modal', name: 'fork', open: true })).toEqual(['modal']);
     expect(one({ type: 'guide', open: true })).toEqual(['modal']);
     expect(one({ type: 'popover', open: true })).toEqual(['modal']);
@@ -75,14 +74,6 @@ describe('every moment plays its file', () => {
     // The stamps' own moments only duck the rest: the stamp itself is heard once, from stamp-hit.
     expect(soundFor({ type: 'stamp:record', evidence: 'e' }, freshMemory())?.duck).toBe('stamp');
     expect(one({ type: 'stamp:legend', evidence: 'e' })).toEqual([]);
-  });
-
-  test('the pen and the typewriter are throttled: never a machine-gun of repeats', () => {
-    const memory = freshMemory();
-    const pens = Array.from({ length: 100 }, (_, index) => soundFor({ type: 'pen' }, memory, 5000 + index * 10)).filter(row => row !== null);
-    expect(pens.length).toBeLessThanOrEqual(SOUND.penTicksPerSecond);
-    const keys = Array.from({ length: 100 }, (_, index) => soundFor({ type: 'type-key' }, memory, 9000 + index * 10)).filter(row => row !== null);
-    expect(keys.length).toBeLessThanOrEqual(SOUND.typeKeysPerSecond);
   });
 
   test('the hook screen: each line is one soft low dread tone, rotating, and free of the dread gap', () => {
@@ -128,14 +119,14 @@ describe('playing a file', () => {
     const rates: number[] = [];
     for (let i = 0; i < 6; i += 1) {
       ctx.advance(1);
-      playSample(engine, { sound: 'typewriter-key' });
+      playSample(engine, { sound: 'click' });
       const source = ctx.started.at(-1) as FakeSource;
       rates.push(source.playbackRate.value);
       const amp = source.connections[0] as FakeGain;
       // Through its tier of the mix, into the effects bus.
       expect((amp.connections[0] as FakeGain).connections).toContain(engine.nodes!.bus.effects);
-      expect(amp.gain.value).toBeGreaterThan(SAMPLES['typewriter-key'].level * (1 - SAMPLES_VARY.level) - 1e-9);
-      expect(amp.gain.value).toBeLessThan(SAMPLES['typewriter-key'].level * (1 + SAMPLES_VARY.level) + 1e-9);
+      expect(amp.gain.value).toBeGreaterThan(SAMPLES.click.level * (1 - SAMPLES_VARY.level) - 1e-9);
+      expect(amp.gain.value).toBeLessThan(SAMPLES.click.level * (1 + SAMPLES_VARY.level) + 1e-9);
     }
     expect(new Set(rates).size).toBeGreaterThan(1);
     ctx.advance(1);
@@ -147,14 +138,14 @@ describe('playing a file', () => {
   });
 });
 
-describe('the pen, generated (the fix list)', () => {
+describe('the generated scratch (the fix list), now only the Disputed stamp\'s', () => {
   test('each stroke is a short tick of high-passed noise through the writing tier, starting and ending in silence', () => {
     const maker = fakeContextMaker();
     const engine = new SoundEngine({ createContext: maker.create });
     const stop = startSound(engine);
     engine.unlock();
     const ctx = maker.made[0];
-    emitStoryEvent({ type: 'pen' });
+    emitStoryEvent({ type: 'stamp:disputed', evidence: 'e' });
     const stroke = ctx.started.at(-1) as FakeSource;
     expect(stroke.kind).toBe('buffer');
     const filter = stroke.connections[0] as unknown as { type: string };

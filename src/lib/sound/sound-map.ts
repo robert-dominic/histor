@@ -5,7 +5,6 @@
 // under them. Each file's level is in levels.ts (`SAMPLES`); a cue's gain is a multiplier on it.
 
 import type { DuckName } from '@/lib/sound/engine';
-import { SOUND } from '@/lib/sound/levels';
 import type { SampleName } from '@/lib/sound/samples';
 import type { StoryEvent } from '@/lib/story-events';
 import { HOOK_SOUNDS, type AmbienceCue, type HookSound } from '@/types/case';
@@ -32,10 +31,6 @@ export interface SoundRow {
 
 /** What the sound has heard so far, for the rows that depend on it. */
 export interface SoundMemory {
-  /** When the pen last scratched, in ms. */
-  lastPen: number;
-  /** When the typewriter's last key sounded, in ms. */
-  lastKey: number;
   /** The case's one-off cues (from its ambience), and the ones already played. */
   cues: AmbienceCue[];
   played: Set<AmbienceCue>;
@@ -48,7 +43,7 @@ export interface SoundMemory {
 }
 
 export function freshMemory(): SoundMemory {
-  return { lastPen: Number.NEGATIVE_INFINITY, lastKey: Number.NEGATIVE_INFINITY, cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
+  return { cues: [], played: new Set(), now: 0, lastDread: null, random: Math.random };
 }
 
 /**
@@ -72,40 +67,16 @@ type Rows = { [K in StoryEvent['type']]?: (event: Extract<StoryEvent, { type: K 
 /** The table. A moment with no row is silent. */
 export const SOUND_TABLE: Rows = {
   // ---- The story
-  // A chapter appears (forward, or back: its entrance plays again). (The ship's bell is cut: sound-files brief, 3.)
-  // The whoosh is rare (quick fixes, 1): only chapters marked enterSound are heard entering.
-  'chapter-enter': event => (event.whoosh === true ? { cues: [{ sound: 'chapter' }] } : null),
-  // The pen: its generated scratch (the fix list), never more than about 12 a second, a little different each time.
-  pen: (event, memory) => {
-    if (memory.now - memory.lastPen < 1000 / SOUND.penTicksPerSecond) {
-      return null;
-    }
-    memory.lastPen = memory.now;
-    // The legend's own pen a little lower.
-    return { cues: [{ sound: 'scratch', pitch: event.hand === 'legend' ? 0.82 : 1 }] };
-  },
-  // The typewriter: a key for each typed letter, never more than about 14 a second; the ding at the end of a long line.
-  'type-key': (_event, memory) => {
-    if (memory.now - memory.lastKey < 1000 / SOUND.typeKeysPerSecond) {
-      return null;
-    }
-    memory.lastKey = memory.now;
-    return { cues: [{ sound: 'typewriter-key' }] };
-  },
+  // Less noise: no sound on every line or step. A chapter appearing, the pen writing, a typed letter, a name un-written
+  // and a line of the question appearing are all silent now (and the chapter whoosh is gone).
   // The end of a long typed line is silent now: the ding is the rank's alone (the fix list).
   'type-return': () => null,
-  // A modal's buttons appearing: the chapter's whoosh.
-  choices: () => ({ cues: [{ sound: 'chapter' }] }),
   // The hook: one dread sound as the text snaps in, forward or back (the chapter's own, or one from the pool, never
   // the same twice running).
   hook: (event, memory) => ({ duck: 'hook', cues: [{ sound: pickDread(event.sound, memory) }] }),
   // The hook screen: one soft low tone as each line appears, a stinger from the pool (never the same twice running),
   // lower and without the dread gap (the lines come closer than it).
   'hook-line': (_event, memory) => ({ cues: [{ sound: pickDread(undefined, memory), pitch: 0.88, free: true }] }),
-  // Each name un-written: the pen, backwards, a little quieter each time.
-  'roll-call-out': event => ({ cues: [{ sound: 'scratch', gain: 0.85 ** event.order }] }),
-  // Each line of the question: its pulse.
-  'question-line': () => ({ cues: [{ sound: 'question-pulse' }] }),
   // A modal (the play choice, the fork) opening or closing; the ? guide too; and the popovers.
   modal: () => ({ cues: [{ sound: 'modal' }] }),
   guide: event => ({ cues: [{ sound: 'modal', gain: event.open ? 1 : 0.7 }] }),
