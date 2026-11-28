@@ -15,7 +15,7 @@ function buildCase(evidenceIds: string[], theoryIds: string[], closeThreshold: n
     title: 'Test case',
     year: 1900,
     teaser: 'Test teaser',
-    legendIntro: { lines: ['Test line'], stamp: 'Test stamp', debunk: 'Test debunk' },
+    hook: { lines: ['Test line'], dateline: 'Test dateline' },
     story: [{ id: 's-one', heading: 'Test heading', body: ['Test paragraph'] }],
     centralQuestion: 'Test question?',
     fork: { prompt: 'Test prompt', investigateLabel: 'Investigate', leaveLabel: 'Leave' },

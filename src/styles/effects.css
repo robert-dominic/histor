@@ -874,3 +874,62 @@ html[data-landing-stage='held'] {
 [data-landing='stage'] [data-exhibit][data-current='false'] {
   pointer-events: none;
 }
+
+/* ---------- The hook screen (src/features/hook): a dark picture drifting under a soft, moving fog ---------- */
+/* Only transforms and opacity move, on layers that never change size. Reduced motion: still. */
+.hook-drift {
+  filter: brightness(0.55) saturate(0.7);
+  animation: hook-drift 46s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.hook-vignette {
+  background: radial-gradient(ellipse at center, transparent 30%, rgb(13 19 23 / 0.85) 100%);
+}
+.hook-fog {
+  inset: -25% -20%;
+  opacity: 0.5;
+  will-change: transform;
+}
+.hook-fog-a {
+  background:
+    radial-gradient(ellipse 38% 26% at 24% 62%, rgb(168 195 211 / 0.2), transparent 70%),
+    radial-gradient(ellipse 44% 30% at 70% 40%, rgb(168 195 211 / 0.16), transparent 70%);
+  animation: hook-fog-a 52s ease-in-out infinite alternate;
+}
+.hook-fog-b {
+  background:
+    radial-gradient(ellipse 50% 22% at 40% 28%, rgb(230 225 211 / 0.12), transparent 70%),
+    radial-gradient(ellipse 36% 28% at 82% 74%, rgb(168 195 211 / 0.14), transparent 70%);
+  animation: hook-fog-b 68s ease-in-out infinite alternate;
+}
+@keyframes hook-drift {
+  from {
+    transform: scale(1.08) translate3d(-1.6%, 0.6%, 0);
+  }
+  to {
+    transform: scale(1.18) translate3d(1.6%, -1%, 0);
+  }
+}
+@keyframes hook-fog-a {
+  from {
+    transform: translate3d(-8%, 2%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(9%, -3%, 0) scale(1.12);
+  }
+}
+@keyframes hook-fog-b {
+  from {
+    transform: translate3d(7%, -2%, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-9%, 3%, 0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hook-drift,
+  .hook-fog-a,
+  .hook-fog-b {
+    animation: none;
+  }
+}

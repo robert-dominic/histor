@@ -13,7 +13,7 @@ function createCase(section: { hook?: string; hookSound?: unknown }): Case {
     title: 'Test case',
     year: 1900,
     teaser: 'Test teaser',
-    legendIntro: { lines: ['Test line'], stamp: 'Test stamp', debunk: 'Test debunk' },
+    hook: { lines: ['Test line'], dateline: 'Test dateline' },
     story: [
       {
         id: 's-one',

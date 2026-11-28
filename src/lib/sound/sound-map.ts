@@ -19,6 +19,8 @@ export interface SoundCue {
   pitch?: number;
   /** Seconds after the moment. */
   delay?: number;
+  /** A dread sound that may play closer to the last than the mixer's usual gap (the hook screen's tones). */
+  free?: boolean;
 }
 
 /** What a moment does to the sound. */
@@ -97,6 +99,9 @@ export const SOUND_TABLE: Rows = {
   // The hook: one dread sound as the text snaps in, forward or back (the chapter's own, or one from the pool, never
   // the same twice running).
   hook: (event, memory) => ({ duck: 'hook', cues: [{ sound: pickDread(event.sound, memory) }] }),
+  // The hook screen: one soft low tone as each line appears, a stinger from the pool (never the same twice running),
+  // lower and without the dread gap (the lines come closer than it).
+  'hook-line': (_event, memory) => ({ cues: [{ sound: pickDread(undefined, memory), pitch: 0.88, free: true }] }),
   // Each name un-written: the pen, backwards, a little quieter each time.
   'roll-call-out': event => ({ cues: [{ sound: 'scratch', gain: 0.85 ** event.order }] }),
   // Each line of the question: its pulse.

@@ -10,8 +10,6 @@ import inquiryImage from './assets/images/s-inquiry.webp';
 import lastEntryImage from './assets/images/s-last-entry.webp';
 import questionImage from './assets/images/s-question.webp';
 import voyageImage from './assets/images/s-voyage.webp';
-import legendVideoPoster from './assets/video/legend-night-poster.webp';
-import legendVideoSrc from './assets/video/legend-night.mp4';
 
 /**
  * The Mary Celeste (1872).
@@ -33,16 +31,10 @@ export const maryCeleste: Case = {
   teaser: 'A ship found sailing with no one aboard. Ten people, never seen again.',
   deskGuideIntro: 'In 1872 the Mary Celeste was found drifting with no one aboard. Nobody knows why.',
 
-  legendIntro: {
-    lines: [
-      'December 1872. A ship is found drifting in the Atlantic.',
-      'Not a soul aboard.',
-      "In the captain's cabin, breakfast is laid out.",
-      'Half-eaten. The tea is still warm.',
-      'As if everyone simply vanished.',
-    ],
-    stamp: 'Legend',
-    debunk: 'Well... that part never happened. The men who boarded her found nothing to eat or drink on the table. The famous "warm breakfast" was invented by storytellers in the years that followed.',
+  // The hook: the case's first screen (docs/content/mary-celeste-story.md, "Hook"), over the first chapter's picture.
+  hook: {
+    lines: ['The ship was sound.', 'The cargo was untouched.', 'There was food for six months.', 'Everyone on board had vanished.'],
+    dateline: 'December 1872. The Atlantic.',
   },
 
   // The story text is docs/content/mary-celeste-story.md: five chapters, then the closing modal (`fork`). In a chapter, a
@@ -412,11 +404,6 @@ export const maryCeleste: Case = {
     id: 'mary-celeste-theme',
     ambientAudio: undefined,
     sounds: undefined,
-    legendVideo: {
-      src: legendVideoSrc,
-      poster: legendVideoPoster,
-      credit: 'AI-generated illustration (Google Gemini)'
-    },
     // Generated in code (src/lib/sound): the open sea under the story; a quiet room, a lamp and the sea far away at
     // the desk.
     ambience: {

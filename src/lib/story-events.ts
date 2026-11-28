@@ -30,6 +30,10 @@ export type StoryEvent =
   | { type: 'hook-out'; chapter: string; direction: StoryDirection }
   // One name of the roll call un-written; `order` 0 is the first to go.
   | { type: 'roll-call-out'; chapter: string; name: string; order: number; direction: StoryDirection }
+  // The case's hook screen opens (`on`) or ends: the sea and the wind under it. Each of its lines appearing is `hook-line`:
+  // one soft low tone.
+  | { type: 'hook-screen'; on: boolean }
+  | { type: 'hook-line'; index: number }
   // The pen writes a letter (anywhere: the legend, the story, a file, the verdict). Many a second.
   // `hand: 'legend'`: the legend intro's pen and "You almost believed this.", slower and creakier.
   | { type: 'pen'; hand?: 'legend' }

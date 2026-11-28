@@ -117,7 +117,6 @@ describe('the footer on its pages', () => {
       `histor:case:${maryCeleste.id}`,
       JSON.stringify({ opened: maryCeleste.evidence.slice(0, maryCeleste.closeThreshold).map(e => e.id), pins: {}, verdict: maryCeleste.theories[0].id })
     );
-    localStorage.setItem(`histor:intro-seen:${maryCeleste.id}`, '1');
     for (const path of [`/case/${maryCeleste.id}`, `/case/${maryCeleste.id}/files`, `/case/${maryCeleste.id}/verdict`, `/case/${maryCeleste.id}/report`]) {
       window.history.pushState({}, '', path);
       const { unmount } = render(<App />);

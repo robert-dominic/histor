@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // src/pages/__tests__/Case.test.tsx
 // Task 7.2: the case page handles a missing case, a sealed case and an open case.
-// An open case is its legend intro, then its story below it.
+// An open case is its hook screen, then its story.
+import gsap from 'gsap';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -10,7 +11,7 @@ import { formatCaseYears } from '@/lib/case-years';
 import { STORY_MODE_KEY } from '@/lib/story-mode';
 import { validateCase } from '@/lib/validate-case';
 import Case from '@/pages/Case';
-import { finishLegendIntro } from '@/test/legend-intro';
+import { finishHook } from '@/test/hook-screen';
 import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
 import { sound } from '@/lib/sound';
@@ -101,16 +102,17 @@ describe('Case page: sealed case', () => {
 });
 
 describe('Case page: open case', () => {
-  test('shows the legend intro first, with the lines, stamp and debunk from the case data', () => {
+  test('shows the hook first, with its lines and its dateline from the case data, and no legend, stamp or debunk', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
-    const { lines, stamp, debunk } = openEntry.data.legendIntro;
-    const intro = screen.getByRole('region', { name: 'The legend' });
+    const { lines, dateline } = openEntry.data.hook;
+    const hook = screen.getByRole('region', { name: 'The hook' });
     for (const line of lines) {
-      expect(intro.textContent).toContain(line);
+      expect(hook.textContent).toContain(line);
     }
-    expect(intro.textContent).toContain(stamp);
-    expect(intro.textContent).toContain(debunk);
+    expect(hook.textContent).toContain(dateline);
+    expect(hook.querySelector('[data-legend], video')).toBeNull();
+    expect(within(hook).getByRole('button', { name: 'Skip' })).toBeDefined();
     expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
     expect(screen.queryByText('Case not found')).toBeNull();
     expect(screen.queryByText('This case is sealed.')).toBeNull();
@@ -131,7 +133,7 @@ describe('Case page: open case', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
-  test('the title is a link to the start of the story: a click there goes back to the legend intro, with no modal (sound-files 1)', () => {
+  test('the title is a link to the start of the story: a click there goes back to the hook, with no modal (sound-files 1)', () => {
     const scrollTo = vi.fn();
     vi.stubGlobal('scrollTo', scrollTo);
     vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => {
@@ -145,53 +147,36 @@ describe('Case page: open case', () => {
     scrollTo.mockClear();
     fireEvent.click(link);
     expect(scrollTo).toHaveBeenCalledWith(0, 0);
-    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'The hook' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  test('while a loader shows, nothing runs: no legend intro, no play choice, no story; they start once it has gone', () => {
+  test('while a loader shows, nothing runs: no hook, no play choice, no story; they start once it has gone', () => {
     // A loader somewhere on the page (the desk's, say) holds everything.
     const end = beginLoading();
     renderCasePage(`/case/${openEntry.id}`);
-    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'The hook' })).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
     act(() => end());
-    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'The hook' })).toBeDefined();
     resetLoading();
   });
 
-  test('a fresh visit (storage cleared): the legend intro first, then the play modal after it', () => {
+  test('a fresh visit (storage cleared): the hook first, then the play modal after it', () => {
     renderCasePage(`/case/${openEntry.id}`);
-    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
+    expect(screen.getByRole('region', { name: 'The hook' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
-    finishLegendIntro();
+    finishHook();
     expect(screen.getByRole('dialog', { name: openEntry.data.title })).toBeDefined();
   });
 
-  test('a return visit with "Play the story" saved: no modal; the story starts playing at once, the sound still locked (two fixes, 2)', async () => {
-    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+  test('with "Play the story" saved: the hook first, then no modal; the story starts playing at once, the sound still locked (two fixes, 2)', async () => {
     localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'play', sound: true }));
-    // The story is the first screen: the browser reports it on screen at once.
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        callback: IntersectionObserverCallback;
-        constructor(callback: IntersectionObserverCallback) {
-          this.callback = callback;
-        }
-        observe() {
-          queueMicrotask(() => act(() => this.callback([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver)));
-        }
-        unobserve() {}
-        disconnect() {}
-        takeRecords() {
-          return [];
-        }
-      }
-    );
     renderCasePage(`/case/${openEntry.id}`);
+    expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
+    finishHook();
     await act(async () => {
       await Promise.resolve();
     });
@@ -205,11 +190,13 @@ describe('Case page: open case', () => {
     expect(sound.running).toBe(false);
   });
 
-  test('a return visit (intro seen, a mode chosen): no intro, and no modal at all', () => {
-    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+  test('with a mode saved: the hook still comes first on every visit, and then there is no modal at all', () => {
     localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'read', sound: true }));
     renderCasePage(`/case/${openEntry.id}`);
-    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'The hook' })).toBeDefined();
+    expect(screen.queryByRole('region', { name: 'The story' })).toBeNull();
+    finishHook();
+    expect(screen.queryByRole('region', { name: 'The hook' })).toBeNull();
     expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -225,10 +212,10 @@ describe('Case page: open case', () => {
     expect(window.history.scrollRestoration).toBe('manual');
   });
 
-  test('the legend intro has no title card, and there is no opening scene: the header carries the title and years', () => {
+  test('the hook has no title card, and there is no opening scene: the header carries the title and years', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
-    const intro = screen.getByRole('region', { name: 'The legend' });
+    const intro = screen.getByRole('region', { name: 'The hook' });
     expect(intro.querySelector('[data-legend="title"]')).toBeNull();
     expect(intro.querySelector('[data-legend="years"]')).toBeNull();
 
@@ -248,14 +235,17 @@ describe('Case page: open case', () => {
     expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 
-  test('Skip keeps the intro on screen, and the story follows below it', () => {
+  test('Skip dissolves the hook into chapter 1: the story comes up under it, and then the hook is gone', () => {
     renderCasePage(`/case/${openEntry.id}`);
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
 
-    const intro = screen.getByRole('region', { name: 'The legend' });
+    const hook = screen.getByRole('region', { name: 'The hook' });
     const story = screen.getByRole('region', { name: 'The story' });
-    expect(intro.compareDocumentPosition(story) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(story).toBeDefined();
+    expect(hook).toBeDefined();
+    act(() => gsap.globalTimeline.getChildren(true, true, true).forEach(child => child.progress(1)));
+    expect(screen.queryByRole('region', { name: 'The hook' })).toBeNull();
   });
 
   test('the story has every chapter of the case, and no central question or hooks', () => {
@@ -272,66 +262,18 @@ describe('Case page: open case', () => {
     expect(story.querySelector('[data-story="hook-moment"]')).toBeNull();
   });
 
-  test('remembers that the intro was seen once its end state is reached', () => {
-    renderCasePage(`/case/${openEntry.id}`);
+  test('the hook shows on every visit: nothing is remembered', () => {
+    const first = renderCasePage(`/case/${openEntry.id}`);
+    finishHook();
     expect(localStorage.getItem(`histor:intro-seen:${openEntry.id}`)).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
-
-    expect(localStorage.getItem(`histor:intro-seen:${openEntry.id}`)).toBe('1');
-  });
-
-  test('the intro is shown once ever: on a later visit it is not there, and the story starts at chapter 1 (the fix list)', () => {
-    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
+    first.unmount();
 
     renderCasePage(`/case/${openEntry.id}`);
-
-    expect(screen.queryByRole('region', { name: 'The legend' })).toBeNull();
-    const story = screen.getByRole('region', { name: 'The story' });
-    expect(story.querySelector('[data-story="chapter"]')).not.toBeNull();
+    expect(screen.getByRole('region', { name: 'The hook' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
   });
 
-  test('a return visit (no intro played): the play choice opens once the story comes up the screen, once per page load', async () => {
-    localStorage.setItem(`histor:intro-seen:${openEntry.id}`, '1');
-    const observed: { callback: IntersectionObserverCallback; disconnected: boolean }[] = [];
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        record: { callback: IntersectionObserverCallback; disconnected: boolean };
-        constructor(callback: IntersectionObserverCallback) {
-          this.record = { callback, disconnected: false };
-          observed.push(this.record);
-        }
-        observe() {}
-        unobserve() {}
-        disconnect() {
-          this.record.disconnected = true;
-        }
-        takeRecords() {
-          return [];
-        }
-      }
-    );
-    const arrive = () =>
-      observed
-        .filter(record => !record.disconnected)
-        .forEach(record =>
-          act(() => record.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
-        );
-
-    renderCasePage(`/case/${openEntry.id}`);
-    // The intro is at its end state; nothing is pressed. The choice waits until the story arrives.
-    expect(screen.queryByRole('dialog')).toBeNull();
-    arrive();
-    const choice = screen.getByRole('dialog', { name: openEntry.data.title });
-    fireEvent.click(within(choice).getByRole('button', { name: 'Read at my pace' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
-    // Once per page load: arriving again does not bring it back.
-    arrive();
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  test('the intro still plays when localStorage cannot be read', () => {
+  test('the hook still plays when localStorage cannot be read', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('SecurityError');
     });
@@ -341,13 +283,13 @@ describe('Case page: open case', () => {
     expect(screen.getByRole('button', { name: 'Skip' })).toBeDefined();
   });
 
-  test('the scroll cue opens the play choice, and the story starts only once the reader has chosen', async () => {
+  test('after the hook the play choice opens, and the story starts only once the reader has chosen', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     try {
       renderCasePage(`/case/${openEntry.id}`);
 
-      finishLegendIntro();
+      finishHook();
 
       const choice = screen.getByRole('dialog', { name: openEntry.data.title });
       expect(within(choice).getByRole('button', { name: 'Play the story' })).toBeDefined();
@@ -365,7 +307,7 @@ describe('Case page: open case', () => {
 
   test('the choice is remembered (ui-pass 2): histor:story-mode keeps the mode and the Sound switch', async () => {
     renderCasePage(`/case/${openEntry.id}`);
-    finishLegendIntro();
+    finishHook();
     const choice = screen.getByRole('dialog', { name: openEntry.data.title });
     fireEvent.click(within(choice).getByRole('switch', { name: 'Sound' }));
     fireEvent.click(within(choice).getByRole('button', { name: 'Play the story' }));
@@ -373,10 +315,10 @@ describe('Case page: open case', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 5000 });
   });
 
-  test('once chosen, the modal never shows again: the scroll cue and the title start the story at once', () => {
+  test('once chosen, the modal never shows again: after the hook and from the title the story starts at once', () => {
     localStorage.setItem(STORY_MODE_KEY, JSON.stringify({ mode: 'read', music: true, effects: true }));
     renderCasePage(`/case/${openEntry.id}`);
-    finishLegendIntro();
+    finishHook();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('region', { name: 'The story' })).toBeDefined();
     fireEvent.click(document.querySelector<HTMLAnchorElement>('[data-case-header="title-link"]')!);
@@ -386,7 +328,7 @@ describe('Case page: open case', () => {
   test('a broken saved choice counts as no choice: the modal shows', () => {
     localStorage.setItem(STORY_MODE_KEY, '{"mode":"loud"}');
     renderCasePage(`/case/${openEntry.id}`);
-    finishLegendIntro();
+    finishHook();
     expect(screen.getByRole('dialog', { name: openEntry.data.title })).toBeDefined();
   });
 
@@ -417,7 +359,7 @@ describe('Case page: open case', () => {
 
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError.mock.calls[0][1]).toEqual(errors);
-    finishLegendIntro();
+    finishHook();
     expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 });

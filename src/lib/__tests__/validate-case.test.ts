@@ -10,10 +10,9 @@ function createValidCase(overrides?: Partial<Case>): Case {
     title: 'Test Case',
     year: 1872,
     teaser: 'A test mystery',
-    legendIntro: {
-      lines: ['Legend line'],
-      stamp: 'Test stamp',
-      debunk: 'Test debunk'
+    hook: {
+      lines: ['Hook line'],
+      dateline: 'Test dateline'
     },
     story: [
       {
@@ -148,12 +147,12 @@ describe('validateCase - Task 1.1', () => {
     expect(errors).toContain('Field story: Must contain at least one section');
   });
 
-  test('detects empty legendIntro.lines array', () => {
+  test('detects empty hook.lines array', () => {
     const invalidCase = createValidCase({
-      legendIntro: { lines: [], stamp: 'stamp', debunk: 'debunk' }
+      hook: { lines: [], dateline: 'dateline' }
     });
     const errors = validateCase(invalidCase);
-    expect(errors).toContain('Field legendIntro.lines: Must contain at least one line');
+    expect(errors).toContain('Field hook.lines: Must contain at least one line');
   });
 
   test('detects empty historiansSummary array', () => {
@@ -229,7 +228,7 @@ describe('validateCase - Task 1.1', () => {
       evidence: [],
       sources: [],
       story: [],
-      legendIntro: { lines: [], stamp: 'stamp', debunk: 'debunk' },
+      hook: { lines: [], dateline: 'dateline' },
       historiansSummary: [],
       closeThreshold: -1
     });

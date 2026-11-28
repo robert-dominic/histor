@@ -131,6 +131,26 @@ describe('the loops', () => {
   });
 });
 
+describe('the hook screen\'s sea and wind', () => {
+  test('they play under the hook screen in the story, fade out as it ends, and never at the desk', () => {
+    const { ctx, stop } = setUp();
+    emitStoryEvent({ type: 'place', place: 'story' });
+    expect(ctx.started.filter(source => source.loop)).toHaveLength(0);
+    emitStoryEvent({ type: 'hook-screen', on: true });
+    const noises = ctx.started.filter(source => source.loop);
+    expect(noises).toHaveLength(2);
+    emitStoryEvent({ type: 'hook-screen', on: false });
+    vi.advanceTimersByTime(MIX.hookAmbience.fadeOut * 1000 + 300);
+    expect(noises.every(source => source.stoppedAt !== null)).toBe(true);
+    // Said again at the desk, where it does not belong: nothing starts.
+    emitStoryEvent({ type: 'place', place: 'desk' });
+    const before = ctx.started.length;
+    emitStoryEvent({ type: 'hook-screen', on: true });
+    expect(ctx.started.length).toBe(before);
+    stop();
+  });
+});
+
 describe('the room tone (the fix list)', () => {
   test('on the desk only: not on the verdict or the report', () => {
     const { ctx, stop } = setUp();

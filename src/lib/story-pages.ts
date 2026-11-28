@@ -73,6 +73,25 @@ export const STORY_PACE = {
   beforeFork: 2.4,
 } as const;
 
+/**
+ * The hook screen's pace (the first screen of a case), in seconds, to tune by feel. Each line appears, holds and goes;
+ * then the dateline; then the screen dissolves into chapter 1.
+ */
+export const HOOK_PACE = {
+  /** Quiet before the first line. */
+  before: 1.4,
+  /** Each line holds this long once it has appeared (it appears and leaves with the ink tokens). */
+  lineHold: 2.2,
+  /** Dark between one line and the next. */
+  lineGap: 0.7,
+  /** The dateline fades in over this long, holds, and then the screen dissolves. */
+  datelineIn: 1.6,
+  datelineHold: 2.6,
+  /** The dissolve into chapter 1; Skip's is quicker. */
+  dissolve: 1.6,
+  skipDissolve: 0.5,
+} as const;
+
 /** Seconds a reader needs for `text` (markup read as its label): its words at reading pace, and at least the least. */
 export function readingSeconds(text: string): number {
   const plain = parseRefs(text)

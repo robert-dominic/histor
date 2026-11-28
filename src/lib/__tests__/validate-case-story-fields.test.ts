@@ -17,7 +17,7 @@ function createCase(overrides: Partial<Case> = {}): Case {
     title: 'Test case',
     year: 1900,
     teaser: 'Test teaser',
-    legendIntro: { lines: ['Test line'], stamp: 'Test stamp', debunk: 'Test debunk' },
+    hook: { lines: ['Test line'], dateline: 'Test dateline' },
     story: [
       { id: 's-one', heading: 'Heading one', body: ['Paragraph one'] },
       { id: 's-two', heading: 'Heading two', body: ['Paragraph two'] },

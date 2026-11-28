@@ -106,6 +106,8 @@ export const MIX = {
   question: { fadeIn: 2, fadeOut: 1.2 },
   /** The heartbeat at the verdict: in and out over about half a second; it quickens, slowly, the longer the hover. */
   heartbeat: { fade: 0.5, quickenTo: 1.3, quickenOver: 12 },
+  /** The sea and wind under the hook screen (hook-ambience.ts): quiet, in over a few seconds, out as the screen dissolves. */
+  hookAmbience: { level: 0.5, wind: 0.35, fadeIn: 3, fadeOut: 2 },
 } as const;
 
 /**

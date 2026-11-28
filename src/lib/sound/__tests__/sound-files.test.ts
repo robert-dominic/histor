@@ -85,6 +85,23 @@ describe('every moment plays its file', () => {
     expect(keys.length).toBeLessThanOrEqual(SOUND.typeKeysPerSecond);
   });
 
+  test('the hook screen: each line is one soft low dread tone, rotating, and free of the dread gap', () => {
+    const memory = freshMemory();
+    let last = '';
+    for (let index = 0; index < 40; index += 1) {
+      const row = soundFor({ type: 'hook-line', index }, memory);
+      expect(row?.cues).toHaveLength(1);
+      const cue = row!.cues![0];
+      expect(HOOK_SOUNDS).toContain(cue.sound);
+      expect(cue.sound).not.toBe(last);
+      expect(cue.pitch).toBeLessThan(1);
+      expect(cue.free).toBe(true);
+      last = cue.sound;
+    }
+    // The screen opening and closing is the loops' business, not a one-shot sound.
+    expect(one({ type: 'hook-screen', on: true })).toEqual([]);
+  });
+
   test('the hooks pick from the four dread files, never the same twice running; a chapter\'s own wins', () => {
     const memory = freshMemory();
     let last = '';

@@ -34,7 +34,6 @@ describe('/credits', () => {
         expect(group.textContent).toContain(storyImageCredit(section.image));
       }
     }
-    expect(group.textContent).toContain(maryCeleste.theme.legendVideo!.credit);
     expect(group.textContent).toContain('Mixkit');
     const app = document.getElementById('histor')!;
     for (const { lines } of APP_CREDITS) {

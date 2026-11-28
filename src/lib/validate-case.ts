@@ -66,8 +66,11 @@ export function validateCase(caseData: Case): string[] {
     errors.push('Field story: Must contain at least one section');
   }
 
-  if (!Array.isArray(caseData.legendIntro?.lines) || caseData.legendIntro.lines.length === 0) {
-    errors.push('Field legendIntro.lines: Must contain at least one line');
+  if (!Array.isArray(caseData.hook?.lines) || caseData.hook.lines.length === 0) {
+    errors.push('Field hook.lines: Must contain at least one line');
+  }
+  if (typeof caseData.hook?.dateline !== 'string' || caseData.hook.dateline.trim() === '') {
+    errors.push('Field hook.dateline: Must be a non-empty string');
   }
 
   if (!Array.isArray(caseData.historiansSummary) || caseData.historiansSummary.length === 0) {
@@ -274,16 +277,6 @@ export function validateCase(caseData: Case): string[] {
     });
   }
 
-  // Validate the optional legend video (13.5): when present, src, poster and credit must be non-empty
-  const legendVideo: { src?: unknown; poster?: unknown; credit?: unknown } | undefined = caseData.theme?.legendVideo;
-  if (legendVideo !== undefined && legendVideo !== null) {
-    for (const field of ['src', 'poster', 'credit'] as const) {
-      const value = legendVideo[field];
-      if (typeof value !== 'string' || value.trim() === '') {
-        errors.push(`Field theme.legendVideo.${field}: Must be a non-empty string`);
-      }
-    }
-  }
 
   // Validate the optional ambience: when present, story and desk are arrays of known layers, each at most once
   const ambience: { story?: unknown; desk?: unknown } | undefined | null = caseData.theme?.ambience;

@@ -26,7 +26,6 @@ export interface CaseCreditGroup {
 /** A case's credits, from its data. Each image, track and credit once. */
 export function caseCredits(caseData: Case): CaseCreditGroup {
   const images: CreditLine[] = [
-    ...(caseData.theme.legendVideo === undefined ? [] : [{ what: 'The legend intro (video)', credit: caseData.theme.legendVideo.credit }]),
     ...caseData.story.flatMap(section => (section.image === undefined ? [] : [{ what: section.heading, credit: storyImageCredit(section.image) }])),
     ...caseData.references.flatMap(reference => (reference.image === undefined ? [] : [{ what: reference.label, credit: storyImageCredit(reference.image) }])),
   ];

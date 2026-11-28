@@ -6,7 +6,7 @@ import gsap from 'gsap';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import App from '@/App';
 import { registry } from '@/cases';
-import { finishLegendIntro } from '@/test/legend-intro';
+import { finishHook } from '@/test/hook-screen';
 import { stubMatchMedia } from '@/test/match-media';
 import type { RegistryEntry } from '@/types/case';
 
@@ -51,9 +51,9 @@ describe('App routing', () => {
   test('"/case/<open id>" renders the case page for that case', () => {
     renderAppAt(`/case/${openEntry.id}`);
 
-    // An open case starts with its legend intro; the case page proper follows it.
-    expect(screen.getByRole('region', { name: 'The legend' })).toBeDefined();
-    finishLegendIntro();
+    // An open case starts with its hook screen; the case page proper follows it.
+    expect(screen.getByRole('region', { name: 'The hook' })).toBeDefined();
+    finishHook();
     expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 
@@ -78,7 +78,7 @@ describe('App routing', () => {
     act(() => gsap.globalTimeline.getChildren(false, false, true).filter(child => child.data === 'landing-enter').forEach(child => child.progress(1)));
 
     expect(window.location.pathname).toBe(`/case/${openEntry.id}`);
-    finishLegendIntro();
+    finishHook();
     expect(screen.getByRole('heading', { level: 1, name: openEntry.data.title })).toBeDefined();
   });
 

@@ -109,13 +109,15 @@ export type Evidence =
 
 // ---------- Story ----------
 
-export interface LegendIntro {
-  /** The legend, told line by line. */
+/**
+ * The case's first screen: the hook. Its lines appear one at a time over the case's picture, then the dateline, then
+ * the screen dissolves into chapter 1.
+ */
+export interface CaseHook {
+  /** The hook lines, one at a time, e.g. "The ship was sound." */
   lines: string[];
-  /** Text on the stamp, e.g. "Legend". */
-  stamp: string;
-  /** What the app says after the stamp, e.g. "Well... that part never happened. The men who boarded her..." */
-  debunk: string;
+  /** The dateline after the last line, e.g. "December 1872. The Atlantic." */
+  dateline: string;
 }
 
 export interface StorySection {
@@ -251,11 +253,6 @@ export interface CaseTheme {
   /** Named sound effects for this case. */
   sounds?: Partial<Record<'stamp' | 'open' | 'pin' | 'portal' | 'close', string>>;
   /**
-   * Illustration video behind the legend intro, with a still frame shown while it loads and under reduced motion.
-   * The credit is shown on screen with the "Illustration" label.
-   */
-  legendVideo?: { src: string; poster: string; credit: string };
-  /**
    * The case's generated ambience (src/lib/sound/ambience.ts): which layers play under the story and at the desk.
    * Optional: without it, the case is silent but for its effects.
    */
@@ -324,7 +321,7 @@ export interface Case {
    * was found adrift with no one aboard." Without it the guide starts with its generic lines.
    */
   deskGuideIntro?: string;
-  legendIntro: LegendIntro;
+  hook: CaseHook;
   story: StorySection[];
   /** The question the story ends on. Optional: a story may end on its last chapter and the closing modal. */
   centralQuestion?: string;

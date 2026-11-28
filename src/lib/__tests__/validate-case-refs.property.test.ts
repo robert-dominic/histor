@@ -9,7 +9,7 @@ import type {
   CaseTheme,
   Evidence,
   ImageAsset,
-  LegendIntro,
+  CaseHook,
   NonEmptyArray,
   Reference,
   Source,
@@ -115,10 +115,9 @@ const storySectionArb: fc.Arbitrary<StorySection> = fc.record({
   hook: fc.option(safeString, { nil: undefined }),
 });
 
-const legendIntroArb: fc.Arbitrary<LegendIntro> = fc.record({
+const hookArb: fc.Arbitrary<CaseHook> = fc.record({
   lines: fc.array(safeString, { minLength: 1, maxLength: 3 }),
-  stamp: safeString,
-  debunk: safeString,
+  dateline: safeString,
 });
 
 const themeArb: fc.Arbitrary<CaseTheme> = fc.record({
@@ -166,7 +165,7 @@ function markupSafeCaseArb(minReferences = 0): fc.Arbitrary<Case> {
             title: safeString,
             year: fc.integer({ min: 1, max: 2100 }),
             teaser: safeString,
-            legendIntro: legendIntroArb,
+            hook: hookArb,
             story: fc.array(storySectionArb, { minLength: 1, maxLength: 3 }),
             centralQuestion: safeString,
             fork: fc.record({ prompt: safeString, investigateLabel: safeString, leaveLabel: safeString }),

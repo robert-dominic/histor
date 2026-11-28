@@ -8,7 +8,7 @@ import type {
   Evidence,
   Source,
   StorySection,
-  LegendIntro,
+  CaseHook,
   CaseTheme,
   SourceKind,
 } from '@/types/case';
@@ -172,17 +172,15 @@ function storySectionArbitrary(index: number = 0): fc.Arbitrary<StorySection> {
 }
 
 /**
- * Generate a valid LegendIntro
+ * Generate a valid CaseHook
  */
-function legendIntroArbitrary(): fc.Arbitrary<LegendIntro> {
+function legendIntroArbitrary(): fc.Arbitrary<CaseHook> {
   return fc.tuple(
     fc.array(nonEmptyString(), { minLength: 1 }),
-    nonEmptyString(),
     nonEmptyString()
-  ).map(([lines, stamp, debunk]) => ({
+  ).map(([lines, dateline]) => ({
     lines,
-    stamp,
-    debunk
+    dateline
   }));
 }
 
@@ -263,7 +261,7 @@ function validCaseArbitrary(): fc.Arbitrary<Case> {
               evidence,
               sources,
               story,
-              legendIntro,
+              hook: legendIntro,
               theme,
               references: [],
               historiansSummary,

@@ -1,9 +1,9 @@
 // src/pages/Case.tsx
-// One case, looked up from the route. An open case starts with its legend intro. Once the intro has reached its
-// end, the story follows below it: the reader scrolls on, or presses the scroll cue. The case header shows the
-// case's title once the story starts (Story.tsx).
+// One case, looked up from the route. An open case starts with its hook screen, on every visit. As the hook dissolves
+// the story comes up under it, and the play choice opens once it has gone. The case header shows the case's title
+// once the story starts (Story.tsx).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { InvestigationProvider } from '@/app/InvestigationProvider';
 import CaseHeader, { type StoryStartState } from '@/components/CaseHeader';
@@ -11,55 +11,51 @@ import Preloader from '@/features/dread/Preloader';
 import { useLoading } from '@/lib/loading';
 import { loadersEnabled } from '@/lib/preloader';
 import { getCaseById } from '@/cases';
-import LegendIntro from '@/features/legend/LegendIntro';
+import HookScreen from '@/features/hook/HookScreen';
 import PlayChoice, { type PlayMode } from '@/features/story/PlayChoice';
 import Story from '@/features/story/Story';
 import { formatCaseYears } from '@/lib/case-years';
-import { hasSeenIntro, markIntroSeen } from '@/lib/intro-seen';
 import { emitStoryEvent } from '@/lib/story-events';
 import { loadStoryMode } from '@/lib/story-mode';
 import { validateCase } from '@/lib/validate-case';
-
-/** The story has "arrived" once its top is this far up the screen (an IntersectionObserver root margin). */
-const STORY_ARRIVAL_MARGIN = '0px 0px -35% 0px';
 
 export default function Case() {
   const { id } = useParams();
   const entry = getCaseById(id);
   const caseData = entry !== undefined && !entry.sealed ? entry.data : undefined;
-  // The id of the case whose intro has reached its end. Keyed by case, so every case starts with its own intro.
-  const [introEndedFor, setIntroEndedFor] = useState<string | null>(null);
-  // Read once per case, when the page opens. A first-time visitor gets the full intro even after it is marked seen.
-  const caseId = caseData?.id;
-  const introSeenBefore = useMemo(() => (caseId === undefined ? false : hasSeenIntro(caseId)), [caseId]);
-  const storyRef = useRef<HTMLDivElement>(null);
-  // The sound's place: the case's story, with its legend intro (src/lib/sound).
+  // Where the hook is, for this case: its dissolve into chapter 1 has begun (the story is up under it), or it has gone.
+  // Keyed by case, so every case starts with its own hook. It shows on every visit: nothing is remembered.
+  const [hookPhase, setHookPhase] = useState<{ visit: string; phase: 'dissolving' | 'gone' } | null>(null);
+  // The sound's place: the case's story, with its hook screen (src/lib/sound).
   const ambience = caseData?.theme.ambience;
   const playlists = caseData?.theme.playlists;
   useEffect(() => {
     emitStoryEvent({ type: 'place', place: 'story', ambience, playlists });
     return () => emitStoryEvent({ type: 'place', place: 'away' });
   }, [ambience, playlists]);
-  /** The play choice is open: the reader has gone on from the legend intro and must choose how to hear the story. */
-  const [choosing, setChoosing] = useState(false);
+  /** The play choice is open: the hook has gone and the reader must choose how to hear the story. */
+  const [choosingFor, setChoosingFor] = useState<string | null>(null);
   /** The reader's choice, each time it is made: the story starts with it. */
-  const [start, setStart] = useState<{ mode: PlayMode; token: number } | null>(null);
-  /** The play choice has been shown on this page load (it shows once, before chapter 1, however the reader arrives). */
-  const choiceShownRef = useRef(false);
+  const [startRaw, setStart] = useState<{ mode: PlayMode; token: number; visit: string } | null>(null);
   /** The reader's saved choice (ui-pass brief, 2): once made, the modal never shows again. Read once per page. */
   const [savedMode] = useState(() => (caseData === undefined ? null : loadStoryMode()));
+  // The header's title was clicked (review-fixes brief, 5): back to the start, which is the hook. Each visit of the page
+  // (the case, and each press of the title) has its own key: the hook, the play choice and the story belong to it, so
+  // pressing the title starts them over without anything having to be reset.
+  const storyStart = (useLocation().state as Partial<StoryStartState> | null)?.storyStart;
+  const visitKey = `${caseData?.id ?? ''}:${storyStart ?? 0}`;
+
   /**
    * Time for the reader to choose: the modal, for someone who has never chosen; otherwise the story starts at once,
    * at its very beginning, in the saved mode.
    */
   const openChoice = useCallback(() => {
-    choiceShownRef.current = true;
     if (savedMode !== null) {
-      setStart(current => ({ mode: savedMode.mode, token: (current?.token ?? 0) + 1 }));
+      setStart(current => ({ mode: savedMode.mode, token: (current?.token ?? 0) + 1, visit: visitKey }));
       return;
     }
-    setChoosing(true);
-  }, [savedMode]);
+    setChoosingFor(visitKey);
+  }, [savedMode, visitKey]);
 
   const title = caseData?.title;
   const year = caseData?.year;
@@ -71,20 +67,21 @@ export default function Case() {
     [title, year, yearEnd, unsolved]
   );
 
-  // The header's title was clicked (review-fixes brief, 5): back to the start, which is the legend intro.
-  const storyStart = (useLocation().state as Partial<StoryStartState> | null)?.storyStart;
-  // The story is only there to scroll to once the intro has made its point, or was seen on an earlier visit. The intro
-  // is shown once ever (the fix list): seen before, it is not there at all and the story is the first screen.
-  // Nothing runs behind a loader (src/lib/loading.ts): the legend intro, the play choice and the story wait for it.
+  // Nothing runs behind a loader (src/lib/loading.ts): the hook, the play choice and the story wait for it.
   // The page's own loader (below) says when it has gone; until then nothing starts.
   const [loaded, setLoaded] = useState(() => !loadersEnabled());
   const loading = useLoading() || !loaded;
-  const showStory = !loading && caseData !== undefined && (introSeenBefore || introEndedFor === caseData.id);
+  const choosing = choosingFor === visitKey;
+  /** The reader's choice for this visit only. */
+  const start = startRaw?.visit === visitKey ? startRaw : null;
+  const hookOf = hookPhase?.visit === visitKey ? hookPhase.phase : null;
+  /** The story is mounted once the hook starts to dissolve (it shows through), and stays. */
+  const showStory = !loading && hookOf !== null;
+  /** The hook is on screen from the loader's end until it has dissolved. */
+  const showHook = !loading && caseData !== undefined && hookOf !== 'gone';
 
-  // The legend intro is always the first screen, on every visit and from every path (sound-files brief, 1). The bug
-  // was that the play modal came first: a reload kept the title link's state (which brought the story up at once)
-  // and the browser put the page back where it was, with the story in view, which opened the modal. The page now
-  // always opens at its top, with the browser's own scroll restoration off while it is here.
+  // The hook is always the first screen, on every visit and from every path. The page always opens at its top, with
+  // the browser's own scroll restoration off while it is here.
   // (The browser's restoration is off for the whole app: ScrollToTop, quick fixes 2.)
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
@@ -93,36 +90,13 @@ export default function Case() {
     window.scrollTo?.(0, 0);
   }, []);
 
-  // However the reader reaches the story (the scroll cue, scrolling past the intro, a return visit, a reload or a
-  // direct link), the play choice opens once on this page load, before chapter 1 starts: as soon as the story comes
-  // up the screen. (The scroll cue opens it too, each time it is pressed.)
-  useEffect(() => {
-    const story = storyRef.current;
-    if (!showStory || story === null || typeof IntersectionObserver !== 'function') {
-      return;
-    }
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries.some(entry => entry.isIntersecting) && !choiceShownRef.current) {
-          observer.disconnect();
-          openChoice();
-        }
-      },
-      { rootMargin: STORY_ARRIVAL_MARGIN }
-    );
-    observer.observe(story);
-    return () => observer.disconnect();
-    // The title clicked (storyStart) draws the story afresh: it is watched again, so it starts again.
-  }, [showStory, openChoice, storyStart]);
-
   // The title clicked, from anywhere (the desk, a file, the verdict, the report, or already in the story): back to the
-  // legend intro at the top. The story is drawn afresh (its key), so a stage holding the screen lets go. The play
-  // modal then comes after the intro, as on any visit, and only to a reader who has never chosen.
+  // hook at the top. The story is taken down and drawn afresh after it, so a stage holding the screen lets go. The play
+  // modal then comes after the hook, as on any visit, and only to a reader who has never chosen.
   useEffect(() => {
     if (storyStart === undefined) {
       return;
     }
-    choiceShownRef.current = false;
     const frame = requestAnimationFrame(() => window.scrollTo?.(0, 0));
     return () => cancelAnimationFrame(frame);
   }, [storyStart]);
@@ -174,39 +148,37 @@ export default function Case() {
       {headerCard !== undefined && (
         <CaseHeader caseId={caseData.id} title={headerCard.title} years={headerCard.years} unsolved={headerCard.unsolved} startHidden soundHint={!(choosing && showStory)} />
       )}
-      {/* After the legend intro: how to hear the story. The reader must choose; Escape means "Read at my pace". */}
+      {/* After the hook: how to hear the story. The reader must choose; Escape means "Read at my pace". */}
       {choosing && showStory && (
         <PlayChoice
           title={caseData.title}
           onChoose={mode => {
-            setChoosing(false);
-            setStart(current => ({ mode, token: (current?.token ?? 0) + 1 }));
+            setChoosingFor(null);
+            setStart(current => ({ mode, token: (current?.token ?? 0) + 1, visit: visitKey }));
           }}
         />
       )}
       {/* "Opening the case…", only if the fonts and the first images take longer than about 400ms (landing v2 brief, 5). */}
-      <Preloader label="Opening the case…" showAfterMs={400} onDone={() => setLoaded(true)} images={[caseData.theme.legendVideo?.poster, caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
+      <Preloader label="Opening the case…" showAfterMs={400} onDone={() => setLoaded(true)} images={[caseData.story[0]?.image?.src].filter((src): src is string => src !== undefined)} />
       {/* data-page lets the page's background (and so its scrollbar gutter) be night, like the header: index.css. */}
       <main data-page="case">
-        {/* The legend intro is shown once ever (histor:intro-seen); after that the story starts at chapter 1. */}
-        {!introSeenBefore && !loading && (
-        <LegendIntro
-          key={`${caseData.id}:${storyStart ?? 0}`}
-          legendIntro={caseData.legendIntro}
-          video={caseData.theme.legendVideo}
-          startAtEnd={introSeenBefore}
-          onEnded={() => {
-            markIntroSeen(caseData.id);
-            setIntroEndedFor(caseData.id);
-          }}
-          onDone={openChoice}
-        />
+        {/* The hook: the first screen, on every visit. The story mounts under it as it dissolves. */}
+        {showHook && (
+          <HookScreen
+            key={visitKey}
+            hook={caseData.hook}
+            image={caseData.story[0]?.image}
+            onEnded={() => setHookPhase({ visit: visitKey, phase: 'dissolving' })}
+            onDone={() => {
+              setHookPhase({ visit: visitKey, phase: 'gone' });
+              openChoice();
+            }}
+          />
         )}
         {showStory && (
-          // The scroll cue stops with the first chapter filling the screen.
-          <div ref={storyRef}>
+          <div>
             <Story
-              key={`${caseData.id}:${storyStart ?? 0}`}
+              key={visitKey}
               story={caseData.story}
               centralQuestion={caseData.centralQuestion}
               centralQuestionEmphasis={caseData.centralQuestionEmphasis}

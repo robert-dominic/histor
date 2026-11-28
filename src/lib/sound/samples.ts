@@ -96,6 +96,8 @@ export interface SampleCue {
   pitch?: number;
   /** Seconds after the moment. */
   delay?: number;
+  /** A dread sound that may start before the mixer's usual gap has passed (the hook screen's tones). */
+  free?: boolean;
 }
 
 /** What the mixer remembers per context (dread pass, 7): when each sound last played, and the last dread sound. */
@@ -111,12 +113,12 @@ const mixerMemory = new WeakMap<BaseAudioContext, MixerMemory>();
  * `MIX.dreadGapMs` apart (the jump sting excepted: it is the moment); a ui or paper sound not again within its own
  * cooldown. True when the sound may play now (and it is then counted as playing). Times in ms of the context's clock.
  */
-export function mixerAllows(ctx: BaseAudioContext, name: SampleName, durationMs: number): boolean {
+export function mixerAllows(ctx: BaseAudioContext, name: SampleName, durationMs: number, free = false): boolean {
   const memory = mixerMemory.get(ctx) ?? { last: new Map(), dreadStart: Number.NEGATIVE_INFINITY, dreadEnd: Number.NEGATIVE_INFINITY };
   mixerMemory.set(ctx, memory);
   const now = ctx.currentTime * 1000;
   const tune = SAMPLES[name];
-  if (tune.category === 'dread' && name !== 'jump-sting') {
+  if (tune.category === 'dread' && name !== 'jump-sting' && !free) {
     if (now < memory.dreadEnd || now - memory.dreadStart < MIX.dreadGapMs) {
       return false;
     }
@@ -139,7 +141,7 @@ export function playSample(engine: SoundEngine, cue: SampleCue, bank: SampleBank
   const buffer = bank.get(cue.sound);
   const tune = SAMPLES[cue.sound];
   const rate = (cue.pitch ?? 1) * (tune.vary ? vary(SAMPLES_VARY.pitch) : 1);
-  if (ctx === null || out === null || buffer === null || !mixerAllows(ctx, cue.sound, (buffer.duration / rate) * 1000)) {
+  if (ctx === null || out === null || buffer === null || !mixerAllows(ctx, cue.sound, (buffer.duration / rate) * 1000, cue.free)) {
     return;
   }
   if (!engine.voice(buffer.duration / rate + (cue.delay ?? 0))) {

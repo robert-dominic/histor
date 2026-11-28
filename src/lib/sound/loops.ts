@@ -9,6 +9,7 @@
 // - murmur: while ghost text is on the desk, a little louder with each line, gone with the last.
 import type { SoundEngine } from '@/lib/sound/engine';
 import { MIX } from '@/lib/sound/levels';
+import { HookAmbience } from '@/lib/sound/hook-ambience';
 import { LoopPlayer } from '@/lib/sound/samples';
 import type { StoryEvent } from '@/lib/story-events';
 
@@ -18,6 +19,9 @@ export class Loops {
   readonly question = new LoopPlayer('question');
   readonly heartbeat = new LoopPlayer('heartbeat');
   readonly murmur = new LoopPlayer('murmur');
+  // The sea and the wind under a case's hook screen (generated: there is no file for them).
+  readonly hookAmbience = new HookAmbience();
+  private hookOn = false;
   private place: 'story' | 'desk' | 'verdict' | 'away' = 'away';
   private onQuestion = false;
   private ghosts = 0;
@@ -40,6 +44,11 @@ export class Loops {
     } else {
       this.murmur.stop(engine, MIX.murmur.fall);
     }
+    if (this.place === 'story' && this.hookOn) {
+      this.hookAmbience.start(engine);
+    } else {
+      this.hookAmbience.stop(engine);
+    }
     if (this.place === 'story' && this.onQuestion) {
       this.question.start(engine, 1, MIX.question.fadeIn);
     } else {
@@ -53,11 +62,15 @@ export class Loops {
       case 'place':
         this.place = event.place;
         this.onQuestion = false;
+        this.hookOn = false;
         this.ghosts = 0;
         // The heartbeat belongs to the verdict.
         if (event.place !== 'verdict' && event.place !== 'desk') {
           this.heartbeat.stop(this.engine, MIX.heartbeat.fade);
         }
+        break;
+      case 'hook-screen':
+        this.hookOn = event.on;
         break;
       case 'question-line':
         this.onQuestion = true;
@@ -93,5 +106,6 @@ export class Loops {
   /** Everything off at once (the page is left). */
   kill(): void {
     [this.roomTone, this.question, this.heartbeat, this.murmur].forEach(loop => loop.kill());
+    this.hookAmbience.kill();
   }
 }
